@@ -1,0 +1,6 @@
+users.json
+portfolio_*.json
+__pycache__/
+*.pyc
+.env
+.claude/
