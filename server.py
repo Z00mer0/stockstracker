@@ -146,8 +146,17 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
-        else:
+        elif path in ('/', '/index.html'):
+            self.send_response(302)
+            self.send_header('Location', '/myfund.html')
+            self.end_headers()
+
+        elif path == '/myfund.html':
             super().do_GET()
+
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def do_POST(self):
         path = self.path.split('?')[0]
