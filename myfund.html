@@ -771,6 +771,18 @@ function calcMOIC(costPLN, valuePLN) {
   return valuePLN / costPLN;
 }
 
+function avgBuyDate(symbol) {
+  const buys = transactions.filter(t => t.type === 'BUY' && t.symbol === symbol);
+  if (!buys.length) return null;
+  let wSum = 0, tSum = 0;
+  for (const t of buys) {
+    const w = (t.qty || 0) * (t.price || 0);
+    const ts = new Date(t.date).getTime();
+    if (w > 0 && !isNaN(ts)) { wSum += w; tSum += w * ts; }
+  }
+  return wSum > 0 ? new Date(tSum / wSum).toISOString().split('T')[0] : null;
+}
+
 function calcIRR(costPLN, valuePLN, buyDate) {
   if (!buyDate || !costPLN || costPLN <= 0 || valuePLN <= 0) return null;
   const days = (Date.now() - new Date(buyDate)) / 86400000;
@@ -811,8 +823,13 @@ function addHolding(data) {
 
   const existing = portfolio.holdings.find(e => e.symbol === h.symbol);
   if (existing) {
+    const w1 = existing.qty * existing.avgPrice;
+    const w2 = h.qty * h.avgPrice;
+    const t1 = existing.date ? new Date(existing.date).getTime() : Date.now();
+    const t2 = h.date        ? new Date(h.date).getTime()        : Date.now();
     const totalQty    = existing.qty + h.qty;
-    existing.avgPrice = (existing.qty * existing.avgPrice + h.qty * h.avgPrice) / totalQty;
+    existing.avgPrice = (w1 + w2) / totalQty;
+    existing.date     = new Date((w1 * t1 + w2 * t2) / (w1 + w2)).toISOString().split('T')[0];
     existing.qty      = totalQty;
   } else {
     h.id   = Date.now().toString() + Math.random().toString(36).slice(2, 6);
@@ -978,7 +995,8 @@ function render() {
     const pnlPct   = pnlPLN  !== null ? (pnlPLN / costPLN) * 100 : null;
     const days     = daysHeld(h.date);
     const moic     = valuePLN !== null ? calcMOIC(costPLN, valuePLN) : null;
-    const irr      = valuePLN !== null ? calcIRR(costPLN, valuePLN, h.date) : null;
+    const irrDate  = avgBuyDate(h.symbol) || h.date;
+    const irr      = valuePLN !== null ? calcIRR(costPLN, valuePLN, irrDate) : null;
     return { h, cur, price, chgPct, name, valuePLN, costPLN, dayChg, pnlPLN, pnlPct, days, moic, irr };
   });
 
