@@ -288,10 +288,6 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
-    <div id="userChip" style="display:none;align-items:center;gap:8px">
-      <span id="userDisplay" style="font-size:13px;color:var(--muted)"></span>
-      <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="logout()">Wyloguj</button>
-    </div>
     <div id="mktStatus" class="mkt-status"></div>
     <div class="status">
       <div class="dot" id="dot"></div>
@@ -300,6 +296,10 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="btn btn-accent" id="refreshBtn" onclick="refreshAll()">
       <span id="refreshIcon">↻</span> Odśwież
     </button>
+    <div id="userChip" style="display:none;align-items:center;gap:8px;border-left:1px solid var(--border);padding-left:14px;margin-left:2px">
+      <span id="userDisplay" style="font-size:13px;color:var(--muted)"></span>
+      <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="logout()">Wyloguj</button>
+    </div>
   </div>
 </header>
 
