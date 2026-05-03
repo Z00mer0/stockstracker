@@ -12,6 +12,11 @@
   --text:#e2e8f0;--muted:#8892a4;--green:#22c55e;--red:#ef4444;
   --blue:#3b82f6;--accent:#6366f1;--yellow:#f59e0b;--cyan:#06b6d4;--purple:#8b5cf6;
 }
+[data-theme="light"]{
+  --bg:#f0f4f8;--surface:#ffffff;--surface2:#f1f5f9;--border:#e2e8f0;
+  --text:#0f172a;--muted:#64748b;--green:#16a34a;--red:#dc2626;
+  --blue:#2563eb;--accent:#4f46e5;--yellow:#d97706;--cyan:#0891b2;--purple:#7c3aed;
+}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 
 /* HEADER */
@@ -31,6 +36,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 .btn-accent{background:var(--accent);color:#fff}
 .btn-green{background:var(--green);color:#0a0a0a}
 .btn-outline{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.theme-toggle{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:5px 12px;font-size:14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.theme-toggle:hover{border-color:var(--accent)}
 .btn:disabled{opacity:.5;cursor:default}
 
 /* MAIN */
@@ -225,6 +232,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">💰 Dywidendy</button>
   </nav>
   <div class="header-right">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
     <div id="userChip" style="display:none;align-items:center;gap:8px">
       <span id="userDisplay" style="font-size:13px;color:var(--muted)"></span>
       <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="logout()">Wyloguj</button>
@@ -559,6 +567,30 @@ MSFT,5,380.00,USD,2024-02-10"></textarea>
 </div>
 
 <script>
+// ─── THEME ────────────────────────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('theme') || 'dark';
+  if(saved === 'light') document.documentElement.setAttribute('data-theme','light');
+})();
+
+function toggleTheme(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if(isLight){
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('theme','dark');
+    document.getElementById('themeToggle').textContent = '🌙 Dark';
+  } else {
+    document.documentElement.setAttribute('data-theme','light');
+    localStorage.setItem('theme','light');
+    document.getElementById('themeToggle').textContent = '☀️ Light';
+  }
+}
+
+function initThemeBtn(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.getElementById('themeToggle').textContent = isLight ? '☀️ Light' : '🌙 Dark';
+}
+
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SK_PORT = 'myfund_v3_portfolio';
 const SK_SNAP = 'myfund_v3_snapshots';
@@ -1894,6 +1926,7 @@ function acKeydown(e) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 setInterval(refreshAll, 5 * 60 * 1000);
+initThemeBtn();
 checkAuth();
 </script>
 </body>
