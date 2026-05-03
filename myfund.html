@@ -1544,6 +1544,22 @@ async function renderHistoriaTab() {
     entries = entries.filter(([d]) => d >= cutoffStr);
   }
 
+  // If fewer than 2 real snapshots, synthesize a starting point from the earliest BUY
+  // so the chart renders on day 1 (production often starts with 0–1 snapshots)
+  if (entries.length < 2 && snapshots[today()]) {
+    const firstBuy = transactions
+      .filter(t => t.type === 'BUY')
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (firstBuy && firstBuy.date < today() && !snapshots[firstBuy.date]) {
+      const costPLN = portfolio.holdings.reduce((s, h) => {
+        const rate = fxRates[h.currency] || fxRates.USD || 3.95;
+        return s + h.qty * h.avgPrice * rate;
+      }, 0);
+      entries = [[firstBuy.date, parseFloat(costPLN.toFixed(2))], ...entries]
+        .sort((a, b) => a[0].localeCompare(b[0]));
+    }
+  }
+
   const statsGrid = document.getElementById('histStatsGrid');
 
   if (entries.length < 2) {
@@ -1573,11 +1589,11 @@ async function renderHistoriaTab() {
             }]
           },
           options: {
-            responsive: true, maintainAspectRatio: false, animation: false,
-            plugins: { legend: { display: true, labels: { color: 'var(--text)', font: { size: 12 } } }, tooltip: { mode: 'index', intersect: false } },
+            responsive: true, animation: false,
+            plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 } } }, tooltip: { mode: 'index', intersect: false } },
             scales: {
-              x: { ticks: { color: 'var(--muted)', maxTicksLimit: 8 }, grid: { color: 'var(--border)' } },
-              y: { ticks: { color: 'var(--muted)', callback: v => v.toFixed(1) + '%' }, grid: { color: 'var(--border)' } }
+              x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#272f45' } },
+              y: { ticks: { color: '#8892a4', callback: v => v.toFixed(1) + '%' }, grid: { color: '#272f45' } }
             }
           }
         });
