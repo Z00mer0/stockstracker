@@ -90,6 +90,19 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .btn-sell-row{color:var(--yellow);border:1px solid rgba(245,158,11,.3)}.btn-sell-row:hover{background:rgba(245,158,11,.12)}
 .moic-val,.irr-val{font-weight:700}
 .period-val{font-size:12px;color:var(--muted)}
+.ev-badge{display:inline-block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle;line-height:1.4}
+.ev-e{background:rgba(245,158,11,.18);color:#f59e0b;border:1px solid rgba(245,158,11,.35)}
+.ev-d{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.35)}
+.cal-list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.cal-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.cal-date{min-width:80px;font-size:13px;font-weight:700;color:var(--text)}
+.cal-soon{color:var(--yellow)}
+.cal-sym{font-size:14px;font-weight:700;flex:1}
+.cal-name{font-size:12px;color:var(--muted);margin-top:2px}
+.cal-type{font-size:11px;font-weight:700;border-radius:4px;padding:3px 8px;white-space:nowrap}
+.cal-type-e{background:rgba(245,158,11,.18);color:#f59e0b;border:1px solid rgba(245,158,11,.35)}
+.cal-type-d{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.35)}
+.cal-days{font-size:12px;color:var(--muted);min-width:60px;text-align:right}
 .empty{text-align:center;padding:64px 24px;color:var(--muted)}
 .empty-icon{font-size:44px;margin-bottom:12px}
 .empty p{font-size:14px;margin-top:6px}
@@ -243,6 +256,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab" data-tab="historia" onclick="showTab('historia')">📈 Historia</button>
     <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')">📋 Transakcje</button>
     <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">💰 Dywidendy</button>
+    <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')">📅 Kalendarz</button>
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
@@ -405,6 +419,15 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="btn btn-outline" onclick="renderDywidendyTab(true)">↻ Odśwież dane</button>
   </div>
   <div id="dywidendyContent"></div>
+</main>
+
+<!-- ══════════════════════ TAB: KALENDARZ ══════════════════════ -->
+<main id="tab-kalendarz" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+    <div style="font-size:18px;font-weight:700">📅 Nadchodzące wydarzenia</div>
+    <button class="btn btn-outline" onclick="renderKalendarzTab(true)">↻ Odśwież</button>
+  </div>
+  <div id="kalendarContent"></div>
 </main>
 
 <!-- ══════════════════════ MODAL: DODAJ ══════════════════════ -->
@@ -702,16 +725,18 @@ async function fetchChartQuote(symbol) {
   const prevClose = meta.chartPreviousClose ?? closes[closes.length - 2] ?? price;
   mkt[symbol] = {
     price, prevClose,
-    change:    price - prevClose,
-    changePct: prevClose ? ((price - prevClose) / prevClose) * 100 : 0,
-    name:      meta.longName || meta.shortName || symbol,
-    currency:  meta.currency || 'USD',
+    change:     price - prevClose,
+    changePct:  prevClose ? ((price - prevClose) / prevClose) * 100 : 0,
+    name:       meta.longName || meta.shortName || symbol,
+    currency:   meta.currency || 'USD',
+    earningsTs: meta.earningsTimestamp || null,
+    exDivTs:    meta.exDividendDate    || null,
   };
 }
 
 async function fetchQuotes(symbols) {
   if (!symbols.length) return;
-  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency';
+  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,exDividendDate';
   for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
     try {
       const data = await proxyfetch(
@@ -721,12 +746,14 @@ async function fetchQuotes(symbols) {
       if (!results?.length) continue;
       results.forEach(q => {
         mkt[q.symbol] = {
-          price:     q.regularMarketPrice,
-          prevClose: q.regularMarketPreviousClose,
-          change:    q.regularMarketChange        || 0,
-          changePct: q.regularMarketChangePercent || 0,
-          name:      q.longName || q.shortName || q.symbol,
-          currency:  q.currency || 'USD',
+          price:       q.regularMarketPrice,
+          prevClose:   q.regularMarketPreviousClose,
+          change:      q.regularMarketChange        || 0,
+          changePct:   q.regularMarketChangePercent || 0,
+          name:        q.longName || q.shortName || q.symbol,
+          currency:    q.currency || 'USD',
+          earningsTs:  q.earningsTimestamp  || null,
+          exDivTs:     q.exDividendDate     || null,
         };
       });
       return;
@@ -1038,7 +1065,7 @@ function render() {
     tbody.insertAdjacentHTML('beforeend', `
       <tr>
         <td>
-          <div class="sym">${h.symbol}${concHTML}</div>
+          <div class="sym">${h.symbol}${concHTML}${evBadgesFor(h.symbol)}</div>
           <div class="sym-name" title="${name}">${name}</div>
           ${totalDivPLN > 0 ? `<div class="sym-name" style="color:var(--yellow)">💰 ${fmtPLN(totalDivPLN)} dyw.</div>` : ''}
           ${h.note ? `<div class="sym-name">${h.note}</div>` : ''}
@@ -1725,15 +1752,109 @@ function renderDivHTML(rows, el) {
   el.innerHTML = summaryHTML + histHTML + recHTML;
 }
 
+// ─── KALENDARZ ────────────────────────────────────────────────────────────────
+let _kalCacheTime = 0;
+let _kalRows = null;
+
+function tsToDate(ts) {
+  return ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
+}
+
+function daysFromToday(dateStr) {
+  if (!dateStr) return null;
+  return Math.round((new Date(dateStr) - new Date(today())) / 86400000);
+}
+
+function getCalendarEvents() {
+  const events = [];
+  const now = today();
+  const limit = new Date(); limit.setDate(limit.getDate() + 60);
+  const limitStr = limit.toISOString().split('T')[0];
+
+  for (const h of portfolio.holdings) {
+    const q = mkt[h.symbol];
+    const name = q?.name || h.name || h.symbol;
+    const eDate = tsToDate(q?.earningsTs);
+    const dDate = tsToDate(q?.exDivTs);
+    if (eDate && eDate >= now && eDate <= limitStr)
+      events.push({ sym: h.symbol, name, date: eDate, type: 'E' });
+    if (dDate && dDate >= now && dDate <= limitStr)
+      events.push({ sym: h.symbol, name, date: dDate, type: 'D' });
+  }
+  return events.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function evBadgesFor(symbol) {
+  const q = mkt[symbol];
+  const eDate = tsToDate(q?.earningsTs);
+  const dDate = tsToDate(q?.exDivTs);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 7);
+  const cutStr = cutoff.toISOString().split('T')[0];
+  const now = today();
+  let html = '';
+  if (eDate && eDate >= now && eDate <= cutStr) html += `<span class="ev-badge ev-e" title="Wyniki: ${eDate}">E</span>`;
+  if (dDate && dDate >= now && dDate <= cutStr) html += `<span class="ev-badge ev-d" title="Ex-dywidenda: ${dDate}">D</span>`;
+  return html;
+}
+
+async function renderKalendarzTab(forceRefresh = false) {
+  const el = document.getElementById('kalendarContent');
+  if (!portfolio.holdings.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Brak spółek w portfelu</p></div>';
+    return;
+  }
+
+  const cacheAge = Date.now() - _kalCacheTime;
+  if (!forceRefresh && _kalRows && cacheAge < 5 * 60 * 1000) { renderKalHTML(_kalRows, el); return; }
+
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych…</div>';
+
+  // Refresh quotes to get fresh earningsTs / exDivTs
+  const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
+  await fetchQuotes(symbols).catch(() => {});
+
+  _kalRows = getCalendarEvents();
+  _kalCacheTime = Date.now();
+  renderKalHTML(_kalRows, el);
+}
+
+function renderKalHTML(events, el) {
+  if (!events.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">Brak nadchodzących wydarzeń</p><p>Brak raportów wynikowych ani ex-dat dywidend w ciągu 60 dni</p></div>';
+    return;
+  }
+
+  const now = today();
+  const rows = events.map(ev => {
+    const d = daysFromToday(ev.date);
+    const soon = d !== null && d <= 7;
+    const label = ev.type === 'E' ? 'Wyniki finansowe' : 'Ex-dywidenda';
+    const typeClass = ev.type === 'E' ? 'cal-type-e' : 'cal-type-d';
+    const dLabel = d === 0 ? 'dziś' : d === 1 ? 'jutro' : `za ${d} dni`;
+    return `<div class="cal-item">
+      <div class="cal-date ${soon ? 'cal-soon' : ''}">${ev.date}</div>
+      <div style="flex:1">
+        <div class="cal-sym">${ev.sym}</div>
+        <div class="cal-name">${ev.name}</div>
+      </div>
+      <span class="cal-type ${typeClass}">${label}</span>
+      <div class="cal-days ${soon ? 'cal-soon' : ''}">${dLabel}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="cal-list">${rows}</div>`;
+}
+
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-  ['portfel', 'historia', 'transakcje', 'dywidendy'].forEach(t =>
+  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz'].forEach(t =>
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none');
   document.querySelectorAll('.nav-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === name));
   if (name === 'historia')   renderHistoriaTab();
   if (name === 'transakcje') renderTransakcjeTab();
   if (name === 'dywidendy')  renderDywidendyTab();
+  if (name === 'kalendarz')  renderKalendarzTab();
 }
 
 function setTimeframe(days, btn) {
