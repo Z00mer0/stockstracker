@@ -105,6 +105,11 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .tf-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
 .tf-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .tf-btn:hover:not(.active){color:var(--text)}
+.bm-bar{display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.bm-label{font-size:12px;color:var(--muted);white-space:nowrap;margin-right:2px}
+.bm-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;white-space:nowrap}
+.bm-btn.active{border-color:var(--yellow);color:var(--yellow);background:rgba(245,158,11,.1)}
+.bm-btn:hover:not(.active){color:var(--text)}
 .big-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:18px}
 .hist-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:18px}
 .hist-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
@@ -329,6 +334,18 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
       <button class="tf-btn" onclick="setTimeframe(365,this)">1R</button>
       <button class="tf-btn" onclick="setTimeframe(0,this)">Wszystko</button>
     </div>
+  </div>
+
+  <div class="bm-bar">
+    <span class="bm-label">Benchmark:</span>
+    <button class="bm-btn active" onclick="setBenchmark(null,this)">Brak</button>
+    <button class="bm-btn" onclick="setBenchmark('^GSPC',this)">S&amp;P 500</button>
+    <button class="bm-btn" onclick="setBenchmark('^IXIC',this)">NASDAQ</button>
+    <button class="bm-btn" onclick="setBenchmark('^DJI',this)">Dow Jones</button>
+    <button class="bm-btn" onclick="setBenchmark('^GDAXI',this)">DAX</button>
+    <button class="bm-btn" onclick="setBenchmark('^WIG20',this)">WIG20</button>
+    <button class="bm-btn" onclick="setBenchmark('^MWIG40',this)">WIG40</button>
+    <button class="bm-btn" onclick="setBenchmark('^SWIG80',this)">WIG80</button>
   </div>
 
   <div class="big-chart-panel">
@@ -968,7 +985,57 @@ function renderDonut(data, cashPLN = 0) {
     </div>`).join('');
 }
 
-function renderHistoriaTab() {
+const BENCHMARKS = [
+  { id: '^GSPC',   label: 'S&P 500',   color: '#f59e0b' },
+  { id: '^IXIC',   label: 'NASDAQ',    color: '#06b6d4' },
+  { id: '^DJI',    label: 'Dow Jones', color: '#ec4899' },
+  { id: '^GDAXI',  label: 'DAX',       color: '#84cc16' },
+  { id: '^WIG20',  label: 'WIG20',     color: '#f97316' },
+  { id: '^MWIG40', label: 'WIG40',     color: '#a78bfa' },
+  { id: '^SWIG80', label: 'WIG80',     color: '#22d3ee' },
+];
+let selectedBenchmark = null;
+let bmCache = {};
+
+function tfToRange(tf) {
+  if (tf === 30)  return '1mo';
+  if (tf === 90)  return '3mo';
+  if (tf === 180) return '6mo';
+  if (tf === 365) return '1y';
+  return '5y';
+}
+
+async function fetchIndexHistory(symbol, range) {
+  const data = await proxyfetch(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${range}`
+  );
+  const result = data?.chart?.result?.[0];
+  if (!result) throw new Error('no data');
+  const ts     = result.timestamp || [];
+  const closes = result.indicators?.quote?.[0]?.close || [];
+  const map    = {};
+  ts.forEach((t, i) => {
+    if (closes[i] != null)
+      map[new Date(t * 1000).toISOString().split('T')[0]] = closes[i];
+  });
+  return map;
+}
+
+function closestValue(map, date) {
+  const dates = Object.keys(map).sort();
+  let last = null;
+  for (const d of dates) { if (d <= date) last = map[d]; else break; }
+  return last;
+}
+
+function setBenchmark(id, btn) {
+  selectedBenchmark = id;
+  document.querySelectorAll('.bm-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderHistoriaTab();
+}
+
+async function renderHistoriaTab() {
   const ctx = document.getElementById('lineChartBig').getContext('2d');
   if (lineChartBig) { lineChartBig.destroy(); lineChartBig = null; }
 
@@ -993,15 +1060,42 @@ function renderHistoriaTab() {
     return;
   }
 
-  const labels  = entries.map(([d]) => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
-  const values  = entries.map(([, v]) => v);
-  const first   = values[0], last = values[values.length - 1];
-  const maxVal  = Math.max(...values), minVal = Math.min(...values);
-  const diff    = last - first;
-  const diffPct = first > 0 ? (diff / first) * 100 : 0;
-  const color   = diff >= 0 ? '#22c55e' : '#ef4444';
+  const labels    = entries.map(([d]) => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
+  const values    = entries.map(([, v]) => v);
+  const first     = values[0], last = values[values.length - 1];
+  const maxVal    = Math.max(...values), minVal = Math.min(...values);
+  const diff      = last - first;
+  const diffPct   = first > 0 ? (diff / first) * 100 : 0;
+  const portColor = diff >= 0 ? '#22c55e' : '#ef4444';
 
-  statsGrid.innerHTML = [
+  // Fetch benchmark if selected
+  let bmDataset = null, bmReturn = null;
+  const bm = BENCHMARKS.find(b => b.id === selectedBenchmark);
+  if (bm) {
+    try {
+      const range    = tfToRange(currentTF);
+      const cacheKey = bm.id + range;
+      if (!bmCache[cacheKey]) bmCache[cacheKey] = await fetchIndexHistory(bm.id, range);
+      const idxMap  = bmCache[cacheKey];
+      const idxVals = entries.map(([d]) => closestValue(idxMap, d));
+      const idxFirst = idxVals.find(v => v != null);
+      if (idxFirst) {
+        bmReturn  = ((idxVals[idxVals.length - 1] / idxFirst) - 1) * 100;
+        bmDataset = {
+          label: bm.label,
+          data:  idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null),
+          borderColor: bm.color, backgroundColor: 'transparent',
+          fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2,
+          borderDash: [5, 4],
+        };
+      }
+    } catch(e) { console.warn('benchmark failed:', e.message); }
+  }
+
+  const usePercent = !!bmDataset;
+  const portData   = usePercent ? values.map(v => +((v / first - 1) * 100).toFixed(3)) : values;
+
+  const stats = [
     { label: 'Wartość startowa', val: fmtPLN(first),        cls: '' },
     { label: 'Wartość końcowa',  val: fmtPLN(last),         cls: '' },
     { label: 'Zmiana (PLN)',     val: fmtPLN(diff, true),   cls: diff >= 0 ? 'pos' : 'neg' },
@@ -1009,25 +1103,43 @@ function renderHistoriaTab() {
     { label: 'Maksimum',         val: fmtPLN(maxVal),       cls: '' },
     { label: 'Minimum',          val: fmtPLN(minVal),       cls: '' },
     { label: 'Dni historii',     val: entries.length + ' dni', cls: '' },
-  ].map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
+  ];
+  if (bmReturn !== null) {
+    const alpha = diffPct - bmReturn;
+    stats.push({ label: `${bm.label} zmiana`, val: fmtPct(bmReturn), cls: bmReturn >= 0 ? 'pos' : 'neg' });
+    stats.push({ label: 'Alpha',              val: fmtPct(alpha),    cls: alpha >= 0  ? 'pos' : 'neg' });
+  }
+  statsGrid.innerHTML = stats.map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
     <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
+
+  const datasets = [{
+    label: 'Portfel',
+    data: portData, borderColor: portColor, backgroundColor: portColor + '18',
+    fill: true, tension: 0.35,
+    pointRadius: entries.length > 60 ? 0 : 3,
+    pointBackgroundColor: portColor, borderWidth: 2.5,
+  }];
+  if (bmDataset) datasets.push(bmDataset);
 
   lineChartBig = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: values, borderColor: color, backgroundColor: color + '18',
-        fill: true, tension: 0.35,
-        pointRadius: entries.length > 60 ? 0 : 3,
-        pointBackgroundColor: color, borderWidth: 2.5,
-      }]
-    },
+    data: { labels, datasets },
     options: {
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: {
+          display: usePercent,
+          labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 }
+        }
+      },
       scales: {
         x: { ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 12 }, grid: { color: '#272f45' } },
-        y: { ticks: { color: '#8892a4', font: { size: 11 }, callback: v => fmtPLN(v) }, grid: { color: '#272f45' } }
+        y: {
+          ticks: {
+            color: '#8892a4', font: { size: 11 },
+            callback: usePercent ? v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : v => fmtPLN(v)
+          },
+          grid: { color: '#272f45' }
+        }
       }
     }
   });
