@@ -90,6 +90,24 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .btn-sell-row{color:var(--yellow);border:1px solid rgba(245,158,11,.3)}.btn-sell-row:hover{background:rgba(245,158,11,.12)}
 .moic-val,.irr-val{font-weight:700}
 .period-val{font-size:12px;color:var(--muted)}
+/* market status */
+.mkt-status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.mkt-flag{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.mkt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.mkt-open{background:#22c55e}.mkt-closed{background:#6b7280}.mkt-pre{background:#f59e0b}
+/* tooltips */
+.tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:9px;font-weight:700;cursor:help;position:relative;flex-shrink:0;vertical-align:middle;margin-left:3px}
+.tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 11px;font-size:12px;line-height:1.5;z-index:200;visibility:hidden;opacity:0;transition:opacity .15s;pointer-events:none;min-width:200px;max-width:260px;white-space:normal;font-weight:400;text-align:left;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.tip:hover::after{visibility:visible;opacity:1}
+/* gear / col toggle */
+.col-gear-wrap{position:relative;display:inline-block}
+.col-gear-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:14px;color:var(--muted);transition:all .2s;line-height:1}
+.col-gear-btn:hover{color:var(--text);border-color:var(--accent)}
+.col-gear-panel{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;z-index:100;min-width:200px;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.col-gear-panel.open{display:block}
+.col-gear-panel label{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0;cursor:pointer;color:var(--text)}
+.col-gear-panel label:hover{color:var(--accent)}
+.col-gear-panel input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
 .ev-badge{display:inline-block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle;line-height:1.4}
 .ev-e{background:rgba(245,158,11,.18);color:#f59e0b;border:1px solid rgba(245,158,11,.35)}
 .ev-d{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.35)}
@@ -265,6 +283,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
       <span id="userDisplay" style="font-size:13px;color:var(--muted)"></span>
       <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="logout()">Wyloguj</button>
     </div>
+    <div id="mktStatus" class="mkt-status"></div>
     <div class="status">
       <div class="dot" id="dot"></div>
       <span id="lastUpdate">Brak danych</span>
@@ -311,6 +330,10 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
       <div class="panel-header">
         <div class="panel-title">Moje pozycje</div>
         <div class="panel-actions">
+          <div class="col-gear-wrap">
+            <button class="col-gear-btn" onclick="toggleColPanel()" title="Dostosuj kolumny">⚙️</button>
+            <div class="col-gear-panel" id="colGearPanel"></div>
+          </div>
           <button class="btn btn-outline" onclick="openImport()">⬆ Import CSV</button>
           <button class="btn btn-green" onclick="openAdd()">+ Dodaj spółkę</button>
         </div>
@@ -326,15 +349,15 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
             <tr>
               <th>Spółka</th>
               <th>Ilość</th>
-              <th>Śr. zakup</th>
+              <th>Śr. zakup <span class="tip" data-tip="Średnia cena zakupu, po której nabyłeś akcje (ważona ilością przy uśrednianiu)">i</span></th>
               <th>Cena teraz</th>
-              <th class="sortable" data-sort="chgPct" onclick="setSortBy('chgPct')">Zmiana dz.<span class="sort-icon"></span></th>
-              <th class="sortable" data-sort="costPLN" onclick="setSortBy('costPLN')">Wart. zakupu<span class="sort-icon"></span></th>
-              <th class="sortable" data-sort="valuePLN" onclick="setSortBy('valuePLN')">Wart. teraz (PLN)<span class="sort-icon"></span></th>
-              <th class="sortable" data-sort="pnlPLN" onclick="setSortBy('pnlPLN')">Zysk/Strata<span class="sort-icon"></span></th>
-              <th>Okres</th>
-              <th class="sortable" data-sort="moic" onclick="setSortBy('moic')">MOIC<span class="sort-icon"></span></th>
-              <th class="sortable" data-sort="irr" onclick="setSortBy('irr')">IRR r.<span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="chgPct" onclick="setSortBy('chgPct')">Zmiana dz.<span class="sort-icon"></span><span class="tip" data-tip="Zmiana ceny względem poprzedniego zamknięcia giełdy">i</span></th>
+              <th class="sortable" data-sort="costPLN" onclick="setSortBy('costPLN')">Wart. zakupu<span class="sort-icon"></span><span class="tip" data-tip="Łączna kwota zainwestowana: śr. cena zakupu × ilość, przeliczona na PLN">i</span></th>
+              <th class="sortable" data-sort="valuePLN" onclick="setSortBy('valuePLN')">Wart. teraz (PLN)<span class="sort-icon"></span><span class="tip" data-tip="Aktualna wartość pozycji: cena teraz × ilość, przeliczona na PLN po bieżącym kursie walutowym">i</span></th>
+              <th class="sortable" data-sort="pnlPLN" onclick="setSortBy('pnlPLN')">Zysk/Strata<span class="sort-icon"></span><span class="tip" data-tip="Niezrealizowany zysk lub strata: wartość teraz − koszt zakupu, w PLN">i</span></th>
+              <th>Okres <span class="tip" data-tip="Czas od pierwszego zakupu akcji tej spółki">i</span></th>
+              <th class="sortable" data-sort="moic" onclick="setSortBy('moic')">MOIC<span class="sort-icon"></span><span class="tip" data-tip="Multiple on Invested Capital — ile razy zwróciła się inwestycja. 1.5× = wartość wzrosła o 50%. Poniżej 1× oznacza stratę">i</span></th>
+              <th class="sortable" data-sort="irr" onclick="setSortBy('irr')">IRR r.<span class="sort-icon"></span><span class="tip" data-tip="Wewnętrzna Stopa Zwrotu (roczna) — procentowy zysk w skali roku, uwzględniający czas trwania inwestycji. Porównywalna z oprocentowaniem lokaty">i</span></th>
               <th></th>
             </tr>
           </thead>
@@ -649,6 +672,79 @@ function initPrivacy() {
     btn.classList.add('active');
   }
 }
+
+// ─── MARKET STATUS ────────────────────────────────────────────────────────────
+function getMarketStatus(zone, openH, openM, closeH, closeM) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone, hour12: false,
+    weekday: 'short', hour: 'numeric', minute: 'numeric'
+  }).formatToParts(new Date());
+  const get = t => parts.find(p => p.type === t)?.value;
+  const wd = get('weekday');
+  if (wd === 'Sat' || wd === 'Sun') return 'closed';
+  const h = parseInt(get('hour')), m = parseInt(get('minute'));
+  const now = h * 60 + m, open = openH * 60 + openM, close = closeH * 60 + closeM;
+  if (now < open - 30) return 'closed';
+  if (now < open)      return 'pre';
+  if (now < close)     return 'open';
+  return 'closed';
+}
+
+function renderMarketStatus() {
+  const pl = getMarketStatus('Europe/Warsaw', 9, 0, 17, 35);
+  const us = getMarketStatus('America/New_York', 9, 30, 16, 0);
+  const dot = s => `<span class="mkt-dot mkt-${s}"></span>`;
+  const lbl = s => s === 'open' ? 'Otwarte' : s === 'pre' ? 'Pre-market' : 'Zamknięte';
+  document.getElementById('mktStatus').innerHTML =
+    `<span class="mkt-flag">${dot(pl)} 🇵🇱 ${lbl(pl)}</span>` +
+    `<span class="mkt-flag">${dot(us)} 🇺🇸 ${lbl(us)}</span>`;
+}
+
+// ─── COLUMN VISIBILITY ────────────────────────────────────────────────────────
+const COL_DEFS = [
+  { idx: 2,  label: 'Ilość' },
+  { idx: 3,  label: 'Śr. zakup' },
+  { idx: 4,  label: 'Cena teraz' },
+  { idx: 5,  label: 'Zmiana dz.' },
+  { idx: 6,  label: 'Wart. zakupu' },
+  { idx: 7,  label: 'Wart. teraz' },
+  { idx: 8,  label: 'Zysk/Strata' },
+  { idx: 9,  label: 'Okres' },
+  { idx: 10, label: 'MOIC' },
+  { idx: 11, label: 'IRR r.' },
+];
+const SK_COLVIS = 'myfund_colvis';
+let colVis = JSON.parse(localStorage.getItem(SK_COLVIS) || 'null') ||
+  Object.fromEntries(COL_DEFS.map(c => [c.idx, true]));
+
+function applyColVis() {
+  let css = '';
+  COL_DEFS.forEach(({ idx }) => {
+    if (!colVis[idx])
+      css += `#holdingsTable thead th:nth-child(${idx}),#holdingsTable tbody td:nth-child(${idx}){display:none}`;
+  });
+  let el = document.getElementById('col-vis-style');
+  if (!el) { el = document.createElement('style'); el.id = 'col-vis-style'; document.head.appendChild(el); }
+  el.textContent = css;
+}
+
+function buildColPanel() {
+  const panel = document.getElementById('colGearPanel');
+  panel.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Widoczne kolumny</div>' +
+    COL_DEFS.map(c => `<label><input type="checkbox" ${colVis[c.idx] ? 'checked' : ''}
+      onchange="colVis[${c.idx}]=this.checked;applyColVis();localStorage.setItem('${SK_COLVIS}',JSON.stringify(colVis))">
+      ${c.label}</label>`).join('');
+}
+
+function toggleColPanel() {
+  const panel = document.getElementById('colGearPanel');
+  if (!panel.classList.contains('open')) buildColPanel();
+  panel.classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.col-gear-wrap')) document.getElementById('colGearPanel')?.classList.remove('open');
+});
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SK_PORT = 'myfund_v3_portfolio';
@@ -2356,8 +2452,11 @@ function acKeydown(e) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 setInterval(refreshAll, 5 * 60 * 1000);
+setInterval(renderMarketStatus, 60 * 1000);
 initThemeBtn();
 initPrivacy();
+applyColVis();
+renderMarketStatus();
 checkAuth();
 </script>
 </body>
