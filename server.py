@@ -12,7 +12,17 @@ import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
-BASE         = Path(__file__).parent
+BASE = Path(__file__).parent
+
+# Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
+_env = BASE / '.env'
+if _env.exists():
+    for _line in _env.read_text(encoding='utf-8').splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith('#') and '=' in _line:
+            _k, _v = _line.split('=', 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 SESSIONS     = {}
 PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
