@@ -27,6 +27,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 .nav-tab.active{color:var(--text);border-bottom-color:var(--accent)}
 .nav-tab:hover:not(.active){color:var(--text)}
 .header-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);margin-left:auto}
+.privacy-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:5px 11px;font-size:15px;cursor:pointer;transition:all .2s;line-height:1}
+.privacy-btn:hover{border-color:var(--accent)}.privacy-btn.active{color:var(--text);border-color:var(--text)}
+body.private .amt{filter:blur(7px);user-select:none;transition:filter .2s;cursor:default}
+body.private .cash-amt{filter:blur(7px);user-select:none;transition:filter .2s;cursor:default}
 .status{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);transition:background .3s}
 .dot.err{background:var(--red)}.dot.loading{background:var(--yellow)}
@@ -241,6 +245,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">💰 Dywidendy</button>
   </nav>
   <div class="header-right">
+    <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
     <div id="userChip" style="display:none;align-items:center;gap:8px">
       <span id="userDisplay" style="font-size:13px;color:var(--muted)"></span>
@@ -262,22 +267,22 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   <div class="cards">
     <div class="card c-total">
       <div class="card-label">Wartość portfela (PLN)</div>
-      <div class="card-value" id="cv-total">—</div>
+      <div class="card-value amt" id="cv-total">—</div>
       <div class="card-sub" id="cs-total">Akcje + gotówka</div>
     </div>
     <div class="card c-day">
       <div class="card-label">Zmiana dzienna</div>
-      <div class="card-value" id="cv-day">—</div>
+      <div class="card-value amt" id="cv-day">—</div>
       <div class="card-sub" id="cs-day">vs. poprzednie zamknięcie</div>
     </div>
     <div class="card c-pnl">
       <div class="card-label">Całkowity zysk/strata</div>
-      <div class="card-value" id="cv-pnl">—</div>
+      <div class="card-value amt" id="cv-pnl">—</div>
       <div class="card-sub" id="cs-pnl">od ceny zakupu</div>
     </div>
     <div class="card c-cash">
       <div class="card-label">Gotówka</div>
-      <div class="card-value" id="cv-cash">0,00 zł</div>
+      <div class="card-value amt" id="cv-cash">0,00 zł</div>
       <div class="card-sub" id="cs-cash">łączna w PLN</div>
     </div>
     <div class="card c-irr">
@@ -603,6 +608,23 @@ function toggleTheme(){
 function initThemeBtn(){
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   document.getElementById('themeToggle').textContent = isLight ? '☀️ Light' : '🌙 Dark';
+}
+
+function togglePrivacy() {
+  const isPrivate = document.body.classList.toggle('private');
+  localStorage.setItem('privacyMode', isPrivate ? '1' : '0');
+  const btn = document.getElementById('privacyBtn');
+  btn.textContent = isPrivate ? '🙈' : '👁';
+  btn.classList.toggle('active', isPrivate);
+}
+
+function initPrivacy() {
+  if (localStorage.getItem('privacyMode') === '1') {
+    document.body.classList.add('private');
+    const btn = document.getElementById('privacyBtn');
+    btn.textContent = '🙈';
+    btn.classList.add('active');
+  }
 }
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
@@ -1007,10 +1029,10 @@ function render() {
         <td>${fmtCur(h.avgPrice, h.currency)}</td>
         <td>${price !== null ? fmtCur(price, cur) : '<span style="color:var(--muted);font-size:12px">Ładowanie…</span>'}</td>
         <td>${chgPct !== null ? badge(chgPct, fmtPct(chgPct)) : '—'}</td>
-        <td style="color:var(--muted)">${fmtPLN(costPLN)}</td>
-        <td>${valuePLN !== null ? fmtPLN(valuePLN) : '—'}</td>
+        <td class="amt" style="color:var(--muted)">${fmtPLN(costPLN)}</td>
+        <td class="amt">${valuePLN !== null ? fmtPLN(valuePLN) : '—'}</td>
         <td class="pnl-cell ${pnlPLN !== null ? (pnlPLN >= 0 ? 'pos' : 'neg') : ''}">
-          ${pnlPLN !== null ? fmtPLN(pnlPLN) : '—'}
+          <span class="amt">${pnlPLN !== null ? fmtPLN(pnlPLN) : '—'}</span>
           ${pnlPct !== null ? `<div class="pct">${fmtPct(pnlPct)}</div>` : ''}
         </td>
         <td class="period-val">${fmtPeriod(days)}</td>
@@ -1354,17 +1376,18 @@ async function renderHistoriaTab() {
   const capitalGainPct = lastCapital && lastCapital > 0 ? (capitalGain / lastCapital) * 100 : null;
 
   const stats = [
-    { label: 'Wartość startowa', val: fmtPLN(first),        cls: '' },
-    { label: 'Wartość końcowa',  val: fmtPLN(last),         cls: '' },
-    { label: 'Zmiana (PLN)',     val: fmtPLN(diff, true),   cls: diff >= 0 ? 'pos' : 'neg' },
+    { label: 'Wartość startowa', val: fmtPLN(first),        cls: 'amt' },
+    { label: 'Wartość końcowa',  val: fmtPLN(last),         cls: 'amt' },
+    { label: 'Zmiana (PLN)',     val: fmtPLN(diff, true),   cls: (diff >= 0 ? 'pos' : 'neg') + ' amt' },
     { label: 'Zmiana (%)',       val: fmtPct(diffPct),      cls: diff >= 0 ? 'pos' : 'neg' },
-    { label: 'Maksimum',         val: fmtPLN(maxVal),       cls: '' },
-    { label: 'Minimum',          val: fmtPLN(minVal),       cls: '' },
+    { label: 'Maksimum',         val: fmtPLN(maxVal),       cls: 'amt' },
+    { label: 'Minimum',          val: fmtPLN(minVal),       cls: 'amt' },
     { label: 'Dni historii',     val: entries.length + ' dni', cls: '' },
   ];
   if (capitalGain !== null) {
-    stats.push({ label: 'Zainwestowany',  val: fmtPLN(lastCapital),              cls: '' });
-    stats.push({ label: 'Zysk / Strata',  val: fmtPLN(capitalGain, true) + ' (' + fmtPct(capitalGainPct) + ')',
+    stats.push({ label: 'Zainwestowany',  val: fmtPLN(lastCapital), cls: 'amt' });
+    stats.push({ label: 'Zysk / Strata',
+                 val: `<span class="amt">${fmtPLN(capitalGain, true)}</span> (${fmtPct(capitalGainPct)})`,
                  cls: capitalGain >= 0 ? 'pos' : 'neg' });
   }
   if (bmReturn !== null) {
@@ -2080,6 +2103,7 @@ function acKeydown(e) {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 setInterval(refreshAll, 5 * 60 * 1000);
 initThemeBtn();
+initPrivacy();
 checkAuth();
 </script>
 </body>
