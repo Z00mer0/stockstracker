@@ -1101,7 +1101,7 @@ function render() {
 function setCard(id, val, sub, colorVal) {
   const el = document.getElementById(id);
   el.textContent = val;
-  el.className   = 'card-value' + (colorVal !== null ? (colorVal >= 0 ? ' pos' : ' neg') : '');
+  el.className   = 'card-value amt' + (colorVal !== null ? (colorVal >= 0 ? ' pos' : ' neg') : '');
   const s = el.nextElementSibling;
   if (s && sub !== undefined) s.textContent = sub;
 }
@@ -1325,7 +1325,43 @@ async function renderHistoriaTab() {
 
   if (entries.length < 2) {
     statsGrid.innerHTML = `<div class="hist-stat"><div class="hist-stat-label">Info</div>
-      <div class="hist-stat-value" style="font-size:14px;color:var(--muted)">Brak wystarczających danych. Historia buduje się codziennie po odświeżeniu.</div></div>`;
+      <div class="hist-stat-value" style="font-size:14px;color:var(--muted)">Brak wystarczających danych portfela. Historia buduje się codziennie po odświeżeniu.</div></div>`;
+
+    const bm0 = BENCHMARKS.find(b => b.id === selectedBenchmark);
+    if (bm0) {
+      try {
+        const range    = tfToRange(currentTF);
+        const cacheKey = bm0.id + range;
+        if (!bmCache[cacheKey]) bmCache[cacheKey] = await fetchIndexHistory(bm0.id, range);
+        const idxMap   = bmCache[cacheKey];
+        const bmDates  = Object.keys(idxMap).sort();
+        const bmValues = bmDates.map(d => idxMap[d]);
+        const bmFirst  = bmValues[0];
+        const bmPct    = bmValues.map(v => +((v / bmFirst - 1) * 100).toFixed(3));
+        const bmLabels = bmDates.map(d => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
+        lineChartBig = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: bmLabels,
+            datasets: [{
+              label: bm0.label, data: bmPct,
+              borderColor: bm0.color, backgroundColor: 'transparent',
+              fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4],
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            plugins: { legend: { display: true, labels: { color: 'var(--text)', font: { size: 12 } } }, tooltip: { mode: 'index', intersect: false } },
+            scales: {
+              x: { ticks: { color: 'var(--muted)', maxTicksLimit: 8 }, grid: { color: 'var(--border)' } },
+              y: { ticks: { color: 'var(--muted)', callback: v => v.toFixed(1) + '%' }, grid: { color: 'var(--border)' } }
+            }
+          }
+        });
+        return;
+      } catch(e) { console.warn('benchmark failed:', e.message); }
+    }
+
     lineChartBig = new Chart(ctx, {
       type: 'line',
       data: { labels: ['Dziś'], datasets: [{ data: [0], borderColor: '#6366f1', borderWidth: 2, pointRadius: 0 }] },
@@ -1510,12 +1546,10 @@ async function fetchDividendInfo(symbol) {
       .sort((a, b) => b.date.localeCompare(a.date));
     const nextTs   = meta.dividendDate;
     const nextDate = nextTs ? new Date(nextTs * 1000).toISOString().split('T')[0] : null;
-    return {
-      rate:     meta.trailingAnnualDividendRate  || null,
-      yield:    meta.trailingAnnualDividendYield || null,
-      nextDate,
-      history,
-    };
+    const rate  = meta.trailingAnnualDividendRate  || null;
+    const yld   = meta.trailingAnnualDividendYield || null;
+    const noDividends = !rate && history.length === 0;
+    return { rate, yield: yld, nextDate, history, noDividends };
   } catch {
     return null;
   }
@@ -1576,21 +1610,37 @@ function renderDivHTML(rows, el) {
             const q    = mkt[sym];
             const cur  = q?.currency || h?.currency || 'USD';
             const rate = data?.rate  ?? null;
-            const yld  = data?.yield ?? null;
+            const price = q?.price ?? null;
+            const yld  = data?.yield ?? (rate != null && price ? rate / price : null);
             const last = data?.history?.[0] ?? null;
             const est  = (rate != null && h) ? rate * h.qty : null;
+            const noDividends = data?.noDividends ?? false;
+            const noData = data === null;
             return `<tr>
               <td style="text-align:left">
                 <div class="sym">${sym}</div>
                 <div class="sym-name">${q?.name || h?.name || ''}</div>
               </td>
-              <td>${yld != null ? `<span class="div-yield">${(yld*100).toFixed(2)}%</span>` : '<span style="color:var(--muted);font-size:12px">brak danych</span>'}</td>
-              <td>${rate != null ? fmtCur(rate, cur) : '—'}</td>
-              <td>${last ? `${fmtCur(last.amount, cur)}<div style="font-size:11px;color:var(--muted)">${last.date}</div>` : '—'}</td>
-              <td>${data?.nextDate ?? '—'}</td>
-              <td>${est != null ? `${fmtCur(est,cur)}<div style="font-size:11px;color:var(--muted)">${fmtPLN(toPLN(est,cur))}</div>` : '—'}</td>
+              <td>${noDividends ? '<span style="color:var(--muted);font-size:12px">brak</span>' : yld != null ? `<span class="div-yield">${(yld*100).toFixed(2)}%</span>` : noData ? '—' : '<span style="color:var(--muted);font-size:12px">brak danych</span>'}</td>
+              <td>${noDividends ? '<span style="color:var(--muted);font-size:12px">brak</span>' : rate != null ? fmtCur(rate, cur) : '—'}</td>
+              <td>${noDividends ? '<span style="color:var(--muted);font-size:12px">brak</span>' : last ? `${fmtCur(last.amount, cur)}<div style="font-size:11px;color:var(--muted)">${last.date}</div>` : '—'}</td>
+              <td>${noDividends ? '<span style="color:var(--muted);font-size:12px">brak</span>' : data?.nextDate ?? '—'}</td>
+              <td>${noDividends ? '<span style="color:var(--muted);font-size:12px">brak</span>' : est != null ? `${fmtCur(est,cur)}<div style="font-size:11px;color:var(--muted)">${fmtPLN(toPLN(est,cur))}</div>` : '—'}</td>
             </tr>`;
           }).join('')}
+          ${(() => {
+            const totalPLN = rows.reduce((s, { sym, data }) => {
+              const h   = portfolio.holdings.find(h => h.symbol === sym);
+              const q   = mkt[sym];
+              const cur = q?.currency || h?.currency || 'USD';
+              const est = (data?.rate != null && h) ? data.rate * h.qty : null;
+              return s + (est != null ? toPLN(est, cur) : 0);
+            }, 0);
+            return totalPLN > 0 ? `<tr style="font-weight:700">
+              <td colspan="5" style="text-align:right;color:var(--muted)">Łącznie rocznie:</td>
+              <td>${fmtPLN(totalPLN)}</td>
+            </tr>` : '';
+          })()}
         </tbody>
       </table></div>
       <div style="padding:10px 20px;font-size:11px;color:var(--muted)">* Roczna stawka × posiadane akcje. Dane historyczne z ostatnich 3 lat z Yahoo Finance.</div>
@@ -1650,10 +1700,6 @@ function renderDivHTML(rows, el) {
             <td>${fmtCur(t.price, t.currency)}</td>
             <td>${fmtPLN(toPLN(t.price, t.currency))}</td>
           </tr>`).join('')}
-          <tr style="font-weight:700">
-            <td colspan="3" style="text-align:right;color:var(--muted)">Łącznie:</td>
-            <td>${fmtPLN(recorded.reduce((s, t) => s + toPLN(t.price, t.currency), 0))}</td>
-          </tr>
         </tbody>
       </table></div>
     </div>` : '';
