@@ -1260,17 +1260,22 @@ function renderTransakcjeTab() {
 // ─── DIVIDENDS ────────────────────────────────────────────────────────────────
 async function fetchDividendInfo(symbol) {
   const data = await proxyfetch(
-    `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,calendarEvents`
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=3y&events=div`
   );
-  const result = data?.quoteSummary?.result?.[0];
+  const result = data?.chart?.result?.[0];
   if (!result) return null;
-  const sd = result.summaryDetail  || {};
-  const ce = result.calendarEvents || {};
+  const meta = result.meta || {};
+  const divEvents = result.events?.dividends || {};
+  const history = Object.values(divEvents)
+    .map(d => ({ amount: d.amount, date: new Date(d.date * 1000).toISOString().split('T')[0] }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const nextTs   = meta.dividendDate;
+  const nextDate = nextTs ? new Date(nextTs * 1000).toISOString().split('T')[0] : null;
   return {
-    rate:    sd.dividendRate?.raw   ?? null,
-    yield:   sd.dividendYield?.raw  ?? null,
-    exDate:  ce.exDividendDate?.fmt ?? sd.exDividendDate?.fmt ?? null,
-    payDate: ce.dividendDate?.fmt   ?? null,
+    rate:     meta.trailingAnnualDividendRate  || null,
+    yield:    meta.trailingAnnualDividendYield || null,
+    nextDate,
+    history,
   };
 }
 
@@ -1286,56 +1291,87 @@ async function renderDywidendyTab() {
   const results = await Promise.allSettled(
     symbols.map(async sym => ({ sym, data: await fetchDividendInfo(sym) }))
   );
+  const rows = results.map(r => r.status === 'fulfilled' ? r.value : { sym: '?', data: null });
 
-  const rows = results.map(r =>
-    r.status === 'fulfilled' ? r.value : { sym: '?', data: null }
-  );
-
-  const marketHTML = `
+  // Summary table
+  const summaryHTML = `
     <div class="panel" style="margin-bottom:18px">
-      <div class="panel-header"><div class="panel-title">📊 Dane rynkowe</div></div>
+      <div class="panel-header"><div class="panel-title">📊 Podsumowanie dywidend</div></div>
       <div style="overflow-x:auto"><table>
         <thead><tr>
           <th style="text-align:left">Spółka</th>
-          <th>Ex-Dywidenda</th>
-          <th>Data wypłaty</th>
-          <th>Dywidenda/akcję (r.)</th>
-          <th>Yield</th>
-          <th>Szacowana kwota *</th>
+          <th>Yield roczny</th>
+          <th>Stawka roczna/akcję</th>
+          <th>Ostatnia wypłata</th>
+          <th>Następna (est.)</th>
+          <th>Szacowana kwota roczna *</th>
         </tr></thead>
         <tbody>
           ${rows.map(({ sym, data }) => {
-            const h   = portfolio.holdings.find(h => h.symbol === sym);
-            const q   = mkt[sym];
-            const cur = q?.currency || h?.currency || 'USD';
-            const rate = data?.rate ?? null;
+            const h    = portfolio.holdings.find(h => h.symbol === sym);
+            const q    = mkt[sym];
+            const cur  = q?.currency || h?.currency || 'USD';
+            const rate = data?.rate  ?? null;
             const yld  = data?.yield ?? null;
+            const last = data?.history?.[0] ?? null;
             const est  = (rate != null && h) ? rate * h.qty : null;
-            const yldHTML = yld != null
-              ? `<span class="div-yield">${(yld * 100).toFixed(2)}%</span>` : '—';
-            const estHTML = est != null
-              ? `${fmtCur(est, cur)}<div style="font-size:11px;color:var(--muted)">${fmtPLN(toPLN(est, cur))}</div>` : '—';
             return `<tr>
               <td style="text-align:left">
                 <div class="sym">${sym}</div>
                 <div class="sym-name">${q?.name || h?.name || ''}</div>
               </td>
-              <td>${data?.exDate  || '—'}</td>
-              <td>${data?.payDate || '—'}</td>
+              <td>${yld != null ? `<span class="div-yield">${(yld*100).toFixed(2)}%</span>` : '<span style="color:var(--muted);font-size:12px">brak danych</span>'}</td>
               <td>${rate != null ? fmtCur(rate, cur) : '—'}</td>
-              <td>${yldHTML}</td>
-              <td>${estHTML}</td>
+              <td>${last ? `${fmtCur(last.amount, cur)}<div style="font-size:11px;color:var(--muted)">${last.date}</div>` : '—'}</td>
+              <td>${data?.nextDate ?? '—'}</td>
+              <td>${est != null ? `${fmtCur(est,cur)}<div style="font-size:11px;color:var(--muted)">${fmtPLN(toPLN(est,cur))}</div>` : '—'}</td>
             </tr>`;
           }).join('')}
         </tbody>
       </table></div>
-      <div style="padding:10px 20px;font-size:11px;color:var(--muted)">* Roczna dywidenda × liczba posiadanych akcji. Spółki niedywidendowe mogą nie mieć danych.</div>
+      <div style="padding:10px 20px;font-size:11px;color:var(--muted)">* Roczna stawka × posiadane akcje. Dane historyczne z ostatnich 3 lat z Yahoo Finance.</div>
     </div>`;
 
+  // Historical dividends from Yahoo Finance
+  const allHistory = rows.flatMap(({ sym, data }) =>
+    (data?.history || []).map(d => {
+      const h = portfolio.holdings.find(h => h.symbol === sym);
+      const cur = mkt[sym]?.currency || h?.currency || 'USD';
+      return { sym, amount: d.amount, date: d.date, cur };
+    })
+  ).sort((a, b) => b.date.localeCompare(a.date));
+
+  const histHTML = allHistory.length ? `
+    <div class="panel" style="margin-bottom:18px">
+      <div class="panel-header"><div class="panel-title">📅 Historia wypłat (Yahoo Finance, ostatnie 3 lata)</div></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr>
+          <th style="text-align:left">Data</th>
+          <th style="text-align:left">Spółka</th>
+          <th>Kwota/akcję</th>
+          <th>Łączna kwota *</th>
+        </tr></thead>
+        <tbody>
+          ${allHistory.map(d => {
+            const h   = portfolio.holdings.find(h => h.symbol === d.sym);
+            const tot = h ? d.amount * h.qty : null;
+            return `<tr>
+              <td style="text-align:left;color:var(--muted);font-size:12px">${d.date}</td>
+              <td style="text-align:left"><div class="sym">${d.sym}</div></td>
+              <td>${fmtCur(d.amount, d.cur)}</td>
+              <td>${tot != null ? `${fmtCur(tot, d.cur)}<span style="font-size:11px;color:var(--muted)"> ≈ ${fmtPLN(toPLN(tot,d.cur))}</span>` : '—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+      <div style="padding:10px 20px;font-size:11px;color:var(--muted)">* Na podstawie aktualnej liczby posiadanych akcji.</div>
+    </div>` : '';
+
+  // User-recorded dividends
   const recorded = transactions.filter(t => t.type === 'DIV');
   const recHTML  = recorded.length ? `
     <div class="panel">
-      <div class="panel-header"><div class="panel-title">💰 Otrzymane dywidendy</div></div>
+      <div class="panel-header"><div class="panel-title">💰 Twoje zarejestrowane dywidendy</div></div>
       <div style="overflow-x:auto"><table>
         <thead><tr>
           <th style="text-align:left">Data</th>
@@ -1358,7 +1394,7 @@ async function renderDywidendyTab() {
       </table></div>
     </div>` : '';
 
-  el.innerHTML = marketHTML + recHTML;
+  el.innerHTML = summaryHTML + histHTML + recHTML;
 }
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
