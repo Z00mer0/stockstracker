@@ -402,7 +402,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <main id="tab-dywidendy" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
     <div style="font-size:18px;font-weight:700">💰 Kalendarz dywidend</div>
-    <button class="btn btn-outline" onclick="renderDywidendyTab()">↻ Odśwież dane</button>
+    <button class="btn btn-outline" onclick="renderDywidendyTab(true)">↻ Odśwież dane</button>
   </div>
   <div id="dywidendyContent"></div>
 </main>
@@ -1497,40 +1497,66 @@ function renderTransakcjeTab() {
 
 // ─── DIVIDENDS ────────────────────────────────────────────────────────────────
 async function fetchDividendInfo(symbol) {
-  const data = await proxyfetch(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=3y&events=div`
-  );
-  const result = data?.chart?.result?.[0];
-  if (!result) return null;
-  const meta = result.meta || {};
-  const divEvents = result.events?.dividends || {};
-  const history = Object.values(divEvents)
-    .map(d => ({ amount: d.amount, date: new Date(d.date * 1000).toISOString().split('T')[0] }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const nextTs   = meta.dividendDate;
-  const nextDate = nextTs ? new Date(nextTs * 1000).toISOString().split('T')[0] : null;
-  return {
-    rate:     meta.trailingAnnualDividendRate  || null,
-    yield:    meta.trailingAnnualDividendYield || null,
-    nextDate,
-    history,
-  };
+  try {
+    const data = await proxyfetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=3y&events=div`
+    );
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+    const meta = result.meta || {};
+    const divEvents = result.events?.dividends || {};
+    const history = Object.values(divEvents)
+      .map(d => ({ amount: d.amount, date: new Date(d.date * 1000).toISOString().split('T')[0] }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const nextTs   = meta.dividendDate;
+    const nextDate = nextTs ? new Date(nextTs * 1000).toISOString().split('T')[0] : null;
+    return {
+      rate:     meta.trailingAnnualDividendRate  || null,
+      yield:    meta.trailingAnnualDividendYield || null,
+      nextDate,
+      history,
+    };
+  } catch {
+    return null;
+  }
 }
 
-async function renderDywidendyTab() {
+let _divRows      = null;
+let _divCacheTime = 0;
+let _divLoading   = false;
+
+async function renderDywidendyTab(forceRefresh = false) {
   const el      = document.getElementById('dywidendyContent');
   const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
   if (!symbols.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p style="font-size:16px;color:var(--text);font-weight:600">Brak spółek w portfelu</p></div>';
     return;
   }
+
+  const cacheAge = Date.now() - _divCacheTime;
+  if (!forceRefresh && _divRows && cacheAge < 5 * 60 * 1000) {
+    renderDivHTML(_divRows, el); return;
+  }
+  if (_divLoading) return;
+  _divLoading = true;
+
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych dywidend…</div>';
 
   const results = await Promise.allSettled(
     symbols.map(async sym => ({ sym, data: await fetchDividendInfo(sym) }))
   );
-  const rows = results.map(r => r.status === 'fulfilled' ? r.value : { sym: '?', data: null });
+  const rows = results.map((r, i) =>
+    r.status === 'fulfilled' ? r.value : { sym: symbols[i], data: null }
+  );
 
+  _divRows      = rows;
+  _divCacheTime = Date.now();
+  _divLoading   = false;
+
+  renderDivHTML(rows, el);
+}
+
+function renderDivHTML(rows, el) {
   // Summary table
   const summaryHTML = `
     <div class="panel" style="margin-bottom:18px">
