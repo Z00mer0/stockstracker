@@ -1958,14 +1958,23 @@ async function retryServerSync() {
 function applyServerData(d) {
   if (d.portfolio?.holdings?.length > 0) {
     portfolio    = d.portfolio;
-    snapshots    = d.snapshots  || {};
-    cashBalances = d.cash       || { PLN: 0, USD: 0, EUR: 0, GBP: 0 };
+    // Merge snapshots: keep all local entries + server entries (server wins on conflict)
+    snapshots    = { ...snapshots, ...(d.snapshots || {}) };
+    cashBalances = d.cash || { PLN: 0, USD: 0, EUR: 0, GBP: 0 };
     localStorage.setItem(SK_PORT, JSON.stringify(portfolio));
     localStorage.setItem(SK_SNAP, JSON.stringify(snapshots));
     localStorage.setItem(SK_CASH, JSON.stringify(cashBalances));
     if (d.transactions) {
       transactions = d.transactions;
       localStorage.setItem(SK_TRAN, JSON.stringify(transactions));
+    }
+    // Push merged snapshots back to server so history is preserved
+    if (authToken) {
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': authToken },
+        body: JSON.stringify({ portfolio, snapshots, cash: cashBalances, transactions }),
+      }).catch(() => {});
     }
   }
   mergeDuplicates();
