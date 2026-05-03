@@ -146,13 +146,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
-        elif path in ('/', '/index.html'):
-            self.send_response(302)
-            self.send_header('Location', '/myfund.html')
+        elif path in ('/', '/index.html', '/myfund.html'):
+            content = (BASE / 'myfund.html').read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(content)))
             self.end_headers()
-
-        elif path == '/myfund.html':
-            super().do_GET()
+            self.wfile.write(content)
 
         else:
             self.send_response(404)
