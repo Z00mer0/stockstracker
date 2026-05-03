@@ -23,7 +23,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;gap:16px;height:62px;position:sticky;top:0;z-index:50}
 .logo{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--accent),#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px;white-space:nowrap}
 .nav-tabs{display:flex;gap:2px;flex:1}
-.nav-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;height:62px;padding:0 18px;font-size:14px;font-weight:600;transition:all .2s;white-space:nowrap}
+.nav-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;height:62px;padding:0 13px;font-size:13px;font-weight:600;transition:all .2s;white-space:nowrap}
 .nav-tab.active{color:var(--text);border-bottom-color:var(--accent)}
 .nav-tab:hover:not(.active){color:var(--text)}
 .header-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);margin-left:auto}
@@ -279,11 +279,11 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <header>
   <div class="logo">StocksTracker</div>
   <nav class="nav-tabs">
-    <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')">📊 Portfel</button>
-    <button class="nav-tab" data-tab="historia" onclick="showTab('historia')">📈 Historia</button>
-    <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')">📋 Transakcje</button>
-    <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">💰 Dywidendy</button>
-    <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')">📅 Kalendarz</button>
+    <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')">Portfel</button>
+    <button class="nav-tab" data-tab="historia" onclick="showTab('historia')">Historia</button>
+    <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')">Transakcje</button>
+    <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">Dywidendy</button>
+    <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')">Kalendarz</button>
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
@@ -834,14 +834,16 @@ async function fetchChartQuote(symbol) {
     changePct:  prevClose ? ((price - prevClose) / prevClose) * 100 : 0,
     name:       meta.longName || meta.shortName || symbol,
     currency:   meta.currency || 'USD',
-    earningsTs: meta.earningsTimestamp || null,
-    exDivTs:    meta.exDividendDate    || null,
+    earningsTs:  meta.earningsTimestamp || null,
+    earningsEnd: null,
+    exDivTs:     meta.exDividendDate   || null,
+    divPayTs:    meta.dividendDate     || null,
   };
 }
 
 async function fetchQuotes(symbols) {
   if (!symbols.length) return;
-  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,exDividendDate';
+  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate';
   for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
     try {
       const data = await proxyfetch(
@@ -857,8 +859,10 @@ async function fetchQuotes(symbols) {
           changePct:   q.regularMarketChangePercent || 0,
           name:        q.longName || q.shortName || q.symbol,
           currency:    q.currency || 'USD',
-          earningsTs:  q.earningsTimestamp  || null,
-          exDivTs:     q.exDividendDate     || null,
+          earningsTs:  q.earningsTimestampStart || q.earningsTimestamp || null,
+          earningsEnd: q.earningsTimestampEnd   || null,
+          exDivTs:     q.exDividendDate         || null,
+          divPayTs:    q.dividendDate            || null,
         };
       });
       return;
@@ -1883,18 +1887,22 @@ function daysFromToday(dateStr) {
 function getCalendarEvents() {
   const events = [];
   const now = today();
-  const limit = new Date(); limit.setDate(limit.getDate() + 60);
+  const limit = new Date(); limit.setDate(limit.getDate() + 90);
   const limitStr = limit.toISOString().split('T')[0];
 
   for (const h of portfolio.holdings) {
     const q = mkt[h.symbol];
     const name = q?.name || h.name || h.symbol;
     const eDate = tsToDate(q?.earningsTs);
+    const eEnd  = tsToDate(q?.earningsEnd);
     const dDate = tsToDate(q?.exDivTs);
+    const pDate = tsToDate(q?.divPayTs);
     if (eDate && eDate >= now && eDate <= limitStr)
-      events.push({ sym: h.symbol, name, date: eDate, type: 'E' });
+      events.push({ sym: h.symbol, name, date: eDate, dateEnd: eEnd, type: 'E' });
     if (dDate && dDate >= now && dDate <= limitStr)
       events.push({ sym: h.symbol, name, date: dDate, type: 'D' });
+    if (pDate && pDate >= now && pDate <= limitStr && pDate !== dDate)
+      events.push({ sym: h.symbol, name, date: pDate, type: 'P' });
   }
   return events.sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -1903,13 +1911,35 @@ function evBadgesFor(symbol) {
   const q = mkt[symbol];
   const eDate = tsToDate(q?.earningsTs);
   const dDate = tsToDate(q?.exDivTs);
+  const pDate = tsToDate(q?.divPayTs);
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 7);
   const cutStr = cutoff.toISOString().split('T')[0];
   const now = today();
   let html = '';
   if (eDate && eDate >= now && eDate <= cutStr) html += `<span class="ev-badge ev-e" title="Wyniki: ${eDate}">E</span>`;
   if (dDate && dDate >= now && dDate <= cutStr) html += `<span class="ev-badge ev-d" title="Ex-dywidenda: ${dDate}">D</span>`;
+  if (pDate && pDate >= now && pDate <= cutStr && pDate !== dDate) html += `<span class="ev-badge ev-d" title="Wypłata dyw.: ${pDate}">D</span>`;
   return html;
+}
+
+async function fetchCalendarSummary(symbol) {
+  try {
+    const data = await proxyfetch(
+      `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents`
+    );
+    const cal = data?.quoteSummary?.result?.[0]?.calendarEvents;
+    if (!cal) return;
+    const q = mkt[symbol] || {};
+    // Earnings: first future date from earningsDate array
+    const earningsDates = (cal.earnings?.earningsDate || []).map(d => d.raw).filter(Boolean);
+    const futureE = earningsDates.filter(ts => ts * 1000 > Date.now()).sort((a,b)=>a-b);
+    if (futureE.length) { q.earningsTs = futureE[0]; q.earningsEnd = futureE[futureE.length-1]; }
+    // Ex-dividend date
+    if (cal.exDividendDate?.raw) q.exDivTs = cal.exDividendDate.raw;
+    // Dividend date (payment)
+    if (cal.dividendDate?.raw) q.divPayTs = cal.dividendDate.raw;
+    mkt[symbol] = q;
+  } catch { /* ignore — v10 may require auth */ }
 }
 
 async function renderKalendarzTab(forceRefresh = false) {
@@ -1924,9 +1954,10 @@ async function renderKalendarzTab(forceRefresh = false) {
 
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych…</div>';
 
-  // Refresh quotes to get fresh earningsTs / exDivTs
   const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
+  // Refresh base quotes first, then enrich with calendarEvents (v10)
   await fetchQuotes(symbols).catch(() => {});
+  await Promise.allSettled(symbols.map(fetchCalendarSummary));
 
   _kalRows = getCalendarEvents();
   _kalCacheTime = Date.now();
@@ -1935,24 +1966,30 @@ async function renderKalendarzTab(forceRefresh = false) {
 
 function renderKalHTML(events, el) {
   if (!events.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">Brak nadchodzących wydarzeń</p><p>Brak raportów wynikowych ani ex-dat dywidend w ciągu 60 dni</p></div>';
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">Brak nadchodzących wydarzeń</p><p>Brak raportów wynikowych ani ex-dat dywidend w ciągu 90 dni</p></div>';
     return;
   }
 
-  const now = today();
+  const typeMap = {
+    'E': { label: 'Wyniki finansowe', cls: 'cal-type-e' },
+    'D': { label: 'Ex-dywidenda',     cls: 'cal-type-d' },
+    'P': { label: 'Wypłata dyw.',     cls: 'cal-type-d' },
+  };
   const rows = events.map(ev => {
     const d = daysFromToday(ev.date);
     const soon = d !== null && d <= 7;
-    const label = ev.type === 'E' ? 'Wyniki finansowe' : 'Ex-dywidenda';
-    const typeClass = ev.type === 'E' ? 'cal-type-e' : 'cal-type-d';
+    const { label, cls } = typeMap[ev.type] || typeMap['D'];
     const dLabel = d === 0 ? 'dziś' : d === 1 ? 'jutro' : `za ${d} dni`;
+    const dateRange = ev.dateEnd && ev.dateEnd !== ev.date
+      ? `${ev.date} – ${ev.dateEnd}`
+      : ev.date;
     return `<div class="cal-item">
-      <div class="cal-date ${soon ? 'cal-soon' : ''}">${ev.date}</div>
+      <div class="cal-date ${soon ? 'cal-soon' : ''}">${dateRange}</div>
       <div style="flex:1">
         <div class="cal-sym">${ev.sym}</div>
         <div class="cal-name">${ev.name}</div>
       </div>
-      <span class="cal-type ${typeClass}">${label}</span>
+      <span class="cal-type ${cls}">${label}</span>
       <div class="cal-days ${soon ? 'cal-soon' : ''}">${dLabel}</div>
     </div>`;
   }).join('');
