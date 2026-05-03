@@ -110,6 +110,10 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .bm-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;white-space:nowrap}
 .bm-btn.active{border-color:var(--yellow);color:var(--yellow);background:rgba(245,158,11,.1)}
 .bm-btn:hover:not(.active){color:var(--text)}
+.badge.div{background:rgba(245,158,11,.15);color:var(--yellow)}
+.btn-div-row{color:var(--yellow);border:1px solid rgba(245,158,11,.3)}.btn-div-row:hover{background:rgba(245,158,11,.12)}
+.btn-div-row,.btn-sell-row{background:none;border-radius:5px;cursor:pointer;padding:4px 8px;font-size:12px;font-weight:600;transition:all .2s}
+.div-yield{font-size:12px;font-weight:700;color:var(--yellow)}
 .big-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:18px}
 .hist-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:18px}
 .hist-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
@@ -218,6 +222,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')">📊 Portfel</button>
     <button class="nav-tab" data-tab="historia" onclick="showTab('historia')">📈 Historia</button>
     <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')">📋 Transakcje</button>
+    <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">💰 Dywidendy</button>
   </nav>
   <div class="header-right">
     <div id="userChip" style="display:none;align-items:center;gap:8px">
@@ -366,6 +371,15 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   </div>
 </main>
 
+<!-- ══════════════════════ TAB: DYWIDENDY ══════════════════════ -->
+<main id="tab-dywidendy" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+    <div style="font-size:18px;font-weight:700">💰 Kalendarz dywidend</div>
+    <button class="btn btn-outline" onclick="renderDywidendyTab()">↻ Odśwież dane</button>
+  </div>
+  <div id="dywidendyContent"></div>
+</main>
+
 <!-- ══════════════════════ MODAL: DODAJ ══════════════════════ -->
 <div class="overlay" id="addOverlay">
   <div class="modal">
@@ -485,6 +499,38 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   </div>
 </div>
 
+<!-- ══════════════════════ MODAL: DYWIDENDA ══════════════════════ -->
+<div class="overlay" id="dividendOverlay">
+  <div class="modal">
+    <h2>💰 Zarejestruj dywidendę</h2>
+    <div class="info-box" id="divInfo"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Łączna kwota otrzymana *</label>
+        <input id="d-amount" type="number" placeholder="0.00" min="0" step="any">
+      </div>
+      <div class="form-group">
+        <label>Waluta</label>
+        <input id="d-currency" type="text" readonly style="opacity:.6;cursor:default">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Data wypłaty</label>
+      <input id="d-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="check-label">
+        <input type="checkbox" id="d-to-cash" checked>
+        Dodaj do salda gotówki
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDividend()">Anuluj</button>
+      <button class="btn btn-accent" onclick="confirmDividend()">Zapisz</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════ MODAL: IMPORT ══════════════════════ -->
 <div class="overlay" id="importOverlay">
   <div class="modal">
@@ -529,7 +575,8 @@ let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 let donutChart   = null;
 let lineChartBig = null;
 let currentTF    = 30;
-let sellTarget   = null;
+let sellTarget      = null;
+let dividendTarget  = null;
 let serverLoaded = false;
 let authToken    = null;
 let currentUser  = null;  // { username, display_name }
@@ -845,11 +892,16 @@ function render() {
     const irrHTML = irr !== null
       ? `<span class="irr-val ${irr >= 0 ? 'pos' : 'neg'}">${irr >= 0 ? '+' : ''}${(irr * 100).toFixed(1)}%</span>` : '—';
 
+    const totalDivPLN = transactions
+      .filter(t => t.type === 'DIV' && t.symbol === h.symbol)
+      .reduce((s, t) => s + toPLN(t.price, t.currency), 0);
+
     tbody.insertAdjacentHTML('beforeend', `
       <tr>
         <td>
           <div class="sym">${h.symbol}</div>
           <div class="sym-name" title="${name}">${name}</div>
+          ${totalDivPLN > 0 ? `<div class="sym-name" style="color:var(--yellow)">💰 ${fmtPLN(totalDivPLN)} dyw.</div>` : ''}
           ${h.note ? `<div class="sym-name">${h.note}</div>` : ''}
         </td>
         <td>${fmt(h.qty, '', 0, 4)}</td>
@@ -867,6 +919,7 @@ function render() {
         <td>${irrHTML}</td>
         <td>
           <div class="action-btns">
+            <button class="btn-div-row"  onclick="openDividend('${h.id}')">Dyw.</button>
             <button class="btn-sell-row" onclick="openSell('${h.id}')">Sprzedaj</button>
             <button class="del" onclick="removeHolding('${h.id}')" title="Usuń">✕</button>
           </div>
@@ -1181,10 +1234,11 @@ function renderTransakcjeTab() {
         </tr></thead>
         <tbody>
           ${transactions.map(t => {
-            const val = t.qty * t.price;
-            const typeBadge = t.type === 'BUY'
-              ? '<span class="badge pos">KUP</span>'
-              : '<span class="badge neg">SPRZEDAJ</span>';
+            const isDiv = t.type === 'DIV';
+            const val   = isDiv ? t.price : t.qty * t.price;
+            const typeBadge = t.type === 'BUY'  ? '<span class="badge pos">KUP</span>'
+                            : t.type === 'SELL' ? '<span class="badge neg">SPRZEDAJ</span>'
+                            :                     '<span class="badge div">DYW</span>';
             return `<tr>
               <td style="text-align:left;color:var(--muted);font-size:12px">${t.date}</td>
               <td style="text-align:left">${typeBadge}</td>
@@ -1192,8 +1246,8 @@ function renderTransakcjeTab() {
                 <div class="sym">${t.symbol}</div>
                 <div class="sym-name">${t.name !== t.symbol ? t.name : ''}</div>
               </td>
-              <td>${fmt(t.qty, '', 0, 4)}</td>
-              <td>${fmtCur(t.price, t.currency)}</td>
+              <td>${isDiv ? '—' : fmt(t.qty, '', 0, 4)}</td>
+              <td>${isDiv ? '—' : fmtCur(t.price, t.currency)}</td>
               <td>${fmtCur(val, t.currency)}</td>
               <td style="text-align:left;color:var(--muted);font-size:12px">${t.note || ''}</td>
             </tr>`;
@@ -1203,14 +1257,119 @@ function renderTransakcjeTab() {
     </div>`;
 }
 
+// ─── DIVIDENDS ────────────────────────────────────────────────────────────────
+async function fetchDividendInfo(symbol) {
+  const data = await proxyfetch(
+    `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,calendarEvents`
+  );
+  const result = data?.quoteSummary?.result?.[0];
+  if (!result) return null;
+  const sd = result.summaryDetail  || {};
+  const ce = result.calendarEvents || {};
+  return {
+    rate:    sd.dividendRate?.raw   ?? null,
+    yield:   sd.dividendYield?.raw  ?? null,
+    exDate:  ce.exDividendDate?.fmt ?? sd.exDividendDate?.fmt ?? null,
+    payDate: ce.dividendDate?.fmt   ?? null,
+  };
+}
+
+async function renderDywidendyTab() {
+  const el      = document.getElementById('dywidendyContent');
+  const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
+  if (!symbols.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p style="font-size:16px;color:var(--text);font-weight:600">Brak spółek w portfelu</p></div>';
+    return;
+  }
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych dywidend…</div>';
+
+  const results = await Promise.allSettled(
+    symbols.map(async sym => ({ sym, data: await fetchDividendInfo(sym) }))
+  );
+
+  const rows = results.map(r =>
+    r.status === 'fulfilled' ? r.value : { sym: '?', data: null }
+  );
+
+  const marketHTML = `
+    <div class="panel" style="margin-bottom:18px">
+      <div class="panel-header"><div class="panel-title">📊 Dane rynkowe</div></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr>
+          <th style="text-align:left">Spółka</th>
+          <th>Ex-Dywidenda</th>
+          <th>Data wypłaty</th>
+          <th>Dywidenda/akcję (r.)</th>
+          <th>Yield</th>
+          <th>Szacowana kwota *</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(({ sym, data }) => {
+            const h   = portfolio.holdings.find(h => h.symbol === sym);
+            const q   = mkt[sym];
+            const cur = q?.currency || h?.currency || 'USD';
+            const rate = data?.rate ?? null;
+            const yld  = data?.yield ?? null;
+            const est  = (rate != null && h) ? rate * h.qty : null;
+            const yldHTML = yld != null
+              ? `<span class="div-yield">${(yld * 100).toFixed(2)}%</span>` : '—';
+            const estHTML = est != null
+              ? `${fmtCur(est, cur)}<div style="font-size:11px;color:var(--muted)">${fmtPLN(toPLN(est, cur))}</div>` : '—';
+            return `<tr>
+              <td style="text-align:left">
+                <div class="sym">${sym}</div>
+                <div class="sym-name">${q?.name || h?.name || ''}</div>
+              </td>
+              <td>${data?.exDate  || '—'}</td>
+              <td>${data?.payDate || '—'}</td>
+              <td>${rate != null ? fmtCur(rate, cur) : '—'}</td>
+              <td>${yldHTML}</td>
+              <td>${estHTML}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+      <div style="padding:10px 20px;font-size:11px;color:var(--muted)">* Roczna dywidenda × liczba posiadanych akcji. Spółki niedywidendowe mogą nie mieć danych.</div>
+    </div>`;
+
+  const recorded = transactions.filter(t => t.type === 'DIV');
+  const recHTML  = recorded.length ? `
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">💰 Otrzymane dywidendy</div></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr>
+          <th style="text-align:left">Data</th>
+          <th style="text-align:left">Spółka</th>
+          <th>Kwota</th>
+          <th>Kwota (PLN)</th>
+        </tr></thead>
+        <tbody>
+          ${recorded.map(t => `<tr>
+            <td style="text-align:left;color:var(--muted);font-size:12px">${t.date}</td>
+            <td style="text-align:left"><div class="sym">${t.symbol}</div></td>
+            <td>${fmtCur(t.price, t.currency)}</td>
+            <td>${fmtPLN(toPLN(t.price, t.currency))}</td>
+          </tr>`).join('')}
+          <tr style="font-weight:700">
+            <td colspan="3" style="text-align:right;color:var(--muted)">Łącznie:</td>
+            <td>${fmtPLN(recorded.reduce((s, t) => s + toPLN(t.price, t.currency), 0))}</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </div>` : '';
+
+  el.innerHTML = marketHTML + recHTML;
+}
+
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-  ['portfel', 'historia', 'transakcje'].forEach(t =>
+  ['portfel', 'historia', 'transakcje', 'dywidendy'].forEach(t =>
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none');
   document.querySelectorAll('.nav-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === name));
-  if (name === 'historia')    renderHistoriaTab();
-  if (name === 'transakcje')  renderTransakcjeTab();
+  if (name === 'historia')   renderHistoriaTab();
+  if (name === 'transakcje') renderTransakcjeTab();
+  if (name === 'dywidendy')  renderDywidendyTab();
 }
 
 function setTimeframe(days, btn) {
@@ -1284,6 +1443,46 @@ function saveCash() {
   render();
   toast('Gotówka zaktualizowana');
 }
+function openDividend(id) {
+  const h = portfolio.holdings.find(h => h.id === id);
+  if (!h) return;
+  dividendTarget = h;
+  const q   = mkt[h.symbol];
+  const cur = q?.currency || h.currency || 'USD';
+  document.getElementById('divInfo').innerHTML = `
+    <strong>${h.symbol}</strong>${q?.name && q.name !== h.symbol ? ' &ndash; ' + q.name : ''}<br>
+    Posiadane: <strong>${fmt(h.qty, '', 0, 4)} szt.</strong>
+    ${q?.price ? ` &nbsp;·&nbsp; Cena: <strong>${fmtCur(q.price, cur)}</strong>` : ''}
+  `;
+  document.getElementById('d-amount').value   = '';
+  document.getElementById('d-currency').value = cur;
+  document.getElementById('d-date').value     = today();
+  document.getElementById('dividendOverlay').classList.add('open');
+}
+function closeDividend() {
+  dividendTarget = null;
+  document.getElementById('dividendOverlay').classList.remove('open');
+}
+function confirmDividend() {
+  if (!dividendTarget) return;
+  const amount = parseFloat(document.getElementById('d-amount').value);
+  const cur    = document.getElementById('d-currency').value;
+  const date   = document.getElementById('d-date').value || today();
+  const toCash = document.getElementById('d-to-cash').checked;
+  if (!amount || amount <= 0) { toast('Podaj kwotę dywidendy', true); return; }
+  logTransaction('DIV', {
+    symbol: dividendTarget.symbol, name: dividendTarget.name || dividendTarget.symbol,
+    qty: 0, avgPrice: amount, currency: cur, date, note: 'Dywidenda',
+  });
+  if (toCash) {
+    cashBalances[cur] = (cashBalances[cur] || 0) + amount;
+    save(SK_CASH, cashBalances);
+  }
+  closeDividend();
+  render();
+  toast(`Dywidenda ${fmtCur(amount, cur)} od ${dividendTarget.symbol} zapisana`);
+}
+
 function openImport() {
   document.getElementById('importOverlay').classList.add('open');
   setTimeout(() => document.getElementById('csvInput').focus(), 100);
@@ -1294,9 +1493,9 @@ function closeImport() {
 }
 
 document.querySelectorAll('.overlay').forEach(el =>
-  el.addEventListener('click', e => { if (e.target === el) { closeAdd(); closeSell(); closeCash(); closeImport(); } }));
+  el.addEventListener('click', e => { if (e.target === el) { closeAdd(); closeSell(); closeCash(); closeImport(); closeDividend(); } }));
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeAdd(); closeSell(); closeCash(); closeImport(); }
+  if (e.key === 'Escape') { closeAdd(); closeSell(); closeCash(); closeImport(); closeDividend(); }
   if (e.key === 'Enter' && document.getElementById('addOverlay').classList.contains('open')) addHolding();
 });
 
