@@ -1120,6 +1120,29 @@ function setBenchmark(id, btn) {
   renderHistoriaTab();
 }
 
+function buildCapitalCurve(dates) {
+  const sorted = [...transactions]
+    .filter(t => t.type === 'BUY' || t.type === 'SELL')
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!sorted.length) {
+    const basis = portfolio.holdings.reduce((s, h) => {
+      return s + h.qty * h.avgPrice * (fxRates[h.currency] || fxRates.USD || 3.95);
+    }, 0);
+    return dates.map(() => parseFloat(basis.toFixed(2)));
+  }
+
+  let cumCapital = 0, txIdx = 0;
+  return dates.map(d => {
+    while (txIdx < sorted.length && sorted[txIdx].date <= d) {
+      const t = sorted[txIdx++];
+      const rate = fxRates[t.currency] || fxRates.USD || 3.95;
+      cumCapital += (t.type === 'BUY' ? 1 : -1) * t.qty * t.price * rate;
+    }
+    return parseFloat(cumCapital.toFixed(2));
+  });
+}
+
 async function renderHistoriaTab() {
   const ctx = document.getElementById('lineChartBig').getContext('2d');
   if (lineChartBig) { lineChartBig.destroy(); lineChartBig = null; }
@@ -1180,6 +1203,12 @@ async function renderHistoriaTab() {
   const usePercent = !!bmDataset;
   const portData   = usePercent ? values.map(v => +((v / first - 1) * 100).toFixed(3)) : values;
 
+  // Capital curve (only in absolute PLN mode)
+  const capitalValues  = !usePercent ? buildCapitalCurve(entries.map(([d]) => d)) : null;
+  const lastCapital    = capitalValues ? capitalValues[capitalValues.length - 1] : null;
+  const capitalGain    = lastCapital !== null ? last - lastCapital : null;
+  const capitalGainPct = lastCapital && lastCapital > 0 ? (capitalGain / lastCapital) * 100 : null;
+
   const stats = [
     { label: 'Wartość startowa', val: fmtPLN(first),        cls: '' },
     { label: 'Wartość końcowa',  val: fmtPLN(last),         cls: '' },
@@ -1189,6 +1218,11 @@ async function renderHistoriaTab() {
     { label: 'Minimum',          val: fmtPLN(minVal),       cls: '' },
     { label: 'Dni historii',     val: entries.length + ' dni', cls: '' },
   ];
+  if (capitalGain !== null) {
+    stats.push({ label: 'Zainwestowany',  val: fmtPLN(lastCapital),              cls: '' });
+    stats.push({ label: 'Zysk / Strata',  val: fmtPLN(capitalGain, true) + ' (' + fmtPct(capitalGainPct) + ')',
+                 cls: capitalGain >= 0 ? 'pos' : 'neg' });
+  }
   if (bmReturn !== null) {
     const alpha = diffPct - bmReturn;
     stats.push({ label: `${bm.label} zmiana`, val: fmtPct(bmReturn), cls: bmReturn >= 0 ? 'pos' : 'neg' });
@@ -1198,12 +1232,17 @@ async function renderHistoriaTab() {
     <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
 
   const datasets = [{
-    label: 'Portfel',
+    label: 'Wycena portfela',
     data: portData, borderColor: portColor, backgroundColor: portColor + '18',
     fill: true, tension: 0.35,
     pointRadius: entries.length > 60 ? 0 : 3,
     pointBackgroundColor: portColor, borderWidth: 2.5,
   }];
+  if (capitalValues) datasets.push({
+    label: 'Zainwestowany kapitał',
+    data: capitalValues, borderColor: '#3b82f6', backgroundColor: 'transparent',
+    fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, borderDash: [6, 4],
+  });
   if (bmDataset) datasets.push(bmDataset);
 
   lineChartBig = new Chart(ctx, {
@@ -1212,7 +1251,7 @@ async function renderHistoriaTab() {
     options: {
       plugins: {
         legend: {
-          display: usePercent,
+          display: usePercent || !!capitalValues,
           labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 }
         }
       },
