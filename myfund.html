@@ -212,6 +212,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   <nav class="nav-tabs">
     <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')">📊 Portfel</button>
     <button class="nav-tab" data-tab="historia" onclick="showTab('historia')">📈 Historia</button>
+    <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')">📋 Transakcje</button>
   </nav>
   <div class="header-right">
     <div id="userChip" style="display:none;align-items:center;gap:8px">
@@ -336,6 +337,16 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 
   <div class="hist-stats-grid" id="histStatsGrid"></div>
 
+</main>
+
+<!-- ══════════════════════ TAB: TRANSAKCJE ══════════════════════ -->
+<main id="tab-transakcje" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+    <div style="font-size:18px;font-weight:700">📋 Historia transakcji</div>
+  </div>
+  <div class="panel">
+    <div id="transakcjeContent"></div>
+  </div>
 </main>
 
 <!-- ══════════════════════ MODAL: DODAJ ══════════════════════ -->
@@ -489,10 +500,12 @@ MSFT,5,380.00,USD,2024-02-10"></textarea>
 const SK_PORT = 'myfund_v3_portfolio';
 const SK_SNAP = 'myfund_v3_snapshots';
 const SK_CASH = 'myfund_v4_cash';
+const SK_TRAN = 'myfund_v3_transactions';
 
 let portfolio    = load(SK_PORT, { holdings: [] });
 let snapshots    = load(SK_SNAP, {});
 let cashBalances = load(SK_CASH, { PLN: 0, USD: 0, EUR: 0, GBP: 0 });
+let transactions = load(SK_TRAN, []);
 let mkt          = {};
 let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 
@@ -515,7 +528,7 @@ function save(key, val) {
     fetch('/api/data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Auth-Token': authToken },
-      body: JSON.stringify({ portfolio, snapshots, cash: cashBalances }),
+      body: JSON.stringify({ portfolio, snapshots, cash: cashBalances, transactions }),
     }).catch(() => {});
   }, 400);
 }
@@ -670,6 +683,7 @@ function addHolding(data) {
     portfolio.holdings.push(h);
   }
 
+  logTransaction('BUY', h);
   save(SK_PORT, portfolio);
   if (!data) {
     closeAdd();
@@ -731,6 +745,15 @@ function confirmSell() {
     const h = portfolio.holdings.find(h => h.id === sellTarget.id);
     if (h) h.qty = parseFloat((h.qty - qty).toFixed(8));
   }
+  logTransaction('SELL', {
+    symbol:   sellTarget.symbol,
+    name:     sellTarget.name || sellTarget.symbol,
+    qty,
+    avgPrice: price,
+    currency: cur,
+    date:     document.getElementById('s-date').value || today(),
+    note:     '',
+  });
   save(SK_PORT, portfolio);
   closeSell();
   toast(`Sprzedano ${qty} szt. ${sellTarget.symbol} @ ${fmtCur(price, cur)}`);
@@ -1010,13 +1033,72 @@ function renderHistoriaTab() {
   });
 }
 
+// ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+function logTransaction(type, h) {
+  transactions.unshift({
+    id:       Date.now().toString() + Math.random().toString(36).slice(2, 5),
+    type,
+    symbol:   h.symbol,
+    name:     h.name || h.symbol,
+    qty:      h.qty,
+    price:    h.avgPrice,
+    currency: h.currency,
+    date:     h.date || today(),
+    note:     h.note || '',
+  });
+  save(SK_TRAN, transactions);
+}
+
+function renderTransakcjeTab() {
+  const el = document.getElementById('transakcjeContent');
+  if (!transactions.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p style="font-size:16px;color:var(--text);font-weight:600">Brak transakcji</p><p>Transakcje pojawią się tutaj po dodaniu lub sprzedaniu spółek</p></div>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th style="text-align:left">Data</th>
+          <th style="text-align:left">Typ</th>
+          <th style="text-align:left">Spółka</th>
+          <th>Ilość</th>
+          <th>Cena</th>
+          <th>Wartość</th>
+          <th style="text-align:left">Notatka</th>
+        </tr></thead>
+        <tbody>
+          ${transactions.map(t => {
+            const val = t.qty * t.price;
+            const typeBadge = t.type === 'BUY'
+              ? '<span class="badge pos">KUP</span>'
+              : '<span class="badge neg">SPRZEDAJ</span>';
+            return `<tr>
+              <td style="text-align:left;color:var(--muted);font-size:12px">${t.date}</td>
+              <td style="text-align:left">${typeBadge}</td>
+              <td style="text-align:left">
+                <div class="sym">${t.symbol}</div>
+                <div class="sym-name">${t.name !== t.symbol ? t.name : ''}</div>
+              </td>
+              <td>${fmt(t.qty, '', 0, 4)}</td>
+              <td>${fmtCur(t.price, t.currency)}</td>
+              <td>${fmtCur(val, t.currency)}</td>
+              <td style="text-align:left;color:var(--muted);font-size:12px">${t.note || ''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-  document.getElementById('tab-portfel').style.display  = name === 'portfel'  ? 'block' : 'none';
-  document.getElementById('tab-historia').style.display = name === 'historia' ? 'block' : 'none';
+  ['portfel', 'historia', 'transakcje'].forEach(t =>
+    document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none');
   document.querySelectorAll('.nav-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === name));
-  if (name === 'historia') renderHistoriaTab();
+  if (name === 'historia')    renderHistoriaTab();
+  if (name === 'transakcje')  renderTransakcjeTab();
 }
 
 function setTimeframe(days, btn) {
@@ -1172,6 +1254,10 @@ function applyServerData(d) {
     localStorage.setItem(SK_PORT, JSON.stringify(portfolio));
     localStorage.setItem(SK_SNAP, JSON.stringify(snapshots));
     localStorage.setItem(SK_CASH, JSON.stringify(cashBalances));
+    if (d.transactions) {
+      transactions = d.transactions;
+      localStorage.setItem(SK_TRAN, JSON.stringify(transactions));
+    }
   }
   mergeDuplicates();
 }
@@ -1345,7 +1431,7 @@ async function doRegister() {
         fetch('/api/data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Auth-Token': authToken },
-          body: JSON.stringify({ portfolio, snapshots, cash: cashBalances }),
+          body: JSON.stringify({ portfolio, snapshots, cash: cashBalances, transactions }),
         }).catch(() => {});
       }
       hideLogin();
@@ -1374,7 +1460,7 @@ async function logout() {
   localStorage.removeItem('myfund_token');
   localStorage.removeItem('myfund_user');
   portfolio = { holdings: [] };
-  snapshots = {}; cashBalances = { PLN: 0, USD: 0, EUR: 0, GBP: 0 };
+  snapshots = {}; cashBalances = { PLN: 0, USD: 0, EUR: 0, GBP: 0 }; transactions = [];
   document.getElementById('userChip').style.display = 'none';
   render();
   await showLogin();
