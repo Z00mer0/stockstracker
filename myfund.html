@@ -120,6 +120,16 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .badge.div{background:rgba(245,158,11,.15);color:var(--yellow)}
 .btn-div-row{color:var(--yellow);border:1px solid rgba(245,158,11,.3)}.btn-div-row:hover{background:rgba(245,158,11,.12)}
 .btn-div-row,.btn-sell-row{background:none;border-radius:5px;cursor:pointer;padding:4px 8px;font-size:12px;font-weight:600;transition:all .2s}
+.sortable{cursor:pointer;user-select:none}.sortable:hover{color:var(--text)}
+.sort-icon{font-size:10px;margin-left:3px;opacity:.7}
+.row-menu-wrap{position:relative;display:inline-block}
+.row-menu-btn{background:none;border:none;cursor:pointer;padding:4px 10px;border-radius:5px;font-size:18px;font-weight:700;color:var(--muted);line-height:1;transition:all .2s}
+.row-menu-btn:hover{color:var(--text);background:rgba(255,255,255,.07)}
+.row-menu-drop{display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:155px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.row-menu-drop button{display:block;width:100%;background:none;border:none;cursor:pointer;padding:8px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--text);text-align:left;transition:background .15s}
+.row-menu-drop button:hover{background:rgba(255,255,255,.07)}
+.row-menu-drop .m-del{color:var(--red)}.row-menu-drop .m-del:hover{background:rgba(239,68,68,.12)}
+.conc-flag{display:inline-block;margin-left:5px;font-size:11px;cursor:default}
 .div-yield{font-size:12px;font-weight:700;color:var(--yellow)}
 .big-chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:18px}
 .hist-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:18px}
@@ -295,13 +305,13 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
               <th>Ilość</th>
               <th>Śr. zakup</th>
               <th>Cena teraz</th>
-              <th>Zmiana dz.</th>
-              <th>Wart. zakupu</th>
-              <th>Wart. teraz (PLN)</th>
-              <th>Zysk/Strata</th>
+              <th class="sortable" data-sort="chgPct" onclick="setSortBy('chgPct')">Zmiana dz.<span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="costPLN" onclick="setSortBy('costPLN')">Wart. zakupu<span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="valuePLN" onclick="setSortBy('valuePLN')">Wart. teraz (PLN)<span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="pnlPLN" onclick="setSortBy('pnlPLN')">Zysk/Strata<span class="sort-icon"></span></th>
               <th>Okres</th>
-              <th>MOIC</th>
-              <th>IRR r.</th>
+              <th class="sortable" data-sort="moic" onclick="setSortBy('moic')">MOIC<span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="irr" onclick="setSortBy('irr')">IRR r.<span class="sort-icon"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -602,6 +612,8 @@ let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 let donutChart   = null;
 let lineChartBig = null;
 let currentTF    = 30;
+let sortBy       = null;
+let sortDir      = -1;
 let sellTarget      = null;
 let dividendTarget  = null;
 let serverLoaded = false;
@@ -786,6 +798,35 @@ function addHolding(data) {
   return true;
 }
 
+function setSortBy(col) {
+  if (sortBy === col) sortDir *= -1; else { sortBy = col; sortDir = -1; }
+  renderPortfel();
+}
+
+let _openMenuId = null;
+function toggleRowMenu(id, btn) {
+  if (_openMenuId === id) { closeRowMenus(); return; }
+  closeRowMenus();
+  _openMenuId = id;
+  btn.nextElementSibling.style.display = 'block';
+}
+function closeRowMenus() {
+  document.querySelectorAll('.row-menu-drop').forEach(d => d.style.display = 'none');
+  _openMenuId = null;
+}
+document.addEventListener('click', e => { if (!e.target.closest('.row-menu-wrap')) closeRowMenus(); });
+
+function openBuyMore(id) {
+  const h = portfolio.holdings.find(e => e.id === id);
+  if (!h) return;
+  openAdd();
+  setTimeout(() => {
+    document.getElementById('f-symbol').value   = h.symbol;
+    document.getElementById('f-currency').value = h.currency;
+    acHide();
+  }, 120);
+}
+
 function removeHolding(id) {
   if (!confirm('Usunąć tę pozycję z portfela?')) return;
   portfolio.holdings = portfolio.holdings.filter(h => h.id !== id);
@@ -885,21 +926,17 @@ function render() {
   let irrNum = 0, irrDen = 0;
   const chartData = [];
 
-  const tbody = document.getElementById('holdingsBody');
-  tbody.innerHTML = '';
-
-  hs.forEach(h => {
+  // Pass 1: compute values for all holdings
+  const rows = hs.map(h => {
     const q       = mkt[h.symbol];
     const cur     = q?.currency || h.currency || 'USD';
     const rate    = fxRates[cur]        || fxRates.USD || 3.95;
     const buyRate = fxRates[h.currency] || fxRates.USD || 3.95;
-
-    const price     = q?.price     ?? null;
-    const prevClose = q?.prevClose  ?? null;
-    const chgPct    = q?.changePct  ?? null;
+    const price     = q?.price    ?? null;
+    const prevClose = q?.prevClose ?? null;
+    const chgPct    = q?.changePct ?? null;
     const name      = q?.name || h.name || h.symbol;
     if (q?.name) h.name = q.name;
-
     const valuePLN = price !== null ? price * h.qty * rate : null;
     const costPLN  = h.avgPrice * h.qty * buyRate;
     const dayChg   = (prevClose !== null && price !== null) ? (price - prevClose) * h.qty * rate : null;
@@ -908,17 +945,40 @@ function render() {
     const days     = daysHeld(h.date);
     const moic     = valuePLN !== null ? calcMOIC(costPLN, valuePLN) : null;
     const irr      = valuePLN !== null ? calcIRR(costPLN, valuePLN, h.date) : null;
+    return { h, cur, price, chgPct, name, valuePLN, costPLN, dayChg, pnlPLN, pnlPct, days, moic, irr };
+  });
 
+  // Accumulate totals
+  rows.forEach(({ h, valuePLN, costPLN, dayChg, irr }) => {
     if (valuePLN !== null) { totalStockPLN += valuePLN; hasPrices = true; chartData.push({ symbol: h.symbol, value: valuePLN }); }
-    if (dayChg   !== null)   totalDayPLN  += dayChg;
+    if (dayChg   !== null) totalDayPLN += dayChg;
     totalCostPLN += costPLN;
     if (irr !== null) { irrNum += irr * costPLN; irrDen += costPLN; }
+  });
 
-    const moicHTML = moic !== null
+  // Sort
+  if (sortBy) {
+    rows.sort((a, b) => ((a[sortBy] ?? -Infinity) - (b[sortBy] ?? -Infinity)) * sortDir);
+  }
+
+  // Update sort icons in thead
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.querySelector('.sort-icon').textContent =
+      th.dataset.sort === sortBy ? (sortDir === -1 ? ' ↓' : ' ↑') : '';
+  });
+
+  const tbody = document.getElementById('holdingsBody');
+  tbody.innerHTML = '';
+
+  // Pass 2: render rows with concentration flag
+  rows.forEach(({ h, cur, price, chgPct, name, valuePLN, costPLN, pnlPLN, pnlPct, days, moic, irr }) => {
+    const weight    = (valuePLN !== null && totalStockPLN > 0) ? valuePLN / totalStockPLN * 100 : 0;
+    const concHTML  = weight > 30
+      ? `<span class="conc-flag" title="${weight.toFixed(1)}% portfela — wysoka koncentracja (>30%)">⚠️</span>` : '';
+    const moicHTML  = moic !== null
       ? `<span class="moic-val ${moic >= 1 ? 'pos' : 'neg'}">${moic.toFixed(2)}×</span>` : '—';
-    const irrHTML = irr !== null
+    const irrHTML   = irr !== null
       ? `<span class="irr-val ${irr >= 0 ? 'pos' : 'neg'}">${irr >= 0 ? '+' : ''}${(irr * 100).toFixed(1)}%</span>` : '—';
-
     const totalDivPLN = transactions
       .filter(t => t.type === 'DIV' && t.symbol === h.symbol)
       .reduce((s, t) => s + toPLN(t.price, t.currency), 0);
@@ -926,7 +986,7 @@ function render() {
     tbody.insertAdjacentHTML('beforeend', `
       <tr>
         <td>
-          <div class="sym">${h.symbol}</div>
+          <div class="sym">${h.symbol}${concHTML}</div>
           <div class="sym-name" title="${name}">${name}</div>
           ${totalDivPLN > 0 ? `<div class="sym-name" style="color:var(--yellow)">💰 ${fmtPLN(totalDivPLN)} dyw.</div>` : ''}
           ${h.note ? `<div class="sym-name">${h.note}</div>` : ''}
@@ -946,9 +1006,15 @@ function render() {
         <td>${irrHTML}</td>
         <td>
           <div class="action-btns">
-            <button class="btn-div-row"  onclick="openDividend('${h.id}')">Dyw.</button>
-            <button class="btn-sell-row" onclick="openSell('${h.id}')">Sprzedaj</button>
-            <button class="del" onclick="removeHolding('${h.id}')" title="Usuń">✕</button>
+            <div class="row-menu-wrap">
+              <button class="row-menu-btn" onclick="toggleRowMenu('${h.id}',this)">⋯</button>
+              <div class="row-menu-drop">
+                <button onclick="closeRowMenus();openBuyMore('${h.id}')">+ Kup więcej</button>
+                <button onclick="closeRowMenus();openSell('${h.id}')">↘ Sprzedaj</button>
+                <button onclick="closeRowMenus();openDividend('${h.id}')">💰 Dywidenda</button>
+                <button class="m-del" onclick="closeRowMenus();removeHolding('${h.id}')">✕ Usuń</button>
+              </div>
+            </div>
           </div>
         </td>
       </tr>
