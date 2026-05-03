@@ -236,12 +236,15 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   /* Cards */
   .cards{grid-template-columns:repeat(2,1fr);gap:10px}
 
-  /* Table – ukryj mniej istotne kolumny: Śr.zakup(3), Wart.zakupu(6), Okres(9), MOIC(10), IRR(11) */
+  /* Table – ukryj mniej istotne kolumny na mobile */
   thead th:nth-child(3),tbody td:nth-child(3),
   thead th:nth-child(6),tbody td:nth-child(6),
   thead th:nth-child(9),tbody td:nth-child(9),
   thead th:nth-child(10),tbody td:nth-child(10),
-  thead th:nth-child(11),tbody td:nth-child(11){display:none}
+  thead th:nth-child(11),tbody td:nth-child(11),
+  thead th:nth-child(12),tbody td:nth-child(12),
+  thead th:nth-child(13),tbody td:nth-child(13),
+  thead th:nth-child(14),tbody td:nth-child(14){display:none}
 
   /* Modal jako bottom-sheet */
   .overlay{align-items:flex-end}
@@ -367,6 +370,9 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
               <th>Okres <span class="tip" data-tip="Czas od pierwszego zakupu akcji tej spółki">i</span></th>
               <th class="sortable" data-sort="moic" onclick="setSortBy('moic')">MOIC<span class="sort-icon"></span><span class="tip" data-tip="Multiple on Invested Capital — ile razy zwróciła się inwestycja. 1.5× = wartość wzrosła o 50%. Poniżej 1× oznacza stratę">i</span></th>
               <th class="sortable" data-sort="irr" onclick="setSortBy('irr')">IRR r.<span class="sort-icon"></span><span class="tip" data-tip="Wewnętrzna Stopa Zwrotu (roczna) — procentowy zysk w skali roku, uwzględniający czas trwania inwestycji. Porównywalna z oprocentowaniem lokaty">i</span></th>
+              <th><span class="tip" data-tip="Cena / Zysk (trailing 12m). Źródło: Alpha Vantage">P/E</span></th>
+              <th><span class="tip" data-tip="Forward P/E — cena / prognozowany zysk na następne 12 miesięcy. Źródło: Alpha Vantage">P/E fwd</span></th>
+              <th><span class="tip" data-tip="Price to Book — cena / wartość księgowa. Źródło: Alpha Vantage">P/B</span></th>
               <th></th>
             </tr>
           </thead>
@@ -721,10 +727,13 @@ const COL_DEFS = [
   { idx: 9,  label: 'Okres' },
   { idx: 10, label: 'MOIC' },
   { idx: 11, label: 'IRR r.' },
+  { idx: 12, label: 'P/E',     defaultOff: true },
+  { idx: 13, label: 'P/E fwd', defaultOff: true },
+  { idx: 14, label: 'P/B',     defaultOff: true },
 ];
 const SK_COLVIS = 'myfund_colvis';
 let colVis = JSON.parse(localStorage.getItem(SK_COLVIS) || 'null') ||
-  Object.fromEntries(COL_DEFS.map(c => [c.idx, true]));
+  Object.fromEntries(COL_DEFS.map(c => [c.idx, !c.defaultOff]));
 
 function applyColVis() {
   let css = '';
@@ -755,16 +764,20 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.col-gear-wrap')) document.getElementById('colGearPanel')?.classList.remove('open');
 });
 
+const AV_KEY = 'CT6XEGKOZITNTN25';
+
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SK_PORT = 'myfund_v3_portfolio';
 const SK_SNAP = 'myfund_v3_snapshots';
 const SK_CASH = 'myfund_v4_cash';
 const SK_TRAN = 'myfund_v3_transactions';
+const SK_FUND = 'myfund_fundamentals';
 
 let portfolio    = load(SK_PORT, { holdings: [] });
 let snapshots    = load(SK_SNAP, {});
 let cashBalances = load(SK_CASH, { PLN: 0, USD: 0, EUR: 0, GBP: 0 });
 let transactions = load(SK_TRAN, []);
+let fundamentals = load(SK_FUND, {});
 let mkt          = {};
 let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 
@@ -1238,6 +1251,9 @@ function render() {
         <td class="period-val">${fmtPeriod(days)}</td>
         <td>${moicHTML}</td>
         <td>${irrHTML}</td>
+        <td style="text-align:right">${fmtRatio(fundamentals[h.symbol]?.pe)}</td>
+        <td style="text-align:right">${fmtRatio(fundamentals[h.symbol]?.fwdPE)}</td>
+        <td style="text-align:right">${fmtRatio(fundamentals[h.symbol]?.pb)}</td>
         <td>
           <div class="action-btns">
             <div class="row-menu-wrap">
@@ -1979,6 +1995,46 @@ async function fetchCalendarSummary(symbol) {
   mkt[symbol] = q;
 }
 
+// ─── ALPHA VANTAGE FUNDAMENTALS ───────────────────────────────────────────────
+
+async function fetchFundamentalsOne(symbol) {
+  // Alpha Vantage uses bare tickers; strip exchange suffix (.WA, .L, etc.)
+  const avSym = symbol.includes('.') ? symbol.split('.')[0] : symbol;
+  const url = `https://www.alphavantage.co/query?function=COMPANY_OVERVIEW&symbol=${encodeURIComponent(avSym)}&apikey=${AV_KEY}`;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.Symbol || d.Information || d.Note) return; // rate-limited or no data
+    fundamentals[symbol] = {
+      pe:        parseFloat(d.PERatio)           || null,
+      fwdPE:     parseFloat(d.ForwardPE)         || null,
+      pb:        parseFloat(d.PriceToBookRatio)  || null,
+      eps:       parseFloat(d.EPS)               || null,
+      divYield:  parseFloat(d.DividendYield)     || null,
+      marketCap: d.MarketCapitalization ? +d.MarketCapitalization : null,
+      fetchDate: today(),
+    };
+    localStorage.setItem(SK_FUND, JSON.stringify(fundamentals));
+  } catch (e) { console.warn('AV fundamentals failed', symbol, e.message); }
+}
+
+async function refreshFundamentals() {
+  const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
+  const stale = symbols.filter(s => fundamentals[s]?.fetchDate !== today());
+  if (!stale.length) return;
+  for (let i = 0; i < stale.length; i++) {
+    if (i > 0) await new Promise(res => setTimeout(res, 13000)); // 5 req/min safety
+    await fetchFundamentalsOne(stale[i]);
+    render(); // update table incrementally as data arrives
+  }
+}
+
+function fmtRatio(v) {
+  if (v === null || isNaN(v) || !isFinite(v) || v <= 0) return '<span style="color:var(--muted)">—</span>';
+  return `<span style="font-size:13px">${v.toFixed(1)}</span>`;
+}
+
 async function renderKalendarzTab(forceRefresh = false) {
   const el = document.getElementById('kalendarContent');
   if (!portfolio.holdings.length) {
@@ -2256,6 +2312,7 @@ async function checkAuth() {
   serverLoaded = serverOk;
   render();
   refreshAll();
+  refreshFundamentals(); // once-daily background fetch, non-blocking
 }
 
 async function retryServerSync() {
