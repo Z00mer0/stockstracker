@@ -1245,6 +1245,11 @@ function render() {
     });
     document.getElementById('cv-irr').textContent = '—';
     document.getElementById('cv-irr').className = 'card-value';
+    // If no prices yet today, carry forward yesterday's snapshot so history doesn't have gaps
+    if (!snapshots[today()]) {
+      const dates = Object.keys(snapshots).sort();
+      if (dates.length) { snapshots[today()] = snapshots[dates[dates.length - 1]]; save(SK_SNAP, snapshots); }
+    }
   }
 
   _lastRows    = rows;
