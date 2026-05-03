@@ -9,6 +9,8 @@ import hashlib
 import secrets
 import socket
 import os
+import urllib.parse
+import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -156,6 +158,29 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
+        elif path == '/api/proxy':
+            qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            target = qs.get('url', '')
+            allowed = (
+                'https://query1.finance.yahoo.com/',
+                'https://query2.finance.yahoo.com/',
+                'https://finance.yahoo.com/',
+            )
+            if not any(target.startswith(a) for a in allowed):
+                self.send_json(403, {'error': 'forbidden'}); return
+            try:
+                req = urllib.request.Request(target, headers={'User-Agent': 'Mozilla/5.0 (compatible)'})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data = resp.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'no-store, no-cache')
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self.send_json(502, {'error': str(e)})
+
         elif path in ('/', '/index.html', '/myfund.html'):
             content = (BASE / 'myfund.html').read_bytes()
             self.send_response(200)
@@ -252,10 +277,13 @@ def local_ip():
 
 if __name__ == '__main__':
     server = HTTPServer(('0.0.0.0', PORT), Handler)
+    ip = local_ip()
     print('StocksTracker server działa:')
-    if not DATABASE_URL:
-        ip = local_ip()
-        print(f'  Komputer : http://localhost:{PORT}/myfund.html')
-        print(f'  Telefon  : http://{ip}:{PORT}/myfund.html')
+    print(f'  Komputer : http://localhost:{PORT}/myfund.html')
+    print(f'  Telefon  : http://{ip}:{PORT}/myfund.html')
+    if DATABASE_URL:
+        print('  Baza     : Neon PostgreSQL ✓')
+    else:
+        print('  Baza     : pliki lokalne (brak .env / DATABASE_URL)')
     print('Ctrl+C aby zatrzymać.')
     server.serve_forever()
