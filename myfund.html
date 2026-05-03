@@ -92,6 +92,10 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 
 /* CHART PANEL */
 .chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.donut-tabs{display:flex;gap:4px;margin-bottom:14px}
+.donut-tab{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 11px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s}
+.donut-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.donut-tab:hover:not(.active){color:var(--text)}
 .chart-legend{margin-top:14px;display:flex;flex-direction:column;gap:8px}
 .legend-item{display:flex;align-items:center;justify-content:space-between;font-size:12.5px}
 .legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
@@ -321,7 +325,12 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     </div>
 
     <div class="chart-panel">
-      <div class="panel-title" style="margin-bottom:16px">Alokacja portfela</div>
+      <div class="panel-title" style="margin-bottom:12px">Alokacja portfela</div>
+      <div class="donut-tabs">
+        <button class="donut-tab active" data-view="spolki"  onclick="switchDonutView('spolki')">Spółki</button>
+        <button class="donut-tab"        data-view="sektory" onclick="switchDonutView('sektory')">Sektory</button>
+        <button class="donut-tab"        data-view="waluty"  onclick="switchDonutView('waluty')">Waluty</button>
+      </div>
       <canvas id="donutChart"></canvas>
       <div class="chart-legend" id="chartLegend"></div>
     </div>
@@ -611,6 +620,9 @@ let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 
 let donutChart   = null;
 let lineChartBig = null;
+let donutView    = 'spolki';
+let _lastRows    = [];
+let _lastCashPLN = 0;
 let currentTF    = 30;
 let sortBy       = null;
 let sortDir      = -1;
@@ -1058,7 +1070,9 @@ function render() {
     document.getElementById('cv-irr').className = 'card-value';
   }
 
-  renderDonut(chartData, cashPLN);
+  _lastRows    = rows;
+  _lastCashPLN = cashPLN;
+  renderDonutForView();
   renderCash();
 }
 
@@ -1129,6 +1143,75 @@ function renderDonut(data, cashPLN = 0) {
       <div class="legend-label"><div class="legend-dot" style="background:${colors[i]}"></div>${d.symbol}</div>
       <span class="legend-pct">${((d.value / total) * 100).toFixed(1)}%</span>
     </div>`).join('');
+}
+
+const SECTOR_MAP = {
+  // GPW
+  'XTB.WA':'Finanse','PKO.WA':'Finanse','PZU.WA':'Finanse','MBK.WA':'Finanse','BNP.WA':'Finanse',
+  'ALE.WA':'E-commerce','CCC.WA':'Handel detaliczny','LPP.WA':'Handel detaliczny','DNP.WA':'Handel detaliczny',
+  'PKN.WA':'Energia','PGE.WA':'Energia','PEP.WA':'Energia','ENA.WA':'Energia',
+  'KGHM.WA':'Surowce','KGH.WA':'Surowce','JSW.WA':'Surowce',
+  'CDR.WA':'Gry/IT','11B.WA':'Gry/IT','PEO.WA':'Finanse','SPL.WA':'Finanse',
+  'TPE.WA':'Energia','ZEP.WA':'Energia',
+  // US – Finanse
+  'HOOD':'Finanse','COIN':'Finanse','GS':'Finanse','JPM':'Finanse','MS':'Finanse',
+  'BAC':'Finanse','WFC':'Finanse','C':'Finanse','BRK.B':'Finanse','V':'Finanse','MA':'Finanse',
+  // US – Technologia
+  'AAPL':'Technologia','MSFT':'Technologia','GOOGL':'Technologia','GOOG':'Technologia',
+  'META':'Technologia','NVDA':'Technologia','AMD':'Technologia','INTC':'Technologia',
+  'QCOM':'Technologia','AVGO':'Technologia','CRM':'Technologia','ORCL':'Technologia',
+  'IBM':'Technologia','SAP':'Technologia','ADBE':'Technologia','NOW':'Technologia',
+  // US – E-commerce/Consumer
+  'AMZN':'E-commerce','SHOP':'E-commerce','EBAY':'E-commerce',
+  'WMT':'Handel detaliczny','TGT':'Handel detaliczny','COST':'Handel detaliczny',
+  // US – Motoryzacja
+  'TSLA':'Motoryzacja','GM':'Motoryzacja','F':'Motoryzacja','RIVN':'Motoryzacja',
+  // US – Rozrywka/Media
+  'NFLX':'Rozrywka','DIS':'Rozrywka','SPOT':'Rozrywka','RBLX':'Rozrywka',
+  // US – Zdrowie
+  'PFE':'Ochrona zdrowia','JNJ':'Ochrona zdrowia','MRNA':'Ochrona zdrowia',
+  'ABBV':'Ochrona zdrowia','UNH':'Ochrona zdrowia','LLY':'Ochrona zdrowia',
+  // US – Energia
+  'XOM':'Energia','CVX':'Energia','COP':'Energia',
+  // ETF
+  'SPY':'ETF','QQQ':'ETF','VTI':'ETF','VOO':'ETF','IWM':'ETF',
+  'GLD':'ETF','SLV':'ETF','TLT':'ETF',
+};
+
+function getSector(symbol) {
+  return SECTOR_MAP[symbol] || SECTOR_MAP[symbol.toUpperCase()] || 'Inne';
+}
+
+function switchDonutView(view) {
+  donutView = view;
+  document.querySelectorAll('.donut-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  renderDonutForView();
+}
+
+function renderDonutForView() {
+  if (donutView === 'spolki') {
+    const data = _lastRows.filter(r => r.valuePLN !== null).map(r => ({ symbol: r.h.symbol, value: r.valuePLN }));
+    renderDonut(data, _lastCashPLN);
+  } else if (donutView === 'sektory') {
+    const map = {};
+    _lastRows.forEach(r => {
+      if (r.valuePLN === null) return;
+      const sec = getSector(r.h.symbol);
+      map[sec] = (map[sec] || 0) + r.valuePLN;
+    });
+    if (_lastCashPLN > 0) map['Gotówka'] = (map['Gotówka'] || 0) + _lastCashPLN;
+    renderDonut(Object.entries(map).map(([symbol, value]) => ({ symbol, value })), 0);
+  } else {
+    const map = {};
+    _lastRows.forEach(r => {
+      if (r.valuePLN === null) return;
+      map[r.cur] = (map[r.cur] || 0) + r.valuePLN;
+    });
+    Object.entries(cashBalances).forEach(([cur, amt]) => {
+      if (amt > 0) map[cur] = (map[cur] || 0) + amt * (fxRates[cur] || 1);
+    });
+    renderDonut(Object.entries(map).map(([symbol, value]) => ({ symbol, value })), 0);
+  }
 }
 
 const BENCHMARKS = [
