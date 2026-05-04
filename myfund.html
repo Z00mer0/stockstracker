@@ -205,6 +205,11 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 .ac-exch{font-size:11px;color:var(--accent);padding:2px 6px;background:rgba(99,102,241,.12);border-radius:4px;flex-shrink:0}
 .modal-actions{display:flex;gap:10px;margin-top:22px}
 .modal-actions .btn{flex:1;justify-content:center;padding:11px}
+.fund-src-group{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+.fund-opt{cursor:pointer}
+.fund-opt input{display:none}
+.fund-opt span{display:block;padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:13px;color:var(--muted);background:var(--surface2);transition:all .2s;white-space:nowrap}
+.fund-opt input:checked+span{background:var(--accent);color:#fff;border-color:var(--accent)}
 .info-box{background:var(--surface2);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;line-height:1.8;border:1px solid var(--border)}
 
 /* TOAST */
@@ -494,7 +499,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <div class="form-row">
       <div class="form-group">
         <label>Waluta zakupu</label>
-        <select id="f-currency">
+        <select id="f-currency" onchange="updateCashHint()">
           <option value="USD">USD (dolar)</option>
           <option value="PLN">PLN (złoty)</option>
           <option value="EUR">EUR (euro)</option>
@@ -509,6 +514,14 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <div class="form-group">
       <label>Notatka (opcjonalna)</label>
       <input id="f-note" type="text" placeholder="np. długoterminowo, dywidendowa...">
+    </div>
+    <div class="form-group">
+      <label>Źródło środków</label>
+      <div class="fund-src-group">
+        <label class="fund-opt"><input type="radio" name="f-fund-src" value="new" checked onchange="updateCashHint()"><span>💼 Dopłata</span></label>
+        <label class="fund-opt"><input type="radio" name="f-fund-src" value="cash" onchange="updateCashHint()"><span>💵 Odejmij od gotówki</span></label>
+      </div>
+      <div id="f-cash-hint" class="hint" style="display:none"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeAdd()">Anuluj</button>
@@ -1006,6 +1019,18 @@ function cashTotalPLN() {
 }
 
 // ─── PORTFOLIO ACTIONS ────────────────────────────────────────────────────────
+function updateCashHint() {
+  const hint = document.getElementById('f-cash-hint');
+  if (!hint) return;
+  const isCash = document.querySelector('input[name="f-fund-src"]:checked')?.value === 'cash';
+  if (!isCash) { hint.style.display = 'none'; return; }
+  const cur = document.getElementById('f-currency').value;
+  const bal = cashBalances[cur] || 0;
+  hint.style.display = 'block';
+  hint.style.color = bal <= 0 ? 'var(--red)' : 'var(--muted)';
+  hint.textContent = `Dostępne: ${fmt(bal, cur, 2, 2)} ${cur}`;
+}
+
 function addHolding(data) {
   const h = data || {
     symbol:   document.getElementById('f-symbol').value.trim().toUpperCase(),
@@ -1038,6 +1063,11 @@ function addHolding(data) {
   logTransaction('BUY', h);
   save(SK_PORT, portfolio);
   if (!data) {
+    const fundSrc = document.querySelector('input[name="f-fund-src"]:checked')?.value;
+    if (fundSrc === 'cash') {
+      cashBalances[h.currency] = (cashBalances[h.currency] || 0) - h.qty * h.avgPrice;
+      save(SK_CASH, cashBalances);
+    }
     closeAdd();
     render();
     toast(existing
@@ -2153,6 +2183,8 @@ function closeAdd() {
   document.getElementById('addOverlay').classList.remove('open');
   ['f-symbol','f-qty','f-price','f-note'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-currency').value = 'USD';
+  const firstRadio = document.querySelector('input[name="f-fund-src"]');
+  if (firstRadio) { firstRadio.checked = true; document.getElementById('f-cash-hint').style.display = 'none'; }
   acHide();
 }
 function closeSell() {
