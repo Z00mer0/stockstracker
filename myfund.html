@@ -863,7 +863,7 @@ async function fetchChartQuote(symbol) {
   const result = data?.chart?.result?.[0];
   if (!result) throw new Error('no_result');
   const meta = result.meta;
-  const closes = result.indicators?.quote?.[0]?.close ?? [];
+  const closes = (result.indicators?.quote?.[0]?.close ?? []).filter(v => v != null);
   const price     = meta.regularMarketPrice ?? closes[closes.length - 1];
   const prevClose = meta.chartPreviousClose ?? closes[closes.length - 2] ?? price;
   mkt[symbol] = {
@@ -881,12 +881,18 @@ async function fetchChartQuote(symbol) {
 
 function _applyQuoteResults(results) {
   results.forEach(q => {
-    const prev = mkt[q.symbol] || {};
+    const prev    = mkt[q.symbol] || {};
+    const price   = q.regularMarketPrice        ?? prev.price;
+    const prevCl  = q.regularMarketPreviousClose ?? prev.prevClose;
+    // Compute changePct locally from price/prevClose so badge always matches the PLN card.
+    // Yahoo's regularMarketChangePercent can be stale when served without crumb auth.
+    const changePct = (price != null && prevCl != null && prevCl !== 0)
+      ? (price - prevCl) / prevCl * 100
+      : (q.regularMarketChangePercent ?? prev.changePct ?? 0);
     mkt[q.symbol] = {
-      price:       q.regularMarketPrice       ?? prev.price,
-      prevClose:   q.regularMarketPreviousClose ?? prev.prevClose,
-      change:      q.regularMarketChange        ?? prev.change    ?? 0,
-      changePct:   q.regularMarketChangePercent ?? prev.changePct ?? 0,
+      price, prevClose: prevCl,
+      change:     q.regularMarketChange ?? (price != null && prevCl != null ? price - prevCl : prev.change ?? 0),
+      changePct,
       name:        q.longName || q.shortName || q.symbol || prev.name,
       currency:    q.currency || prev.currency || 'USD',
       earningsTs:  q.earningsTimestampStart || q.earningsTimestamp || prev.earningsTs || null,
