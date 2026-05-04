@@ -285,28 +285,29 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <body>
 
 <header>
-  <div class="logo">StocksTracker</div>
+  <div class="logo" onclick="showTab('portfel')" style="cursor:pointer">StocksTracker</div>
   <nav class="nav-tabs">
-    <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')">Portfel</button>
-    <button class="nav-tab" data-tab="historia" onclick="showTab('historia')">Historia</button>
-    <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')">Transakcje</button>
-    <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')">Dywidendy</button>
-    <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')">Kalendarz</button>
+    <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')" data-i18n="tab.portfel">Portfel</button>
+    <button class="nav-tab" data-tab="historia" onclick="showTab('historia')" data-i18n="tab.historia">Historia</button>
+    <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')" data-i18n="tab.transakcje">Transakcje</button>
+    <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')" data-i18n="tab.dywidendy">Dywidendy</button>
+    <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')" data-i18n="tab.kalendarz">Kalendarz</button>
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
+    <button class="theme-toggle" id="langToggle" onclick="setLang(lang==='pl'?'en':'pl')">🇬🇧 EN</button>
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
     <div id="mktStatus" class="mkt-status"></div>
     <div class="status">
       <div class="dot" id="dot"></div>
-      <span id="lastUpdate">Brak danych</span>
+      <span id="lastUpdate" data-i18n="hdr.nodata">Brak danych</span>
     </div>
     <button class="btn btn-accent" id="refreshBtn" onclick="refreshAll()">
-      <span id="refreshIcon">↻</span> Odśwież
+      <span id="refreshIcon">↻</span> <span data-i18n="hdr.refresh">Odśwież</span>
     </button>
     <div id="userChip" style="display:none;align-items:center;gap:8px;border-left:1px solid var(--border);padding-left:14px;margin-left:2px">
       <span id="userDisplay" style="font-size:13px;color:var(--muted)"></span>
-      <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="logout()">Wyloguj</button>
+      <button class="btn btn-outline" style="padding:5px 10px;font-size:12px" onclick="logout()" data-i18n="hdr.logout">Wyloguj</button>
     </div>
   </div>
 </header>
@@ -316,63 +317,63 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 
   <div class="cards">
     <div class="card c-total">
-      <div class="card-label">Wartość portfela (PLN)</div>
+      <div class="card-label" data-i18n="card.total.lbl">Wartość portfela (PLN)</div>
       <div class="card-value amt" id="cv-total">—</div>
-      <div class="card-sub" id="cs-total">Akcje + gotówka</div>
+      <div class="card-sub" id="cs-total" data-i18n="card.total.sub">Akcje + gotówka</div>
     </div>
     <div class="card c-day">
-      <div class="card-label">Zmiana dzienna</div>
+      <div class="card-label" data-i18n="card.day.lbl">Zmiana dzienna</div>
       <div class="card-value amt" id="cv-day">—</div>
-      <div class="card-sub" id="cs-day">vs. poprzednie zamknięcie</div>
+      <div class="card-sub" id="cs-day" data-i18n="card.day.sub">vs. poprzednie zamknięcie</div>
     </div>
     <div class="card c-pnl">
-      <div class="card-label">Całkowity zysk/strata</div>
+      <div class="card-label" data-i18n="card.pnl.lbl">Całkowity zysk/strata</div>
       <div class="card-value amt" id="cv-pnl">—</div>
-      <div class="card-sub" id="cs-pnl">od ceny zakupu</div>
+      <div class="card-sub" id="cs-pnl" data-i18n="card.pnl.sub">od ceny zakupu</div>
     </div>
     <div class="card c-cash">
-      <div class="card-label">Gotówka</div>
+      <div class="card-label" data-i18n="card.cash.lbl">Gotówka</div>
       <div class="card-value amt" id="cv-cash">0,00 zł</div>
-      <div class="card-sub" id="cs-cash">łączna w PLN</div>
+      <div class="card-sub" id="cs-cash" data-i18n="card.cash.sub">łączna w PLN</div>
     </div>
     <div class="card c-irr">
-      <div class="card-label">IRR portfela</div>
+      <div class="card-label" data-i18n="card.irr.lbl">IRR portfela</div>
       <div class="card-value" id="cv-irr">—</div>
-      <div class="card-sub">ważona roczna stopa zwrotu</div>
+      <div class="card-sub" data-i18n="card.irr.sub">ważona roczna stopa zwrotu</div>
     </div>
   </div>
 
   <div class="content-grid">
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">Moje pozycje</div>
+        <div class="panel-title" data-i18n="port.title">Moje pozycje</div>
         <div class="panel-actions">
           <div class="col-gear-wrap">
             <button class="col-gear-btn" onclick="toggleColPanel()" title="Dostosuj kolumny">⚙️</button>
             <div class="col-gear-panel" id="colGearPanel"></div>
           </div>
-          <button class="btn btn-outline" onclick="openImport()">⬆ Import CSV</button>
-          <button class="btn btn-green" onclick="openAdd()">+ Dodaj spółkę</button>
+          <button class="btn btn-outline" onclick="openImport()" data-i18n="port.import">⬆ Import CSV</button>
+          <button class="btn btn-green" onclick="openAdd()" data-i18n="port.add">+ Dodaj spółkę</button>
         </div>
       </div>
       <div id="emptyState" class="empty">
         <div class="empty-icon">📊</div>
-        <p style="font-size:16px;color:var(--text);font-weight:600">Portfel jest pusty</p>
-        <p>Kliknij „+ Dodaj spółkę" lub zaimportuj CSV, aby zacząć</p>
+        <p style="font-size:16px;color:var(--text);font-weight:600" data-i18n="port.empty.t">Portfel jest pusty</p>
+        <p data-i18n="port.empty.s">Kliknij „+ Dodaj spółkę" lub zaimportuj CSV, aby zacząć</p>
       </div>
       <div style="overflow-x:auto">
         <table id="holdingsTable" style="display:none">
           <thead>
             <tr>
-              <th>Spółka</th>
-              <th>Ilość</th>
-              <th>Śr. zakup <span class="tip" data-tip="Średnia cena zakupu, po której nabyłeś akcje (ważona ilością przy uśrednianiu)">i</span></th>
-              <th>Cena teraz</th>
-              <th class="sortable" data-sort="chgPct" onclick="setSortBy('chgPct')">Zmiana dz.<span class="sort-icon"></span><span class="tip" data-tip="Zmiana ceny względem poprzedniego zamknięcia giełdy">i</span></th>
-              <th class="sortable" data-sort="costPLN" onclick="setSortBy('costPLN')">Wart. zakupu<span class="sort-icon"></span><span class="tip" data-tip="Łączna kwota zainwestowana: śr. cena zakupu × ilość, przeliczona na PLN">i</span></th>
-              <th class="sortable" data-sort="valuePLN" onclick="setSortBy('valuePLN')">Wart. teraz (PLN)<span class="sort-icon"></span><span class="tip" data-tip="Aktualna wartość pozycji: cena teraz × ilość, przeliczona na PLN po bieżącym kursie walutowym">i</span></th>
-              <th class="sortable" data-sort="pnlPLN" onclick="setSortBy('pnlPLN')">Zysk/Strata<span class="sort-icon"></span><span class="tip" data-tip="Niezrealizowany zysk lub strata: wartość teraz − koszt zakupu, w PLN">i</span></th>
-              <th>Okres <span class="tip" data-tip="Czas od pierwszego zakupu akcji tej spółki">i</span></th>
+              <th><span data-i18n="th.company">Spółka</span></th>
+              <th><span data-i18n="th.qty">Ilość</span></th>
+              <th><span data-i18n="th.avgbuy">Śr. zakup</span> <span class="tip" data-tip="Średnia cena zakupu, po której nabyłeś akcje (ważona ilością przy uśrednianiu)">i</span></th>
+              <th><span data-i18n="th.price">Cena teraz</span></th>
+              <th class="sortable" data-sort="chgPct" onclick="setSortBy('chgPct')"><span data-i18n="th.daychg">Zmiana dz.</span><span class="sort-icon"></span><span class="tip" data-tip="Zmiana ceny względem poprzedniego zamknięcia giełdy">i</span></th>
+              <th class="sortable" data-sort="costPLN" onclick="setSortBy('costPLN')"><span data-i18n="th.buycost">Wart. zakupu</span><span class="sort-icon"></span><span class="tip" data-tip="Łączna kwota zainwestowana: śr. cena zakupu × ilość, przeliczona na PLN">i</span></th>
+              <th class="sortable" data-sort="valuePLN" onclick="setSortBy('valuePLN')"><span data-i18n="th.value">Wart. teraz (PLN)</span><span class="sort-icon"></span><span class="tip" data-tip="Aktualna wartość pozycji: cena teraz × ilość, przeliczona na PLN po bieżącym kursie walutowym">i</span></th>
+              <th class="sortable" data-sort="pnlPLN" onclick="setSortBy('pnlPLN')"><span data-i18n="th.pnl">Zysk/Strata</span><span class="sort-icon"></span><span class="tip" data-tip="Niezrealizowany zysk lub strata: wartość teraz − koszt zakupu, w PLN">i</span></th>
+              <th><span data-i18n="th.period">Okres</span> <span class="tip" data-tip="Czas od pierwszego zakupu akcji tej spółki">i</span></th>
               <th class="sortable" data-sort="moic" onclick="setSortBy('moic')">MOIC<span class="sort-icon"></span><span class="tip" data-tip="Multiple on Invested Capital — ile razy zwróciła się inwestycja. 1.5× = wartość wzrosła o 50%. Poniżej 1× oznacza stratę">i</span></th>
               <th class="sortable" data-sort="irr" onclick="setSortBy('irr')">IRR r.<span class="sort-icon"></span><span class="tip" data-tip="Wewnętrzna Stopa Zwrotu (roczna) — procentowy zysk w skali roku, uwzględniający czas trwania inwestycji. Porównywalna z oprocentowaniem lokaty">i</span></th>
               <th><span class="tip" data-tip="Cena / Zysk (trailing 12m). Źródło: Alpha Vantage">P/E</span></th>
@@ -387,11 +388,11 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     </div>
 
     <div class="chart-panel">
-      <div class="panel-title" style="margin-bottom:12px">Alokacja portfela</div>
+      <div class="panel-title" style="margin-bottom:12px" data-i18n="donut.title">Alokacja portfela</div>
       <div class="donut-tabs">
-        <button class="donut-tab active" data-view="spolki"  onclick="switchDonutView('spolki')">Spółki</button>
-        <button class="donut-tab"        data-view="sektory" onclick="switchDonutView('sektory')">Sektory</button>
-        <button class="donut-tab"        data-view="waluty"  onclick="switchDonutView('waluty')">Waluty</button>
+        <button class="donut-tab active" data-view="spolki"  onclick="switchDonutView('spolki')" data-i18n="donut.stocks">Spółki</button>
+        <button class="donut-tab"        data-view="sektory" onclick="switchDonutView('sektory')" data-i18n="donut.sectors">Sektory</button>
+        <button class="donut-tab"        data-view="waluty"  onclick="switchDonutView('waluty')" data-i18n="donut.curs">Waluty</button>
       </div>
       <canvas id="donutChart"></canvas>
       <div class="chart-legend" id="chartLegend"></div>
@@ -401,11 +402,11 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   <!-- Gotówka -->
   <div class="panel cash-section">
     <div class="panel-header">
-      <div class="panel-title">💵 Gotówka w portfelu</div>
-      <button class="btn btn-outline" onclick="openAddCash()">✎ Zarządzaj gotówką</button>
+      <div class="panel-title" data-i18n="cash.sec.title">💵 Gotówka w portfelu</div>
+      <button class="btn btn-outline" onclick="openAddCash()" data-i18n="cash.manage">✎ Zarządzaj gotówką</button>
     </div>
     <div class="cash-grid" id="cashGrid">
-      <div style="padding:4px 0;color:var(--muted);font-size:13px">Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.</div>
+      <div style="padding:4px 0;color:var(--muted);font-size:13px" data-i18n="cash.empty">Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.</div>
     </div>
   </div>
 
@@ -415,19 +416,19 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <main id="tab-historia" style="display:none">
 
   <div class="historia-header">
-    <div style="font-size:18px;font-weight:700">📈 Historia wartości portfela</div>
+    <div style="font-size:18px;font-weight:700" data-i18n="hist.title">📈 Historia wartości portfela</div>
     <div class="timeframe-btns">
       <button class="tf-btn active" onclick="setTimeframe(30,this)">1M</button>
       <button class="tf-btn" onclick="setTimeframe(90,this)">3M</button>
       <button class="tf-btn" onclick="setTimeframe(180,this)">6M</button>
       <button class="tf-btn" onclick="setTimeframe(365,this)">1R</button>
-      <button class="tf-btn" onclick="setTimeframe(0,this)">Wszystko</button>
+      <button class="tf-btn" onclick="setTimeframe(0,this)" data-i18n="hist.all">Wszystko</button>
     </div>
   </div>
 
   <div class="bm-bar">
     <span class="bm-label">Benchmark:</span>
-    <button class="bm-btn active" onclick="setBenchmark(null,this)">Brak</button>
+    <button class="bm-btn active" onclick="setBenchmark(null,this)" data-i18n="hist.bm.none">Brak</button>
     <button class="bm-btn" onclick="setBenchmark('^GSPC',this)">S&amp;P 500</button>
     <button class="bm-btn" onclick="setBenchmark('^IXIC',this)">NASDAQ</button>
     <button class="bm-btn" onclick="setBenchmark('^DJI',this)">Dow Jones</button>
@@ -448,7 +449,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ TAB: TRANSAKCJE ══════════════════════ -->
 <main id="tab-transakcje" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:18px;font-weight:700">📋 Historia transakcji</div>
+    <div style="font-size:18px;font-weight:700" data-i18n="tran.title">📋 Historia transakcji</div>
   </div>
   <div class="panel">
     <div id="transakcjeContent"></div>
@@ -458,8 +459,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ TAB: DYWIDENDY ══════════════════════ -->
 <main id="tab-dywidendy" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:18px;font-weight:700">💰 Kalendarz dywidend</div>
-    <button class="btn btn-outline" onclick="renderDywidendyTab(true)">↻ Odśwież dane</button>
+    <div style="font-size:18px;font-weight:700" data-i18n="div.title">💰 Kalendarz dywidend</div>
+    <button class="btn btn-outline" onclick="renderDywidendyTab(true)" data-i18n="div.refresh">↻ Odśwież dane</button>
   </div>
   <div id="dywidendyContent"></div>
 </main>
@@ -467,8 +468,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ TAB: KALENDARZ ══════════════════════ -->
 <main id="tab-kalendarz" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:18px;font-weight:700">📅 Nadchodzące wydarzenia</div>
-    <button class="btn btn-outline" onclick="renderKalendarzTab(true)">↻ Odśwież</button>
+    <div style="font-size:18px;font-weight:700" data-i18n="kal.title">📅 Nadchodzące wydarzenia</div>
+    <button class="btn btn-outline" onclick="renderKalendarzTab(true)" data-i18n="kal.refresh">↻ Odśwież</button>
   </div>
   <div id="kalendarContent"></div>
 </main>
@@ -476,29 +477,29 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ MODAL: DODAJ ══════════════════════ -->
 <div class="overlay" id="addOverlay">
   <div class="modal">
-    <h2>Dodaj spółkę do portfela</h2>
+    <h2 data-i18n="add.title">Dodaj spółkę do portfela</h2>
     <div class="form-group">
-      <label>Symbol tickera *</label>
+      <label data-i18n="add.symbol">Symbol tickera *</label>
       <input id="f-symbol" type="text" placeholder="np. AAPL, PKN.WA, MSFT"
              autocomplete="off"
              oninput="this.value=this.value.toUpperCase();acSearch(this.value)"
              onkeydown="acKeydown(event)"
              onblur="setTimeout(acHide,150)">
-      <div class="hint">🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: bez sufiksu (np. AAPL, NVDA)</div>
+      <div class="hint" data-i18n-html="add.hint.html">🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: bez sufiksu (np. AAPL, NVDA)</div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Ilość akcji *</label>
+        <label data-i18n="add.qty">Ilość akcji *</label>
         <input id="f-qty" type="number" placeholder="10" min="0.0001" step="any">
       </div>
       <div class="form-group">
-        <label>Cena zakupu *</label>
+        <label data-i18n="add.price">Cena zakupu *</label>
         <input id="f-price" type="number" placeholder="150.00" min="0" step="any">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Waluta zakupu</label>
+        <label data-i18n="add.currency">Waluta zakupu</label>
         <select id="f-currency" onchange="updateCashHint()">
           <option value="USD">USD (dolar)</option>
           <option value="PLN">PLN (złoty)</option>
@@ -507,25 +508,25 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
         </select>
       </div>
       <div class="form-group">
-        <label>Data zakupu</label>
+        <label data-i18n="add.date">Data zakupu</label>
         <input id="f-date" type="date">
       </div>
     </div>
     <div class="form-group">
-      <label>Notatka (opcjonalna)</label>
+      <label data-i18n="add.note">Notatka (opcjonalna)</label>
       <input id="f-note" type="text" placeholder="np. długoterminowo, dywidendowa...">
     </div>
     <div class="form-group">
-      <label>Źródło środków</label>
+      <label data-i18n="add.fundsrc">Źródło środków</label>
       <div class="fund-src-group">
-        <label class="fund-opt"><input type="radio" name="f-fund-src" value="new" checked onchange="updateCashHint()"><span>💼 Dopłata</span></label>
-        <label class="fund-opt"><input type="radio" name="f-fund-src" value="cash" onchange="updateCashHint()"><span>💵 Odejmij od gotówki</span></label>
+        <label class="fund-opt"><input type="radio" name="f-fund-src" value="new" checked onchange="updateCashHint()"><span data-i18n="add.new">💼 Dopłata</span></label>
+        <label class="fund-opt"><input type="radio" name="f-fund-src" value="cash" onchange="updateCashHint()"><span data-i18n="add.cash">💵 Odejmij od gotówki</span></label>
       </div>
       <div id="f-cash-hint" class="hint" style="display:none"></div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeAdd()">Anuluj</button>
-      <button class="btn btn-accent" onclick="addHolding()">Dodaj do portfela</button>
+      <button class="btn btn-outline" onclick="closeAdd()" data-i18n="add.cancel">Anuluj</button>
+      <button class="btn btn-accent" onclick="addHolding()" data-i18n="add.submit">Dodaj do portfela</button>
     </div>
   </div>
 </div>
@@ -533,37 +534,37 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ MODAL: SPRZEDAJ ══════════════════════ -->
 <div class="overlay" id="sellOverlay">
   <div class="modal">
-    <h2>Sprzedaj akcje</h2>
+    <h2 data-i18n="sell.title">Sprzedaj akcje</h2>
     <div class="info-box" id="sellInfo"></div>
     <div class="form-row">
       <div class="form-group">
-        <label>Ilość do sprzedaży *</label>
+        <label data-i18n="sell.qty">Ilość do sprzedaży *</label>
         <input id="s-qty" type="number" placeholder="0" min="0.0001" step="any">
       </div>
       <div class="form-group">
-        <label>Cena sprzedaży *</label>
+        <label data-i18n="sell.price">Cena sprzedaży *</label>
         <input id="s-price" type="number" placeholder="0.00" min="0" step="any">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Waluta</label>
+        <label data-i18n="sell.currency">Waluta</label>
         <input id="s-currency" type="text" readonly style="opacity:.6;cursor:default">
       </div>
       <div class="form-group">
-        <label>Data sprzedaży</label>
+        <label data-i18n="sell.date">Data sprzedaży</label>
         <input id="s-date" type="date">
       </div>
     </div>
     <div class="form-group">
       <label class="check-label">
         <input type="checkbox" id="s-to-cash" checked>
-        Dodaj przychód do salda gotówki
+        <span data-i18n="sell.tocash">Dodaj przychód do salda gotówki</span>
       </label>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeSell()">Anuluj</button>
-      <button class="btn btn-accent" onclick="confirmSell()">Sprzedaj</button>
+      <button class="btn btn-outline" onclick="closeSell()" data-i18n="sell.cancel">Anuluj</button>
+      <button class="btn btn-accent" onclick="confirmSell()" data-i18n="sell.submit">Sprzedaj</button>
     </div>
   </div>
 </div>
@@ -571,8 +572,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ MODAL: GOTÓWKA ══════════════════════ -->
 <div class="overlay" id="cashOverlay">
   <div class="modal">
-    <h2>💵 Zarządzaj gotówką</h2>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.</p>
+    <h2 data-i18n="cash.m.title">💵 Zarządzaj gotówką</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px" data-i18n="cash.m.desc">Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.</p>
     <div class="form-row">
       <div class="form-group">
         <label>PLN (złoty)</label>
@@ -594,8 +595,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeCash()">Anuluj</button>
-      <button class="btn btn-accent" onclick="saveCash()">Zapisz</button>
+      <button class="btn btn-outline" onclick="closeCash()" data-i18n="cash.m.cancel">Anuluj</button>
+      <button class="btn btn-accent" onclick="saveCash()" data-i18n="cash.m.save">Zapisz</button>
     </div>
   </div>
 </div>
@@ -603,31 +604,31 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ MODAL: DYWIDENDA ══════════════════════ -->
 <div class="overlay" id="dividendOverlay">
   <div class="modal">
-    <h2>💰 Zarejestruj dywidendę</h2>
+    <h2 data-i18n="div.m.title">💰 Zarejestruj dywidendę</h2>
     <div class="info-box" id="divInfo"></div>
     <div class="form-row">
       <div class="form-group">
-        <label>Łączna kwota otrzymana *</label>
+        <label data-i18n="div.m.amount">Łączna kwota otrzymana *</label>
         <input id="d-amount" type="number" placeholder="0.00" min="0" step="any">
       </div>
       <div class="form-group">
-        <label>Waluta</label>
+        <label data-i18n="div.m.currency">Waluta</label>
         <input id="d-currency" type="text" readonly style="opacity:.6;cursor:default">
       </div>
     </div>
     <div class="form-group">
-      <label>Data wypłaty</label>
+      <label data-i18n="div.m.date">Data wypłaty</label>
       <input id="d-date" type="date">
     </div>
     <div class="form-group">
       <label class="check-label">
         <input type="checkbox" id="d-to-cash" checked>
-        Dodaj do salda gotówki
+        <span data-i18n="div.m.tocash">Dodaj do salda gotówki</span>
       </label>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeDividend()">Anuluj</button>
-      <button class="btn btn-accent" onclick="confirmDividend()">Zapisz</button>
+      <button class="btn btn-outline" onclick="closeDividend()" data-i18n="div.m.cancel">Anuluj</button>
+      <button class="btn btn-accent" onclick="confirmDividend()" data-i18n="div.m.submit">Zapisz</button>
     </div>
   </div>
 </div>
@@ -635,18 +636,18 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ MODAL: IMPORT ══════════════════════ -->
 <div class="overlay" id="importOverlay">
   <div class="modal">
-    <h2>Import z CSV</h2>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Wklej dane CSV. Pierwsza linia może być nagłówkiem (zostanie pominięta).</p>
+    <h2 data-i18n="imp.title">Import z CSV</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px" data-i18n="imp.desc.html">Wklej dane CSV. Pierwsza linia może być nagłówkiem (zostanie pominięta).</p>
     <div class="form-group">
-      <label>Format: Symbol, Ilość, Cena zakupu, Waluta, Data</label>
+      <label data-i18n="imp.fmt">Format: Symbol, Ilość, Cena zakupu, Waluta, Data</label>
       <textarea id="csvInput" placeholder="AAPL,10,150.00,USD,2024-01-15
 PKN.WA,50,45.20,PLN,2024-03-01
 MSFT,5,380.00,USD,2024-02-10"></textarea>
-      <div class="hint">Waluta i data są opcjonalne. Domyślnie: USD, dzisiejsza data.</div>
+      <div class="hint" data-i18n="imp.hint">Waluta i data są opcjonalne. Domyślnie: USD, dzisiejsza data.</div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeImport()">Anuluj</button>
-      <button class="btn btn-accent" onclick="importCSV()">Importuj</button>
+      <button class="btn btn-outline" onclick="closeImport()" data-i18n="imp.cancel">Anuluj</button>
+      <button class="btn btn-accent" onclick="importCSV()" data-i18n="imp.submit">Importuj</button>
     </div>
   </div>
 </div>
@@ -699,6 +700,157 @@ function initPrivacy() {
     btn.textContent = '🙈';
     btn.classList.add('active');
   }
+}
+
+// ─── I18N ─────────────────────────────────────────────────────────────────────
+let lang = localStorage.getItem('lang') || 'pl';
+
+const STRINGS = {
+  'tab.portfel':    { pl:'Portfel',    en:'Portfolio' },
+  'tab.historia':   { pl:'Historia',   en:'History' },
+  'tab.transakcje': { pl:'Transakcje', en:'Transactions' },
+  'tab.dywidendy':  { pl:'Dywidendy',  en:'Dividends' },
+  'tab.kalendarz':  { pl:'Kalendarz',  en:'Calendar' },
+  'hdr.nodata':     { pl:'Brak danych',en:'No data' },
+  'hdr.refresh':    { pl:'Odśwież',    en:'Refresh' },
+  'hdr.logout':     { pl:'Wyloguj',    en:'Log out' },
+  'card.total.lbl': { pl:'Wartość portfela (PLN)',   en:'Portfolio Value (PLN)' },
+  'card.total.sub': { pl:'Akcje + gotówka',           en:'Stocks + cash' },
+  'card.day.lbl':   { pl:'Zmiana dzienna',            en:'Daily Change' },
+  'card.day.sub':   { pl:'vs. poprzednie zamknięcie', en:'vs. prev. close' },
+  'card.pnl.lbl':   { pl:'Całkowity zysk/strata',    en:'Total P&L' },
+  'card.pnl.sub':   { pl:'od ceny zakupu',            en:'from purchase price' },
+  'card.cash.lbl':  { pl:'Gotówka',                   en:'Cash' },
+  'card.cash.sub':  { pl:'łączna w PLN',              en:'total in PLN' },
+  'card.irr.lbl':   { pl:'IRR portfela',              en:'Portfolio IRR' },
+  'card.irr.sub':   { pl:'ważona roczna stopa zwrotu',en:'weighted annual rate' },
+  'port.title':     { pl:'Moje pozycje',              en:'My Positions' },
+  'port.import':    { pl:'⬆ Import CSV',              en:'⬆ Import CSV' },
+  'port.add':       { pl:'+ Dodaj spółkę',            en:'+ Add Stock' },
+  'port.empty.t':   { pl:'Portfel jest pusty',        en:'Portfolio is empty' },
+  'port.empty.s':   { pl:'Kliknij „+ Dodaj spółkę" lub zaimportuj CSV, aby zacząć', en:'Click "+ Add Stock" or import CSV to get started' },
+  'th.company':     { pl:'Spółka',           en:'Stock' },
+  'th.qty':         { pl:'Ilość',            en:'Qty' },
+  'th.avgbuy':      { pl:'Śr. zakup',        en:'Avg. Buy' },
+  'th.price':       { pl:'Cena teraz',       en:'Price' },
+  'th.daychg':      { pl:'Zmiana dz.',       en:'Daily Chg.' },
+  'th.buycost':     { pl:'Wart. zakupu',     en:'Buy Value' },
+  'th.value':       { pl:'Wart. teraz (PLN)',en:'Value (PLN)' },
+  'th.pnl':         { pl:'Zysk/Strata',      en:'P&L' },
+  'th.period':      { pl:'Okres',            en:'Period' },
+  'donut.title':    { pl:'Alokacja portfela',en:'Portfolio Allocation' },
+  'donut.stocks':   { pl:'Spółki',           en:'Stocks' },
+  'donut.sectors':  { pl:'Sektory',          en:'Sectors' },
+  'donut.curs':     { pl:'Waluty',           en:'Currencies' },
+  'cash.sec.title': { pl:'💵 Gotówka w portfelu', en:'💵 Cash in Portfolio' },
+  'cash.manage':    { pl:'✎ Zarządzaj gotówką',  en:'✎ Manage Cash' },
+  'cash.empty':     { pl:'Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.', en:'No cash — click "Manage Cash" to add.' },
+  'hist.title':     { pl:'📈 Historia wartości portfela', en:'📈 Portfolio Value History' },
+  'hist.all':       { pl:'Wszystko',  en:'All' },
+  'hist.bm.none':   { pl:'Brak',      en:'None' },
+  'hist.nodata':    { pl:'Brak wystarczających danych portfela. Historia buduje się codziennie po odświeżeniu.', en:'Not enough portfolio data. History builds up daily after refresh.' },
+  'hist.s.start':   { pl:'Wartość startowa',   en:'Start Value' },
+  'hist.s.end':     { pl:'Wartość końcowa',    en:'End Value' },
+  'hist.s.chgpln':  { pl:'Zmiana (PLN)',        en:'Change (PLN)' },
+  'hist.s.chgpct':  { pl:'Zmiana (%)',           en:'Change (%)' },
+  'hist.s.max':     { pl:'Maksimum',             en:'Maximum' },
+  'hist.s.min':     { pl:'Minimum',              en:'Minimum' },
+  'hist.s.days':    { pl:'Dni historii',         en:'History Days' },
+  'hist.s.inv':     { pl:'Zainwestowany',        en:'Invested' },
+  'hist.s.pnl':     { pl:'Zysk / Strata',        en:'P&L' },
+  'hist.s.alpha':   { pl:'Alpha',                en:'Alpha' },
+  'hist.portlbl':   { pl:'Wycena portfela',      en:'Portfolio Value' },
+  'hist.caplbl':    { pl:'Zainwestowany kapitał',en:'Invested Capital' },
+  'tran.title':     { pl:'📋 Historia transakcji',en:'📋 Transaction History' },
+  'tran.h.date':    { pl:'Data',    en:'Date' },
+  'tran.h.type':    { pl:'Typ',     en:'Type' },
+  'tran.h.company': { pl:'Spółka',  en:'Stock' },
+  'tran.h.qty':     { pl:'Ilość',   en:'Qty' },
+  'tran.h.price':   { pl:'Cena',    en:'Price' },
+  'tran.h.value':   { pl:'Wartość', en:'Value' },
+  'tran.h.note':    { pl:'Notatka', en:'Note' },
+  'tran.buy':       { pl:'KUP',     en:'BUY' },
+  'tran.sell':      { pl:'SPRZEDAJ',en:'SELL' },
+  'tran.div':       { pl:'DYW',     en:'DIV' },
+  'tran.empty.t':   { pl:'Brak transakcji', en:'No Transactions' },
+  'tran.empty.s':   { pl:'Transakcje pojawią się tutaj po dodaniu lub sprzedaniu spółek', en:'Transactions will appear here after adding or selling stocks' },
+  'div.title':      { pl:'💰 Kalendarz dywidend',  en:'💰 Dividend Calendar' },
+  'div.refresh':    { pl:'↻ Odśwież dane',         en:'↻ Refresh' },
+  'kal.title':      { pl:'📅 Nadchodzące wydarzenia', en:'📅 Upcoming Events' },
+  'kal.refresh':    { pl:'↻ Odśwież',              en:'↻ Refresh' },
+  'add.title':      { pl:'Dodaj spółkę do portfela',en:'Add Stock to Portfolio' },
+  'add.symbol':     { pl:'Symbol tickera *',        en:'Ticker Symbol *' },
+  'add.hint.html':  { pl:'🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: bez sufiksu (np. AAPL, NVDA)', en:'🇵🇱 WSE: add <strong>.WA</strong> (e.g. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: no suffix (e.g. AAPL, NVDA)' },
+  'add.qty':        { pl:'Ilość akcji *',  en:'Shares *' },
+  'add.price':      { pl:'Cena zakupu *',  en:'Buy Price *' },
+  'add.currency':   { pl:'Waluta zakupu',  en:'Currency' },
+  'add.date':       { pl:'Data zakupu',    en:'Purchase Date' },
+  'add.note':       { pl:'Notatka (opcjonalna)', en:'Note (optional)' },
+  'add.fundsrc':    { pl:'Źródło środków',        en:'Funding Source' },
+  'add.new':        { pl:'💼 Dopłata',            en:'💼 New Capital' },
+  'add.cash':       { pl:'💵 Odejmij od gotówki', en:'💵 Deduct from Cash' },
+  'add.cancel':     { pl:'Anuluj',           en:'Cancel' },
+  'add.submit':     { pl:'Dodaj do portfela',en:'Add to Portfolio' },
+  'sell.title':     { pl:'Sprzedaj akcje',   en:'Sell Shares' },
+  'sell.qty':       { pl:'Ilość do sprzedaży *', en:'Shares to Sell *' },
+  'sell.price':     { pl:'Cena sprzedaży *',     en:'Sale Price *' },
+  'sell.currency':  { pl:'Waluta',   en:'Currency' },
+  'sell.date':      { pl:'Data sprzedaży',   en:'Sale Date' },
+  'sell.tocash':    { pl:'Dodaj przychód do salda gotówki', en:'Add proceeds to cash balance' },
+  'sell.cancel':    { pl:'Anuluj',  en:'Cancel' },
+  'sell.submit':    { pl:'Sprzedaj',en:'Sell' },
+  'cash.m.title':   { pl:'💵 Zarządzaj gotówką', en:'💵 Manage Cash' },
+  'cash.m.desc':    { pl:'Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.', en:'Enter current balances. Values will be converted to PLN at the current exchange rate.' },
+  'cash.m.cancel':  { pl:'Anuluj', en:'Cancel' },
+  'cash.m.save':    { pl:'Zapisz', en:'Save' },
+  'div.m.title':    { pl:'💰 Zarejestruj dywidendę', en:'💰 Record Dividend' },
+  'div.m.amount':   { pl:'Łączna kwota otrzymana *', en:'Total Amount Received *' },
+  'div.m.currency': { pl:'Waluta',       en:'Currency' },
+  'div.m.date':     { pl:'Data wypłaty', en:'Payment Date' },
+  'div.m.tocash':   { pl:'Dodaj do salda gotówki', en:'Add to cash balance' },
+  'div.m.cancel':   { pl:'Anuluj', en:'Cancel' },
+  'div.m.submit':   { pl:'Zapisz', en:'Save' },
+  'imp.title':      { pl:'Import z CSV', en:'Import from CSV' },
+  'imp.desc.html':  { pl:'Wklej dane CSV. Pierwsza linia może być nagłówkiem (zostanie pominięta).', en:'Paste CSV data. The first line can be a header (will be skipped).' },
+  'imp.fmt':        { pl:'Format: Symbol, Ilość, Cena zakupu, Waluta, Data', en:'Format: Symbol, Qty, Buy Price, Currency, Date' },
+  'imp.hint':       { pl:'Waluta i data są opcjonalne. Domyślnie: USD, dzisiejsza data.', en:'Currency and date are optional. Defaults: USD, today\'s date.' },
+  'imp.cancel':     { pl:'Anuluj',    en:'Cancel' },
+  'imp.submit':     { pl:'Importuj',  en:'Import' },
+  'row.buymore':    { pl:'+ Kup więcej', en:'+ Buy More' },
+  'row.sell':       { pl:'↘ Sprzedaj',  en:'↘ Sell' },
+  'row.div':        { pl:'💰 Dywidenda',en:'💰 Dividend' },
+  'row.remove':     { pl:'✕ Usuń',      en:'✕ Remove' },
+  'loading':        { pl:'Ładowanie…',  en:'Loading…' },
+  'hint.avail':     { pl:'Dostępne',    en:'Available' },
+  'vs.yesterday':   { pl:'vs. wczoraj', en:'vs. yesterday' },
+  'status.nodata':  { pl:'Brak danych', en:'No data' },
+  'status.error':   { pl:'Błąd danych', en:'Data error' },
+  'status.updated': { pl:'Odświeżono',  en:'Updated' },
+  'status.loading': { pl:'Ładowanie…',  en:'Loading…' },
+};
+
+function t(key) { return STRINGS[key]?.[lang] ?? STRINGS[key]?.pl ?? key; }
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+  const lg = document.getElementById('langToggle');
+  if (lg) lg.textContent = lang === 'pl' ? '🇬🇧 EN' : '🇵🇱 PL';
+}
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('lang', l);
+  applyI18n();
+  render();
+  if (document.getElementById('tab-historia')?.style.display !== 'none') renderHistoriaTab();
+  if (document.getElementById('tab-transakcje')?.style.display !== 'none') renderTransakcjeTab();
+  if (document.getElementById('tab-dywidendy')?.style.display !== 'none') renderDywidendyTab();
+  if (document.getElementById('tab-kalendarz')?.style.display !== 'none') renderKalendarzTab();
 }
 
 // ─── MARKET STATUS ────────────────────────────────────────────────────────────
@@ -1028,7 +1180,7 @@ function updateCashHint() {
   const bal = cashBalances[cur] || 0;
   hint.style.display = 'block';
   hint.style.color = bal <= 0 ? 'var(--red)' : 'var(--muted)';
-  hint.textContent = `Dostępne: ${fmt(bal, cur, 2, 2)} ${cur}`;
+  hint.textContent = `${t('hint.avail')}: ${fmt(bal, cur, 2, 2)} ${cur}`;
 }
 
 function addHolding(data) {
@@ -1278,7 +1430,7 @@ function render() {
         </td>
         <td>${fmt(h.qty, '', 0, 4)}</td>
         <td>${fmtCur(h.avgPrice, h.currency)}</td>
-        <td>${price !== null ? fmtCur(price, cur) : '<span style="color:var(--muted);font-size:12px">Ładowanie…</span>'}</td>
+        <td>${price !== null ? fmtCur(price, cur) : `<span style="color:var(--muted);font-size:12px">${t('loading')}</span>`}</td>
         <td>${chgPct !== null ? badge(chgPct, fmtPct(chgPct)) : '—'}</td>
         <td class="amt" style="color:var(--muted)">${fmtPLN(costPLN)}</td>
         <td class="amt">${valuePLN !== null ? fmtPLN(valuePLN) : '—'}</td>
@@ -1297,10 +1449,10 @@ function render() {
             <div class="row-menu-wrap">
               <button class="row-menu-btn" onclick="toggleRowMenu('${h.id}',this)">⋯</button>
               <div class="row-menu-drop">
-                <button onclick="closeRowMenus();openBuyMore('${h.id}')">+ Kup więcej</button>
-                <button onclick="closeRowMenus();openSell('${h.id}')">↘ Sprzedaj</button>
-                <button onclick="closeRowMenus();openDividend('${h.id}')">💰 Dywidenda</button>
-                <button class="m-del" onclick="closeRowMenus();removeHolding('${h.id}')">✕ Usuń</button>
+                <button onclick="closeRowMenus();openBuyMore('${h.id}')">${t('row.buymore')}</button>
+                <button onclick="closeRowMenus();openSell('${h.id}')">${t('row.sell')}</button>
+                <button onclick="closeRowMenus();openDividend('${h.id}')">${t('row.div')}</button>
+                <button class="m-del" onclick="closeRowMenus();removeHolding('${h.id}')">${t('row.remove')}</button>
               </div>
             </div>
           </div>
@@ -1325,7 +1477,7 @@ function render() {
       `Akcje: ${fmtPLN(totalStockPLN)} · USD/PLN ≈ ${(fxRates.USD||3.95).toFixed(2)}`, null);
 
     const dayPct = totalStockPLN > 0 ? (totalDayPLN / (totalStockPLN - totalDayPLN)) * 100 : 0;
-    setCard('cv-day', fmtPLN(totalDayPLN, true), fmtPct(dayPct) + ' vs. wczoraj', totalDayPLN);
+    setCard('cv-day', fmtPLN(totalDayPLN, true), fmtPct(dayPct) + ' ' + t('vs.yesterday'), totalDayPLN);
 
     const pnl = totalStockPLN - totalCostPLN;
     setCard('cv-pnl', fmtPLN(pnl, true), fmtPct(totalCostPLN ? (pnl / totalCostPLN) * 100 : 0) + ' od zakupu', pnl);
@@ -1369,7 +1521,7 @@ function renderCash() {
   const grid    = document.getElementById('cashGrid');
   const hasCash = Object.values(cashBalances).some(v => v > 0);
   if (!hasCash) {
-    grid.innerHTML = '<div style="padding:4px 0;color:var(--muted);font-size:13px">Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.</div>';
+    grid.innerHTML = `<div style="padding:4px 0;color:var(--muted);font-size:13px">${t('cash.empty')}</div>`;
     return;
   }
   grid.innerHTML = ['PLN','USD','EUR','GBP']
@@ -1600,7 +1752,7 @@ async function renderHistoriaTab() {
 
   if (entries.length < 2) {
     statsGrid.innerHTML = `<div class="hist-stat"><div class="hist-stat-label">Info</div>
-      <div class="hist-stat-value" style="font-size:14px;color:var(--muted)">Brak wystarczających danych portfela. Historia buduje się codziennie po odświeżeniu.</div></div>`;
+      <div class="hist-stat-value" style="font-size:14px;color:var(--muted)">${t('hist.nodata')}</div></div>`;
 
     // Render flat placeholder immediately; replace async if benchmark data arrives
     lineChartBig = new Chart(ctx, {
@@ -1655,17 +1807,17 @@ async function renderHistoriaTab() {
   const capitalGainPct = lastCapital > 0 ? (capitalGain / lastCapital) * 100 : null;
 
   const baseStats = [
-    { label: 'Wartość startowa', val: fmtPLN(first),        cls: 'amt' },
-    { label: 'Wartość końcowa',  val: fmtPLN(last),         cls: 'amt' },
-    { label: 'Zmiana (PLN)',     val: fmtPLN(diff, true),   cls: (diff >= 0 ? 'pos' : 'neg') + ' amt' },
-    { label: 'Zmiana (%)',       val: fmtPct(diffPct),      cls: diff >= 0 ? 'pos' : 'neg' },
-    { label: 'Maksimum',         val: fmtPLN(maxVal),       cls: 'amt' },
-    { label: 'Minimum',          val: fmtPLN(minVal),       cls: 'amt' },
-    { label: 'Dni historii',     val: entries.length + ' dni', cls: '' },
+    { label: t('hist.s.start'),  val: fmtPLN(first),        cls: 'amt' },
+    { label: t('hist.s.end'),    val: fmtPLN(last),         cls: 'amt' },
+    { label: t('hist.s.chgpln'),val: fmtPLN(diff, true),   cls: (diff >= 0 ? 'pos' : 'neg') + ' amt' },
+    { label: t('hist.s.chgpct'),val: fmtPct(diffPct),      cls: diff >= 0 ? 'pos' : 'neg' },
+    { label: t('hist.s.max'),    val: fmtPLN(maxVal),       cls: 'amt' },
+    { label: t('hist.s.min'),    val: fmtPLN(minVal),       cls: 'amt' },
+    { label: t('hist.s.days'),   val: entries.length + ' dni', cls: '' },
   ];
   const initStats = [...baseStats,
-    { label: 'Zainwestowany',  val: fmtPLN(lastCapital), cls: 'amt' },
-    { label: 'Zysk / Strata',
+    { label: t('hist.s.inv'),  val: fmtPLN(lastCapital), cls: 'amt' },
+    { label: t('hist.s.pnl'),
       val: `<span class="amt">${fmtPLN(capitalGain, true)}</span> (${fmtPct(capitalGainPct)})`,
       cls: capitalGain >= 0 ? 'pos' : 'neg' },
   ];
@@ -1676,8 +1828,8 @@ async function renderHistoriaTab() {
   lineChartBig = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets: [
-      { label: 'Wycena portfela', data: values, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: entries.length > 60 ? 0 : 3, pointBackgroundColor: portColor, borderWidth: 2.5 },
-      { label: 'Zainwestowany kapitał', data: capitalValues, borderColor: '#3b82f6', backgroundColor: 'transparent', fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, borderDash: [6, 4] },
+      { label: t('hist.portlbl'), data: values, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: entries.length > 60 ? 0 : 3, pointBackgroundColor: portColor, borderWidth: 2.5 },
+      { label: t('hist.caplbl'), data: capitalValues, borderColor: '#3b82f6', backgroundColor: 'transparent', fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, borderDash: [6, 4] },
     ]},
     options: {
       animation: false,
@@ -1709,7 +1861,7 @@ async function renderHistoriaTab() {
 
       // Switch to % mode: remove capital curve, add benchmark overlay
       lineChartBig.data.datasets = [
-        { label: 'Wycena portfela', data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: entries.length > 60 ? 0 : 3, pointBackgroundColor: portColor, borderWidth: 2.5 },
+        { label: t('hist.portlbl'), data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: entries.length > 60 ? 0 : 3, pointBackgroundColor: portColor, borderWidth: 2.5 },
         { label: bm.label, data: idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null), borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
       ];
       lineChartBig.options.scales.y.ticks.callback = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
@@ -1718,7 +1870,7 @@ async function renderHistoriaTab() {
       const alpha = diffPct - bmReturn;
       statsGrid.innerHTML = [...baseStats,
         { label: `${bm.label} zmiana`, val: fmtPct(bmReturn), cls: bmReturn >= 0 ? 'pos' : 'neg' },
-        { label: 'Alpha',              val: fmtPct(alpha),    cls: alpha >= 0  ? 'pos' : 'neg' },
+        { label: t('hist.s.alpha'),    val: fmtPct(alpha),    cls: alpha >= 0  ? 'pos' : 'neg' },
       ].map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
         <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
     } catch(e) { console.warn('benchmark failed:', e.message); }
@@ -1744,39 +1896,39 @@ function logTransaction(type, h) {
 function renderTransakcjeTab() {
   const el = document.getElementById('transakcjeContent');
   if (!transactions.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p style="font-size:16px;color:var(--text);font-weight:600">Brak transakcji</p><p>Transakcje pojawią się tutaj po dodaniu lub sprzedaniu spółek</p></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p style="font-size:16px;color:var(--text);font-weight:600">${t('tran.empty.t')}</p><p>${t('tran.empty.s')}</p></div>`;
     return;
   }
   el.innerHTML = `
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th style="text-align:left">Data</th>
-          <th style="text-align:left">Typ</th>
-          <th style="text-align:left">Spółka</th>
-          <th>Ilość</th>
-          <th>Cena</th>
-          <th>Wartość</th>
-          <th style="text-align:left">Notatka</th>
+          <th style="text-align:left">${t('tran.h.date')}</th>
+          <th style="text-align:left">${t('tran.h.type')}</th>
+          <th style="text-align:left">${t('tran.h.company')}</th>
+          <th>${t('tran.h.qty')}</th>
+          <th>${t('tran.h.price')}</th>
+          <th>${t('tran.h.value')}</th>
+          <th style="text-align:left">${t('tran.h.note')}</th>
         </tr></thead>
         <tbody>
-          ${transactions.map(t => {
-            const isDiv = t.type === 'DIV';
-            const val   = isDiv ? t.price : t.qty * t.price;
-            const typeBadge = t.type === 'BUY'  ? '<span class="badge pos">KUP</span>'
-                            : t.type === 'SELL' ? '<span class="badge neg">SPRZEDAJ</span>'
-                            :                     '<span class="badge div">DYW</span>';
+          ${transactions.map(tx => {
+            const isDiv = tx.type === 'DIV';
+            const val   = isDiv ? tx.price : tx.qty * tx.price;
+            const typeBadge = tx.type === 'BUY'  ? `<span class="badge pos">${t('tran.buy')}</span>`
+                            : tx.type === 'SELL' ? `<span class="badge neg">${t('tran.sell')}</span>`
+                            :                      `<span class="badge div">${t('tran.div')}</span>`;
             return `<tr>
-              <td style="text-align:left;color:var(--muted);font-size:12px">${t.date}</td>
+              <td style="text-align:left;color:var(--muted);font-size:12px">${tx.date}</td>
               <td style="text-align:left">${typeBadge}</td>
               <td style="text-align:left">
-                <div class="sym">${t.symbol}</div>
-                <div class="sym-name">${t.name !== t.symbol ? t.name : ''}</div>
+                <div class="sym">${tx.symbol}</div>
+                <div class="sym-name">${tx.name !== tx.symbol ? tx.name : ''}</div>
               </td>
-              <td>${isDiv ? '—' : fmt(t.qty, '', 0, 4)}</td>
-              <td>${isDiv ? '—' : fmtCur(t.price, t.currency)}</td>
-              <td>${fmtCur(val, t.currency)}</td>
-              <td style="text-align:left;color:var(--muted);font-size:12px">${t.note || ''}</td>
+              <td>${isDiv ? '—' : fmt(tx.qty, '', 0, 4)}</td>
+              <td>${isDiv ? '—' : fmtCur(tx.price, tx.currency)}</td>
+              <td>${fmtCur(val, tx.currency)}</td>
+              <td style="text-align:left;color:var(--muted);font-size:12px">${tx.note || ''}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -1947,11 +2099,11 @@ function renderDivHTML(rows, el) {
           <th>Kwota (PLN)</th>
         </tr></thead>
         <tbody>
-          ${recorded.map(t => `<tr>
-            <td style="text-align:left;color:var(--muted);font-size:12px">${t.date}</td>
-            <td style="text-align:left"><div class="sym">${t.symbol}</div></td>
-            <td>${fmtCur(t.price, t.currency)}</td>
-            <td>${fmtPLN(toPLN(t.price, t.currency))}</td>
+          ${recorded.map(rec => `<tr>
+            <td style="text-align:left;color:var(--muted);font-size:12px">${rec.date}</td>
+            <td style="text-align:left"><div class="sym">${rec.symbol}</div></td>
+            <td>${fmtCur(rec.price, rec.currency)}</td>
+            <td>${fmtPLN(toPLN(rec.price, rec.currency))}</td>
           </tr>`).join('')}
         </tbody>
       </table></div>
@@ -2151,11 +2303,11 @@ async function refreshAll() {
     await fetchQuotes(symbols);
     setStatus('ok');
     document.getElementById('lastUpdate').textContent =
-      'Odświeżono: ' + new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+      t('status.updated') + ': ' + new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     console.error(e);
     setStatus('err');
-    document.getElementById('lastUpdate').textContent = 'Błąd danych';
+    document.getElementById('lastUpdate').textContent = t('status.error');
     toast('Nie udało się pobrać danych rynkowych', true);
   }
   render();
@@ -2166,10 +2318,10 @@ function setStatus(state) {
   const btn = document.getElementById('refreshBtn');
   if (state === 'loading') {
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Ładowanie…';
+    btn.innerHTML = `<span class="spinner"></span> ${t('status.loading')}`;
   } else {
     btn.disabled = false;
-    btn.innerHTML = '<span id="refreshIcon">↻</span> Odśwież';
+    btn.innerHTML = `<span id="refreshIcon">↻</span> <span data-i18n="hdr.refresh">${t('hdr.refresh')}</span>`;
   }
 }
 
@@ -2653,6 +2805,7 @@ setInterval(refreshAll, 5 * 60 * 1000);
 setInterval(renderMarketStatus, 60 * 1000);
 initThemeBtn();
 initPrivacy();
+applyI18n();
 applyColVis();
 renderMarketStatus();
 checkAuth();
