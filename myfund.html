@@ -168,7 +168,7 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .row-menu-wrap{position:relative;display:inline-block}
 .row-menu-btn{background:none;border:none;cursor:pointer;padding:4px 10px;border-radius:5px;font-size:18px;font-weight:700;color:var(--muted);line-height:1;transition:all .2s}
 .row-menu-btn:hover{color:var(--text);background:rgba(255,255,255,.07)}
-.row-menu-drop{display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:155px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.row-menu-drop{display:none;position:fixed;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:5px;min-width:155px;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .row-menu-drop button{display:block;width:100%;background:none;border:none;cursor:pointer;padding:8px 12px;border-radius:6px;font-size:13px;font-weight:600;color:var(--text);text-align:left;transition:background .15s}
 .row-menu-drop button:hover{background:rgba(255,255,255,.07)}
 .row-menu-drop .m-del{color:var(--red)}.row-menu-drop .m-del:hover{background:rgba(239,68,68,.12)}
@@ -241,15 +241,15 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   /* Cards */
   .cards{grid-template-columns:repeat(2,1fr);gap:10px}
 
-  /* Table – ukryj mniej istotne kolumny na mobile */
-  thead th:nth-child(3),tbody td:nth-child(3),
-  thead th:nth-child(6),tbody td:nth-child(6),
-  thead th:nth-child(9),tbody td:nth-child(9),
-  thead th:nth-child(10),tbody td:nth-child(10),
-  thead th:nth-child(11),tbody td:nth-child(11),
-  thead th:nth-child(12),tbody td:nth-child(12),
-  thead th:nth-child(13),tbody td:nth-child(13),
-  thead th:nth-child(14),tbody td:nth-child(14){display:none}
+  /* Holdings table – ukryj mniej istotne kolumny na mobile */
+  #holdingsTable thead th:nth-child(3),#holdingsTable tbody td:nth-child(3),
+  #holdingsTable thead th:nth-child(6),#holdingsTable tbody td:nth-child(6),
+  #holdingsTable thead th:nth-child(9),#holdingsTable tbody td:nth-child(9),
+  #holdingsTable thead th:nth-child(10),#holdingsTable tbody td:nth-child(10),
+  #holdingsTable thead th:nth-child(11),#holdingsTable tbody td:nth-child(11),
+  #holdingsTable thead th:nth-child(12),#holdingsTable tbody td:nth-child(12),
+  #holdingsTable thead th:nth-child(13),#holdingsTable tbody td:nth-child(13),
+  #holdingsTable thead th:nth-child(14),#holdingsTable tbody td:nth-child(14){display:none}
 
   /* Modal jako bottom-sheet */
   .overlay{align-items:flex-end}
@@ -267,8 +267,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 }
 @media(max-width:400px){
   .cards{grid-template-columns:1fr}
-  thead th:nth-child(2),tbody td:nth-child(2),
-  thead th:nth-child(7),tbody td:nth-child(7){display:none}
+  #holdingsTable thead th:nth-child(2),#holdingsTable tbody td:nth-child(2),
+  #holdingsTable thead th:nth-child(7),#holdingsTable tbody td:nth-child(7){display:none}
 }
 
 /* ── LOGIN ── */
@@ -1240,7 +1240,13 @@ function toggleRowMenu(id, btn) {
   if (_openMenuId === id) { closeRowMenus(); return; }
   closeRowMenus();
   _openMenuId = id;
-  btn.nextElementSibling.style.display = 'block';
+  const drop = btn.nextElementSibling;
+  const rect = btn.getBoundingClientRect();
+  drop.style.position = 'fixed';
+  drop.style.top  = (rect.bottom + 4) + 'px';
+  drop.style.right = (window.innerWidth - rect.right) + 'px';
+  drop.style.left  = 'auto';
+  drop.style.display = 'block';
 }
 function closeRowMenus() {
   document.querySelectorAll('.row-menu-drop').forEach(d => d.style.display = 'none');
