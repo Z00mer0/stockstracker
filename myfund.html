@@ -295,7 +295,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
-    <button class="theme-toggle" id="langToggle" onclick="setLang(lang==='pl'?'en':'pl')">🇬🇧 EN</button>
+    <button class="theme-toggle" id="langToggle" onclick="toggleLang()">🇬🇧 EN</button>
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
     <div id="mktStatus" class="mkt-status"></div>
     <div class="status">
@@ -842,6 +842,7 @@ function applyI18n() {
   if (lg) lg.textContent = lang === 'pl' ? '🇬🇧 EN' : '🇵🇱 PL';
 }
 
+function toggleLang() { setLang(lang === 'pl' ? 'en' : 'pl'); }
 function setLang(l) {
   lang = l;
   localStorage.setItem('lang', l);
