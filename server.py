@@ -150,7 +150,10 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            body = load_data(username)
+            try:
+                body = load_data(username)
+            except Exception as e:
+                self.send_json(503, {'error': 'db_error', 'detail': str(e)}); return
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')

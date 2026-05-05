@@ -2512,25 +2512,25 @@ async function checkAuth() {
   authToken = localStorage.getItem('myfund_token') || null;
   if (!authToken) { await showLogin(); return; }
 
-  // Try server with short timeout — if it times out (Render cold start), fall back to
-  // localStorage and retry in the background so the app is usable immediately.
+  // Try server — on timeout (Render/Neon cold start) fall back to localStorage and retry.
   let serverOk = false;
   try {
     const r = await fetch(`/api/data?t=${Date.now()}`, {
       headers: { 'X-Auth-Token': authToken },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(10000),
     });
     if (r.status === 401) {
       authToken = null; localStorage.removeItem('myfund_token');
       await showLogin(); return;
     }
+    if (!r.ok) throw new Error('http_' + r.status); // 503 db error → catch → retry
     const d = await r.json();
     applyServerData(d);
     const stored = JSON.parse(localStorage.getItem('myfund_user') || 'null');
     if (stored) { currentUser = stored; updateUserChip(); }
     serverOk = true;
   } catch {
-    // Server unavailable (sleeping) — start with localStorage data if we have any
+    // Server unavailable (sleeping/starting) — use localStorage data while retrying
     const stored = JSON.parse(localStorage.getItem('myfund_user') || 'null');
     if (!portfolio.holdings.length && !stored) { await showLogin(); return; }
     if (stored) { currentUser = stored; updateUserChip(); }
@@ -2552,9 +2552,13 @@ async function retryServerSync() {
     try {
       const r = await fetch(`/api/data?t=${Date.now()}`, {
         headers: { 'X-Auth-Token': authToken },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(12000),
       });
-      if (r.status === 401) return;
+      if (r.status === 401) {
+        authToken = null; localStorage.removeItem('myfund_token');
+        showLogin(); return;
+      }
+      if (!r.ok) throw new Error('http_' + r.status); // db error → retry
       const d = await r.json();
       applyServerData(d);
       serverLoaded = true;
@@ -2568,7 +2572,7 @@ async function retryServerSync() {
 }
 
 function applyServerData(d) {
-  if (d.portfolio?.holdings?.length > 0) {
+  if (d.portfolio && Array.isArray(d.portfolio.holdings)) {
     portfolio    = d.portfolio;
     // Merge snapshots: keep all local entries + server entries (server wins on conflict)
     snapshots    = { ...snapshots, ...(d.snapshots || {}) };
