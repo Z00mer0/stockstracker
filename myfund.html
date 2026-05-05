@@ -365,8 +365,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
         <table id="holdingsTable" style="display:none">
           <thead>
             <tr>
-              <th><span data-i18n="th.company">Spółka</span></th>
-              <th><span data-i18n="th.qty">Ilość</span></th>
+              <th class="sortable" data-sort="name" onclick="setSortBy('name')"><span data-i18n="th.company">Spółka</span><span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="qty" onclick="setSortBy('qty')"><span data-i18n="th.qty">Ilość</span><span class="sort-icon"></span></th>
               <th><span data-i18n="th.avgbuy">Śr. zakup</span> <span class="tip" data-tip="Średnia cena zakupu, po której nabyłeś akcje (ważona ilością przy uśrednianiu)">i</span></th>
               <th><span data-i18n="th.price">Cena teraz</span></th>
               <th class="sortable" data-sort="chgPct" onclick="setSortBy('chgPct')"><span data-i18n="th.daychg">Zmiana dz.</span><span class="sort-icon"></span><span class="tip" data-tip="Zmiana ceny względem poprzedniego zamknięcia giełdy">i</span></th>
@@ -703,7 +703,7 @@ function initPrivacy() {
 }
 
 // ─── I18N ─────────────────────────────────────────────────────────────────────
-let lang = localStorage.getItem('lang') || 'pl';
+var lang = localStorage.getItem('lang') || 'pl';
 
 const STRINGS = {
   'tab.portfel':    { pl:'Portfel',    en:'Portfolio' },
@@ -1377,7 +1377,7 @@ function render() {
     const moic     = valuePLN !== null ? calcMOIC(costPLN, valuePLN) : null;
     const irrDate  = avgBuyDate(h.symbol) || h.date;
     const irr      = valuePLN !== null ? calcIRR(costPLN, valuePLN, irrDate) : null;
-    return { h, cur, price, chgPct, name, valuePLN, costPLN, dayChg, pnlPLN, pnlPct, days, moic, irr };
+    return { h, cur, price, chgPct, name, qty: h.qty, valuePLN, costPLN, dayChg, pnlPLN, pnlPct, days, moic, irr };
   });
 
   // Accumulate totals
@@ -1390,7 +1390,11 @@ function render() {
 
   // Sort
   if (sortBy) {
-    rows.sort((a, b) => ((a[sortBy] ?? -Infinity) - (b[sortBy] ?? -Infinity)) * sortDir);
+    rows.sort((a, b) => {
+      const av = a[sortBy], bv = b[sortBy];
+      if (typeof av === 'string') return av.localeCompare(bv ?? '') * sortDir;
+      return ((av ?? -Infinity) - (bv ?? -Infinity)) * sortDir;
+    });
   }
 
   // Update sort icons in thead
