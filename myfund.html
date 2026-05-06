@@ -350,7 +350,6 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
         <div class="panel-actions">
           <div class="col-gear-wrap">
             <button class="col-gear-btn" onclick="toggleColPanel()" title="Dostosuj kolumny">⚙️</button>
-            <div class="col-gear-panel" id="colGearPanel"></div>
           </div>
           <button class="btn btn-outline" onclick="openImport()" data-i18n="port.import">⬆ Import CSV</button>
           <button class="btn btn-green" onclick="openAdd()" data-i18n="port.add">+ Dodaj spółkę</button>
@@ -2871,5 +2870,6 @@ applyColVis();
 renderMarketStatus();
 checkAuth();
 </script>
+<div class="col-gear-panel" id="colGearPanel"></div>
 </body>
 </html>
