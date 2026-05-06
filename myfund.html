@@ -1771,21 +1771,27 @@ function makeGrad(color) {
 }
 
 function computeTWR(entries) {
-  // Time-Weighted Return: neutralizes cash flows (BUY=in, SELL=out) between snapshots
-  // so % reflects only market movements, not deposits/withdrawals.
-  const cfByDate = {};
-  for (const tx of transactions) {
-    if (tx.type !== 'BUY' && tx.type !== 'SELL') continue;
-    const rate = fxRates[tx.currency] || fxRates.USD || 3.95;
-    const cf = tx.qty * tx.price * rate * (tx.type === 'BUY' ? 1 : -1);
-    cfByDate[tx.date] = (cfByDate[tx.date] || 0) + cf;
-  }
+  // TWR: for each sub-period between consecutive snapshots, collect ALL
+  // external cash flows (BUY/SELL) that occurred in that date range — not
+  // just on the snapshot date itself, since snapshots are taken the next
+  // time the user opens the app, not necessarily the day of the purchase.
+  const txSorted = [...transactions]
+    .filter(t => t.type === 'BUY' || t.type === 'SELL')
+    .sort((a, b) => a.date.localeCompare(b.date));
+
   const result = [0];
   let cumFactor = 1;
   for (let i = 1; i < entries.length; i++) {
-    const vPrev = entries[i - 1][1];
+    const [datePrev, vPrev] = entries[i - 1];
     const [dateCurr, vCurr] = entries[i];
-    const cf = cfByDate[dateCurr] || 0;
+    // Sum all net flows strictly after datePrev and up to (including) dateCurr
+    let cf = 0;
+    for (const tx of txSorted) {
+      if (tx.date <= datePrev) continue;
+      if (tx.date > dateCurr) break;
+      const rate = fxRates[tx.currency] || fxRates.USD || 3.95;
+      cf += tx.qty * tx.price * rate * (tx.type === 'BUY' ? 1 : -1);
+    }
     const r = vPrev > 0 ? (vCurr - cf) / vPrev - 1 : 0;
     cumFactor *= (1 + r);
     result.push(+((cumFactor - 1) * 100).toFixed(3));
@@ -1815,10 +1821,14 @@ async function renderHistoriaTab() {
   if (entries.length < 2) {
     const firstBuy = transactions.filter(t => t.type === 'BUY').sort((a, b) => a.date.localeCompare(b.date))[0];
     if (firstBuy && firstBuy.date < today() && !snapshots[firstBuy.date]) {
-      const costPLN = portfolio.holdings.reduce((s, h) => {
-        const rate = fxRates[h.currency] || fxRates.USD || 3.95;
-        return s + h.qty * h.avgPrice * rate;
-      }, 0);
+      // Use only purchases made on the very first buy date as the starting value.
+      // Using total all-time capital would incorrectly inflate the starting point.
+      const costPLN = transactions
+        .filter(t => t.type === 'BUY' && t.date === firstBuy.date)
+        .reduce((s, t) => {
+          const rate = fxRates[t.currency] || fxRates.USD || 3.95;
+          return s + t.qty * t.price * rate;
+        }, 0);
       entries = [[firstBuy.date, parseFloat(costPLN.toFixed(2))], ...entries]
         .sort((a, b) => a[0].localeCompare(b[0]));
     }
