@@ -1746,7 +1746,10 @@ async function renderHistoriaTab() {
   const ctx = document.getElementById('lineChartBig').getContext('2d');
   if (lineChartBig) { lineChartBig.destroy(); lineChartBig = null; }
 
+  const firstBuyDate = transactions.filter(t => t.type === 'BUY').map(t => t.date).sort()[0];
+
   let entries = Object.entries(snapshots).sort((a, b) => a[0].localeCompare(b[0]));
+  if (firstBuyDate) entries = entries.filter(([d]) => d >= firstBuyDate);
   if (currentTF > 0) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - currentTF);
@@ -1793,9 +1796,11 @@ async function renderHistoriaTab() {
           if (!bmCache[cacheKey]) bmCache[cacheKey] = await fetchIndexHistory(bm0.id, range);
           if (lineChartBig !== captured0) return;
           const idxMap   = bmCache[cacheKey];
-          const bmDates  = Object.keys(idxMap).sort();
+          let bmDates  = Object.keys(idxMap).sort();
+          if (firstBuyDate) bmDates = bmDates.filter(d => d >= firstBuyDate);
           const bmValues = bmDates.map(d => idxMap[d]);
           const bmFirst  = bmValues[0];
+          if (!bmFirst) return;
           const bmPct    = bmValues.map(v => +((v / bmFirst - 1) * 100).toFixed(3));
           const bmLabels = bmDates.map(d => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
           lineChartBig.destroy();
