@@ -1759,6 +1759,29 @@ function buildCapitalCurve(dates) {
   });
 }
 
+function computeTWR(entries) {
+  // Time-Weighted Return: neutralizes cash flows (BUY=in, SELL=out) between snapshots
+  // so % reflects only market movements, not deposits/withdrawals.
+  const cfByDate = {};
+  for (const tx of transactions) {
+    if (tx.type !== 'BUY' && tx.type !== 'SELL') continue;
+    const rate = fxRates[tx.currency] || fxRates.USD || 3.95;
+    const cf = tx.qty * tx.price * rate * (tx.type === 'BUY' ? 1 : -1);
+    cfByDate[tx.date] = (cfByDate[tx.date] || 0) + cf;
+  }
+  const result = [0];
+  let cumFactor = 1;
+  for (let i = 1; i < entries.length; i++) {
+    const vPrev = entries[i - 1][1];
+    const [dateCurr, vCurr] = entries[i];
+    const cf = cfByDate[dateCurr] || 0;
+    const r = vPrev > 0 ? (vCurr - cf) / vPrev - 1 : 0;
+    cumFactor *= (1 + r);
+    result.push(+((cumFactor - 1) * 100).toFixed(3));
+  }
+  return result;
+}
+
 async function renderHistoriaTab() {
   const ctx = document.getElementById('lineChartBig').getContext('2d');
   if (lineChartBig) { lineChartBig.destroy(); lineChartBig = null; }
@@ -1883,13 +1906,15 @@ async function renderHistoriaTab() {
   }
 
   // ── TRYB: STOPA ZWROTU (%) ──────────────────────────────────────────────────
-  const portPct  = values.map(v => +((v / first - 1) * 100).toFixed(3));
+  const portPct  = computeTWR(entries);
+  const twrTotal = portPct[portPct.length - 1];
+  const pctColor = twrTotal >= 0 ? '#22c55e' : '#ef4444';
   const baseStats = [
-    { label: t('hist.s.start'),  val: fmtPLN(first),      cls: 'amt' },
-    { label: t('hist.s.end'),    val: fmtPLN(last),       cls: 'amt' },
-    { label: t('hist.s.chgpct'),val: fmtPct(diffPct),    cls: diff >= 0 ? 'pos' : 'neg' },
-    { label: t('hist.s.max'),    val: fmtPLN(maxVal),     cls: 'amt' },
-    { label: t('hist.s.min'),    val: fmtPLN(minVal),     cls: 'amt' },
+    { label: t('hist.s.start'),  val: fmtPLN(first),       cls: 'amt' },
+    { label: t('hist.s.end'),    val: fmtPLN(last),        cls: 'amt' },
+    { label: t('hist.s.chgpct'),val: fmtPct(twrTotal),    cls: twrTotal >= 0 ? 'pos' : 'neg' },
+    { label: t('hist.s.max'),    val: fmtPLN(maxVal),      cls: 'amt' },
+    { label: t('hist.s.min'),    val: fmtPLN(minVal),      cls: 'amt' },
     { label: t('hist.s.days'),   val: entries.length + ' dni', cls: '' },
   ];
   statsGrid.innerHTML = baseStats.map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
@@ -1898,7 +1923,7 @@ async function renderHistoriaTab() {
   lineChartBig = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets: [
-      { label: t('hist.portlbl'), data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
+      { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: pctColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
     ]},
     options: {
       animation: false,
@@ -1926,12 +1951,12 @@ async function renderHistoriaTab() {
 
       const bmReturn = ((idxVals[idxVals.length - 1] / idxFirst) - 1) * 100;
       lineChartBig.data.datasets = [
-        { label: t('hist.portlbl'), data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
+        { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: pctColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
         { label: bm.label, data: idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null), borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
       ];
       lineChartBig.update();
 
-      const alpha = diffPct - bmReturn;
+      const alpha = twrTotal - bmReturn;
       statsGrid.innerHTML = [...baseStats,
         { label: `${bm.label} zmiana`, val: fmtPct(bmReturn), cls: bmReturn >= 0 ? 'pos' : 'neg' },
         { label: t('hist.s.alpha'),    val: fmtPct(alpha),    cls: alpha >= 0  ? 'pos' : 'neg' },
