@@ -1759,6 +1759,17 @@ function buildCapitalCurve(dates) {
   });
 }
 
+function makeGrad(color) {
+  return (scriptCtx) => {
+    const { chart: { ctx: c, chartArea } } = scriptCtx;
+    if (!chartArea) return color + '00';
+    const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    g.addColorStop(0, color + '44');
+    g.addColorStop(1, color + '00');
+    return g;
+  };
+}
+
 function computeTWR(entries) {
   // Time-Weighted Return: neutralizes cash flows (BUY=in, SELL=out) between snapshots
   // so % reflects only market movements, not deposits/withdrawals.
@@ -1890,15 +1901,32 @@ async function renderHistoriaTab() {
     lineChartBig = new Chart(ctx, {
       type: 'line',
       data: { labels, datasets: [
-        { label: t('hist.portlbl'), data: values, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
+        { label: t('hist.portlbl'), data: values, borderColor: portColor, backgroundColor: makeGrad(portColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
         { label: t('hist.caplbl'), data: capitalValues, borderColor: '#3b82f6', backgroundColor: 'transparent', fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, borderDash: [6, 4] },
       ]},
       options: {
         animation: false,
-        plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } }, tooltip: { mode: 'index', intersect: false } },
+        plugins: {
+          legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } },
+          tooltip: {
+            mode: 'index', intersect: false,
+            callbacks: {
+              label: (item) => {
+                if (item.datasetIndex === 0) return ` ${t('hist.portlbl')}: ${fmtPLN(item.raw)}`;
+                return ` ${t('hist.caplbl')}: ${fmtPLN(item.raw)}`;
+              },
+              afterLabel: (item) => {
+                if (item.datasetIndex !== 0) return '';
+                const gain = item.raw - first;
+                const gPct = first > 0 ? gain / first * 100 : 0;
+                return ` Zysk/Strata: ${fmtPLN(gain, true)} (${gPct >= 0 ? '+' : ''}${gPct.toFixed(2)}%)`;
+              },
+            }
+          }
+        },
         scales: {
           x: { ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 12 }, grid: { color: '#272f45' } },
-          y: { ticks: { color: '#8892a4', font: { size: 11 }, callback: v => fmtPLN(v) }, grid: { color: '#272f45' } }
+          y: { grace: '3%', ticks: { color: '#8892a4', font: { size: 11 }, callback: v => fmtPLN(v) }, grid: { color: '#272f45' } }
         }
       }
     });
@@ -1923,14 +1951,30 @@ async function renderHistoriaTab() {
   lineChartBig = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets: [
-      { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: pctColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
+      { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
     ]},
     options: {
       animation: false,
-      plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } }, tooltip: { mode: 'index', intersect: false } },
+      plugins: {
+        legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            label: (item) => {
+              const v = item.raw;
+              if (v == null) return null;
+              return ` ${item.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+            },
+            footer: (items) => {
+              const i = items[0]?.dataIndex;
+              return i != null ? ` Wycena: ${fmtPLN(values[i])}` : '';
+            },
+          }
+        }
+      },
       scales: {
         x: { ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 12 }, grid: { color: '#272f45' } },
-        y: { ticks: { color: '#8892a4', font: { size: 11 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' }, grid: { color: '#272f45' } }
+        y: { grace: '5%', ticks: { color: '#8892a4', font: { size: 11 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' }, grid: { color: '#272f45' } }
       }
     }
   });
@@ -1951,7 +1995,7 @@ async function renderHistoriaTab() {
 
       const bmReturn = ((idxVals[idxVals.length - 1] / idxFirst) - 1) * 100;
       lineChartBig.data.datasets = [
-        { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: pctColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
+        { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
         { label: bm.label, data: idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null), borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
       ];
       lineChartBig.update();
