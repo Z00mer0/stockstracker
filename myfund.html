@@ -1759,6 +1759,14 @@ function buildCapitalCurve(dates) {
   });
 }
 
+function yBounds(pctArray) {
+  const vals = pctArray.filter(v => v != null && isFinite(v));
+  if (!vals.length) return {};
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const margin = Math.max(1, (hi - lo) * 0.2);
+  return { min: parseFloat((lo - margin).toFixed(2)), max: parseFloat((hi + margin).toFixed(2)) };
+}
+
 function makeGrad(color) {
   return (scriptCtx) => {
     const { chart: { ctx: c, chartArea } } = scriptCtx;
@@ -1984,7 +1992,7 @@ async function renderHistoriaTab() {
       },
       scales: {
         x: { ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 12 }, grid: { color: '#272f45' } },
-        y: { grace: '5%', ticks: { color: '#8892a4', font: { size: 11 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' }, grid: { color: '#272f45' } }
+        y: { ...yBounds(portPct), ticks: { color: '#8892a4', font: { size: 11 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' }, grid: { color: '#272f45' } }
       }
     }
   });
@@ -2004,10 +2012,14 @@ async function renderHistoriaTab() {
       if (!idxFirst) return;
 
       const bmReturn = ((idxVals[idxVals.length - 1] / idxFirst) - 1) * 100;
+      const bmData = idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null);
       lineChartBig.data.datasets = [
         { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
-        { label: bm.label, data: idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null), borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
+        { label: bm.label, data: bmData, borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
       ];
+      const bounds = yBounds([...portPct, ...bmData]);
+      lineChartBig.options.scales.y.min = bounds.min;
+      lineChartBig.options.scales.y.max = bounds.max;
       lineChartBig.update();
 
       const alpha = twrTotal - bmReturn;
