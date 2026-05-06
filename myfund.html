@@ -927,9 +927,14 @@ function toggleColPanel() {
   if (isOpen) return;
   buildColPanel();
   const rect = document.querySelector('.col-gear-btn').getBoundingClientRect();
+  const w = 210, margin = 8;
+  const left = Math.min(
+    Math.max(margin, rect.right - w),
+    window.innerWidth - w - margin
+  );
   panel.style.top   = (rect.bottom + 6) + 'px';
-  panel.style.right = (window.innerWidth - rect.right) + 'px';
-  panel.style.left  = 'auto';
+  panel.style.left  = left + 'px';
+  panel.style.right = 'auto';
   panel.classList.add('open');
 }
 
