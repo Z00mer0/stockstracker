@@ -155,6 +155,10 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .tf-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
 .tf-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .tf-btn:hover:not(.active){color:var(--text)}
+.hist-mode-bar{display:flex;gap:0;margin-bottom:18px;border:1px solid var(--border);border-radius:9px;overflow:hidden;width:fit-content}
+.hist-mode-btn{background:none;border:none;color:var(--muted);padding:7px 20px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;white-space:nowrap}
+.hist-mode-btn.active{background:var(--accent);color:#fff}
+.hist-mode-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.05)}
 .bm-bar{display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
 .bm-label{font-size:12px;color:var(--muted);white-space:nowrap;margin-right:2px}
 .bm-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;white-space:nowrap}
@@ -425,7 +429,12 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     </div>
   </div>
 
-  <div class="bm-bar">
+  <div class="hist-mode-bar">
+    <button class="hist-mode-btn active" id="modeBtn-pln" onclick="setHistMode('pln')">Wartość (PLN)</button>
+    <button class="hist-mode-btn" id="modeBtn-pct" onclick="setHistMode('pct')">Stopa zwrotu (%)</button>
+  </div>
+
+  <div class="bm-bar" id="hist-bm-bar" style="display:none">
     <span class="bm-label">Benchmark:</span>
     <button class="bm-btn active" onclick="setBenchmark(null,this)" data-i18n="hist.bm.none">Brak</button>
     <button class="bm-btn" onclick="setBenchmark('^GSPC',this)">S&amp;P 500</button>
@@ -1719,6 +1728,14 @@ function setBenchmark(id, btn) {
   renderHistoriaTab();
 }
 
+let histMode = 'pln';
+function setHistMode(mode) {
+  histMode = mode;
+  document.querySelectorAll('.hist-mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('modeBtn-' + mode)?.classList.add('active');
+  renderHistoriaTab();
+}
+
 function buildCapitalCurve(dates) {
   const sorted = [...transactions]
     .filter(t => t.type === 'BUY' || t.type === 'SELL')
@@ -1746,6 +1763,10 @@ async function renderHistoriaTab() {
   const ctx = document.getElementById('lineChartBig').getContext('2d');
   if (lineChartBig) { lineChartBig.destroy(); lineChartBig = null; }
 
+  // Show benchmark selector only in % mode
+  const bmBar = document.getElementById('hist-bm-bar');
+  if (bmBar) bmBar.style.display = histMode === 'pct' ? '' : 'none';
+
   const firstBuyDate = transactions.filter(t => t.type === 'BUY').map(t => t.date).sort()[0];
 
   let entries = Object.entries(snapshots).sort((a, b) => a[0].localeCompare(b[0]));
@@ -1757,12 +1778,8 @@ async function renderHistoriaTab() {
     entries = entries.filter(([d]) => d >= cutoffStr);
   }
 
-  // If fewer than 2 real snapshots, synthesize a starting point from the earliest BUY
-  // so the chart renders on day 1 (production often starts with 0–1 snapshots)
   if (entries.length < 2) {
-    const firstBuy = transactions
-      .filter(t => t.type === 'BUY')
-      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const firstBuy = transactions.filter(t => t.type === 'BUY').sort((a, b) => a.date.localeCompare(b.date))[0];
     if (firstBuy && firstBuy.date < today() && !snapshots[firstBuy.date]) {
       const costPLN = portfolio.holdings.reduce((s, h) => {
         const rate = fxRates[h.currency] || fxRates.USD || 3.95;
@@ -1778,43 +1795,42 @@ async function renderHistoriaTab() {
   if (entries.length < 2) {
     statsGrid.innerHTML = `<div class="hist-stat"><div class="hist-stat-label">Info</div>
       <div class="hist-stat-value" style="font-size:14px;color:var(--muted)">${t('hist.nodata')}</div></div>`;
-
-    // Render flat placeholder immediately; replace async if benchmark data arrives
     lineChartBig = new Chart(ctx, {
       type: 'line',
       data: { labels: ['Dziś'], datasets: [{ data: [0], borderColor: '#6366f1', borderWidth: 2, pointRadius: 0 }] },
       options: { animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
     });
-
-    const bm0 = BENCHMARKS.find(b => b.id === selectedBenchmark);
-    if (bm0) {
-      const captured0 = lineChartBig;
-      (async () => {
-        try {
-          const range    = tfToRange(currentTF);
-          const cacheKey = bm0.id + range;
-          if (!bmCache[cacheKey]) bmCache[cacheKey] = await fetchIndexHistory(bm0.id, range);
-          if (lineChartBig !== captured0) return;
-          const idxMap   = bmCache[cacheKey];
-          let bmDates  = Object.keys(idxMap).sort();
-          if (firstBuyDate) bmDates = bmDates.filter(d => d >= firstBuyDate);
-          const bmValues = bmDates.map(d => idxMap[d]);
-          const bmFirst  = bmValues[0];
-          if (!bmFirst) return;
-          const bmPct    = bmValues.map(v => +((v / bmFirst - 1) * 100).toFixed(3));
-          const bmLabels = bmDates.map(d => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
-          lineChartBig.destroy();
-          lineChartBig = new Chart(ctx, {
-            type: 'line',
-            data: { labels: bmLabels, datasets: [{ label: bm0.label, data: bmPct, borderColor: bm0.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] }] },
-            options: {
-              responsive: true, animation: false,
-              plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 } } }, tooltip: { mode: 'index', intersect: false } },
-              scales: { x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#272f45' } }, y: { ticks: { color: '#8892a4', callback: v => v.toFixed(1) + '%' }, grid: { color: '#272f45' } } }
-            }
-          });
-        } catch(e) { console.warn('benchmark failed:', e.message); }
-      })();
+    if (histMode === 'pct') {
+      const bm0 = BENCHMARKS.find(b => b.id === selectedBenchmark);
+      if (bm0) {
+        const captured0 = lineChartBig;
+        (async () => {
+          try {
+            const range    = tfToRange(currentTF);
+            const cacheKey = bm0.id + range;
+            if (!bmCache[cacheKey]) bmCache[cacheKey] = await fetchIndexHistory(bm0.id, range);
+            if (lineChartBig !== captured0) return;
+            const idxMap = bmCache[cacheKey];
+            let bmDates  = Object.keys(idxMap).sort();
+            if (firstBuyDate) bmDates = bmDates.filter(d => d >= firstBuyDate);
+            const bmValues = bmDates.map(d => idxMap[d]);
+            const bmFirst  = bmValues[0];
+            if (!bmFirst) return;
+            const bmPct    = bmValues.map(v => +((v / bmFirst - 1) * 100).toFixed(3));
+            const bmLabels = bmDates.map(d => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
+            lineChartBig.destroy();
+            lineChartBig = new Chart(ctx, {
+              type: 'line',
+              data: { labels: bmLabels, datasets: [{ label: bm0.label, data: bmPct, borderColor: bm0.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] }] },
+              options: {
+                responsive: true, animation: false,
+                plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 } } }, tooltip: { mode: 'index', intersect: false } },
+                scales: { x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#272f45' } }, y: { ticks: { color: '#8892a4', callback: v => (v>=0?'+':'') + v.toFixed(1) + '%' }, grid: { color: '#272f45' } } }
+              }
+            });
+          } catch(e) { console.warn('benchmark failed:', e.message); }
+        })();
+      }
     }
     return;
   }
@@ -1826,49 +1842,74 @@ async function renderHistoriaTab() {
   const diff      = last - first;
   const diffPct   = first > 0 ? (diff / first) * 100 : 0;
   const portColor = diff >= 0 ? '#22c55e' : '#ef4444';
+  const ptRadius  = entries.length > 60 ? 0 : 3;
 
-  // Capital curve for initial PLN render
-  const capitalValues  = buildCapitalCurve(entries.map(([d]) => d));
-  const lastCapital    = capitalValues[capitalValues.length - 1];
-  const capitalGain    = last - lastCapital;
-  const capitalGainPct = lastCapital > 0 ? (capitalGain / lastCapital) * 100 : null;
+  // ── TRYB: WARTOŚĆ (PLN) ─────────────────────────────────────────────────────
+  if (histMode === 'pln') {
+    const capitalValues  = buildCapitalCurve(entries.map(([d]) => d));
+    const lastCapital    = capitalValues[capitalValues.length - 1];
+    const capitalGain    = last - lastCapital;
+    const capitalGainPct = lastCapital > 0 ? (capitalGain / lastCapital) * 100 : null;
 
+    statsGrid.innerHTML = [
+      { label: t('hist.s.start'),  val: fmtPLN(first),                     cls: 'amt' },
+      { label: t('hist.s.end'),    val: fmtPLN(last),                      cls: 'amt' },
+      { label: t('hist.s.chgpln'),val: fmtPLN(diff, true),                cls: (diff >= 0 ? 'pos' : 'neg') + ' amt' },
+      { label: t('hist.s.chgpct'),val: fmtPct(diffPct),                   cls: diff >= 0 ? 'pos' : 'neg' },
+      { label: t('hist.s.max'),    val: fmtPLN(maxVal),                    cls: 'amt' },
+      { label: t('hist.s.min'),    val: fmtPLN(minVal),                    cls: 'amt' },
+      { label: t('hist.s.days'),   val: entries.length + ' dni',           cls: '' },
+      { label: t('hist.s.inv'),    val: fmtPLN(lastCapital),               cls: 'amt' },
+      { label: t('hist.s.pnl'),    val: `<span class="amt">${fmtPLN(capitalGain, true)}</span> (${fmtPct(capitalGainPct)})`, cls: capitalGain >= 0 ? 'pos' : 'neg' },
+    ].map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
+      <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
+
+    lineChartBig = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: t('hist.portlbl'), data: values, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
+        { label: t('hist.caplbl'), data: capitalValues, borderColor: '#3b82f6', backgroundColor: 'transparent', fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, borderDash: [6, 4] },
+      ]},
+      options: {
+        animation: false,
+        plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 12 }, grid: { color: '#272f45' } },
+          y: { ticks: { color: '#8892a4', font: { size: 11 }, callback: v => fmtPLN(v) }, grid: { color: '#272f45' } }
+        }
+      }
+    });
+    return;
+  }
+
+  // ── TRYB: STOPA ZWROTU (%) ──────────────────────────────────────────────────
+  const portPct  = values.map(v => +((v / first - 1) * 100).toFixed(3));
   const baseStats = [
-    { label: t('hist.s.start'),  val: fmtPLN(first),        cls: 'amt' },
-    { label: t('hist.s.end'),    val: fmtPLN(last),         cls: 'amt' },
-    { label: t('hist.s.chgpln'),val: fmtPLN(diff, true),   cls: (diff >= 0 ? 'pos' : 'neg') + ' amt' },
-    { label: t('hist.s.chgpct'),val: fmtPct(diffPct),      cls: diff >= 0 ? 'pos' : 'neg' },
-    { label: t('hist.s.max'),    val: fmtPLN(maxVal),       cls: 'amt' },
-    { label: t('hist.s.min'),    val: fmtPLN(minVal),       cls: 'amt' },
+    { label: t('hist.s.start'),  val: fmtPLN(first),      cls: 'amt' },
+    { label: t('hist.s.end'),    val: fmtPLN(last),       cls: 'amt' },
+    { label: t('hist.s.chgpct'),val: fmtPct(diffPct),    cls: diff >= 0 ? 'pos' : 'neg' },
+    { label: t('hist.s.max'),    val: fmtPLN(maxVal),     cls: 'amt' },
+    { label: t('hist.s.min'),    val: fmtPLN(minVal),     cls: 'amt' },
     { label: t('hist.s.days'),   val: entries.length + ' dni', cls: '' },
   ];
-  const initStats = [...baseStats,
-    { label: t('hist.s.inv'),  val: fmtPLN(lastCapital), cls: 'amt' },
-    { label: t('hist.s.pnl'),
-      val: `<span class="amt">${fmtPLN(capitalGain, true)}</span> (${fmtPct(capitalGainPct)})`,
-      cls: capitalGain >= 0 ? 'pos' : 'neg' },
-  ];
-  statsGrid.innerHTML = initStats.map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
+  statsGrid.innerHTML = baseStats.map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
     <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
 
-  // Render portfolio chart immediately in PLN mode
   lineChartBig = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets: [
-      { label: t('hist.portlbl'), data: values, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: entries.length > 60 ? 0 : 3, pointBackgroundColor: portColor, borderWidth: 2.5 },
-      { label: t('hist.caplbl'), data: capitalValues, borderColor: '#3b82f6', backgroundColor: 'transparent', fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, borderDash: [6, 4] },
+      { label: t('hist.portlbl'), data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
     ]},
     options: {
       animation: false,
       plugins: { legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } }, tooltip: { mode: 'index', intersect: false } },
       scales: {
         x: { ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 12 }, grid: { color: '#272f45' } },
-        y: { ticks: { color: '#8892a4', font: { size: 11 }, callback: v => fmtPLN(v) }, grid: { color: '#272f45' } }
+        y: { ticks: { color: '#8892a4', font: { size: 11 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' }, grid: { color: '#272f45' } }
       }
     }
   });
 
-  // Fetch benchmark async — update chart in-place when data arrives (non-blocking)
   const bm = BENCHMARKS.find(b => b.id === selectedBenchmark);
   if (!bm) return;
   const capturedChart = lineChartBig;
@@ -1884,14 +1925,10 @@ async function renderHistoriaTab() {
       if (!idxFirst) return;
 
       const bmReturn = ((idxVals[idxVals.length - 1] / idxFirst) - 1) * 100;
-      const portPct  = values.map(v => +((v / first - 1) * 100).toFixed(3));
-
-      // Switch to % mode: remove capital curve, add benchmark overlay
       lineChartBig.data.datasets = [
-        { label: t('hist.portlbl'), data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: entries.length > 60 ? 0 : 3, pointBackgroundColor: portColor, borderWidth: 2.5 },
+        { label: t('hist.portlbl'), data: portPct, borderColor: portColor, backgroundColor: portColor + '18', fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: portColor, borderWidth: 2.5 },
         { label: bm.label, data: idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null), borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
       ];
-      lineChartBig.options.scales.y.ticks.callback = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
       lineChartBig.update();
 
       const alpha = diffPct - bmReturn;
