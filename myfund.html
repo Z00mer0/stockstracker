@@ -1784,7 +1784,7 @@ function computeTWR(entries) {
   // just on the snapshot date itself, since snapshots are taken the next
   // time the user opens the app, not necessarily the day of the purchase.
   const txSorted = [...transactions]
-    .filter(t => t.type === 'BUY' || t.type === 'SELL')
+    .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DEP' || t.type === 'WIT')
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const result = [0];
@@ -1798,7 +1798,9 @@ function computeTWR(entries) {
       if (tx.date <= datePrev) continue;
       if (tx.date > dateCurr) break;
       const rate = fxRates[tx.currency] || fxRates.USD || 3.95;
-      cf += tx.qty * tx.price * rate * (tx.type === 'BUY' ? 1 : -1);
+      if (tx.type === 'DEP') cf += tx.qty * tx.price * rate;
+      else if (tx.type === 'WIT') cf -= tx.qty * tx.price * rate;
+      else cf += tx.qty * tx.price * rate * (tx.type === 'BUY' ? 1 : -1);
     }
     const r = vPrev > 0 ? (vCurr - cf) / vPrev - 1 : 0;
     cumFactor *= (1 + r);
@@ -2505,11 +2507,26 @@ function openAddCash() {
 }
 function closeCash() { document.getElementById('cashOverlay').classList.remove('open'); }
 function saveCash() {
+  const oldBalances = { ...cashBalances };
   ['PLN','USD','EUR','GBP'].forEach(cur => {
     const v = parseFloat(document.getElementById('c-' + cur).value);
     cashBalances[cur] = isNaN(v) ? 0 : Math.max(0, v);
   });
+  // Log deposit/withdrawal for each currency that changed
+  ['PLN','USD','EUR','GBP'].forEach(cur => {
+    const delta = (cashBalances[cur] || 0) - (oldBalances[cur] || 0);
+    if (Math.abs(delta) < 0.01) return;
+    const rate = cur === 'PLN' ? 1 : (fxRates[cur] || fxRates.USD || 3.95);
+    transactions.unshift({
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 5) + cur,
+      type: delta > 0 ? 'DEP' : 'WIT',
+      symbol: 'CASH', name: `Gotówka ${cur}`,
+      qty: Math.abs(delta), price: rate, currency: 'PLN',
+      date: today(), note: delta > 0 ? 'Wpłata gotówki' : 'Wypłata gotówki',
+    });
+  });
   save(SK_CASH, cashBalances);
+  save(SK_TRAN, transactions);
   closeCash();
   render();
   toast('Gotówka zaktualizowana');
