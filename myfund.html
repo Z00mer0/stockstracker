@@ -115,16 +115,43 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .ev-badge{display:inline-block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle;line-height:1.4}
 .ev-e{background:rgba(245,158,11,.18);color:#f59e0b;border:1px solid rgba(245,158,11,.35)}
 .ev-d{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.35)}
+.ev-m{background:rgba(99,102,241,.18);color:#818cf8;border:1px solid rgba(99,102,241,.35)}
 .cal-list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.cal-section-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:14px 4px 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.cal-section-hdr:first-child{padding-top:4px}
 .cal-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.cal-item.cal-today-item{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .cal-date{min-width:80px;font-size:13px;font-weight:700;color:var(--text)}
 .cal-soon{color:var(--yellow)}
-.cal-sym{font-size:14px;font-weight:700;flex:1}
+.cal-sym{font-size:14px;font-weight:700}
 .cal-name{font-size:12px;color:var(--muted);margin-top:2px}
 .cal-type{font-size:11px;font-weight:700;border-radius:4px;padding:3px 8px;white-space:nowrap}
 .cal-type-e{background:rgba(245,158,11,.18);color:#f59e0b;border:1px solid rgba(245,158,11,.35)}
 .cal-type-d{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.35)}
+.cal-type-m{background:rgba(99,102,241,.18);color:#818cf8;border:1px solid rgba(99,102,241,.35)}
 .cal-days{font-size:12px;color:var(--muted);min-width:60px;text-align:right}
+/* GRID */
+.cal-grid-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-grid-nav button{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;cursor:pointer;color:var(--text);font-size:14px}
+.cal-grid-nav button:hover{border-color:var(--accent);color:var(--accent)}
+.cal-grid-title{font-size:15px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.cal-grid-dow{background:var(--surface2);padding:6px 2px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.cal-grid-cell{background:var(--surface);min-height:64px;padding:5px 6px;cursor:default;position:relative}
+.cal-grid-cell.other-month{background:var(--bg)}
+.cal-grid-cell.has-events{cursor:pointer}
+.cal-grid-cell.has-events:hover{background:var(--surface2)}
+.cal-grid-cell.selected-day{outline:2px solid var(--accent);outline-offset:-2px}
+.cal-grid-cell.is-today .cal-day-num{background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.cal-day-num{font-size:12px;font-weight:600;color:var(--text);width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.other-month .cal-day-num{color:var(--muted)}
+.cal-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.cal-dot{width:7px;height:7px;border-radius:50%}
+.cal-dot-e{background:#f59e0b}
+.cal-dot-d{background:#22c55e}
+.cal-dot-m{background:#818cf8}
+.cal-grid-detail{margin-top:10px}
+.cal-grid-detail .cal-section-hdr{margin-bottom:6px}
 .empty{text-align:center;padding:64px 24px;color:var(--muted)}
 .empty-icon{font-size:44px;margin-bottom:12px}
 .empty p{font-size:14px;margin-top:6px}
@@ -476,8 +503,14 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ TAB: KALENDARZ ══════════════════════ -->
 <main id="tab-kalendarz" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:18px;font-weight:700" data-i18n="kal.title">📅 Nadchodzące wydarzenia</div>
-    <button class="btn btn-outline" onclick="renderKalendarzTab(true)" data-i18n="kal.refresh">↻ Odśwież</button>
+    <div style="font-size:18px;font-weight:700">📅 Nadchodzące wydarzenia</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="donut-tabs" id="kal-view-tabs" style="margin-bottom:0">
+        <button class="donut-tab active" onclick="setKalView('agenda')">☰ Agenda</button>
+        <button class="donut-tab" onclick="setKalView('grid')">▦ Siatka</button>
+      </div>
+      <button class="btn btn-outline" onclick="renderKalendarzTab(true)">↻ Odśwież</button>
+    </div>
   </div>
   <div id="kalendarContent"></div>
 </main>
@@ -2329,6 +2362,49 @@ function renderDivHTML(rows, el) {
 // ─── KALENDARZ ────────────────────────────────────────────────────────────────
 let _kalCacheTime = 0;
 let _kalRows = null;
+let kalView = 'agenda';
+let kalGridMonth = null;
+let kalGridSelectedDay = null;
+
+const MACRO_EVENTS = [
+  { date: '2026-05-13', name: 'US CPI (kwiecień)',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-06-04', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-06-11', name: 'US CPI (maj)',          sym: 'MAKRO', type: 'M' },
+  { date: '2026-06-17', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
+  { date: '2026-07-14', name: 'US CPI (czerwiec)',     sym: 'MAKRO', type: 'M' },
+  { date: '2026-07-23', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-07-29', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
+  { date: '2026-08-12', name: 'US CPI (lipiec)',       sym: 'MAKRO', type: 'M' },
+  { date: '2026-09-10', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-09-10', name: 'US CPI (sierpień)',     sym: 'MAKRO', type: 'M' },
+  { date: '2026-09-16', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
+  { date: '2026-10-14', name: 'US CPI (wrzesień)',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-10-22', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-10-28', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
+  { date: '2026-11-12', name: 'US CPI (październik)', sym: 'MAKRO', type: 'M' },
+  { date: '2026-12-10', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-12-10', name: 'US CPI (listopad)',    sym: 'MAKRO', type: 'M' },
+  { date: '2026-12-16', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
+];
+
+const KAL_TYPE_MAP = {
+  'E': { label: 'Wyniki',    cls: 'cal-type-e', dotCls: 'cal-dot-e' },
+  'D': { label: 'Dywidenda', cls: 'cal-type-d', dotCls: 'cal-dot-d' },
+  'P': { label: 'Dywidenda', cls: 'cal-type-d', dotCls: 'cal-dot-d' },
+  'M': { label: 'Makro',     cls: 'cal-type-m', dotCls: 'cal-dot-m' },
+};
+
+function setKalView(v) {
+  kalView = v;
+  document.querySelectorAll('#kal-view-tabs .donut-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', v === 'agenda' ? i === 0 : i === 1);
+  });
+  if (_kalRows) {
+    const el = document.getElementById('kalendarContent');
+    if (kalView === 'grid') renderKalGrid(_kalRows, el);
+    else renderKalHTML(_kalRows, el);
+  }
+}
 
 function tsToDate(ts) {
   return ts ? new Date(ts * 1000).toISOString().split('T')[0] : null;
@@ -2342,7 +2418,7 @@ function daysFromToday(dateStr) {
 function getCalendarEvents() {
   const events = [];
   const now = today();
-  const limit = new Date(); limit.setDate(limit.getDate() + 90);
+  const limit = new Date(); limit.setDate(limit.getDate() + 180);
   const limitStr = limit.toISOString().split('T')[0];
 
   for (const h of portfolio.holdings) {
@@ -2358,6 +2434,9 @@ function getCalendarEvents() {
       events.push({ sym: h.symbol, name, date: dDate, type: 'D' });
     if (pDate && pDate >= now && pDate <= limitStr && pDate !== dDate)
       events.push({ sym: h.symbol, name, date: pDate, type: 'P' });
+  }
+  for (const m of MACRO_EVENTS) {
+    if (m.date >= now && m.date <= limitStr) events.push({ ...m });
   }
   return events.sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -2435,57 +2514,113 @@ function fmtRatio(v) {
 
 async function renderKalendarzTab(forceRefresh = false) {
   const el = document.getElementById('kalendarContent');
-  if (!portfolio.holdings.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p>Brak spółek w portfelu</p></div>';
+  const cacheAge = Date.now() - _kalCacheTime;
+  if (!forceRefresh && _kalRows && cacheAge < 5 * 60 * 1000) {
+    if (kalView === 'grid') renderKalGrid(_kalRows, el); else renderKalHTML(_kalRows, el);
     return;
   }
-
-  const cacheAge = Date.now() - _kalCacheTime;
-  if (!forceRefresh && _kalRows && cacheAge < 5 * 60 * 1000) { renderKalHTML(_kalRows, el); return; }
 
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych…</div>';
 
   const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
-  // Refresh base quotes first, then enrich with calendarEvents (v10)
-  await fetchQuotes(symbols).catch(() => {});
-  await Promise.allSettled(symbols.map(fetchCalendarSummary));
+  if (symbols.length) {
+    await fetchQuotes(symbols).catch(() => {});
+    await Promise.allSettled(symbols.map(fetchCalendarSummary));
+  }
 
   _kalRows = getCalendarEvents();
   _kalCacheTime = Date.now();
-  renderKalHTML(_kalRows, el);
+  if (kalView === 'grid') renderKalGrid(_kalRows, el); else renderKalHTML(_kalRows, el);
+}
+
+function calItemHTML(ev, extraClass) {
+  const d = daysFromToday(ev.date);
+  const soon = d !== null && d <= 7;
+  const tm = KAL_TYPE_MAP[ev.type] || KAL_TYPE_MAP['D'];
+  const dLabel = d === 0 ? 'dziś' : d === 1 ? 'jutro' : `za ${d} dni`;
+  const dateRange = ev.dateEnd && ev.dateEnd !== ev.date ? `${ev.date} – ${ev.dateEnd}` : ev.date;
+  return `<div class="cal-item${extraClass ? ' ' + extraClass : ''}">
+    <div class="cal-date ${soon ? 'cal-soon' : ''}">${dateRange}</div>
+    <div style="flex:1"><div class="cal-sym">${ev.sym}</div><div class="cal-name">${ev.name}</div></div>
+    <span class="cal-type ${tm.cls}">${tm.label}</span>
+    <div class="cal-days ${soon ? 'cal-soon' : ''}">${dLabel}</div>
+  </div>`;
 }
 
 function renderKalHTML(events, el) {
   if (!events.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">Brak nadchodzących wydarzeń</p><p>Brak raportów wynikowych ani ex-dat dywidend w ciągu 90 dni</p></div>';
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">Brak nadchodzących wydarzeń</p><p>Brak raportów wynikowych, dywidend i danych makro w ciągu 180 dni</p></div>';
     return;
   }
+  const now = today();
+  const weekEndStr = (() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toISOString().split('T')[0]; })();
 
-  const typeMap = {
-    'E': { label: 'Wyniki finansowe', cls: 'cal-type-e' },
-    'D': { label: 'Ex-dywidenda',     cls: 'cal-type-d' },
-    'P': { label: 'Wypłata dyw.',     cls: 'cal-type-d' },
-  };
-  const rows = events.map(ev => {
-    const d = daysFromToday(ev.date);
-    const soon = d !== null && d <= 7;
-    const { label, cls } = typeMap[ev.type] || typeMap['D'];
-    const dLabel = d === 0 ? 'dziś' : d === 1 ? 'jutro' : `za ${d} dni`;
-    const dateRange = ev.dateEnd && ev.dateEnd !== ev.date
-      ? `${ev.date} – ${ev.dateEnd}`
-      : ev.date;
-    return `<div class="cal-item">
-      <div class="cal-date ${soon ? 'cal-soon' : ''}">${dateRange}</div>
-      <div style="flex:1">
-        <div class="cal-sym">${ev.sym}</div>
-        <div class="cal-name">${ev.name}</div>
-      </div>
-      <span class="cal-type ${cls}">${label}</span>
-      <div class="cal-days ${soon ? 'cal-soon' : ''}">${dLabel}</div>
+  const todayEvs    = events.filter(e => e.date === now);
+  const weekEvs     = events.filter(e => e.date > now && e.date <= weekEndStr);
+  const upcomingEvs = events.filter(e => e.date > weekEndStr);
+
+  const section = (title, evs) => evs.length
+    ? `<div class="cal-section-hdr">${title}</div><div class="cal-list" style="margin-top:0">${evs.map(ev => calItemHTML(ev, ev.date === now ? 'cal-today-item' : '')).join('')}</div>`
+    : '';
+
+  el.innerHTML = section('Dzisiaj', todayEvs) + section('Ten tydzień', weekEvs) + section('Nadchodzące', upcomingEvs);
+}
+
+function renderKalGrid(events, el) {
+  const now = new Date();
+  if (!kalGridMonth) kalGridMonth = { year: now.getFullYear(), month: now.getMonth() };
+  const { year, month } = kalGridMonth;
+  const todayStr = today();
+
+  const evByDate = {};
+  for (const ev of events) (evByDate[ev.date] = evByDate[ev.date] || []).push(ev);
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+  const startDow = (firstDay.getDay() + 6) % 7;
+  const MONTH_NAMES = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+
+  const dowHeaders = ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'].map(d => `<div class="cal-grid-dow">${d}</div>`).join('');
+
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += '<div class="cal-grid-cell other-month"></div>';
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs = evByDate[ds] || [];
+    const dots = evs.map(ev => `<div class="cal-dot ${(KAL_TYPE_MAP[ev.type]||KAL_TYPE_MAP['D']).dotCls}"></div>`).join('');
+    cells += `<div class="cal-grid-cell${evs.length?' has-events':''}${ds===todayStr?' is-today':''}${ds===kalGridSelectedDay?' selected-day':''}"${evs.length?` onclick="kalSelectDay('${ds}')"`:''}>
+      <div class="cal-day-num">${d}</div>${dots?`<div class="cal-dots">${dots}</div>`:''}
     </div>`;
-  }).join('');
+  }
+  const rem = (startDow + lastDay.getDate()) % 7;
+  if (rem) for (let i = rem; i < 7; i++) cells += '<div class="cal-grid-cell other-month"></div>';
 
-  el.innerHTML = `<div class="cal-list">${rows}</div>`;
+  const detail = kalGridSelectedDay && evByDate[kalGridSelectedDay]
+    ? `<div class="cal-grid-detail"><div class="cal-section-hdr">${kalGridSelectedDay}</div><div class="cal-list" style="margin-top:0">${evByDate[kalGridSelectedDay].map(ev => calItemHTML(ev, '')).join('')}</div></div>`
+    : '';
+
+  el.innerHTML = `<div class="cal-grid-nav">
+    <button onclick="kalGridNav(-1)">‹ Poprzedni</button>
+    <div class="cal-grid-title">${MONTH_NAMES[month]} ${year}</div>
+    <button onclick="kalGridNav(1)">Następny ›</button>
+  </div>
+  <div class="cal-grid">${dowHeaders}${cells}</div>${detail}`;
+}
+
+function kalSelectDay(ds) {
+  kalGridSelectedDay = kalGridSelectedDay === ds ? null : ds;
+  if (_kalRows) renderKalGrid(_kalRows, document.getElementById('kalendarContent'));
+}
+
+function kalGridNav(dir) {
+  if (!kalGridMonth) { const n = new Date(); kalGridMonth = { year: n.getFullYear(), month: n.getMonth() }; }
+  let { year, month } = kalGridMonth;
+  month += dir;
+  if (month < 0) { month = 11; year--; }
+  if (month > 11) { month = 0; year++; }
+  kalGridMonth = { year, month };
+  kalGridSelectedDay = null;
+  if (_kalRows) renderKalGrid(_kalRows, document.getElementById('kalendarContent'));
 }
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
