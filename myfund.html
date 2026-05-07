@@ -130,6 +130,18 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 .cal-type-d{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.35)}
 .cal-type-m{background:rgba(99,102,241,.18);color:#818cf8;border:1px solid rgba(99,102,241,.35)}
 .cal-days{font-size:12px;color:var(--muted);min-width:60px;text-align:right}
+.cal-detail{font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.cal-bmo{background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.3)}
+.cal-amc{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)}
+.cal-eps{font-size:11px;color:var(--muted)}
+.cal-stars{color:#f59e0b;letter-spacing:1px;font-size:13px}
+.cal-portfolio-icon{font-size:12px;opacity:.7;cursor:help}
+.cal-export-wrap{position:relative;flex-shrink:0}
+.cal-export-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);line-height:1.6}
+.cal-export-btn:hover{color:var(--accent);border-color:var(--accent)}
+.cal-export-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:200;min-width:170px;padding:4px 0}
+.cal-export-menu a{display:block;padding:8px 14px;font-size:13px;color:var(--text);text-decoration:none;white-space:nowrap}
+.cal-export-menu a:hover{background:var(--surface2)}
 /* GRID */
 .cal-grid-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .cal-grid-nav button{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;cursor:pointer;color:var(--text);font-size:14px}
@@ -1123,13 +1135,14 @@ function _applyQuoteResults(results) {
       earningsEnd: q.earningsTimestampEnd   || prev.earningsEnd || null,
       exDivTs:     q.exDividendDate         || prev.exDivTs   || null,
       divPayTs:    q.dividendDate            || prev.divPayTs  || null,
+      divRate:     q.trailingAnnualDividendRate ?? q.dividendRate ?? prev.divRate ?? null,
     };
   });
 }
 
 async function fetchQuotes(symbols) {
   if (!symbols.length) return;
-  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate';
+  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate';
 
   // 1. Try direct authenticated fetch (works when user has Yahoo cookies in browser)
   for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
@@ -1351,6 +1364,7 @@ function closeRowMenus() {
   _openMenuId = null;
 }
 document.addEventListener('click', e => { if (!e.target.closest('.row-menu-wrap')) closeRowMenus(); });
+document.addEventListener('click', e => { if (!e.target.closest('.cal-export-wrap')) kalCloseMenus(); });
 
 function openBuyMore(id) {
   const h = portfolio.holdings.find(e => e.id === id);
@@ -2367,24 +2381,24 @@ let kalGridMonth = null;
 let kalGridSelectedDay = null;
 
 const MACRO_EVENTS = [
-  { date: '2026-05-13', name: 'US CPI (kwiecień)',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-06-04', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-06-11', name: 'US CPI (maj)',          sym: 'MAKRO', type: 'M' },
-  { date: '2026-06-17', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
-  { date: '2026-07-14', name: 'US CPI (czerwiec)',     sym: 'MAKRO', type: 'M' },
-  { date: '2026-07-23', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-07-29', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
-  { date: '2026-08-12', name: 'US CPI (lipiec)',       sym: 'MAKRO', type: 'M' },
-  { date: '2026-09-10', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-09-10', name: 'US CPI (sierpień)',     sym: 'MAKRO', type: 'M' },
-  { date: '2026-09-16', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
-  { date: '2026-10-14', name: 'US CPI (wrzesień)',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-10-22', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-10-28', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
-  { date: '2026-11-12', name: 'US CPI (październik)', sym: 'MAKRO', type: 'M' },
-  { date: '2026-12-10', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-12-10', name: 'US CPI (listopad)',    sym: 'MAKRO', type: 'M' },
-  { date: '2026-12-16', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M' },
+  { date: '2026-05-13', name: 'US CPI (kwiecień)',    sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-06-04', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M', priority: 2 },
+  { date: '2026-06-11', name: 'US CPI (maj)',          sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-06-17', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-07-14', name: 'US CPI (czerwiec)',     sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-07-23', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M', priority: 2 },
+  { date: '2026-07-29', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-08-12', name: 'US CPI (lipiec)',       sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-09-10', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M', priority: 2 },
+  { date: '2026-09-10', name: 'US CPI (sierpień)',     sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-09-16', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-10-14', name: 'US CPI (wrzesień)',    sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-10-22', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M', priority: 2 },
+  { date: '2026-10-28', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-11-12', name: 'US CPI (październik)', sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-12-10', name: 'EBC – posiedzenie',    sym: 'MAKRO', type: 'M', priority: 2 },
+  { date: '2026-12-10', name: 'US CPI (listopad)',    sym: 'MAKRO', type: 'M', priority: 3 },
+  { date: '2026-12-16', name: 'Fed FOMC',              sym: 'MAKRO', type: 'M', priority: 3 },
 ];
 
 const KAL_TYPE_MAP = {
@@ -2456,6 +2470,14 @@ function evBadgesFor(symbol) {
   return html;
 }
 
+function _earningsCallTime(ts) {
+  if (!ts) return null;
+  const h = new Date(ts * 1000).getUTCHours();
+  if (h >= 8 && h <= 13) return 'BMO';
+  if (h >= 19 && h <= 23) return 'AMC';
+  return null;
+}
+
 async function fetchCalendarSummary(symbol) {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents`;
   let data = null;
@@ -2466,7 +2488,13 @@ async function fetchCalendarSummary(symbol) {
   const q = mkt[symbol] || {};
   const earningsDates = (cal.earnings?.earningsDate || []).map(d => d.raw).filter(Boolean);
   const futureE = earningsDates.filter(ts => ts * 1000 > Date.now()).sort((a,b)=>a-b);
-  if (futureE.length) { q.earningsTs = futureE[0]; q.earningsEnd = futureE[futureE.length-1]; }
+  if (futureE.length) {
+    q.earningsTs = futureE[0];
+    q.earningsEnd = futureE[futureE.length-1];
+    q.earningsCallTime = _earningsCallTime(futureE[0]);
+    const eps = cal.earnings?.earningsAverage?.raw;
+    if (eps != null) q.earningsEPS = eps;
+  }
   if (cal.exDividendDate?.raw) q.exDivTs = cal.exDividendDate.raw;
   if (cal.dividendDate?.raw) q.divPayTs = cal.dividendDate.raw;
   mkt[symbol] = q;
@@ -2533,18 +2561,105 @@ async function renderKalendarzTab(forceRefresh = false) {
   if (kalView === 'grid') renderKalGrid(_kalRows, el); else renderKalHTML(_kalRows, el);
 }
 
+let _kalEventMap = {};
+
 function calItemHTML(ev, extraClass) {
+  const id = ('ev_' + ev.type + '_' + ev.sym + '_' + ev.date).replace(/[^a-zA-Z0-9_]/g, '_');
+  _kalEventMap[id] = ev;
+
   const d = daysFromToday(ev.date);
   const soon = d !== null && d <= 7;
   const tm = KAL_TYPE_MAP[ev.type] || KAL_TYPE_MAP['D'];
   const dLabel = d === 0 ? 'dziś' : d === 1 ? 'jutro' : `za ${d} dni`;
   const dateRange = ev.dateEnd && ev.dateEnd !== ev.date ? `${ev.date} – ${ev.dateEnd}` : ev.date;
+  const q = mkt[ev.sym] || {};
+
+  let detailBits = '';
+  if (ev.type === 'E') {
+    const ct = q.earningsCallTime;
+    if (ct === 'BMO') detailBits += '<span class="cal-detail cal-bmo">BMO</span>';
+    else if (ct === 'AMC') detailBits += '<span class="cal-detail cal-amc">AMC</span>';
+    if (q.earningsEPS != null) detailBits += `<span class="cal-eps">EPS est. ${q.earningsEPS > 0 ? '+' : ''}${q.earningsEPS.toFixed(2)}</span>`;
+  } else if (ev.type === 'D' || ev.type === 'P') {
+    detailBits += '<span class="cal-portfolio-icon" title="W Twoim portfelu">&#128197;</span>';
+    if (q.divRate) {
+      const cur = q.currency || 'USD';
+      const perShare = q.divRate / 4;
+      detailBits += `<span class="cal-eps">~${fmtCur(perShare, cur)}/akcję</span>`;
+    }
+  } else if (ev.type === 'M') {
+    const p = ev.priority || 1;
+    detailBits += `<span class="cal-stars">${'★'.repeat(p)}${'☆'.repeat(3 - p)}</span>`;
+  }
+
+  const gUrl = _googleCalUrl(ev);
   return `<div class="cal-item${extraClass ? ' ' + extraClass : ''}">
     <div class="cal-date ${soon ? 'cal-soon' : ''}">${dateRange}</div>
-    <div style="flex:1"><div class="cal-sym">${ev.sym}</div><div class="cal-name">${ev.name}</div></div>
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="cal-sym">${ev.sym}</div>${detailBits}
+      </div>
+      <div class="cal-name">${ev.name}</div>
+    </div>
     <span class="cal-type ${tm.cls}">${tm.label}</span>
     <div class="cal-days ${soon ? 'cal-soon' : ''}">${dLabel}</div>
+    <div class="cal-export-wrap">
+      <button class="cal-export-btn" onclick="kalExportMenu('${id}',event)">+kal</button>
+      <div class="cal-export-menu" id="menu_${id}" style="display:none">
+        <a href="${gUrl}" target="_blank" rel="noopener" onclick="kalCloseMenus()">Google Calendar</a>
+        <a href="#" onclick="kalDownloadICS('${id}');return false">Apple / .ics</a>
+      </div>
+    </div>
   </div>`;
+}
+
+function _googleCalUrl(ev) {
+  const tm = KAL_TYPE_MAP[ev.type] || KAL_TYPE_MAP['D'];
+  const title = encodeURIComponent(`${ev.sym} – ${tm.label}`);
+  const ds = ev.date.replace(/-/g, '');
+  const deRaw = ev.dateEnd && ev.dateEnd !== ev.date ? ev.dateEnd : ev.date;
+  const deNext = new Date(deRaw); deNext.setDate(deNext.getDate() + 1);
+  const de = deNext.toISOString().split('T')[0].replace(/-/g, '');
+  const details = encodeURIComponent(ev.name);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${ds}/${de}&details=${details}`;
+}
+
+function kalExportMenu(id, e) {
+  e.stopPropagation();
+  const menu = document.getElementById('menu_' + id);
+  if (!menu) return;
+  const isOpen = menu.style.display !== 'none';
+  kalCloseMenus();
+  if (!isOpen) menu.style.display = 'block';
+}
+
+function kalCloseMenus() {
+  document.querySelectorAll('.cal-export-menu').forEach(m => { m.style.display = 'none'; });
+}
+
+function kalDownloadICS(id) {
+  const ev = _kalEventMap[id];
+  if (!ev) return;
+  const tm = KAL_TYPE_MAP[ev.type] || KAL_TYPE_MAP['D'];
+  const ds = ev.date.replace(/-/g, '');
+  const deRaw = ev.dateEnd && ev.dateEnd !== ev.date ? ev.dateEnd : ev.date;
+  const deNext = new Date(deRaw); deNext.setDate(deNext.getDate() + 1);
+  const de = deNext.toISOString().split('T')[0].replace(/-/g, '');
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//StocksTracker//EN',
+    'BEGIN:VEVENT',
+    `DTSTART;VALUE=DATE:${ds}`,
+    `DTEND;VALUE=DATE:${de}`,
+    `SUMMARY:${ev.sym} – ${tm.label}`,
+    `DESCRIPTION:${ev.name}`,
+    'END:VEVENT', 'END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${ev.sym}_${ev.date}.ics`; a.click();
+  URL.revokeObjectURL(url);
+  kalCloseMenus();
 }
 
 function renderKalHTML(events, el) {
