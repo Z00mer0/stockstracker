@@ -2377,6 +2377,8 @@ function renderDivHTML(rows, el) {
 
 // ─── CALENDAR FETCH / CACHE ───────────────────────────────────────────────────
 
+let _liveEcoEvents = null; // populated by refreshCalendarEvents, replaces hardcoded MACRO_EVENTS
+
 function _kalCacheLoad() {
   try { return JSON.parse(localStorage.getItem(SK_KAL_CACHE) || 'null'); } catch { return null; }
 }
@@ -2387,16 +2389,18 @@ function _kalCacheSave(symbols) {
     const q = mkt[sym];
     if (!q) continue;
     calData[sym] = {
-      earningsTs:      q.earningsTs      ?? null,
-      earningsEnd:     q.earningsEnd     ?? null,
-      earningsCallTime:q.earningsCallTime ?? null,
-      earningsEPS:     q.earningsEPS     ?? null,
-      exDivTs:         q.exDivTs         ?? null,
-      divPayTs:        q.divPayTs        ?? null,
-      divRate:         q.divRate         ?? null,
+      earningsTs:       q.earningsTs       ?? null,
+      earningsEnd:      q.earningsEnd      ?? null,
+      earningsCallTime: q.earningsCallTime  ?? null,
+      earningsEPS:      q.earningsEPS      ?? null,
+      exDivTs:          q.exDivTs          ?? null,
+      divPayTs:         q.divPayTs         ?? null,
+      divRate:          q.divRate          ?? null,
     };
   }
-  localStorage.setItem(SK_KAL_CACHE, JSON.stringify({ date: today(), calData }));
+  localStorage.setItem(SK_KAL_CACHE, JSON.stringify({
+    date: today(), calData, ecoEvents: _liveEcoEvents || [],
+  }));
 }
 
 function _kalCacheRestore(cache, symbols) {
@@ -2406,119 +2410,78 @@ function _kalCacheRestore(cache, symbols) {
     if (!saved) continue;
     mkt[sym] = Object.assign(mkt[sym] || {}, saved);
   }
+  if (cache.ecoEvents) _liveEcoEvents = cache.ecoEvents;
 }
 
-// Maps Finnhub `hour` field → our BMO/AMC label
 function _fhHour(h) { return h === 'bmo' ? 'BMO' : h === 'amc' ? 'AMC' : null; }
 
-async function _fetchFinnhubSymbol(symbol) {
-  if (!FINNHUB_KEY) return false;
-  const bare = symbol.split('.')[0]; // Finnhub uses bare tickers (no .WA, .L, etc.)
-  const from = today();
-  const to   = (() => { const d = new Date(); d.setDate(d.getDate() + 180); return d.toISOString().split('T')[0]; })();
-  const base = 'https://finnhub.io/api/v1';
-
-  try {
-    const [eRes, dRes] = await Promise.all([
-      fetch(`${base}/calendar/earnings?symbol=${encodeURIComponent(bare)}&from=${from}&to=${to}&token=${FINNHUB_KEY}`,
-            { signal: AbortSignal.timeout(9000) }),
-      fetch(`${base}/stock/dividend2?symbol=${encodeURIComponent(bare)}&token=${FINNHUB_KEY}`,
-            { signal: AbortSignal.timeout(9000) }),
-    ]);
-
-    if (eRes.ok) {
-      const data = await eRes.json();
-      const future = (data.earningsCalendar || [])
-        .filter(e => e.date >= from)
-        .sort((a, b) => a.date.localeCompare(b.date));
-      if (future.length) {
-        const next = future[0];
-        const q = mkt[symbol] || {};
-        q.earningsTs       = new Date(next.date + 'T12:00:00Z').getTime() / 1000;
-        q.earningsEnd      = future.length > 1 ? new Date(future[future.length-1].date + 'T12:00:00Z').getTime() / 1000 : null;
-        q.earningsCallTime = _fhHour(next.hour);
-        if (next.epsEstimate != null) q.earningsEPS = next.epsEstimate;
-        mkt[symbol] = q;
-      }
-    }
-
-    if (dRes.ok) {
-      const data = await dRes.json();
-      const nextDiv = (data.data || [])
-        .filter(d => d.date >= from)
-        .sort((a, b) => a.date.localeCompare(b.date))[0];
-      if (nextDiv) {
-        const q = mkt[symbol] || {};
-        q.exDivTs  = new Date(nextDiv.date + 'T12:00:00Z').getTime() / 1000;
-        q.divPayTs = nextDiv.payDate ? new Date(nextDiv.payDate + 'T12:00:00Z').getTime() / 1000 : null;
-        if (nextDiv.amount) {
-          const freq = nextDiv.frequency;
-          const mult = freq === 'monthly' ? 12 : freq === 'semi-annual' ? 2 : freq === 'annual' ? 1 : 4;
-          q.divRate = nextDiv.amount * mult;
-        }
-        mkt[symbol] = q;
-      }
-    }
-    return true;
-  } catch (e) {
-    console.warn('[cal] Finnhub failed for', symbol, e.message);
-    return false;
-  }
-}
-
-async function _fetchAVEarnings(symbol) {
-  const bare = symbol.includes('.') ? symbol.split('.')[0] : symbol;
-  const url  = `https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&symbol=${encodeURIComponent(bare)}&horizon=3month&apikey=${AV_KEY}`;
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
-    if (!r.ok) return false;
-    const csv = await r.text();
-    // Throttle guard — AV returns JSON error messages when rate-limited
-    if (!csv.startsWith('symbol') && !csv.startsWith('"symbol')) return false;
-    const lines = csv.trim().split('\n').slice(1);
-    const from  = today();
-    const future = lines
-      .map(l => { const p = l.split(','); return { date: p[2]?.trim(), epsEst: parseFloat(p[4]) || null }; })
-      .filter(e => e.date && e.date >= from)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    if (future.length) {
-      const next = future[0];
-      const q = mkt[symbol] || {};
-      if (!q.earningsTs) { // don't overwrite Finnhub data
-        q.earningsTs  = new Date(next.date + 'T12:00:00Z').getTime() / 1000;
-        if (next.epsEst != null) q.earningsEPS = next.epsEst;
-        mkt[symbol] = q;
-      }
-    }
-    return true;
-  } catch (e) {
-    console.warn('[cal] AV earnings failed for', symbol, e.message);
-    return false;
-  }
+function _ecoPriority(eventName) {
+  const n = eventName.toLowerCase();
+  if (/inflation rate|core inflation|cpi|interest rate decision|fomc rate|fed rate|ecb rate|non.?farm payroll|nfp|gdp growth|core pce/.test(n)) return 3;
+  return 2;
 }
 
 async function refreshCalendarEvents(symbols) {
   const cache = _kalCacheLoad();
-  if (cache?.date === today() && cache.calData) {
+  if (cache?.date === today()) {
     _kalCacheRestore(cache, symbols);
-    return; // fresh today — no network calls needed
+    return; // already fresh today
   }
 
-  // Fetch fresh data per symbol
-  for (let i = 0; i < symbols.length; i++) {
-    const sym = symbols[i];
+  const from = today();
+  const to   = (() => { const d = new Date(); d.setDate(d.getDate() + 180); return d.toISOString().split('T')[0]; })();
 
-    if (FINNHUB_KEY) {
-      await _fetchFinnhubSymbol(sym);
-    } else {
-      // Alpha Vantage: respect 5 req/min limit (one every 12 s)
-      if (i > 0) await new Promise(r => setTimeout(r, 12000));
-      await _fetchAVEarnings(sym);
-    }
+  if (FINNHUB_KEY) {
+    // ── 1. Bulk earnings: one call covers all portfolio symbols ──────────────
+    const bareToFull = new Map(symbols.map(s => [s.split('.')[0].toUpperCase(), s]));
+    try {
+      const r = await fetch(
+        `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${FINNHUB_KEY}`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        // Keep only the nearest upcoming date per symbol
+        const nearest = new Map();
+        for (const e of (data.earningsCalendar || [])) {
+          const full = bareToFull.get(e.symbol?.toUpperCase());
+          if (!full) continue;
+          if (!nearest.has(full) || e.date < nearest.get(full).date) nearest.set(full, e);
+        }
+        for (const [sym, e] of nearest) {
+          const q = mkt[sym] || {};
+          q.earningsTs       = new Date(e.date + 'T12:00:00Z').getTime() / 1000;
+          q.earningsCallTime = _fhHour(e.hour);
+          if (e.epsEstimate != null) q.earningsEPS = e.epsEstimate;
+          mkt[sym] = q;
+        }
+      }
+    } catch (e) { console.warn('[cal] Finnhub earnings:', e.message); }
 
-    // Yahoo calendarEvents still runs to get ex-div date when no Finnhub key
-    if (!FINNHUB_KEY) await fetchCalendarSummary(sym);
+    // ── 2. Economic calendar: live macro events ──────────────────────────────
+    try {
+      const r = await fetch(
+        `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${FINNHUB_KEY}`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        _liveEcoEvents = (data.economicCalendar || [])
+          .filter(e => e.impact === 'high' && (e.country === 'US' || e.country === 'EU'))
+          .map(e => ({
+            date:     e.time.split(' ')[0],
+            name:     e.event,
+            sym:      e.country,
+            type:     'M',
+            priority: _ecoPriority(e.event),
+          }))
+          .filter(e => e.date >= from);
+      }
+    } catch (e) { console.warn('[cal] Finnhub economic:', e.message); }
   }
+
+  // ── 3. Dividends: Yahoo calendarEvents (works via proxy) ─────────────────
+  await Promise.allSettled(symbols.map(fetchCalendarSummary));
 
   _kalCacheSave(symbols);
 }
@@ -2599,7 +2562,8 @@ function getCalendarEvents() {
     if (pDate && pDate >= now && pDate <= limitStr && pDate !== dDate)
       events.push({ sym: h.symbol, name, date: pDate, type: 'P' });
   }
-  for (const m of MACRO_EVENTS) {
+  // Use live Finnhub economic events when available, fall back to hardcoded list
+  for (const m of (_liveEcoEvents ?? MACRO_EVENTS)) {
     if (m.date >= now && m.date <= limitStr) events.push({ ...m });
   }
   return events.sort((a, b) => a.date.localeCompare(b.date));
