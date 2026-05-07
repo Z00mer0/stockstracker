@@ -495,14 +495,19 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
              onblur="setTimeout(acHide,150)">
       <div class="hint" data-i18n-html="add.hint.html">🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: bez sufiksu (np. AAPL, NVDA)</div>
     </div>
+    <div class="donut-tabs" id="add-mode-tabs" style="margin-bottom:10px">
+      <button class="donut-tab active" onclick="setAddMode('qty')">Ilość</button>
+      <button class="donut-tab" onclick="setAddMode('amount')">Wartość transakcji</button>
+    </div>
     <div class="form-row">
       <div class="form-group">
-        <label data-i18n="add.qty">Ilość akcji *</label>
-        <input id="f-qty" type="number" placeholder="10" min="0.0001" step="any">
+        <label id="f-qty-label">Ilość akcji *</label>
+        <input id="f-qty" type="number" placeholder="10" min="0.0001" step="any" oninput="syncAddFields('qty')">
+        <div id="f-qty-hint" class="hint" style="display:none"></div>
       </div>
       <div class="form-group">
         <label data-i18n="add.price">Cena zakupu *</label>
-        <input id="f-price" type="number" placeholder="150.00" min="0" step="any">
+        <input id="f-price" type="number" placeholder="150.00" min="0" step="any" oninput="syncAddFields('price')">
       </div>
     </div>
     <div class="form-row">
@@ -1192,6 +1197,44 @@ function cashTotalPLN() {
 }
 
 // ─── PORTFOLIO ACTIONS ────────────────────────────────────────────────────────
+let addMode = 'qty';
+
+function setAddMode(mode) {
+  addMode = mode;
+  document.querySelectorAll('#add-mode-tabs .donut-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', (mode === 'qty' ? i === 0 : i === 1));
+  });
+  const label = document.getElementById('f-qty-label');
+  const qtyInput = document.getElementById('f-qty');
+  if (mode === 'qty') {
+    label.textContent = 'Ilość akcji *';
+    qtyInput.placeholder = '10';
+  } else {
+    label.textContent = 'Kwota transakcji *';
+    qtyInput.placeholder = '2000';
+  }
+  syncAddFields('qty');
+}
+
+function syncAddFields(changed) {
+  const qtyInput = document.getElementById('f-qty');
+  const priceInput = document.getElementById('f-price');
+  const hint = document.getElementById('f-qty-hint');
+  const qty = parseFloat(qtyInput.value);
+  const price = parseFloat(priceInput.value);
+  if (addMode === 'amount') {
+    if (!isNaN(qty) && !isNaN(price) && price > 0) {
+      const shares = qty / price;
+      hint.style.display = 'block';
+      hint.textContent = `Otrzymasz: ${shares % 1 === 0 ? shares : shares.toFixed(4)} akcji`;
+    } else {
+      hint.style.display = 'none';
+    }
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
 function updateCashHint() {
   const hint = document.getElementById('f-cash-hint');
   if (!hint) return;
@@ -1207,7 +1250,9 @@ function updateCashHint() {
 function addHolding(data) {
   const h = data || {
     symbol:   document.getElementById('f-symbol').value.trim().toUpperCase(),
-    qty:      parseFloat(document.getElementById('f-qty').value),
+    qty:      addMode === 'amount'
+                ? parseFloat(document.getElementById('f-qty').value) / parseFloat(document.getElementById('f-price').value)
+                : parseFloat(document.getElementById('f-qty').value),
     avgPrice: parseFloat(document.getElementById('f-price').value),
     currency: document.getElementById('f-currency').value,
     date:     document.getElementById('f-date').value || today(),
@@ -2506,6 +2551,7 @@ function closeAdd() {
   document.getElementById('f-currency').value = 'USD';
   const firstRadio = document.querySelector('input[name="f-fund-src"]');
   if (firstRadio) { firstRadio.checked = true; document.getElementById('f-cash-hint').style.display = 'none'; }
+  setAddMode('qty');
   acHide();
 }
 function closeSell() {
