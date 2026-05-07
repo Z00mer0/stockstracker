@@ -1839,7 +1839,12 @@ async function renderHistoriaTab() {
           const rate = fxRates[t.currency] || fxRates.USD || 3.95;
           return s + t.qty * t.price * rate;
         }, 0);
-      entries = [[firstBuy.date, parseFloat(costPLN.toFixed(2))], ...entries]
+      // Include current cash so the synthesized baseline matches snapshot values
+      // (snapshots always include cash; excluding it would make TWR show fake gains)
+      const cashPLN = Object.entries(cashBalances).reduce(
+        (s, [cur, amt]) => s + (amt || 0) * (cur === 'PLN' ? 1 : (fxRates[cur] || fxRates.USD || 3.95)), 0
+      );
+      entries = [[firstBuy.date, parseFloat((costPLN + cashPLN).toFixed(2))], ...entries]
         .sort((a, b) => a[0].localeCompare(b[0]));
     }
   }
@@ -1971,12 +1976,12 @@ async function renderHistoriaTab() {
   lineChartBig = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets: [
-      { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
+      { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5, order: 2 },
     ]},
     options: {
       animation: false,
       plugins: {
-        legend: { display: true, labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } },
+        legend: { display: true, position: 'bottom', labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 20, padding: 16 } },
         tooltip: {
           mode: 'index', intersect: false,
           callbacks: {
@@ -2016,8 +2021,8 @@ async function renderHistoriaTab() {
       const bmReturn = ((idxVals[idxVals.length - 1] / idxFirst) - 1) * 100;
       const bmData = idxVals.map(v => v != null ? +((v / idxFirst - 1) * 100).toFixed(3) : null);
       lineChartBig.data.datasets = [
-        { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5 },
-        { label: bm.label, data: bmData, borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
+        { label: t('hist.portlbl'), data: portPct, borderColor: pctColor, backgroundColor: makeGrad(pctColor), fill: true, tension: 0.35, pointRadius: ptRadius, pointBackgroundColor: pctColor, borderWidth: 2.5, order: 2 },
+        { label: bm.label, data: bmData, borderColor: bm.color, backgroundColor: 'transparent', fill: false, tension: 0.35, pointRadius: 0, borderWidth: 2.5, borderDash: [6, 3], order: 1 },
       ];
       const bounds = yBounds([...portPct, ...bmData]);
       lineChartBig.options.scales.y.min = bounds.min;
