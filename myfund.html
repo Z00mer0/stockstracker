@@ -1741,14 +1741,21 @@ function buildCapitalCurve(dates) {
     .filter(t => t.type === 'BUY' || t.type === 'SELL')
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  // Snapshots include cash, so the capital baseline must include it too.
+  // capital[d] = currentCash + cumulative(BUY - SELL) up to d
+  // → gain = portfolio − capital = pure stock market gain, cash excluded.
+  const currentCashPLN = Object.entries(cashBalances).reduce(
+    (s, [cur, amt]) => s + (amt || 0) * (cur === 'PLN' ? 1 : (fxRates[cur] || fxRates.USD || 3.95)), 0
+  );
+
   if (!sorted.length) {
     const basis = portfolio.holdings.reduce((s, h) => {
       return s + h.qty * h.avgPrice * (fxRates[h.currency] || fxRates.USD || 3.95);
     }, 0);
-    return dates.map(() => parseFloat(basis.toFixed(2)));
+    return dates.map(() => parseFloat((basis + currentCashPLN).toFixed(2)));
   }
 
-  let cumCapital = 0, txIdx = 0;
+  let cumCapital = currentCashPLN, txIdx = 0;
   return dates.map(d => {
     while (txIdx < sorted.length && sorted[txIdx].date <= d) {
       const t = sorted[txIdx++];
