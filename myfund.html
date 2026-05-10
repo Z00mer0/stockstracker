@@ -1865,7 +1865,7 @@ function renderWatchlistTab() {
       const cls = a.triggered ? 'alert-hit' : (a.type === 'above' ? 'alert-up' : 'alert-dn');
       return `<span class="alert-badge ${cls}" title="${a.triggered?(lang==='en'?'Triggered':'Wyzwolony'):(lang==='en'?'Active':'Aktywny')}" onclick="openAlertModal('${w.id}')">${dir} ${fmtPrc(a.targetPrice)}</span>`;
     }).join('');
-    const logo = stockLogoHTML(w.symbol, name);
+    const logo = stockLogo(w.symbol);
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:8px">${logo}<div>
         <div class="sym">${esc(w.symbol)}</div>
