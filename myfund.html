@@ -418,9 +418,9 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
               <th><span data-i18n="th.period">Okres</span> <span class="tip" data-tip="Czas od pierwszego zakupu akcji tej spółki">i</span></th>
               <th class="sortable" data-sort="moic" onclick="setSortBy('moic')">MOIC<span class="sort-icon"></span><span class="tip" data-tip="Multiple on Invested Capital — ile razy zwróciła się inwestycja. 1.5× = wartość wzrosła o 50%. Poniżej 1× oznacza stratę">i</span></th>
               <th class="sortable" data-sort="irr" onclick="setSortBy('irr')">IRR r.<span class="sort-icon"></span><span class="tip" data-tip="Wewnętrzna Stopa Zwrotu (roczna) — procentowy zysk w skali roku, uwzględniający czas trwania inwestycji. Porównywalna z oprocentowaniem lokaty">i</span></th>
-              <th><span class="tip" data-tip="Cena / Zysk (trailing 12m). Źródło: Alpha Vantage">P/E</span></th>
-              <th><span class="tip" data-tip="Forward P/E — cena / prognozowany zysk na następne 12 miesięcy. Źródło: Alpha Vantage">P/E fwd</span></th>
-              <th><span class="tip" data-tip="Price to Book — cena / wartość księgowa. Źródło: Alpha Vantage">P/B</span></th>
+              <th><span class="tip" data-tip="Cena / Zysk (trailing 12m). Źródło: Yahoo Finance">P/E</span></th>
+              <th><span class="tip" data-tip="Forward P/E — cena / prognozowany zysk na następne 12 miesięcy. Źródło: Yahoo Finance">P/E fwd</span></th>
+              <th><span class="tip" data-tip="Price to Book — cena / wartość księgowa. Źródło: Yahoo Finance">P/B</span></th>
               <th></th>
             </tr>
           </thead>
@@ -1206,13 +1206,16 @@ function _applyQuoteResults(results) {
       exDivTs:     q.exDividendDate         || prev.exDivTs   || null,
       divPayTs:    q.dividendDate            || prev.divPayTs  || null,
       divRate:     q.trailingAnnualDividendRate ?? q.dividendRate ?? prev.divRate ?? null,
+      pe:          q.trailingPE   ?? prev.pe   ?? null,
+      fwdPE:       q.forwardPE    ?? prev.fwdPE ?? null,
+      pb:          q.priceToBook  ?? prev.pb   ?? null,
     };
   });
 }
 
 async function fetchQuotes(symbols) {
   if (!symbols.length) return;
-  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate';
+  const fields = 'regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook';
 
   // 1. Try direct authenticated fetch (works when user has Yahoo cookies in browser)
   for (const host of ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
@@ -1639,9 +1642,9 @@ function render() {
         <td class="period-val">${fmtPeriod(days)}</td>
         <td>${moicHTML}</td>
         <td>${irrHTML}</td>
-        <td style="text-align:right">${fmtRatio(fundamentals[h.symbol]?.pe)}</td>
-        <td style="text-align:right">${fmtRatio(fundamentals[h.symbol]?.fwdPE)}</td>
-        <td style="text-align:right">${fmtRatio(fundamentals[h.symbol]?.pb)}</td>
+        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.pe)}</td>
+        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.fwdPE)}</td>
+        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.pb)}</td>
         <td>
           <div class="action-btns">
             <div class="row-menu-wrap">
@@ -3353,7 +3356,6 @@ async function checkAuth() {
   serverLoaded = serverOk;
   render();
   refreshAll();
-  refreshFundamentals(); // once-daily background fetch, non-blocking
 }
 
 async function retryServerSync() {
