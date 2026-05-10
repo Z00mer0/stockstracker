@@ -469,8 +469,8 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   </div>
 
   <div class="hist-mode-bar">
-    <button class="hist-mode-btn active" id="modeBtn-pln" onclick="setHistMode('pln')">Wartość (PLN)</button>
-    <button class="hist-mode-btn" id="modeBtn-pct" onclick="setHistMode('pct')">Stopa zwrotu (%)</button>
+    <button class="hist-mode-btn active" id="modeBtn-pln" onclick="setHistMode('pln')" data-i18n="hist.mode.pln">Wartość (PLN)</button>
+    <button class="hist-mode-btn" id="modeBtn-pct" onclick="setHistMode('pct')" data-i18n="hist.mode.pct">Stopa zwrotu (%)</button>
   </div>
 
   <div class="bm-bar" id="hist-bm-bar" style="display:none">
@@ -824,8 +824,11 @@ const STRINGS = {
   'hist.s.inv':     { pl:'Zainwestowany',        en:'Invested' },
   'hist.s.pnl':     { pl:'Zysk / Strata',        en:'P&L' },
   'hist.s.alpha':   { pl:'Alpha',                en:'Alpha' },
-  'hist.portlbl':   { pl:'Wycena portfela',      en:'Portfolio Value' },
-  'hist.caplbl':    { pl:'Zainwestowany kapitał',en:'Invested Capital' },
+  'hist.mode.pln':  { pl:'Wartość (PLN)',          en:'Value (PLN)' },
+  'hist.mode.pct':  { pl:'Stopa zwrotu (%)',       en:'Return (%)' },
+  'hist.s.days.unit':{ pl:'dni',                  en:'days' },
+  'hist.portlbl':   { pl:'Wycena portfela',        en:'Portfolio Value' },
+  'hist.caplbl':    { pl:'Zainwestowany kapitał',  en:'Invested Capital' },
   'risk.vol':       { pl:'Zmienność (roczna)',   en:'Volatility (annual)' },
   'risk.maxdd':     { pl:'Max Drawdown',          en:'Max Drawdown' },
   'risk.sharpe':    { pl:'Sharpe Ratio',           en:'Sharpe Ratio' },
@@ -2096,7 +2099,7 @@ async function renderHistoriaTab() {
             const bmFirst  = bmValues[0];
             if (!bmFirst) return;
             const bmPct    = bmValues.map(v => +((v / bmFirst - 1) * 100).toFixed(3));
-            const bmLabels = bmDates.map(d => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
+            const bmLabels = bmDates.map(d => new Date(d).toLocaleDateString(lang === 'en' ? 'en-GB' : 'pl-PL', { day: 'numeric', month: 'short' }));
             lineChartBig.destroy();
             lineChartBig = new Chart(ctx, {
               type: 'line',
@@ -2114,7 +2117,7 @@ async function renderHistoriaTab() {
     return;
   }
 
-  const labels    = entries.map(([d]) => new Date(d).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
+  const labels    = entries.map(([d]) => new Date(d).toLocaleDateString(lang === 'en' ? 'en-GB' : 'pl-PL', { day: 'numeric', month: 'short' }));
   const values    = entries.map(([, v]) => v);
   const first     = values[0], last = values[values.length - 1];
   const maxVal    = Math.max(...values), minVal = Math.min(...values);
@@ -2137,7 +2140,7 @@ async function renderHistoriaTab() {
       { label: t('hist.s.chgpct'),val: fmtPct(diffPct),                   cls: diff >= 0 ? 'pos' : 'neg' },
       { label: t('hist.s.max'),    val: fmtPLN(maxVal),                    cls: 'amt' },
       { label: t('hist.s.min'),    val: fmtPLN(minVal),                    cls: 'amt' },
-      { label: t('hist.s.days'),   val: entries.length + ' dni',           cls: '' },
+      { label: t('hist.s.days'),   val: entries.length + ' ' + t('hist.s.days.unit'),           cls: '' },
       { label: t('hist.s.inv'),    val: fmtPLN(lastCapital),               cls: 'amt' },
       { label: t('hist.s.pnl'),    val: `<span class="amt">${fmtPLN(capitalGain, true)}</span> (${fmtPct(capitalGainPct)})`, cls: capitalGain >= 0 ? 'pos' : 'neg' },
     ].map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
@@ -2189,7 +2192,7 @@ async function renderHistoriaTab() {
     { label: t('hist.s.chgpct'),val: fmtPct(twrTotal),    cls: twrTotal >= 0 ? 'pos' : 'neg' },
     { label: t('hist.s.max'),    val: fmtPLN(maxVal),      cls: 'amt' },
     { label: t('hist.s.min'),    val: fmtPLN(minVal),      cls: 'amt' },
-    { label: t('hist.s.days'),   val: entries.length + ' dni', cls: '' },
+    { label: t('hist.s.days'),   val: entries.length + ' ' + t('hist.s.days.unit'), cls: '' },
   ];
   statsGrid.innerHTML = baseStats.map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
     <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
