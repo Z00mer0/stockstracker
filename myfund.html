@@ -86,6 +86,7 @@ main{max-width:1440px;margin:0 auto;padding:24px 28px}
 .card.c-total::before{background:linear-gradient(90deg,var(--accent),#818cf8)}
 .card.c-day::before{background:linear-gradient(90deg,var(--blue),#60a5fa)}
 .card.c-pnl::before{background:linear-gradient(90deg,var(--green),#4ade80)}
+.card.c-realized::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
 .card.c-cash::before{background:linear-gradient(90deg,var(--cyan),#22d3ee)}
 .card.c-irr::before{background:linear-gradient(90deg,var(--purple),#a78bfa)}
 .card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px}
@@ -407,9 +408,14 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
       <div class="card-sub" id="cs-day" data-i18n="card.day.sub">vs. poprzednie zamknięcie</div>
     </div>
     <div class="card c-pnl">
-      <div class="card-label" data-i18n="card.pnl.lbl">Całkowity zysk/strata</div>
+      <div class="card-label" data-i18n="card.pnl.lbl">Niezrealizowany zysk</div>
       <div class="card-value amt" id="cv-pnl">—</div>
-      <div class="card-sub" id="cs-pnl" data-i18n="card.pnl.sub">od ceny zakupu</div>
+      <div class="card-sub" id="cs-pnl" data-i18n="card.pnl.sub">na otwartych pozycjach</div>
+    </div>
+    <div class="card c-realized">
+      <div class="card-label" data-i18n="card.realized.lbl">Zrealizowany zysk</div>
+      <div class="card-value amt" id="cv-realized">—</div>
+      <div class="card-sub" id="cs-realized" data-i18n="card.realized.sub">ze sprzedanych pozycji</div>
     </div>
     <div class="card c-cash">
       <div class="card-label" data-i18n="card.cash.lbl">Gotówka</div>
@@ -897,8 +903,10 @@ const STRINGS = {
   'card.total.sub': { pl:'Akcje + gotówka',           en:'Stocks + cash' },
   'card.day.lbl':   { pl:'Zmiana dzienna',            en:'Daily Change' },
   'card.day.sub':   { pl:'vs. poprzednie zamknięcie', en:'vs. prev. close' },
-  'card.pnl.lbl':   { pl:'Całkowity zysk/strata',    en:'Total P&L' },
-  'card.pnl.sub':   { pl:'od ceny zakupu',            en:'from purchase price' },
+  'card.pnl.lbl':      { pl:'Niezrealizowany zysk',     en:'Unrealized P&L' },
+  'card.pnl.sub':      { pl:'na otwartych pozycjach',  en:'on open positions' },
+  'card.realized.lbl': { pl:'Zrealizowany zysk',        en:'Realized P&L' },
+  'card.realized.sub': { pl:'ze sprzedanych pozycji',   en:'from closed positions' },
   'card.cash.lbl':  { pl:'Gotówka',                   en:'Cash' },
   'card.cash.sub':  { pl:'łączna w PLN',              en:'total in PLN' },
   'card.irr.lbl':   { pl:'IRR portfela',              en:'Portfolio IRR' },
@@ -1629,13 +1637,14 @@ function confirmSell() {
     if (h) h.qty = parseFloat((h.qty - qty).toFixed(8));
   }
   logTransaction('SELL', {
-    symbol:   sellTarget.symbol,
-    name:     sellTarget.name || sellTarget.symbol,
+    symbol:    sellTarget.symbol,
+    name:      sellTarget.name || sellTarget.symbol,
     qty,
-    avgPrice: price,
-    currency: cur,
-    date:     document.getElementById('s-date').value || today(),
-    note:     '',
+    avgPrice:  price,
+    costBasis: sellTarget.avgPrice,
+    currency:  cur,
+    date:      document.getElementById('s-date').value || today(),
+    note:      '',
   });
   save(SK_PORT, portfolio);
   closeSell();
@@ -1667,6 +1676,27 @@ function importCSV() {
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
+function calcRealizedPLN() {
+  const sells = transactions.filter(t => t.type === 'SELL');
+  if (!sells.length) return 0;
+  return sells.reduce((sum, tx) => {
+    const rate = fxRates[tx.currency] || fxRates.USD || 3.95;
+    let costBasis = tx.costBasis ?? null;
+    if (costBasis === null) {
+      // Approximate from BUY transactions for this symbol up to the sell date
+      const buys = transactions.filter(b => b.type === 'BUY' && b.symbol === tx.symbol && b.date <= tx.date);
+      if (buys.length) {
+        const totalQty  = buys.reduce((s, b) => s + b.qty, 0);
+        const totalCost = buys.reduce((s, b) => s + b.qty * b.price, 0);
+        costBasis = totalQty > 0 ? totalCost / totalQty : 0;
+      } else {
+        costBasis = 0;
+      }
+    }
+    return sum + (tx.price - costBasis) * tx.qty * rate;
+  }, 0);
+}
+
 function render() {
   const hs = portfolio.holdings;
   document.getElementById('emptyState').style.display    = hs.length ? 'none'  : 'block';
@@ -1797,6 +1827,14 @@ function render() {
     Object.entries(cashBalances).filter(([, v]) => v > 0)
       .map(([c, v]) => `${c}: ${fmt(v, '', 0, 2)}`).join(' · ') || 'brak gotówki';
 
+  // Realized P&L doesn't need live prices — compute once for both branches
+  const realizedPLN = calcRealizedPLN();
+  const sellCount   = transactions.filter(t => t.type === 'SELL').length;
+  const realizedSub = sellCount
+    ? `${sellCount} ${lang === 'en' ? 'sell transaction' + (sellCount > 1 ? 's' : '') : 'transakcj' + (sellCount === 1 ? 'a' : sellCount < 5 ? 'e' : 'i')} sprzedaży`
+    : (lang === 'en' ? 'no sells yet' : 'brak sprzedaży');
+  setCard('cv-realized', fmtPLN(realizedPLN, true), realizedSub, realizedPLN);
+
   if (hasPrices) {
     setCard('cv-total', fmtPLN(totalPLN),
       `Akcje: ${fmtPLN(totalStockPLN)} · USD/PLN ≈ ${(fxRates.USD||3.95).toFixed(2)}`, null);
@@ -1805,7 +1843,7 @@ function render() {
     setCard('cv-day', fmtPLN(totalDayPLN, true), fmtPct(dayPct) + ' ' + t('vs.yesterday'), totalDayPLN);
 
     const pnl = totalStockPLN - totalCostPLN;
-    setCard('cv-pnl', fmtPLN(pnl, true), fmtPct(totalCostPLN ? (pnl / totalCostPLN) * 100 : 0) + ' od zakupu', pnl);
+    setCard('cv-pnl', fmtPLN(pnl, true), fmtPct(totalCostPLN ? (pnl / totalCostPLN) * 100 : 0) + (lang === 'en' ? ' vs cost' : ' vs koszt'), pnl);
 
     const portIRR = irrDen > 0 ? irrNum / irrDen : null;
     const irrEl   = document.getElementById('cv-irr');
@@ -2953,7 +2991,7 @@ async function renderHistoriaTab() {
 
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 function logTransaction(type, h) {
-  transactions.unshift({
+  const tx = {
     id:       Date.now().toString() + Math.random().toString(36).slice(2, 5),
     type,
     symbol:   h.symbol,
@@ -2963,7 +3001,9 @@ function logTransaction(type, h) {
     currency: h.currency,
     date:     h.date || today(),
     note:     h.note || '',
-  });
+  };
+  if (h.costBasis != null) tx.costBasis = h.costBasis;
+  transactions.unshift(tx);
   save(SK_TRAN, transactions);
 }
 
