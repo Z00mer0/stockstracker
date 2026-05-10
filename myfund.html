@@ -19,6 +19,28 @@
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 
+/* PORTFOLIO SELECTOR */
+.pf-pill{position:relative;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:all .2s;white-space:nowrap;max-width:160px}
+.pf-pill:hover{border-color:var(--accent);color:var(--accent)}
+.pf-pill-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.pf-drop{position:fixed;background:var(--surface2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.45);z-index:300;min-width:200px;padding:6px;display:none}
+.pf-drop.open{display:block}
+.pf-drop-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)}
+.pf-drop-item:hover{background:rgba(255,255,255,.07)}
+.pf-drop-item.active{color:var(--accent)}
+.pf-drop-sep{border:none;border-top:1px solid var(--border);margin:4px 0}
+.pf-drop-action{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
+.pf-drop-action:hover{background:rgba(255,255,255,.07);color:var(--text)}
+/* COMPARE */
+.pf-compare-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:18px 20px}
+.pf-compare-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;cursor:pointer;transition:border-color .2s}
+.pf-compare-card:hover{border-color:var(--accent)}
+.pf-compare-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pf-compare-name{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.pf-compare-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.pf-compare-lbl{color:var(--muted)}
+.pf-compare-val{font-weight:600}
+
 /* HEADER */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;gap:16px;height:62px;position:sticky;top:0;z-index:50}
 .logo{font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--accent),#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px;white-space:nowrap}
@@ -329,6 +351,10 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 
 <header>
   <div class="logo" onclick="showTab('portfel')" style="cursor:pointer">StocksTracker</div>
+  <div class="pf-pill" id="pfPill" onclick="togglePfDrop(event)">
+    <span>💼</span><span class="pf-pill-name" id="pfPillName">Mój portfel</span><span>▾</span>
+    <div class="pf-drop" id="pfDrop" onclick="event.stopPropagation()"></div>
+  </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" data-tab="portfel" onclick="showTab('portfel')" data-i18n="tab.portfel">Portfel</button>
     <button class="nav-tab" data-tab="historia" onclick="showTab('historia')" data-i18n="tab.historia">Historia</button>
@@ -450,6 +476,14 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <div class="cash-grid" id="cashGrid">
       <div style="padding:4px 0;color:var(--muted);font-size:13px" data-i18n="cash.empty">Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.</div>
     </div>
+  </div>
+
+  <!-- Comparison panel -->
+  <div class="panel" id="pfComparePanel" style="margin-top:18px;display:none">
+    <div class="panel-header">
+      <div class="panel-title">💼 Porównanie portfeli</div>
+    </div>
+    <div class="pf-compare-grid" id="pfCompareGrid"></div>
   </div>
 
   <!-- Risk panel -->
@@ -1076,14 +1110,20 @@ const SK_PORT = 'myfund_v3_portfolio';
 const SK_SNAP = 'myfund_v3_snapshots';
 const SK_CASH = 'myfund_v4_cash';
 const SK_TRAN = 'myfund_v3_transactions';
-const SK_FUND     = 'myfund_fundamentals';
+const SK_FUND      = 'myfund_fundamentals';
 const SK_KAL_CACHE = 'myfund_kal_cache';
+const SK_PORTFOLIOS = 'myfund_portfolios';
+const SK_ACTIVE_PF  = 'myfund_active_pf';
+// Active portfolio id — must be set before first load() call
+let _activePfId = localStorage.getItem(SK_ACTIVE_PF) || 'default';
 
 let portfolio    = load(SK_PORT, { holdings: [] });
 let snapshots    = load(SK_SNAP, {});
 let cashBalances = load(SK_CASH, { PLN: 0, USD: 0, EUR: 0, GBP: 0 });
 let transactions = load(SK_TRAN, []);
-let fundamentals = load(SK_FUND, {});
+let fundamentals   = load(SK_FUND, {});
+let portfolioList  = JSON.parse(localStorage.getItem(SK_PORTFOLIOS) || 'null')
+                     || [{ id: 'default', name: 'Mój portfel' }];
 let mkt          = {};
 let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 
@@ -1101,12 +1141,20 @@ let serverLoaded = false;
 let authToken    = null;
 let currentUser  = null;  // { username, display_name }
 
+// Maps a well-known storage key to the active portfolio's key.
+// For the default portfolio the key is unchanged (backward compat).
+function _pfKey(base) {
+  if (_activePfId === 'default') return base;
+  const MAP = { [SK_PORT]: 'port', [SK_SNAP]: 'snap', [SK_CASH]: 'cash', [SK_TRAN]: 'tran' };
+  const t = MAP[base];
+  return t ? `myfund_pf_${_activePfId}_${t}` : base;
+}
 function load(key, def) {
-  try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; }
+  try { return JSON.parse(localStorage.getItem(_pfKey(key))) || def; } catch { return def; }
 }
 function save(key, val) {
-  localStorage.setItem(key, JSON.stringify(val));
-  if (!serverLoaded || !authToken) return;
+  localStorage.setItem(_pfKey(key), JSON.stringify(val));
+  if (!serverLoaded || !authToken || _activePfId !== 'default') return;
   clearTimeout(save._t);
   save._t = setTimeout(() => {
     fetch('/api/data', {
@@ -1708,8 +1756,200 @@ function render() {
   _lastCashPLN = cashPLN;
   renderDonutForView();
   renderCash();
+  renderPfCompare();
   renderPortfolioRisk();
 }
+
+// ─── MULTI-PORTFOLIO ──────────────────────────────────────────────────────────
+
+function savePfList() {
+  localStorage.setItem(SK_PORTFOLIOS, JSON.stringify(portfolioList));
+}
+
+function switchPortfolio(pfId) {
+  closePfDrop();
+  _activePfId = pfId;
+  localStorage.setItem(SK_ACTIVE_PF, pfId);
+  portfolio    = load(SK_PORT, { holdings: [] });
+  snapshots    = load(SK_SNAP, {});
+  cashBalances = load(SK_CASH, { PLN: 0, USD: 0, EUR: 0, GBP: 0 });
+  transactions = load(SK_TRAN, []);
+  renderPfSelector();
+  render();
+  if (document.getElementById('tab-historia')?.style.display !== 'none') renderHistoriaTab();
+  if (document.getElementById('tab-transakcje')?.style.display !== 'none') renderTransakcjeTab();
+  if (document.getElementById('tab-dywidendy')?.style.display !== 'none') renderDywidendyTab();
+  if (document.getElementById('tab-kalendarz')?.style.display !== 'none') renderKalendarzTab();
+}
+
+function createPortfolio(name) {
+  const id = 'pf_' + Date.now();
+  portfolioList.push({ id, name: name.trim() });
+  savePfList();
+  switchPortfolio(id);
+}
+
+function renamePortfolio(pfId, name) {
+  const pf = portfolioList.find(p => p.id === pfId);
+  if (pf) { pf.name = name.trim(); savePfList(); }
+  renderPfSelector();
+  renderPfCompare();
+}
+
+function deletePortfolio(pfId) {
+  if (portfolioList.length <= 1) { toast('Musisz mieć co najmniej jeden portfel', true); return; }
+  portfolioList = portfolioList.filter(p => p.id !== pfId);
+  savePfList();
+  // Clear storage for deleted portfolio
+  if (pfId !== 'default') {
+    ['port','snap','cash','tran'].forEach(t => localStorage.removeItem(`myfund_pf_${pfId}_${t}`));
+  }
+  if (_activePfId === pfId) switchPortfolio(portfolioList[0].id);
+  else { renderPfSelector(); renderPfCompare(); renderPfMgrList(); }
+}
+
+function togglePfDrop(e) {
+  e.stopPropagation();
+  const drop = document.getElementById('pfDrop');
+  if (!drop) return;
+  if (drop.classList.contains('open')) { closePfDrop(); return; }
+  renderPfDropContent();
+  // Position below pill
+  const pill = document.getElementById('pfPill');
+  const rect = pill.getBoundingClientRect();
+  drop.style.top  = (rect.bottom + 4) + 'px';
+  drop.style.left = rect.left + 'px';
+  drop.classList.add('open');
+  document.addEventListener('click', closePfDrop, { once: true });
+}
+function closePfDrop() {
+  document.getElementById('pfDrop')?.classList.remove('open');
+}
+
+function renderPfDropContent() {
+  const drop = document.getElementById('pfDrop');
+  if (!drop) return;
+  drop.innerHTML = portfolioList.map(pf => `
+    <div class="pf-drop-item ${pf.id === _activePfId ? 'active' : ''}" onclick="switchPortfolio('${pf.id}')">
+      <span>💼</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(pf.name)}</span>
+      ${pf.id === _activePfId ? '<span style="color:var(--accent)">✓</span>' : ''}
+    </div>
+  `).join('') + `
+    <hr class="pf-drop-sep">
+    <div class="pf-drop-action" onclick="openPfMgr()">⚙ Zarządzaj portfelami</div>
+  `;
+}
+
+function renderPfSelector() {
+  const pf = portfolioList.find(p => p.id === _activePfId) || portfolioList[0];
+  const nameEl = document.getElementById('pfPillName');
+  if (nameEl) nameEl.textContent = pf?.name || 'Portfel';
+}
+
+// ── Portfolio manager modal ─────────────────────────────────────────────────
+function openPfMgr() {
+  closePfDrop();
+  renderPfMgrList();
+  document.getElementById('pfMgrNewName').value = '';
+  document.getElementById('pfMgrOverlay').classList.add('open');
+}
+function closePfMgr() { document.getElementById('pfMgrOverlay').classList.remove('open'); }
+
+function renderPfMgrList() {
+  const el = document.getElementById('pfMgrList');
+  if (!el) return;
+  el.innerHTML = portfolioList.map(pf => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis">${esc(pf.name)}</span>
+      ${pf.id === _activePfId ? '<span style="font-size:11px;color:var(--accent);font-weight:700">aktywny</span>' : ''}
+      <button class="btn btn-outline" style="padding:4px 9px;font-size:12px"
+        onclick="pfMgrRename('${pf.id}','${esc(pf.name)}')">✎</button>
+      ${portfolioList.length > 1 && pf.id !== _activePfId
+        ? `<button class="btn btn-outline" style="padding:4px 9px;font-size:12px;color:var(--red)" onclick="pfMgrDelete('${pf.id}','${esc(pf.name)}')">✕</button>`
+        : '<span style="width:33px"></span>'}
+      ${pf.id !== _activePfId
+        ? `<button class="btn btn-accent" style="padding:4px 9px;font-size:12px" onclick="closePfMgr();switchPortfolio('${pf.id}')">Przełącz</button>`
+        : ''}
+    </div>
+  `).join('');
+}
+
+function pfMgrCreate() {
+  const name = document.getElementById('pfMgrNewName')?.value.trim();
+  if (!name) { toast('Podaj nazwę portfela', true); return; }
+  createPortfolio(name);
+  closePfMgr();
+}
+
+function pfMgrRename(pfId, currentName) {
+  const newName = prompt('Nowa nazwa portfela:', currentName);
+  if (!newName || !newName.trim()) return;
+  renamePortfolio(pfId, newName);
+  renderPfMgrList();
+}
+
+function pfMgrDelete(pfId, name) {
+  if (!confirm(`Usunąć portfel "${name}"? Wszystkie dane zostaną utracone.`)) return;
+  deletePortfolio(pfId);
+}
+
+// ── Portfolio comparison panel ──────────────────────────────────────────────
+function renderPfCompare() {
+  const panel = document.getElementById('pfComparePanel');
+  const grid  = document.getElementById('pfCompareGrid');
+  if (!panel || !grid || portfolioList.length < 2) {
+    if (panel) panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+
+  grid.innerHTML = portfolioList.map(pf => {
+    const pfPort = pf.id === _activePfId
+      ? portfolio
+      : (JSON.parse(localStorage.getItem(pf.id === 'default' ? SK_PORT : `myfund_pf_${pf.id}_port`) || 'null') || { holdings: [] });
+    const pfCash = pf.id === _activePfId
+      ? cashBalances
+      : (JSON.parse(localStorage.getItem(pf.id === 'default' ? SK_CASH : `myfund_pf_${pf.id}_cash`) || 'null') || { PLN: 0, USD: 0, EUR: 0, GBP: 0 });
+
+    let stockVal = 0, costVal = 0, hasPrices = false;
+    for (const h of pfPort.holdings) {
+      const q    = mkt[h.symbol];
+      const rate = fxRates[q?.currency || h.currency || 'USD'] || fxRates.USD || 3.95;
+      const bRate= fxRates[h.currency] || fxRates.USD || 3.95;
+      if (q?.price != null) { stockVal += q.price * h.qty * rate; hasPrices = true; }
+      costVal += h.avgPrice * h.qty * bRate;
+    }
+    const cashPLN = Object.entries(pfCash).reduce((s, [cur, amt]) =>
+      s + (amt || 0) * (cur === 'PLN' ? 1 : fxRates[cur] || fxRates.USD || 3.95), 0);
+    const totalPLN = stockVal + cashPLN;
+    const pnl = stockVal - costVal;
+    const pnlPct = costVal > 0 ? pnl / costVal * 100 : null;
+    const isActive = pf.id === _activePfId;
+
+    return `
+      <div class="pf-compare-card ${isActive ? 'active' : ''}" onclick="switchPortfolio('${pf.id}')">
+        <div class="pf-compare-name">💼 ${esc(pf.name)} ${isActive ? '<span style="font-size:10px;color:var(--accent);font-weight:700">aktywny</span>' : ''}</div>
+        <div class="pf-compare-row">
+          <span class="pf-compare-lbl">Wartość</span>
+          <span class="pf-compare-val amt">${hasPrices ? fmtPLN(totalPLN) : '—'}</span>
+        </div>
+        <div class="pf-compare-row">
+          <span class="pf-compare-lbl">Zysk/Strata</span>
+          <span class="pf-compare-val ${pnl >= 0 ? 'pos' : 'neg'}">${hasPrices ? fmtPLN(pnl, true) : '—'}${pnlPct != null && hasPrices ? ` (${fmtPct(pnlPct)})` : ''}</span>
+        </div>
+        <div class="pf-compare-row">
+          <span class="pf-compare-lbl">Gotówka</span>
+          <span class="pf-compare-val amt">${fmtPLN(cashPLN)}</span>
+        </div>
+        <div class="pf-compare-row">
+          <span class="pf-compare-lbl">Pozycji</span>
+          <span class="pf-compare-val">${pfPort.holdings.length}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
 function renderPortfolioRisk() {
   const panel = document.getElementById('portRiskPanel');
@@ -3384,9 +3624,9 @@ async function retryServerSync() {
 }
 
 function applyServerData(d) {
+  if (_activePfId !== 'default') return; // non-default portfolios are local-only
   if (d.portfolio && Array.isArray(d.portfolio.holdings)) {
     portfolio    = d.portfolio;
-    // Merge snapshots: keep all local entries + server entries (server wins on conflict)
     snapshots    = { ...snapshots, ...(d.snapshots || {}) };
     cashBalances = d.cash || { PLN: 0, USD: 0, EUR: 0, GBP: 0 };
     localStorage.setItem(SK_PORT, JSON.stringify(portfolio));
@@ -3396,7 +3636,6 @@ function applyServerData(d) {
       transactions = d.transactions;
       localStorage.setItem(SK_TRAN, JSON.stringify(transactions));
     }
-    // Push merged snapshots back to server so history is preserved
     if (authToken) {
       fetch('/api/data', {
         method: 'POST',
@@ -3668,9 +3907,25 @@ initThemeBtn();
 initPrivacy();
 applyI18n();
 applyColVis();
+renderPfSelector();
 renderMarketStatus();
 checkAuth();
 </script>
 <div class="col-gear-panel" id="colGearPanel"></div>
+
+<!-- Portfolio Manager Modal -->
+<div class="overlay" id="pfMgrOverlay" onclick="closePfMgr()">
+  <div class="modal" onclick="event.stopPropagation()" style="width:420px">
+    <h2>💼 Zarządzaj portfelami</h2>
+    <div id="pfMgrList" style="margin-bottom:18px"></div>
+    <div style="display:flex;gap:8px">
+      <input id="pfMgrNewName" type="text" placeholder="Nazwa nowego portfela" style="flex:1" onkeydown="if(event.key==='Enter')pfMgrCreate()">
+      <button class="btn btn-accent" onclick="pfMgrCreate()">+ Utwórz</button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-outline" onclick="closePfMgr()">Zamknij</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
