@@ -491,6 +491,13 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 
   <div class="hist-stats-grid" id="histStatsGrid"></div>
 
+  <div class="panel" id="riskPanel" style="display:none;margin-top:18px">
+    <div class="panel-header">
+      <div class="panel-title">📊 Analiza ryzyka</div>
+    </div>
+    <div class="hist-stats-grid" id="riskStatsGrid" style="padding:18px 20px"></div>
+  </div>
+
 </main>
 
 <!-- ══════════════════════ TAB: TRANSAKCJE ══════════════════════ -->
@@ -819,6 +826,11 @@ const STRINGS = {
   'hist.s.alpha':   { pl:'Alpha',                en:'Alpha' },
   'hist.portlbl':   { pl:'Wycena portfela',      en:'Portfolio Value' },
   'hist.caplbl':    { pl:'Zainwestowany kapitał',en:'Invested Capital' },
+  'risk.vol':       { pl:'Zmienność (roczna)',   en:'Volatility (annual)' },
+  'risk.maxdd':     { pl:'Max Drawdown',          en:'Max Drawdown' },
+  'risk.sharpe':    { pl:'Sharpe Ratio',           en:'Sharpe Ratio' },
+  'risk.sortino':   { pl:'Sortino Ratio',          en:'Sortino Ratio' },
+  'risk.beta':      { pl:'Beta',                   en:'Beta' },
   'tran.title':     { pl:'📋 Historia transakcji',en:'📋 Transaction History' },
   'tran.h.date':    { pl:'Data',    en:'Date' },
   'tran.h.type':    { pl:'Typ',     en:'Type' },
@@ -1910,6 +1922,113 @@ function computeTWR(entries) {
   return result;
 }
 
+function _dailyReturns(values) {
+  const r = [];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i - 1] > 0) r.push(values[i] / values[i - 1] - 1);
+  }
+  return r;
+}
+function _mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+function _std(arr) {
+  const m = _mean(arr);
+  return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);
+}
+
+function calcVolatility(values) {
+  const r = _dailyReturns(values);
+  if (r.length < 2) return null;
+  return _std(r) * Math.sqrt(252) * 100;
+}
+function calcMaxDrawdown(values) {
+  let peak = values[0], maxDD = 0;
+  for (const v of values) {
+    if (v > peak) peak = v;
+    const dd = (peak - v) / peak;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return maxDD * 100;
+}
+function calcSharpe(values, rf = 0.045) {
+  const r = _dailyReturns(values);
+  if (r.length < 2) return null;
+  const rfD = rf / 252;
+  const ex = r.map(ri => ri - rfD);
+  const s = _std(ex);
+  if (s === 0) return null;
+  return (_mean(ex) / s) * Math.sqrt(252);
+}
+function calcSortino(values, rf = 0.045) {
+  const r = _dailyReturns(values);
+  if (r.length < 2) return null;
+  const rfD = rf / 252;
+  const ex = r.map(ri => ri - rfD);
+  const neg = ex.filter(ri => ri < 0);
+  if (!neg.length) return null;
+  const downDev = Math.sqrt(neg.reduce((s, ri) => s + ri ** 2, 0) / r.length) * Math.sqrt(252);
+  if (downDev === 0) return null;
+  return (_mean(ex) * 252) / downDev;
+}
+function calcBeta(portValues, bmCumPct) {
+  if (portValues.length !== bmCumPct.length) return null;
+  const portR = _dailyReturns(portValues);
+  const bmR = [];
+  for (let i = 1; i < bmCumPct.length; i++) {
+    const p = bmCumPct[i - 1], c = bmCumPct[i];
+    bmR.push(p != null && c != null ? (c - p) / (100 + p) : null);
+  }
+  const pairs = portR.map((r, i) => [r, bmR[i]]).filter(([a, b]) => a != null && b != null);
+  if (pairs.length < 5) return null;
+  const rp = pairs.map(p => p[0]), rb = pairs.map(p => p[1]);
+  const mp = _mean(rp), mb = _mean(rb);
+  const cov = pairs.reduce((s, [p, b]) => s + (p - mp) * (b - mb), 0) / pairs.length;
+  const vb  = pairs.reduce((s, [, b]) => s + (b - mb) ** 2, 0) / pairs.length;
+  return vb === 0 ? null : cov / vb;
+}
+
+function renderRiskStats(values, beta = null, bmLabel = '') {
+  const panel = document.getElementById('riskPanel');
+  const grid  = document.getElementById('riskStatsGrid');
+  if (!panel || !grid || values.length < 5) { if (panel) panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const vol    = calcVolatility(values);
+  const maxDD  = calcMaxDrawdown(values);
+  const sharpe = calcSharpe(values);
+  const sortino= calcSortino(values);
+
+  const stats = [
+    { label: t('risk.vol'),
+      val: vol != null ? vol.toFixed(1) + '%' : '—',
+      cls: '', tip: 'Annualizowane odchylenie standardowe dziennych stóp zwrotu (×√252)' },
+    { label: t('risk.maxdd'),
+      val: maxDD != null ? '-' + maxDD.toFixed(1) + '%' : '—',
+      cls: maxDD > 0 ? 'neg' : '', tip: 'Największy spadek od szczytu do dołka w analizowanym okresie' },
+    { label: t('risk.sharpe'),
+      val: sharpe != null ? sharpe.toFixed(2) : '—',
+      cls: sharpe != null ? (sharpe >= 1 ? 'pos' : sharpe < 0 ? 'neg' : '') : '',
+      tip: 'Zwrot ponad stopę wolną od ryzyka (4,5%) podzielony przez zmienność. >1 = dobry, >2 = bardzo dobry' },
+    { label: t('risk.sortino'),
+      val: sortino != null ? sortino.toFixed(2) : '—',
+      cls: sortino != null ? (sortino >= 1 ? 'pos' : sortino < 0 ? 'neg' : '') : '',
+      tip: 'Jak Sharpe, ale liczy tylko ujemne odchylenia. Preferowany przy asymetrycznym rozkładzie zwrotów' },
+  ];
+
+  if (beta != null) {
+    stats.push({ label: t('risk.beta') + (bmLabel ? ` vs ${bmLabel}` : ''),
+      val: beta.toFixed(2),
+      cls: '',
+      tip: 'Wrażliwość portfela na ruchy benchmarku. Beta=1 → portfel porusza się jak benchmark; <1 → mniej zmienny; >1 → bardziej zmienny' });
+  }
+
+  grid.innerHTML = stats.map(s =>
+    `<div class="hist-stat">
+      <div class="hist-stat-label">${s.label} <span class="tip" data-tip="${s.tip}">i</span></div>
+      <div class="hist-stat-value ${s.cls}" style="font-size:18px">${s.val}</div>
+    </div>`
+  ).join('');
+}
+
 async function renderHistoriaTab() {
   const ctx = document.getElementById('lineChartBig').getContext('2d');
   if (lineChartBig) { lineChartBig.destroy(); lineChartBig = null; }
@@ -2056,6 +2175,7 @@ async function renderHistoriaTab() {
         }
       }
     });
+    renderRiskStats(values);
     return;
   }
 
@@ -2105,6 +2225,8 @@ async function renderHistoriaTab() {
     }
   });
 
+  renderRiskStats(values);
+
   const bm = BENCHMARKS.find(b => b.id === selectedBenchmark);
   if (!bm) return;
   const capturedChart = lineChartBig;
@@ -2136,6 +2258,9 @@ async function renderHistoriaTab() {
         { label: t('hist.s.alpha'),    val: fmtPct(alpha),    cls: alpha >= 0  ? 'pos' : 'neg' },
       ].map(s => `<div class="hist-stat"><div class="hist-stat-label">${s.label}</div>
         <div class="hist-stat-value ${s.cls}">${s.val}</div></div>`).join('');
+
+      const beta = calcBeta(values, bmData);
+      renderRiskStats(values, beta, bm.label);
     } catch(e) { console.warn('benchmark failed:', e.message); }
   })();
 }
