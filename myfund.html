@@ -452,6 +452,15 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     </div>
   </div>
 
+  <!-- Risk panel -->
+  <div class="panel" id="portRiskPanel" style="display:none;margin-top:18px">
+    <div class="panel-header">
+      <div class="panel-title" data-i18n="risk.title">📊 Analiza ryzyka</div>
+      <div style="font-size:12px;color:var(--muted)" id="portRiskBmLabel"></div>
+    </div>
+    <div class="hist-stats-grid" id="portRiskGrid" style="padding:18px 20px"></div>
+  </div>
+
 </main>
 
 <!-- ══════════════════════ TAB: HISTORIA ══════════════════════ -->
@@ -1696,6 +1705,77 @@ function render() {
   _lastCashPLN = cashPLN;
   renderDonutForView();
   renderCash();
+  renderPortfolioRisk();
+}
+
+function renderPortfolioRisk() {
+  const panel = document.getElementById('portRiskPanel');
+  const grid  = document.getElementById('portRiskGrid');
+  if (!panel || !grid) return;
+
+  const firstBuyDate = transactions.filter(tx => tx.type === 'BUY').map(tx => tx.date).sort()[0];
+  let entries = Object.entries(snapshots).sort((a, b) => a[0].localeCompare(b[0]));
+  if (firstBuyDate) entries = entries.filter(([d]) => d >= firstBuyDate);
+  const values = entries.map(([, v]) => v);
+
+  if (values.length < 5) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const vol     = calcVolatility(values);
+  const maxDD   = calcMaxDrawdown(values);
+  const sharpe  = calcSharpe(values);
+  const sortino = calcSortino(values);
+
+  const statHTML = (label, val, cls, tip) =>
+    `<div class="hist-stat">
+      <div class="hist-stat-label">${label} <span class="tip" data-tip="${tip}">i</span></div>
+      <div class="hist-stat-value ${cls}" style="font-size:18px">${val}</div>
+    </div>`;
+
+  const metrics = [
+    { label: t('risk.vol'),
+      val: vol != null ? vol.toFixed(1) + '%' : '—', cls: '',
+      tip: lang === 'en' ? 'Annualised standard deviation of daily returns (×√252)' : 'Annualizowane odchylenie standardowe dziennych stóp zwrotu (×√252)' },
+    { label: t('risk.maxdd'),
+      val: maxDD != null ? '-' + maxDD.toFixed(1) + '%' : '—', cls: maxDD > 0 ? 'neg' : '',
+      tip: lang === 'en' ? 'Largest peak-to-trough decline in the full period' : 'Największy spadek od szczytu do dołka w całym okresie' },
+    { label: t('risk.sharpe'),
+      val: sharpe != null ? sharpe.toFixed(2) : '—',
+      cls: sharpe != null ? (sharpe >= 1 ? 'pos' : sharpe < 0 ? 'neg' : '') : '',
+      tip: lang === 'en' ? 'Return above risk-free rate (4.5%) divided by volatility. >1 = good, >2 = great' : 'Zwrot ponad stopę wolną od ryzyka (4,5%) podzielony przez zmienność. >1 = dobry, >2 = bardzo dobry' },
+    { label: t('risk.sortino'),
+      val: sortino != null ? sortino.toFixed(2) : '—',
+      cls: sortino != null ? (sortino >= 1 ? 'pos' : sortino < 0 ? 'neg' : '') : '',
+      tip: lang === 'en' ? 'Like Sharpe, but only penalises downside deviations' : 'Jak Sharpe, ale karze tylko ujemne odchylenia' },
+  ];
+
+  grid.innerHTML = metrics.map(m => statHTML(m.label, m.val, m.cls, m.tip)).join('');
+
+  // async: fetch S&P 500 for Beta
+  const bmLbl = document.getElementById('portRiskBmLabel');
+  if (bmLbl) bmLbl.textContent = '';
+  const capturedValues = values;
+  (async () => {
+    try {
+      const cacheKey = '^GSPC_max';
+      if (!bmCache[cacheKey]) bmCache[cacheKey] = await fetchIndexHistory('^GSPC', 'max');
+      if (document.getElementById('portRiskPanel')?.style.display === 'none') return;
+      const idxMap  = bmCache[cacheKey];
+      const idxVals = entries.map(([d]) => closestValue(idxMap, d));
+      const idxFirst = idxVals.find(v => v != null);
+      if (!idxFirst) return;
+      const bmData = idxVals.map(v => v != null ? (v / idxFirst - 1) * 100 : null);
+      const beta = calcBeta(capturedValues, bmData);
+      if (beta == null) return;
+      grid.innerHTML += statHTML(
+        t('risk.beta') + ' (S&P 500)', beta.toFixed(2), '',
+        lang === 'en'
+          ? 'Sensitivity to S&P 500 moves. Beta=1 → moves with market; <1 → less volatile; >1 → more volatile'
+          : 'Wrażliwość na ruchy S&P 500. Beta=1 → portfel jak rynek; <1 → mniej zmienny; >1 → bardziej zmienny'
+      );
+      if (bmLbl) bmLbl.textContent = lang === 'en' ? 'vs S&P 500 (all time)' : 'vs S&P 500 (cały okres)';
+    } catch(e) { console.warn('portfolio beta failed:', e.message); }
+  })();
 }
 
 function setCard(id, val, sub, colorVal) {
