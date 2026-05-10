@@ -493,7 +493,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 
   <div class="panel" id="riskPanel" style="display:none;margin-top:18px">
     <div class="panel-header">
-      <div class="panel-title">📊 Analiza ryzyka</div>
+      <div class="panel-title" data-i18n="risk.title">📊 Analiza ryzyka</div>
     </div>
     <div class="hist-stats-grid" id="riskStatsGrid" style="padding:18px 20px"></div>
   </div>
@@ -522,13 +522,13 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 <!-- ══════════════════════ TAB: KALENDARZ ══════════════════════ -->
 <main id="tab-kalendarz" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:18px;font-weight:700">📅 Nadchodzące wydarzenia</div>
+    <div style="font-size:18px;font-weight:700" data-i18n="kal.title">📅 Nadchodzące wydarzenia</div>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="donut-tabs" id="kal-view-tabs" style="margin-bottom:0">
-        <button class="donut-tab active" onclick="setKalView('agenda')">☰ Agenda</button>
-        <button class="donut-tab" onclick="setKalView('grid')">▦ Siatka</button>
+        <button class="donut-tab active" onclick="setKalView('agenda')" data-i18n="kal.agenda">☰ Agenda</button>
+        <button class="donut-tab" onclick="setKalView('grid')" data-i18n="kal.grid">▦ Siatka</button>
       </div>
-      <button class="btn btn-outline" onclick="renderKalendarzTab(true)">↻ Odśwież</button>
+      <button class="btn btn-outline" onclick="renderKalendarzTab(true)" data-i18n="kal.refresh">↻ Odśwież</button>
     </div>
   </div>
   <div id="kalendarContent"></div>
@@ -850,7 +850,51 @@ const STRINGS = {
   'div.title':      { pl:'💰 Kalendarz dywidend',  en:'💰 Dividend Calendar' },
   'div.refresh':    { pl:'↻ Odśwież dane',         en:'↻ Refresh' },
   'kal.title':      { pl:'📅 Nadchodzące wydarzenia', en:'📅 Upcoming Events' },
+  'kal.agenda':     { pl:'☰ Agenda',               en:'☰ Agenda' },
+  'kal.grid':       { pl:'▦ Siatka',               en:'▦ Grid' },
   'kal.refresh':    { pl:'↻ Odśwież',              en:'↻ Refresh' },
+  'kal.sec.today':  { pl:'Dzisiaj',                en:'Today' },
+  'kal.sec.week':   { pl:'Ten tydzień',            en:'This week' },
+  'kal.sec.upcoming':{ pl:'Nadchodzące',           en:'Upcoming' },
+  'kal.today':      { pl:'dziś',                   en:'today' },
+  'kal.tomorrow':   { pl:'jutro',                  en:'tomorrow' },
+  'kal.indays':     { pl:'za {n} dni',             en:'in {n} days' },
+  'kal.nav.prev':   { pl:'‹ Poprzedni',            en:'‹ Previous' },
+  'kal.nav.next':   { pl:'Następny ›',             en:'Next ›' },
+  'kal.empty':      { pl:'Brak nadchodzących wydarzeń', en:'No upcoming events' },
+  'kal.empty.sub':  { pl:'Brak raportów wynikowych, dywidend i danych makro w ciągu 180 dni', en:'No earnings reports, dividends or macro data in the next 180 days' },
+  'mkt.open':       { pl:'Otwarte',               en:'Open' },
+  'mkt.pre':        { pl:'Pre-market',             en:'Pre-market' },
+  'mkt.closed':     { pl:'Zamknięte',              en:'Closed' },
+  'chart.nopos':    { pl:'Brak pozycji',           en:'No positions' },
+  'div.noholdings': { pl:'Brak spółek w portfelu', en:'No companies in portfolio' },
+  'risk.title':     { pl:'📊 Analiza ryzyka',      en:'📊 Risk Analysis' },
+  'toast.wakeup':   { pl:'Serwer się budzi… dane z pamięci lokalnej. Synchronizacja za chwilę.', en:'Server waking up… data from local cache. Syncing shortly.' },
+  'toast.synced':   { pl:'Serwer gotowy — dane zsynchronizowane.', en:'Server ready — data synced.' },
+  'toast.deleted':  { pl:'Pozycja usunięta', en:'Position deleted' },
+  'toast.cash':     { pl:'Gotówka zaktualizowana', en:'Cash updated' },
+  'toast.mktfail':  { pl:'Nie udało się pobrać danych rynkowych', en:'Failed to fetch market data' },
+  'valid.ticker':   { pl:'Podaj symbol tickera', en:'Enter a ticker symbol' },
+  'valid.qty':      { pl:'Podaj prawidłową ilość', en:'Enter a valid quantity' },
+  'valid.price':    { pl:'Podaj cenę zakupu', en:'Enter a buy price' },
+  'valid.sellqty':  { pl:'Podaj ilość', en:'Enter quantity' },
+  'valid.sellqty2': { pl:'Za duża ilość', en:'Quantity too large' },
+  'valid.sellprice':{ pl:'Podaj cenę sprzedaży', en:'Enter a sell price' },
+  'valid.csv':      { pl:'Wklej dane CSV', en:'Paste CSV data' },
+  'valid.divamt':   { pl:'Podaj kwotę dywidendy', en:'Enter dividend amount' },
+  'col.panel.hdr':  { pl:'Widoczne kolumny', en:'Visible columns' },
+  'add.qty.lbl':    { pl:'Ilość akcji *', en:'Shares *' },
+  'add.amt.lbl':    { pl:'Kwota transakcji *', en:'Transaction Amount *' },
+  'add.shares.hint':{ pl:'Otrzymasz: {n} akcji', en:'You will receive: {n} shares' },
+  'loading.div':    { pl:'Pobieranie danych dywidend…', en:'Fetching dividend data…' },
+  'loading.kal':    { pl:'Pobieranie danych…', en:'Fetching data…' },
+  'donut.noholdings':{ pl:'Dodaj spółki, aby zobaczyć alokację', en:'Add companies to see allocation' },
+  'toast.added':    { pl:'Dodano {sym} do portfela', en:'Added {sym} to portfolio' },
+  'toast.averaged': { pl:'Uśredniono {sym}: {qty} szt. @ {price}', en:'Averaged {sym}: {qty} sh. @ {price}' },
+  'toast.imported': { pl:'Zaimportowano {n} pozycji', en:'Imported {n} positions' },
+  'toast.importerr':{ pl:'{n} błędów', en:'{n} errors' },
+  'err.server':     { pl:'Błąd połączenia z serwerem', en:'Server connection error' },
+  'err.register':   { pl:'Błąd rejestracji', en:'Registration error' },
   'add.title':      { pl:'Dodaj spółkę do portfela',en:'Add Stock to Portfolio' },
   'add.symbol':     { pl:'Symbol tickera *',        en:'Ticker Symbol *' },
   'add.hint.html':  { pl:'🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: bez sufiksu (np. AAPL, NVDA)', en:'🇵🇱 WSE: add <strong>.WA</strong> (e.g. PKN.WA, KGHM.WA) &nbsp;·&nbsp; 🇺🇸 US: no suffix (e.g. AAPL, NVDA)' },
@@ -948,7 +992,7 @@ function renderMarketStatus() {
   const pl = getMarketStatus('Europe/Warsaw', 9, 0, 17, 35);
   const us = getMarketStatus('America/New_York', 9, 30, 16, 0);
   const dot = s => `<span class="mkt-dot mkt-${s}"></span>`;
-  const lbl = s => s === 'open' ? 'Otwarte' : s === 'pre' ? 'Pre-market' : 'Zamknięte';
+  const lbl = s => s === 'open' ? t('mkt.open') : s === 'pre' ? t('mkt.pre') : t('mkt.closed');
   document.getElementById('mktStatus').innerHTML =
     `<span class="mkt-flag">${dot(pl)} 🇵🇱 ${lbl(pl)}</span>` +
     `<span class="mkt-flag">${dot(us)} 🇺🇸 ${lbl(us)}</span>`;
@@ -987,7 +1031,7 @@ function applyColVis() {
 
 function buildColPanel() {
   const panel = document.getElementById('colGearPanel');
-  panel.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Widoczne kolumny</div>' +
+  panel.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">${t('col.panel.hdr')}</div>` +
     COL_DEFS.map(c => `<label><input type="checkbox" ${colVis[c.idx] ? 'checked' : ''}
       onchange="colVis[${c.idx}]=this.checked;applyColVis();localStorage.setItem('${SK_COLVIS}',JSON.stringify(colVis))">
       ${c.label}</label>`).join('');
@@ -1249,6 +1293,11 @@ function daysHeld(buyDate) {
 
 function fmtPeriod(days) {
   if (days === null || days < 0) return '—';
+  if (lang === 'en') {
+    if (days < 30)  return `${days}d`;
+    if (days < 365) return `${Math.round(days / 30)}mo`;
+    return `${(days / 365).toFixed(1)}yr`;
+  }
   if (days < 30)  return `${days} dni`;
   if (days < 365) return `${Math.round(days / 30)} mies.`;
   return `${(days / 365).toFixed(1)} lat`;
@@ -1270,10 +1319,10 @@ function setAddMode(mode) {
   const label = document.getElementById('f-qty-label');
   const qtyInput = document.getElementById('f-qty');
   if (mode === 'qty') {
-    label.textContent = 'Ilość akcji *';
+    label.textContent = t('add.qty.lbl');
     qtyInput.placeholder = '10';
   } else {
-    label.textContent = 'Kwota transakcji *';
+    label.textContent = t('add.amt.lbl');
     qtyInput.placeholder = '2000';
   }
   syncAddFields('qty');
@@ -1289,7 +1338,7 @@ function syncAddFields(changed) {
     if (!isNaN(qty) && !isNaN(price) && price > 0) {
       const shares = qty / price;
       hint.style.display = 'block';
-      hint.textContent = `Otrzymasz: ${shares % 1 === 0 ? shares : shares.toFixed(4)} akcji`;
+      hint.textContent = t('add.shares.hint').replace('{n}', shares % 1 === 0 ? shares : shares.toFixed(4));
     } else {
       hint.style.display = 'none';
     }
@@ -1321,9 +1370,9 @@ function addHolding(data) {
     date:     document.getElementById('f-date').value || today(),
     note:     document.getElementById('f-note').value.trim(),
   };
-  if (!h.symbol)                    { toast('Podaj symbol tickera', true); return; }
-  if (!h.qty || h.qty <= 0)         { toast('Podaj prawidłową ilość', true); return; }
-  if (!h.avgPrice || h.avgPrice <= 0){ toast('Podaj cenę zakupu', true); return; }
+  if (!h.symbol)                    { toast(t('valid.ticker'), true); return; }
+  if (!h.qty || h.qty <= 0)         { toast(t('valid.qty'), true); return; }
+  if (!h.avgPrice || h.avgPrice <= 0){ toast(t('valid.price'), true); return; }
 
   const existing = portfolio.holdings.find(e => e.symbol === h.symbol);
   if (existing) {
@@ -1352,8 +1401,8 @@ function addHolding(data) {
     closeAdd();
     render();
     toast(existing
-      ? `Uśredniono ${h.symbol}: ${fmt(existing.qty,'',0,4)} szt. @ ${fmtCur(existing.avgPrice, existing.currency)}`
-      : `Dodano ${h.symbol} do portfela`);
+      ? t('toast.averaged').replace('{sym}', h.symbol).replace('{qty}', fmt(existing.qty,'',0,4)).replace('{price}', fmtCur(existing.avgPrice, existing.currency))
+      : t('toast.added').replace('{sym}', h.symbol));
   }
   return true;
 }
@@ -1399,7 +1448,7 @@ function removeHolding(id) {
   portfolio.holdings = portfolio.holdings.filter(h => h.id !== id);
   save(SK_PORT, portfolio);
   render();
-  toast('Pozycja usunięta');
+  toast(t('toast.deleted'));
 }
 
 function openSell(id) {
@@ -1429,9 +1478,9 @@ function confirmSell() {
   const cur    = document.getElementById('s-currency').value;
   const toCash = document.getElementById('s-to-cash').checked;
 
-  if (!qty || qty <= 0)     { toast('Podaj ilość', true); return; }
-  if (qty > sellTarget.qty) { toast('Za duża ilość', true); return; }
-  if (!price || price <= 0) { toast('Podaj cenę sprzedaży', true); return; }
+  if (!qty || qty <= 0)     { toast(t('valid.sellqty'), true); return; }
+  if (qty > sellTarget.qty) { toast(t('valid.sellqty2'), true); return; }
+  if (!price || price <= 0) { toast(t('valid.sellprice'), true); return; }
 
   if (toCash) {
     cashBalances[cur] = (cashBalances[cur] || 0) + qty * price;
@@ -1461,7 +1510,7 @@ function confirmSell() {
 
 function importCSV() {
   const raw = document.getElementById('csvInput').value.trim();
-  if (!raw) { toast('Wklej dane CSV', true); return; }
+  if (!raw) { toast(t('valid.csv'), true); return; }
   let added = 0, failed = 0;
   raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
     if (/^(symbol|ticker|spółka)/i.test(line)) return;
@@ -1478,7 +1527,7 @@ function importCSV() {
   });
   save(SK_PORT, portfolio);
   closeImport();
-  toast(`Zaimportowano ${added} pozycji${failed ? `, ${failed} błędów` : ''}`);
+  toast(t('toast.imported').replace('{n}', added) + (failed ? `, ${t('toast.importerr').replace('{n}', failed)}` : ''));
   refreshAll();
 }
 
@@ -1687,7 +1736,7 @@ function renderDonut(data, cashPLN = 0) {
 
   const items  = cashPLN > 0 ? [...data, { symbol: 'Gotówka', value: cashPLN }] : [...data];
   const noData = !items.length;
-  const labels = noData ? ['Brak pozycji'] : items.map(d => d.symbol);
+  const labels = noData ? [t('chart.nopos')] : items.map(d => d.symbol);
   const values = noData ? [1]              : items.map(d => d.value);
   const colors = noData ? ['#272f45']      : items.map((d, i) => d.symbol === 'Gotówka' ? '#06b6d4' : COLORS[i % COLORS.length]);
   const total  = values.reduce((s, v) => s + v, 0);
@@ -1708,7 +1757,7 @@ function renderDonut(data, cashPLN = 0) {
 
   const legend = document.getElementById('chartLegend');
   if (noData) {
-    legend.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center;padding-top:8px">Dodaj spółki, aby zobaczyć alokację</p>';
+    legend.innerHTML = `<p style="color:var(--muted);font-size:12px;text-align:center;padding-top:8px">${t('donut.noholdings')}</p>`;
     return;
   }
   legend.innerHTML = items.map((d, i) => `
@@ -2359,7 +2408,7 @@ async function renderDywidendyTab(forceRefresh = false) {
   const el      = document.getElementById('dywidendyContent');
   const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
   if (!symbols.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><p style="font-size:16px;color:var(--text);font-weight:600">Brak spółek w portfelu</p></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-icon">💰</div><p style="font-size:16px;color:var(--text);font-weight:600">${t('div.noholdings')}</p></div>`;
     return;
   }
 
@@ -2370,7 +2419,7 @@ async function renderDywidendyTab(forceRefresh = false) {
   if (_divLoading) return;
   _divLoading = true;
 
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych dywidend…</div>';
+  el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> ${t('loading.div')}</div>`;
 
   const results = await Promise.allSettled(
     symbols.map(async sym => ({ sym, data: await fetchDividendInfo(sym) }))
@@ -2790,7 +2839,7 @@ async function renderKalendarzTab(forceRefresh = false) {
     return;
   }
 
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> Pobieranie danych…</div>';
+  el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span> ${t('loading.kal')}</div>`;
 
   const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
   if (symbols.length) {
@@ -2814,7 +2863,7 @@ function calItemHTML(ev, extraClass) {
   const d = daysFromToday(ev.date);
   const soon = d !== null && d <= 7;
   const tm = KAL_TYPE_MAP[ev.type] || KAL_TYPE_MAP['D'];
-  const dLabel = d === 0 ? 'dziś' : d === 1 ? 'jutro' : `za ${d} dni`;
+  const dLabel = d === 0 ? t('kal.today') : d === 1 ? t('kal.tomorrow') : t('kal.indays').replace('{n}', d);
   const dateRange = ev.dateEnd && ev.dateEnd !== ev.date ? `${ev.date} – ${ev.dateEnd}` : ev.date;
   const q = mkt[ev.sym] || {};
 
@@ -2908,7 +2957,7 @@ function kalDownloadICS(id) {
 
 function renderKalHTML(events, el) {
   if (!events.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">Brak nadchodzących wydarzeń</p><p>Brak raportów wynikowych, dywidend i danych makro w ciągu 180 dni</p></div>';
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><p style="color:var(--text);font-weight:600;font-size:16px">${t('kal.empty')}</p><p>${t('kal.empty.sub')}</p></div>`;
     return;
   }
   const now = today();
@@ -2922,7 +2971,7 @@ function renderKalHTML(events, el) {
     ? `<div class="cal-section-hdr">${title}</div><div class="cal-list" style="margin-top:0">${evs.map(ev => calItemHTML(ev, ev.date === now ? 'cal-today-item' : '')).join('')}</div>`
     : '';
 
-  el.innerHTML = section('Dzisiaj', todayEvs) + section('Ten tydzień', weekEvs) + section('Nadchodzące', upcomingEvs);
+  el.innerHTML = section(t('kal.sec.today'), todayEvs) + section(t('kal.sec.week'), weekEvs) + section(t('kal.sec.upcoming'), upcomingEvs);
 }
 
 function renderKalGrid(events, el) {
@@ -2937,9 +2986,11 @@ function renderKalGrid(events, el) {
   const firstDay = new Date(year, month, 1);
   const lastDay  = new Date(year, month + 1, 0);
   const startDow = (firstDay.getDay() + 6) % 7;
-  const MONTH_NAMES = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+  const MONTH_NAMES = lang === 'en'
+    ? ['January','February','March','April','May','June','July','August','September','October','November','December']
+    : ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
 
-  const dowHeaders = ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'].map(d => `<div class="cal-grid-dow">${d}</div>`).join('');
+  const dowHeaders = (lang === 'en' ? ['Mo','Tu','We','Th','Fr','Sa','Su'] : ['Pn','Wt','Śr','Cz','Pt','Sb','Nd']).map(d => `<div class="cal-grid-dow">${d}</div>`).join('');
 
   let cells = '';
   for (let i = 0; i < startDow; i++) cells += '<div class="cal-grid-cell other-month"></div>';
@@ -2959,9 +3010,9 @@ function renderKalGrid(events, el) {
     : '';
 
   el.innerHTML = `<div class="cal-grid-nav">
-    <button onclick="kalGridNav(-1)">‹ Poprzedni</button>
+    <button onclick="kalGridNav(-1)">${t('kal.nav.prev')}</button>
     <div class="cal-grid-title">${MONTH_NAMES[month]} ${year}</div>
-    <button onclick="kalGridNav(1)">Następny ›</button>
+    <button onclick="kalGridNav(1)">${t('kal.nav.next')}</button>
   </div>
   <div class="cal-grid">${dowHeaders}${cells}</div>${detail}`;
 }
@@ -3016,7 +3067,7 @@ async function refreshAll() {
     console.error(e);
     setStatus('err');
     document.getElementById('lastUpdate').textContent = t('status.error');
-    toast('Nie udało się pobrać danych rynkowych', true);
+    toast(t('toast.mktfail'), true);
   }
   render();
 }
@@ -3081,7 +3132,7 @@ function saveCash() {
   save(SK_TRAN, transactions);
   closeCash();
   render();
-  toast('Gotówka zaktualizowana');
+  toast(t('toast.cash'));
 }
 function openDividend(id) {
   const h = portfolio.holdings.find(h => h.id === id);
@@ -3109,7 +3160,7 @@ function confirmDividend() {
   const cur    = document.getElementById('d-currency').value;
   const date   = document.getElementById('d-date').value || today();
   const toCash = document.getElementById('d-to-cash').checked;
-  if (!amount || amount <= 0) { toast('Podaj kwotę dywidendy', true); return; }
+  if (!amount || amount <= 0) { toast(t('valid.divamt'), true); return; }
   logTransaction('DIV', {
     symbol: dividendTarget.symbol, name: dividendTarget.name || dividendTarget.symbol,
     qty: 0, avgPrice: amount, currency: cur, date, note: 'Dywidenda',
@@ -3214,7 +3265,7 @@ async function checkAuth() {
     if (!portfolio.holdings.length && !stored) { await showLogin(); return; }
     if (stored) { currentUser = stored; updateUserChip(); }
     setStatus('err');
-    toast('Serwer się budzi… dane z pamięci lokalnej. Synchronizacja za chwilę.');
+    toast(t('toast.wakeup'));
     retryServerSync();
   }
 
@@ -3242,7 +3293,7 @@ async function retryServerSync() {
       applyServerData(d);
       serverLoaded = true;
       setStatus('ok');
-      toast('Serwer gotowy — dane zsynchronizowane.');
+      toast(t('toast.synced'));
       render();
       if (document.getElementById('tab-historia')?.style.display !== 'none') renderHistoriaTab();
       return;
@@ -3352,7 +3403,7 @@ async function doLoginForm() {
     } else {
       errEl.textContent = data.error || 'Błędna nazwa użytkownika lub hasło';
     }
-  } catch { errEl.textContent = 'Błąd połączenia z serwerem'; }
+  } catch { errEl.textContent = t('err.server'); }
 }
 
 function showRegisterForm() {
@@ -3423,9 +3474,9 @@ async function doRegister() {
       refreshAll();
       toast(`Witaj, ${name}!`);
     } else {
-      errEl.textContent = data.error || 'Błąd rejestracji';
+      errEl.textContent = data.error || t('err.register');
     }
-  } catch { errEl.textContent = 'Błąd połączenia z serwerem'; }
+  } catch { errEl.textContent = t('err.server'); }
 }
 
 function updateUserChip() {
