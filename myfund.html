@@ -1303,6 +1303,7 @@ async function fetchChartQuote(symbol) {
   const closes = (result.indicators?.quote?.[0]?.close ?? []).filter(v => v != null);
   const price     = meta.regularMarketPrice ?? closes[closes.length - 1];
   const prevClose = meta.regularMarketPreviousClose ?? closes[closes.length - 2] ?? price;
+  const prev = mkt[symbol] || {};
   mkt[symbol] = {
     price, prevClose,
     change:     price - prevClose,
@@ -1313,6 +1314,10 @@ async function fetchChartQuote(symbol) {
     earningsEnd: null,
     exDivTs:     meta.exDividendDate   || null,
     divPayTs:    meta.dividendDate     || null,
+    divRate:    prev.divRate ?? null,
+    pe:         prev.pe     ?? null,
+    fwdPE:      prev.fwdPE  ?? null,
+    pb:         prev.pb     ?? null,
   };
 }
 
@@ -1795,9 +1800,9 @@ function render() {
         <td class="period-val">${fmtPeriod(days)}</td>
         <td>${moicHTML}</td>
         <td>${irrHTML}</td>
-        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.pe)}</td>
-        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.fwdPE)}</td>
-        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.pb)}</td>
+        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.pe ?? fundamentals[h.symbol]?.pe)}</td>
+        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.fwdPE ?? fundamentals[h.symbol]?.fwdPE)}</td>
+        <td style="text-align:right">${fmtRatio(mkt[h.symbol]?.pb ?? fundamentals[h.symbol]?.pb)}</td>
         <td>
           <div class="action-btns">
             <div class="row-menu-wrap">
@@ -3749,6 +3754,8 @@ async function refreshAll() {
   render();
   checkAlerts();
   if (document.getElementById('tab-watchlist')?.style.display !== 'none') renderWatchlistTab();
+  // Fetch fundamentals (PE/PB) in the background — updates render incrementally
+  if (portSymbols.length) refreshFundamentals();
 }
 
 function setStatus(state) {
