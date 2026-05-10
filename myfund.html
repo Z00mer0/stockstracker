@@ -19,6 +19,16 @@
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 
+/* WATCHLIST & ALERTS */
+.alert-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid;white-space:nowrap;margin:1px}
+.alert-up{background:rgba(34,197,94,.15);color:var(--green);border-color:rgba(34,197,94,.35)}
+.alert-dn{background:rgba(239,68,68,.15);color:var(--red);border-color:rgba(239,68,68,.35)}
+.alert-hit{background:rgba(245,158,11,.2);color:var(--yellow);border-color:rgba(245,158,11,.4);text-decoration:line-through}
+.watch-since{font-size:11px;color:var(--muted)}
+.notif-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:12px;cursor:pointer;color:var(--muted);transition:all .2s}
+.notif-btn.granted{color:var(--green);border-color:rgba(34,197,94,.4)}
+.notif-btn:hover{border-color:var(--accent)}
+
 /* PORTFOLIO SELECTOR */
 .pf-pill{position:relative;display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:all .2s;white-space:nowrap;max-width:160px}
 .pf-pill:hover{border-color:var(--accent);color:var(--accent)}
@@ -361,6 +371,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab" data-tab="transakcje" onclick="showTab('transakcje')" data-i18n="tab.transakcje">Transakcje</button>
     <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')" data-i18n="tab.dywidendy">Dywidendy</button>
     <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')" data-i18n="tab.kalendarz">Kalendarz</button>
+    <button class="nav-tab" data-tab="watchlist" onclick="showTab('watchlist')" data-i18n="tab.watchlist">👁 Watchlist</button>
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
@@ -576,6 +587,65 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   </div>
   <div id="kalendarContent"></div>
 </main>
+
+<!-- ══════════════════════ TAB: WATCHLIST ══════════════════════ -->
+<main id="tab-watchlist" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+    <div style="font-size:18px;font-weight:700">👁 Watchlist</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="notif-btn" id="notifBtn" onclick="requestNotifPermission()">🔔 Powiadomienia</button>
+      <button class="btn btn-green" onclick="openAddWatch()">+ Dodaj spółkę</button>
+    </div>
+  </div>
+  <div id="watchlistContent"></div>
+</main>
+
+<!-- ══════════════════════ MODAL: DODAJ DO WATCHLIST ══════════════════════ -->
+<div class="overlay" id="addWatchOverlay" onclick="closeAddWatch()">
+  <div class="modal" onclick="event.stopPropagation()" style="width:400px">
+    <h2>👁 Dodaj do obserwowanych</h2>
+    <div class="form-group">
+      <label>Symbol tickera *</label>
+      <input id="w-symbol" type="text" placeholder="np. AAPL, PKN.WA, MSFT"
+             oninput="this.value=this.value.toUpperCase();watchAcSearch(this.value)"
+             onkeydown="watchAcKeydown(event)" autocomplete="off">
+      <div id="w-symbol-ac" class="ac-dropdown" style="display:none"></div>
+    </div>
+    <div class="form-group">
+      <label>Notatka (opcjonalna)</label>
+      <input id="w-note" type="text" placeholder="Powód obserwacji…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeAddWatch()">Anuluj</button>
+      <button class="btn btn-green" onclick="commitAddWatch()">Dodaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MODAL: ALERT CENOWY ══════════════════════ -->
+<div class="overlay" id="alertOverlay" onclick="closeAlertModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="width:380px">
+    <h2>🔔 Alert cenowy</h2>
+    <div id="alertModalSym" style="font-size:15px;font-weight:700;margin-bottom:4px"></div>
+    <div id="alertModalPrice" style="font-size:13px;color:var(--muted);margin-bottom:18px"></div>
+    <div class="form-group">
+      <label>Warunek</label>
+      <select id="a-type">
+        <option value="above">↑ Cena wzrośnie powyżej</option>
+        <option value="below">↓ Cena spadnie poniżej</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Cena docelowa *</label>
+      <input id="a-price" type="number" min="0" step="any" placeholder="0.00">
+    </div>
+    <div id="alertListSection" style="margin-top:16px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeAlertModal()">Zamknij</button>
+      <button class="btn btn-accent" onclick="commitSaveAlert()">Dodaj alert</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════ MODAL: DODAJ ══════════════════════ -->
 <div class="overlay" id="addOverlay">
@@ -819,6 +889,7 @@ const STRINGS = {
   'tab.transakcje': { pl:'Transakcje', en:'Transactions' },
   'tab.dywidendy':  { pl:'Dywidendy',  en:'Dividends' },
   'tab.kalendarz':  { pl:'Kalendarz',  en:'Calendar' },
+  'tab.watchlist':  { pl:'👁 Watchlist', en:'👁 Watchlist' },
   'hdr.nodata':     { pl:'Brak danych',en:'No data' },
   'hdr.refresh':    { pl:'Odśwież',    en:'Refresh' },
   'hdr.logout':     { pl:'Wyloguj',    en:'Log out' },
@@ -1114,6 +1185,7 @@ const SK_FUND      = 'myfund_fundamentals';
 const SK_KAL_CACHE = 'myfund_kal_cache';
 const SK_PORTFOLIOS = 'myfund_portfolios';
 const SK_ACTIVE_PF  = 'myfund_active_pf';
+const SK_WATCH      = 'myfund_watchlist';
 // Active portfolio id — must be set before first load() call
 let _activePfId = localStorage.getItem(SK_ACTIVE_PF) || 'default';
 
@@ -1124,6 +1196,9 @@ let transactions = load(SK_TRAN, []);
 let fundamentals   = load(SK_FUND, {});
 let portfolioList  = JSON.parse(localStorage.getItem(SK_PORTFOLIOS) || 'null')
                      || [{ id: 'default', name: 'Mój portfel' }];
+let watchlist      = JSON.parse(localStorage.getItem(SK_WATCH) || '[]');
+let _alertTargetId = null; // watchlist entry id for open alert modal
+let _watchAcResults = [], _watchAcIdx = -1;
 let mkt          = {};
 let fxRates      = { USD: 3.95, EUR: 4.25, GBP: 5.00, PLN: 1 };
 
@@ -1701,6 +1776,7 @@ function render() {
                 <button onclick="closeRowMenus();openBuyMore('${h.id}')">${t('row.buymore')}</button>
                 <button onclick="closeRowMenus();openSell('${h.id}')">${t('row.sell')}</button>
                 <button onclick="closeRowMenus();openDividend('${h.id}')">${t('row.div')}</button>
+                <button onclick="closeRowMenus();addToWatchFromHolding('${esc(h.symbol)}','${esc(h.name||h.symbol)}','${h.currency||'USD'}')">👁 ${lang==='en'?'Watch':'Obserwuj'}</button>
                 <button class="m-del" onclick="closeRowMenus();removeHolding('${h.id}')">${t('row.remove')}</button>
               </div>
             </div>
@@ -1759,6 +1835,241 @@ function render() {
   renderPfCompare();
   renderPortfolioRisk();
 }
+
+// ─── WATCHLIST & ALERTS ───────────────────────────────────────────────────────
+
+function saveWatch() { localStorage.setItem(SK_WATCH, JSON.stringify(watchlist)); }
+
+// ── Render tab ──────────────────────────────────────────────────────────────
+function renderWatchlistTab() {
+  updateNotifBtn();
+  const el = document.getElementById('watchlistContent');
+  if (!el) return;
+  if (!watchlist.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">👁</div>
+      <p style="font-size:16px;color:var(--text);font-weight:600">${lang==='en'?'Watchlist is empty':'Watchlist jest pusta'}</p>
+      <p>${lang==='en'?'Click "+ Add stock" to start observing prices':'Kliknij „+ Dodaj spółkę" by obserwować ceny'}</p></div>`;
+    return;
+  }
+  const rows = watchlist.map(w => {
+    const q       = mkt[w.symbol];
+    const price   = q?.price ?? null;
+    const chgPct  = q?.changePct ?? null;
+    const cur     = q?.currency || w.currency || 'USD';
+    const name    = q?.name || w.name || w.symbol;
+    const chgSince= (price != null && w.addedPrice) ? (price - w.addedPrice) / w.addedPrice * 100 : null;
+    const chgCls  = v => v == null ? '' : v >= 0 ? 'pos' : 'neg';
+    const fmtPrc  = v => v != null ? v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    const alertBadges = w.alerts.map(a => {
+      const dir = a.type === 'above' ? '↑' : '↓';
+      const cls = a.triggered ? 'alert-hit' : (a.type === 'above' ? 'alert-up' : 'alert-dn');
+      return `<span class="alert-badge ${cls}" title="${a.triggered?(lang==='en'?'Triggered':'Wyzwolony'):(lang==='en'?'Active':'Aktywny')}" onclick="openAlertModal('${w.id}')">${dir} ${fmtPrc(a.targetPrice)}</span>`;
+    }).join('');
+    const logo = stockLogoHTML(w.symbol, name);
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px">${logo}<div>
+        <div class="sym">${esc(w.symbol)}</div>
+        <div class="sym-name">${esc(name)}</div></div></div></td>
+      <td style="text-align:right;font-weight:700">${price != null ? fmtPrc(price) + ' ' + cur : '—'}</td>
+      <td style="text-align:right">${chgPct != null ? `<span class="badge ${chgPct>=0?'pos':'neg'}">${chgPct>=0?'+':''}${chgPct.toFixed(2)}%</span>` : '—'}</td>
+      <td style="text-align:right">${w.addedPrice ? fmtPrc(w.addedPrice) : '—'}</td>
+      <td style="text-align:right">${chgSince != null ? `<span class="${chgCls(chgSince)}">${chgSince>=0?'+':''}${chgSince.toFixed(2)}%</span>` : '—'}</td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:2px;align-items:center;justify-content:flex-end">
+        ${alertBadges || `<span style="color:var(--muted);font-size:11px">${lang==='en'?'no alerts':'brak'}</span>`}
+        <span class="alert-badge" style="cursor:pointer;background:rgba(99,102,241,.15);color:var(--accent);border-color:rgba(99,102,241,.35)" onclick="openAlertModal('${w.id}')">+ Alert</span>
+      </div></td>
+      <td style="text-align:right;color:var(--muted);font-size:12px">${w.addedDate||''}</td>
+      <td><button class="del" onclick="removeFromWatch('${w.id}')" title="${lang==='en'?'Remove':'Usuń'}">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th style="text-align:left">${lang==='en'?'Company':'Spółka'}</th>
+      <th>${lang==='en'?'Price':'Cena'}</th>
+      <th>${lang==='en'?'Day %':'Zm. dz.'}</th>
+      <th>${lang==='en'?'Added at':'Dodano przy'}</th>
+      <th>${lang==='en'?'Change since':'Zm. od dodania'}</th>
+      <th style="text-align:right">${lang==='en'?'Alerts':'Alerty'}</th>
+      <th>${lang==='en'?'Date':'Data'}</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ── Add to watchlist ────────────────────────────────────────────────────────
+function openAddWatch() {
+  document.getElementById('w-symbol').value = '';
+  document.getElementById('w-note').value   = '';
+  watchAcHide();
+  document.getElementById('addWatchOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('w-symbol').focus(), 80);
+}
+function closeAddWatch() {
+  document.getElementById('addWatchOverlay').classList.remove('open');
+  watchAcHide();
+}
+function commitAddWatch() {
+  const sym  = document.getElementById('w-symbol').value.trim().toUpperCase();
+  const note = document.getElementById('w-note').value.trim();
+  if (!sym) { toast(lang==='en'?'Enter a ticker symbol':'Podaj symbol tickera', true); return; }
+  if (watchlist.find(w => w.symbol === sym)) { toast(lang==='en'?'Already on watchlist':'Już na watchliście'); closeAddWatch(); return; }
+  const q = mkt[sym];
+  watchlist.push({
+    id: 'w_' + Date.now(),
+    symbol: sym,
+    name:   q?.name || sym,
+    currency: q?.currency || 'USD',
+    addedPrice: q?.price ?? null,
+    addedDate:  today(),
+    note,
+    alerts: [],
+  });
+  saveWatch();
+  closeAddWatch();
+  showTab('watchlist');
+}
+function addToWatchFromHolding(sym, name, cur) {
+  if (watchlist.find(w => w.symbol === sym)) { toast(lang==='en'?'Already on watchlist':'Już na watchliście'); return; }
+  const q = mkt[sym];
+  watchlist.push({ id: 'w_' + Date.now(), symbol: sym, name: q?.name||name, currency: q?.currency||cur, addedPrice: q?.price??null, addedDate: today(), note: '', alerts: [] });
+  saveWatch();
+  toast(lang==='en'?`${sym} added to watchlist`:`${sym} dodano do watchlisty`);
+}
+function removeFromWatch(wId) {
+  watchlist = watchlist.filter(w => w.id !== wId);
+  saveWatch();
+  renderWatchlistTab();
+}
+
+// ── Alert modal ─────────────────────────────────────────────────────────────
+function openAlertModal(wId) {
+  _alertTargetId = wId;
+  const w = watchlist.find(x => x.id === wId);
+  if (!w) return;
+  const q = mkt[w.symbol];
+  document.getElementById('alertModalSym').textContent   = `${w.symbol} — ${w.name}`;
+  document.getElementById('alertModalPrice').textContent = q?.price != null ? `${lang==='en'?'Current price':'Aktualna cena'}: ${q.price.toFixed(2)} ${q.currency||w.currency||'USD'}` : '';
+  document.getElementById('a-price').value = '';
+  renderAlertList(w);
+  document.getElementById('alertOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('a-price').focus(), 80);
+}
+function closeAlertModal() { document.getElementById('alertOverlay').classList.remove('open'); _alertTargetId = null; }
+
+function renderAlertList(w) {
+  const el = document.getElementById('alertListSection');
+  if (!w.alerts.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">${lang==='en'?'Active alerts':'Aktywne alerty'}</div>` +
+    w.alerts.map(a => {
+      const dir = a.type === 'above' ? '↑' : '↓';
+      const cls = a.triggered ? 'alert-hit' : (a.type === 'above' ? 'alert-up' : 'alert-dn');
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="alert-badge ${cls}">${dir} ${a.targetPrice.toFixed(2)}</span>
+        <span style="font-size:12px;color:var(--muted)">${a.triggered?(lang==='en'?'✓ triggered':'✓ wyzwolony'):''}</span>
+        <button style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px" onclick="removeAlert('${w.id}','${a.id}')">✕</button>
+      </div>`;
+    }).join('');
+}
+
+function commitSaveAlert() {
+  const w = watchlist.find(x => x.id === _alertTargetId);
+  if (!w) return;
+  const type  = document.getElementById('a-type').value;
+  const price = parseFloat(document.getElementById('a-price').value);
+  if (!price || price <= 0) { toast(lang==='en'?'Enter a valid price':'Podaj prawidłową cenę', true); return; }
+  w.alerts.push({ id: 'a_' + Date.now(), type, targetPrice: price, triggered: false });
+  saveWatch();
+  renderAlertList(w);
+  document.getElementById('a-price').value = '';
+  toast(lang==='en'?'Alert saved':'Alert zapisany');
+}
+
+function removeAlert(wId, aId) {
+  const w = watchlist.find(x => x.id === wId);
+  if (!w) return;
+  w.alerts = w.alerts.filter(a => a.id !== aId);
+  saveWatch();
+  renderAlertList(w);
+  if (document.getElementById('tab-watchlist')?.style.display !== 'none') renderWatchlistTab();
+}
+
+// ── Check alerts after price refresh ────────────────────────────────────────
+function checkAlerts() {
+  let anyHit = false;
+  for (const w of watchlist) {
+    const price = mkt[w.symbol]?.price;
+    if (price == null) continue;
+    for (const a of w.alerts) {
+      if (a.triggered) continue;
+      const hit = (a.type === 'above' && price >= a.targetPrice) ||
+                  (a.type === 'below' && price <= a.targetPrice);
+      if (!hit) continue;
+      a.triggered = true; anyHit = true;
+      const dir = a.type === 'above' ? '↑' : '↓';
+      const msg = `🔔 ${w.symbol}: ${lang==='en'?'price':'cena'} ${dir} ${a.targetPrice.toFixed(2)} (${lang==='en'?'now':'teraz'}: ${price.toFixed(2)})`;
+      toast(msg);
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        try { new Notification(`🔔 ${w.symbol}`, { body: `${lang==='en'?'Price':'Cena'} ${a.type==='above'?(lang==='en'?'rose above':'wzrosła powyżej'):(lang==='en'?'fell below':'spadła poniżej')} ${a.targetPrice.toFixed(2)}` }); } catch {}
+      }
+    }
+  }
+  if (anyHit) saveWatch();
+}
+
+// ── Notification permission ──────────────────────────────────────────────────
+function updateNotifBtn() {
+  const btn = document.getElementById('notifBtn');
+  if (!btn || typeof Notification === 'undefined') return;
+  const granted = Notification.permission === 'granted';
+  btn.className = 'notif-btn' + (granted ? ' granted' : '');
+  btn.textContent = granted ? (lang==='en'?'🔔 Notifications ON':'🔔 Powiadomienia ON') : (lang==='en'?'🔔 Enable notifications':'🔔 Powiadomienia');
+}
+function requestNotifPermission() {
+  if (typeof Notification === 'undefined') { toast(lang==='en'?'Notifications not supported':'Przeglądarka nie obsługuje powiadomień'); return; }
+  if (Notification.permission === 'granted') { toast(lang==='en'?'Notifications already enabled':'Powiadomienia już włączone'); return; }
+  Notification.requestPermission().then(p => { updateNotifBtn(); if (p==='granted') toast(lang==='en'?'Notifications enabled!':'Powiadomienia włączone!'); });
+}
+
+// ── Watchlist autocomplete (separate from portfolio AC) ──────────────────────
+function watchAcSearch(q) {
+  clearTimeout(_watchAcTimer);
+  if (q.length < 1) { watchAcHide(); return; }
+  _watchAcTimer = setTimeout(async () => {
+    try {
+      const data = await proxyfetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0&enableFuzzyQuery=false`);
+      _watchAcResults = (data?.quotes||[]).filter(r=>r.symbol&&!['MUTUALFUND','INDEX','FUTURE','OPTION','CURRENCY','CRYPTOCURRENCY'].includes(r.quoteType)).slice(0,8);
+      watchAcShow();
+    } catch { watchAcHide(); }
+  }, 280);
+}
+function watchAcShow() {
+  const input = document.getElementById('w-symbol');
+  const el    = document.getElementById('w-symbol-ac');
+  if (!el || !_watchAcResults.length) { watchAcHide(); return; }
+  const rect = input.getBoundingClientRect();
+  el.style.cssText = `display:block;top:${rect.bottom}px;left:${rect.left}px;width:${rect.width}px`;
+  _watchAcIdx = -1;
+  el.innerHTML = _watchAcResults.map((r,i)=>`<div class="ac-item" onmousedown="watchAcPick(${i})"><span class="ac-sym">${r.symbol}</span><span class="ac-name">${r.shortname||r.longname||''}</span>${r.exchDisp?`<span class="ac-exch">${r.exchDisp}</span>`:''}</div>`).join('');
+}
+function watchAcHide() { const el=document.getElementById('w-symbol-ac'); if(el) el.style.display='none'; _watchAcResults=[]; _watchAcIdx=-1; }
+function watchAcPick(i) {
+  const r = _watchAcResults[i]; if(!r) return;
+  document.getElementById('w-symbol').value = r.symbol;
+  watchAcHide();
+  document.getElementById('w-note').focus();
+}
+function watchAcKeydown(e) {
+  const el = document.getElementById('w-symbol-ac');
+  if (!el||el.style.display==='none'||!_watchAcResults.length) return;
+  const items = el.querySelectorAll('.ac-item');
+  if (e.key==='ArrowDown') { e.preventDefault(); _watchAcIdx=Math.min(_watchAcIdx+1,items.length-1); items.forEach((x,i)=>x.classList.toggle('ac-sel',i===_watchAcIdx)); }
+  else if (e.key==='ArrowUp') { e.preventDefault(); _watchAcIdx=Math.max(_watchAcIdx-1,0); items.forEach((x,i)=>x.classList.toggle('ac-sel',i===_watchAcIdx)); }
+  else if (e.key==='Enter') { e.preventDefault(); if(_watchAcIdx>=0) watchAcPick(_watchAcIdx); else commitAddWatch(); }
+  else if (e.key==='Escape') watchAcHide();
+}
+let _watchAcTimer;
 
 // ─── MULTI-PORTFOLIO ──────────────────────────────────────────────────────────
 
@@ -3358,7 +3669,7 @@ function kalGridNav(dir) {
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz'].forEach(t =>
+  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz', 'watchlist'].forEach(t =>
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none');
   document.querySelectorAll('.nav-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === name));
@@ -3366,6 +3677,7 @@ function showTab(name) {
   if (name === 'transakcje') renderTransakcjeTab();
   if (name === 'dywidendy')  renderDywidendyTab();
   if (name === 'kalendarz')  renderKalendarzTab();
+  if (name === 'watchlist')  renderWatchlistTab();
 }
 
 function setTimeframe(days, btn) {
@@ -3377,7 +3689,9 @@ function setTimeframe(days, btn) {
 
 // ─── REFRESH ──────────────────────────────────────────────────────────────────
 async function refreshAll() {
-  const symbols = [...new Set(portfolio.holdings.map(h => h.symbol))];
+  const portSymbols  = [...new Set(portfolio.holdings.map(h => h.symbol))];
+  const watchSymbols = watchlist.map(w => w.symbol).filter(s => !portSymbols.includes(s));
+  const symbols = [...portSymbols, ...watchSymbols];
   if (!symbols.length) { render(); return; }
   setStatus('loading');
   try {
@@ -3393,6 +3707,8 @@ async function refreshAll() {
     toast(t('toast.mktfail'), true);
   }
   render();
+  checkAlerts();
+  if (document.getElementById('tab-watchlist')?.style.display !== 'none') renderWatchlistTab();
 }
 
 function setStatus(state) {
