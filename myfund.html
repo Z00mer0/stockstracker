@@ -644,6 +644,17 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
   <div id="watchlistContent"></div>
 </main>
 
+<!-- ══════════════════════ MODAL: FUNDAMENTALS ══════════════════════ -->
+<div class="overlay" id="fundOverlay" onclick="closeFundModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="width:540px;max-height:88vh;overflow-y:auto;padding:24px">
+    <div id="fundModalContent"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-outline" onclick="closeFundModal()">Zamknij</button>
+      <button class="btn btn-outline" id="fundRefreshBtn" onclick="refreshFundModal()">🔄 Odśwież dane</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════ MODAL: DODAJ DO WATCHLIST ══════════════════════ -->
 <div class="overlay" id="addWatchOverlay" onclick="closeAddWatch()">
   <div class="modal" onclick="event.stopPropagation()" style="width:400px">
@@ -2011,6 +2022,7 @@ function render() {
                 <button onclick="closeRowMenus();openSell('${h.id}')">${t('row.sell')}</button>
                 <button onclick="closeRowMenus();openDividend('${h.id}')">${t('row.div')}</button>
                 <button onclick="closeRowMenus();addToWatchFromHolding('${esc(h.symbol)}','${esc(h.name||h.symbol)}','${h.currency||'USD'}')">👁 ${lang==='en'?'Watch':'Obserwuj'}</button>
+                <button onclick="closeRowMenus();openFundModal('${esc(h.symbol)}')">📊 ${lang==='en'?'Fundamentals':'Fundamenty'}</button>
                 <button class="m-del" onclick="closeRowMenus();removeHolding('${h.id}')">${t('row.remove')}</button>
               </div>
             </div>
@@ -2077,6 +2089,198 @@ function render() {
   renderPfCompare();
   renderPortfolioRisk();
   renderAllocationPanel();
+}
+
+// ─── FUNDAMENTALS MODAL ───────────────────────────────────────────────────────
+
+let _fundModalSym = null;
+
+async function openFundModal(sym) {
+  _fundModalSym = sym;
+  document.getElementById('fundModalContent').innerHTML =
+    `<div style="text-align:center;padding:40px;color:var(--muted)"><span class="spinner" style="display:inline-block"></span><br><br>Ładowanie danych…</div>`;
+  document.getElementById('fundOverlay').classList.add('open');
+  if (fundamentals[sym]?.fetchDate !== today()) await fetchFundamentalsOne(sym);
+  _renderFundModal(sym);
+}
+function closeFundModal() { document.getElementById('fundOverlay').classList.remove('open'); _fundModalSym = null; }
+async function refreshFundModal() {
+  if (!_fundModalSym) return;
+  const btn = document.getElementById('fundRefreshBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳'; }
+  if (fundamentals[_fundModalSym]) fundamentals[_fundModalSym].fetchDate = null;
+  await fetchFundamentalsOne(_fundModalSym);
+  _renderFundModal(_fundModalSym);
+  if (btn) { btn.disabled = false; btn.innerHTML = lang==='en'?'🔄 Refresh':'🔄 Odśwież dane'; }
+  render();
+}
+
+// Scoring: valuation (lower=better), quality (higher=better)
+function _scoreV(val, goodMax, fairMax) {
+  if (val == null || val <= 0 || !isFinite(val)) return null;
+  return val <= goodMax ? 3 : val <= fairMax ? 2 : 1;
+}
+function _scoreQ(val, greatMin, okMin) {
+  if (val == null || !isFinite(val)) return null;
+  return val >= greatMin ? 3 : val >= okMin ? 2 : 1;
+}
+function _sl(s) { // score → {emoji, label, cls}
+  if (s === null) return { e: '', l: '—', c: '' };
+  if (s === 3)    return { e: '🟢', l: lang==='en'?'Good':'Dobry',  c: 'pos' };
+  if (s === 2)    return { e: '🟡', l: lang==='en'?'Fair':'Średni', c: '' };
+  return           { e: '🔴', l: lang==='en'?'High':'Drogi', c: 'neg' };
+}
+function _slQ(s) {
+  if (s === null) return { e: '', l: '—', c: '' };
+  if (s === 3)    return { e: '🟢', l: lang==='en'?'Good':'Dobry',  c: 'pos' };
+  if (s === 2)    return { e: '🟡', l: lang==='en'?'Fair':'Średni', c: '' };
+  return           { e: '🔴', l: lang==='en'?'Weak':'Słaby', c: 'neg' };
+}
+
+const _SECTOR_PE = {
+  'Technology':26,'Financial Services':15,'Healthcare':22,'Consumer Cyclical':20,
+  'Consumer Defensive':20,'Energy':14,'Industrials':19,'Communication Services':21,
+  'Real Estate':24,'Basic Materials':16,'Utilities':18,'Financial':15,
+};
+
+function _renderFundModal(sym) {
+  const f  = fundamentals[sym] || {};
+  const q  = mkt[sym] || {};
+  const nm = f.name || q.name || sym;
+
+  // Helper formatters
+  const xr = v => (v != null && v > 0 && isFinite(v)) ? v.toFixed(2) + 'x' : '—';
+  const nr = v => (v != null && isFinite(v)) ? v.toFixed(2) : '—';
+  const pp = v => (v != null && isFinite(v)) ? (v * 100).toFixed(1) + '%' : '—'; // decimal→%
+  const bigN = v => {
+    if (!v) return '—';
+    if (v >= 1e12) return (v/1e12).toFixed(2)+'T';
+    if (v >= 1e9)  return (v/1e9).toFixed(2)+'B';
+    if (v >= 1e6)  return (v/1e6).toFixed(2)+'M';
+    return v.toLocaleString();
+  };
+
+  const scores = [];
+  function mrow(label, displayVal, s, tip='') {
+    const lbl = typeof s === 'function' ? s : (sl => sl);
+    const sc = typeof s === 'number' ? s : s;
+    const { e, l, c } = sc !== null && typeof sc === 'object' ? sc : (sc !== null && typeof sc === 'number' ? (sc >= 3 ? {e:'🟢',l:lang==='en'?'Good':'Dobry',c:'pos'} : sc >= 2 ? {e:'🟡',l:'Fair',c:''} : {e:'🔴',l:'High',c:'neg'}) : {e:'',l:'—',c:''});
+    return `<tr>
+      <td style="padding:5px 8px;color:var(--muted);font-size:12px;white-space:nowrap">${label}</td>
+      <td style="padding:5px 8px;font-weight:700;font-size:13px">${displayVal}</td>
+      <td style="padding:5px 8px;font-size:12px;white-space:nowrap">${e} <span class="${c}">${l}</span></td>
+    </tr>`;
+  }
+  // Helper that also pushes score
+  function mrowS(label, displayVal, score, tip='') {
+    if (score !== null) scores.push(score);
+    const { e, l, c } = score === 3 ? {e:'🟢',l:lang==='en'?'Good':'Dobry',c:'pos'}
+                      : score === 2 ? {e:'🟡',l:lang==='en'?'Fair':'Średni',c:''}
+                      : score === 1 ? {e:'🔴',l:lang==='en'?(label.includes('ROE')||label.includes('Margin')||label.includes('Growth')?'Weak':'High'):(label.includes('ROE')||label.includes('Margin')||label.includes('Growth')?'Słaby':'Drogi'),c:'neg'}
+                      : {e:'',l:'—',c:''};
+    return `<tr>
+      <td style="padding:5px 8px;color:var(--muted);font-size:12px;white-space:nowrap">${label}</td>
+      <td style="padding:5px 8px;font-weight:700;font-size:13px">${displayVal}</td>
+      <td style="padding:5px 8px;font-size:12px;white-space:nowrap">${e} <span class="${c}">${l}</span></td>
+    </tr>`;
+  }
+
+  const tbl = rows => `<table style="width:100%;border-collapse:collapse">${rows.join('')}</table>`;
+  const sec = label => `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:14px 0 4px">${label}</div>`;
+
+  // Analyst upside
+  let upsideHTML = '';
+  if (f.analystTarget && q.price > 0) {
+    const up = (f.analystTarget - q.price) / q.price * 100;
+    upsideHTML = `<span style="margin-left:10px;font-size:12px;padding:2px 7px;border-radius:4px;${up>=0?'background:rgba(34,197,94,.15);color:var(--green)':'background:rgba(239,68,68,.12);color:var(--red)'}">🎯 Cel: ${f.analystTarget.toFixed(2)} ${q.currency||''} (${up>=0?'+':''}${up.toFixed(1)}%)</span>`;
+  }
+
+  const hasData = f.pe != null || f.roe != null || f.profitMargin != null;
+
+  // Sector P/E comparison
+  const sectorPE = f.sector ? _SECTOR_PE[f.sector] : null;
+  let sectorHTML = '';
+  if (sectorPE && f.pe > 0) {
+    const diff = (f.pe - sectorPE) / sectorPE * 100;
+    const lbl  = Math.abs(diff) < 10 ? (lang==='en'?'In line with sector':'Zgodny z sektorem')
+               : diff > 0 ? (lang==='en'?'Premium vs sector':'Drożej od sektora')
+               : (lang==='en'?'Discount vs sector':'Taniej od sektora');
+    const cls  = Math.abs(diff) < 10 ? '' : diff > 0 ? 'neg' : 'pos';
+    sectorHTML = `<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:12px">
+      <span style="font-weight:700">${esc(sym)}</span> P/E <strong>${f.pe.toFixed(1)}</strong> vs sektor <em>${esc(f.sector)}</em> avg <strong>${sectorPE}</strong>
+      → <span class="${cls}" style="font-weight:700">${lbl} ${Math.abs(diff) < 10 ? '⚪' : diff > 0 ? '🟡' : '🟢'}</span>
+    </div>`;
+  }
+
+  // Overall score
+  let scoreHTML = '';
+  if (scores.length >= 2) {
+    const avg  = scores.reduce((a,b)=>a+b,0) / scores.length;
+    const out  = ((avg - 1) / 2 * 10).toFixed(1);
+    const n    = parseFloat(out);
+    const lbl  = n >= 8 ? (lang==='en'?'STRONG BUY 🟢':'MOCNY ZAKUP 🟢')
+               : n >= 6.5 ? (lang==='en'?'FAIR BUY 🟡':'UMIARKOWANY ZAKUP 🟡')
+               : n >= 5   ? (lang==='en'?'HOLD ⚪':'TRZYMAJ ⚪')
+               : n >= 3.5 ? (lang==='en'?'WEAK 🟡':'SŁABY 🟡')
+               : (lang==='en'?'AVOID 🔴':'UNIKAJ 🔴');
+    scoreHTML = `<div style="margin-top:14px;padding:12px 16px;background:var(--surface2);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Overall Score</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px;font-weight:800">${out}<span style="font-size:14px;color:var(--muted)">/10</span></span>
+        <span style="font-size:13px;font-weight:700">${lbl}</span>
+      </div>
+    </div>`;
+  }
+
+  const lastUpd = f.fetchDate === today() ? (lang==='en'?'Today':'Dzisiaj') : (f.fetchDate || '—');
+
+  document.getElementById('fundModalContent').innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="font-size:19px;font-weight:800;line-height:1.2">${esc(nm)} ${upsideHTML}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">
+        ${esc(sym)}${f.sector?` · ${esc(f.sector)}`:''}${f.industry?` · ${esc(f.industry)}`:''}${q.currency?` · ${q.currency}`:''}${f.marketCap?` · MCap: ${bigN(f.marketCap)}`:''}
+      </div>
+    </div>
+
+    ${!hasData ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">
+      Brak danych dla <strong>${esc(sym)}</strong><br>
+      <span style="font-size:12px">Alpha Vantage może nie obsługiwać tej spółki (limit: 25 req/dzień)</span>
+    </div>` : `
+
+    ${sec(lang==='en'?'📊 Valuation':'📊 Valuacja')}
+    ${tbl([
+      mrowS('P/E (TTM)',     xr(f.pe),     _scoreV(f.pe, 15, 25)),
+      mrowS('P/E Forward',   xr(f.fwdPE),  _scoreV(f.fwdPE, 13, 22)),
+      mrowS('PEG Ratio',     nr(f.peg),    _scoreV(f.peg, 1, 2)),
+      mrowS('P/B',           xr(f.pb),     _scoreV(f.pb, 1.5, 3)),
+      mrowS('EV/EBITDA',     xr(f.evEbitda),_scoreV(f.evEbitda, 8, 15)),
+      mrowS('P/Sales',       xr(f.ps),     _scoreV(f.ps, 2, 5)),
+    ])}
+
+    ${sec(lang==='en'?'💹 Profitability':'💹 Profitabilność')}
+    ${tbl([
+      mrowS('ROE',           pp(f.roe),    _scoreQ(f.roe != null ? f.roe*100 : null, 20, 10)),
+      mrowS('ROA',           pp(f.roa),    _scoreQ(f.roa != null ? f.roa*100 : null, 10, 5)),
+      mrowS('Profit Margin', pp(f.profitMargin), _scoreQ(f.profitMargin != null ? f.profitMargin*100 : null, 20, 5)),
+      mrowS('Oper. Margin',  pp(f.opMargin),     _scoreQ(f.opMargin    != null ? f.opMargin*100    : null, 20, 8)),
+    ])}
+
+    ${sec(lang==='en'?'📈 Growth & Dividend':'📈 Wzrost & Dywidenda')}
+    ${tbl([
+      mrowS('EPS Growth (YoY)', pp(f.epsGrowth), _scoreQ(f.epsGrowth != null ? f.epsGrowth*100 : null, 20, 5)),
+      mrowS('Rev. Growth (YoY)',pp(f.revGrowth), _scoreQ(f.revGrowth != null ? f.revGrowth*100 : null, 10, 3)),
+      mrow('Dividend Yield',  pp(f.divYield),  null),
+      mrow('Beta',            nr(f.beta),      null),
+      mrow('EPS',             nr(f.eps),       null),
+    ])}
+
+    ${sectorHTML}
+    ${scoreHTML}
+    `}
+
+    <div style="font-size:11px;color:var(--muted);margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+      📡 Źródło: Alpha Vantage · Ostatnia aktualizacja: ${lastUpd}
+    </div>`;
 }
 
 // ─── WATCHLIST & ALERTS ───────────────────────────────────────────────────────
@@ -3681,14 +3885,29 @@ async function fetchFundamentalsOne(symbol) {
     if (!r.ok) return;
     const d = await r.json();
     if (!d.Symbol || d.Information || d.Note) return; // rate-limited or no data
+    const pf = v => { const n = parseFloat(v); return (n && isFinite(n)) ? n : null; };
     fundamentals[symbol] = {
-      pe:        parseFloat(d.PERatio)           || null,
-      fwdPE:     parseFloat(d.ForwardPE)         || null,
-      pb:        parseFloat(d.PriceToBookRatio)  || null,
-      eps:       parseFloat(d.EPS)               || null,
-      divYield:  parseFloat(d.DividendYield)     || null,
-      marketCap: d.MarketCapitalization ? +d.MarketCapitalization : null,
-      fetchDate: today(),
+      pe:          pf(d.PERatio),
+      fwdPE:       pf(d.ForwardPE),
+      peg:         pf(d.PEGRatio),
+      pb:          pf(d.PriceToBookRatio),
+      ps:          pf(d.PriceToSalesRatioTTM),
+      evEbitda:    pf(d.EVToEBITDA),
+      eps:         pf(d.EPS),
+      roe:         pf(d.ReturnOnEquityTTM),
+      roa:         pf(d.ReturnOnAssetsTTM),
+      profitMargin:pf(d.ProfitMargin),
+      opMargin:    pf(d.OperatingMarginTTM),
+      epsGrowth:   pf(d.QuarterlyEarningsGrowthYOY),
+      revGrowth:   pf(d.QuarterlyRevenueGrowthYOY),
+      divYield:    pf(d.DividendYield),
+      beta:        pf(d.Beta),
+      analystTarget: pf(d.AnalystTargetPrice),
+      marketCap:   d.MarketCapitalization ? +d.MarketCapitalization : null,
+      sector:      d.Sector    || null,
+      industry:    d.Industry  || null,
+      name:        d.Name      || null,
+      fetchDate:   today(),
     };
     localStorage.setItem(SK_FUND, JSON.stringify(fundamentals));
   } catch (e) { console.warn('AV fundamentals failed', symbol, e.message); }
@@ -4072,7 +4291,7 @@ function closeImport() {
 document.querySelectorAll('.overlay').forEach(el =>
   el.addEventListener('click', e => { if (e.target === el) { closeAdd(); closeSell(); closeCash(); closeImport(); closeDividend(); } }));
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeAdd(); closeSell(); closeCash(); closeImport(); closeDividend(); }
+  if (e.key === 'Escape') { closeAdd(); closeSell(); closeCash(); closeImport(); closeDividend(); closeFundModal(); }
   if (e.key === 'Enter' && document.getElementById('addOverlay').classList.contains('open')) addHolding();
 });
 
