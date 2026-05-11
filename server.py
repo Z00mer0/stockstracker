@@ -6,6 +6,7 @@ W chmurze: przechowuje dane w PostgreSQL (zmienna DATABASE_URL).
 """
 import json
 import hashlib
+import mimetypes
 import secrets
 import socket
 import os
@@ -14,7 +15,8 @@ import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
-BASE = Path(__file__).parent
+BASE       = Path(__file__).parent
+REACT_DIST = BASE / 'frontend-react' / 'dist'
 
 # Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
 _env = BASE / '.env'
@@ -123,6 +125,28 @@ def get_username(handler):
 
 class Handler(SimpleHTTPRequestHandler):
 
+    def _serve_static(self, filepath):
+        """Serwuje plik statyczny z React dist."""
+        content  = filepath.read_bytes()
+        mime, _  = mimetypes.guess_type(str(filepath))
+        in_assets = 'assets' in filepath.parts
+        self.send_response(200)
+        self.send_header('Content-Type', mime or 'application/octet-stream')
+        self.send_header('Content-Length', str(len(content)))
+        self.send_header('Access-Control-Allow-Origin', '*')
+        # Assets mają hash w nazwie → można cachować długo
+        self.send_header('Cache-Control',
+                         'public, max-age=31536000, immutable' if in_assets else 'no-store, no-cache')
+        self.end_headers()
+        self.wfile.write(content)
+
+    def _serve_react(self):
+        """Serwuje React SPA (index.html)."""
+        if not REACT_DIST.exists():
+            self.send_json(503, {'error': 'React app not built — run: cd frontend-react && npm run build'})
+            return
+        self._serve_static(REACT_DIST / 'index.html')
+
     def send_json(self, status, data):
         body = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.send_response(status)
@@ -198,6 +222,18 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Content-Length', str(len(content)))
             self.end_headers()
             self.wfile.write(content)
+
+        # ── React SPA pod /app/* ──────────────────────────────────────────────
+        elif path in ('/app', '/app/'):
+            self._serve_react()
+
+        elif path.startswith('/app/'):
+            rel = path[5:].lstrip('/')     # np. 'assets/index-abc.js'
+            fp  = REACT_DIST / rel
+            if fp.exists() and fp.is_file():
+                self._serve_static(fp)
+            else:
+                self._serve_react()        # SPA fallback dla React Router
 
         else:
             self.send_response(404)
