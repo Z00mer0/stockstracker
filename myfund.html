@@ -94,6 +94,21 @@ main{max-width:1440px;margin:0 auto;padding:24px 28px}
 .card-sub{font-size:12px;color:var(--muted)}
 .pos{color:var(--green)}.neg{color:var(--red)}
 
+/* ALLOCATION PANEL */
+.alloc-row{display:grid;grid-template-columns:130px 1fr 52px 52px 72px;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.alloc-row:last-child{border-bottom:none}
+.alloc-bar-wrap{background:var(--surface2);border-radius:5px;height:9px;position:relative}
+.alloc-bar-fill{height:100%;border-radius:5px;transition:width .4s ease}
+.alloc-tick{position:absolute;top:-4px;width:2px;height:17px;background:rgba(255,255,255,.55);border-radius:1px;pointer-events:none}
+.alloc-dev{font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;text-align:center;white-space:nowrap}
+.alloc-dev.ok{background:rgba(34,197,94,.15);color:var(--green)}
+.alloc-dev.warn{background:rgba(245,158,11,.18);color:var(--yellow)}
+.alloc-dev.bad{background:rgba(239,68,68,.15);color:var(--red)}
+.alloc-edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-bottom:14px}
+.alloc-edit-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.alloc-sym-wrap{display:flex;flex-wrap:wrap;gap:8px}
+.alloc-sym-chip{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px}
+
 /* GRID */
 .content-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;margin-bottom:18px}
 
@@ -510,6 +525,29 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
       <div style="font-size:12px;color:var(--muted)" id="portRiskBmLabel"></div>
     </div>
     <div class="hist-stats-grid" id="portRiskGrid" style="padding:18px 20px"></div>
+  </div>
+
+  <!-- Allocation panel -->
+  <div class="panel" id="allocPanel" style="display:none;margin-top:18px">
+    <div class="panel-header">
+      <div class="panel-title">🎯 Alokacja docelowa</div>
+      <button class="btn btn-outline" id="allocEditBtn" style="font-size:12px;padding:4px 12px" onclick="toggleAllocEdit()">⚙️ Edytuj cele</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div style="display:grid;grid-template-columns:130px 1fr 52px 52px 72px;gap:10px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">
+        <span>Kategoria</span><span>Alokacja</span><span style="text-align:right">Teraz</span><span style="text-align:right">Cel</span><span style="text-align:center">Odchylenie</span>
+      </div>
+      <div id="allocBars"></div>
+      <div id="allocSuggestions"></div>
+    </div>
+    <div id="allocEditSection" style="display:none;border-top:1px solid var(--border);padding:16px 20px">
+      <div style="font-size:12px;margin-bottom:10px;color:var(--muted)">
+        Suma celów: <span id="allocTotal" style="font-weight:700"></span>
+      </div>
+      <div class="alloc-edit-grid" id="allocEditTargets"></div>
+      <div style="font-size:13px;font-weight:600;margin:12px 0 8px">Przypisanie spółek</div>
+      <div class="alloc-sym-wrap" id="allocSymGrid"></div>
+    </div>
   </div>
 
 </main>
@@ -1190,6 +1228,7 @@ const SK_SNAP = 'myfund_v3_snapshots';
 const SK_CASH = 'myfund_v4_cash';
 const SK_TRAN = 'myfund_v3_transactions';
 const SK_FUND      = 'myfund_fundamentals';
+const SK_ALLOC     = 'myfund_alloc';
 const SK_KAL_CACHE = 'myfund_kal_cache';
 const SK_PORTFOLIOS = 'myfund_portfolios';
 const SK_ACTIVE_PF  = 'myfund_active_pf';
@@ -1202,6 +1241,10 @@ let snapshots    = load(SK_SNAP, {});
 let cashBalances = load(SK_CASH, { PLN: 0, USD: 0, EUR: 0, GBP: 0 });
 let transactions = load(SK_TRAN, []);
 let fundamentals   = load(SK_FUND, {});
+let allocData      = JSON.parse(localStorage.getItem(SK_ALLOC) || 'null') || {
+  targets: { 'US Equities': 40, 'EU Equities': 5, 'PL Equities': 30, 'Bonds': 15, 'Cash': 10 },
+  map: {}
+};
 let portfolioList  = JSON.parse(localStorage.getItem(SK_PORTFOLIOS) || 'null')
                      || [{ id: 'default', name: 'Mój portfel' }];
 let watchlist      = JSON.parse(localStorage.getItem(SK_WATCH) || '[]');
@@ -1681,6 +1724,162 @@ function importCSV() {
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
+// ─── ALLOCATION & REBALANCING ─────────────────────────────────────────────────
+
+const _EU_SFX   = /\.(L|DE|PA|AS|MI|MC|SW|CO|OL|ST|HE|BR|VI|LS|AT|PR|WR|VX|BE|DU|HA|MU|SG)$/i;
+const _ASIA_SFX = /\.(T|HK|SS|SZ|NS|BO|AX|TO|V|KQ|KS|TW|BK|JK)$/i;
+
+function autoBucket(sym) {
+  if (sym.endsWith('.WA')) return 'PL Equities';
+  if (_EU_SFX.test(sym))  return 'EU Equities';
+  if (_ASIA_SFX.test(sym)) return 'Other';
+  return 'US Equities';
+}
+function getBucket(sym) { return allocData.map[sym] || autoBucket(sym); }
+function saveAlloc()    { localStorage.setItem(SK_ALLOC, JSON.stringify(allocData)); }
+
+const _ALLOC_COLORS = ['#6366f1','#22d3ee','#4ade80','#f59e0b','#f472b6','#a78bfa','#34d399','#fb923c'];
+
+function renderAllocationPanel() {
+  const panel = document.getElementById('allocPanel');
+  if (!panel) return;
+  if (!portfolio.holdings.length) { panel.style.display = 'none'; return; }
+
+  const totalStockPLN = (_lastRows || []).reduce((s, r) => s + (r.valuePLN || 0), 0);
+  const cashPLN       = cashTotalPLN();
+  const totalPLN      = totalStockPLN + cashPLN;
+  if (totalPLN <= 0) { panel.style.display = 'none'; return; }
+
+  panel.style.display = '';
+
+  // Current PLN per bucket
+  const cur = {};
+  for (const r of (_lastRows || [])) {
+    if (r.valuePLN == null) continue;
+    const b = getBucket(r.h.symbol);
+    cur[b] = (cur[b] || 0) + r.valuePLN;
+  }
+  if (cashPLN > 0) cur['Cash'] = (cur['Cash'] || 0) + cashPLN;
+
+  // All buckets: target buckets first, then any extras from holdings
+  const bucketArr = [...new Set([...Object.keys(allocData.targets), ...Object.keys(cur)])];
+
+  // Bars
+  const barsHTML = bucketArr.map((b, i) => {
+    const curPct = totalPLN > 0 ? (cur[b] || 0) / totalPLN * 100 : 0;
+    const tgtPct = allocData.targets[b] ?? 0;
+    const dev    = curPct - tgtPct;
+    const absDev = Math.abs(dev);
+    const cls    = absDev < 5 ? 'ok' : absDev < 10 ? 'warn' : 'bad';
+    const devStr = absDev < 0.05 ? '✓' : (dev > 0 ? '▲ +' : '▼ ') + dev.toFixed(1) + '%';
+    const color  = _ALLOC_COLORS[i % _ALLOC_COLORS.length];
+    return `<div class="alloc-row">
+      <span style="font-size:13px;font-weight:600">${esc(b)}</span>
+      <div class="alloc-bar-wrap">
+        <div class="alloc-bar-fill" style="width:${Math.min(curPct,100).toFixed(1)}%;background:${color}"></div>
+        ${tgtPct > 0 ? `<div class="alloc-tick" style="left:${Math.min(tgtPct,100)}%"></div>` : ''}
+      </div>
+      <span style="font-size:12px;text-align:right">${curPct.toFixed(1)}%</span>
+      <span style="font-size:12px;text-align:right;color:var(--muted)">${tgtPct}%</span>
+      <span class="alloc-dev ${cls}">${devStr}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('allocBars').innerHTML = barsHTML;
+
+  // Suggestions
+  const sug = bucketArr
+    .map(b => {
+      const curPct = totalPLN > 0 ? (cur[b] || 0) / totalPLN * 100 : 0;
+      const tgtPct = allocData.targets[b] ?? 0;
+      const dev    = curPct - tgtPct;
+      if (Math.abs(dev) < 5) return null;
+      const amt    = Math.abs(dev / 100 * totalPLN);
+      return {
+        dev,
+        html: dev > 0
+          ? `<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">🔻 ${lang==='en'?`Reduce <strong>${esc(b)}</strong>: sell or avoid buying ~${fmtPLN(amt)}`:`Ogranicz <strong>${esc(b)}</strong>: sprzedaj lub unikaj dokupowania ~${fmtPLN(amt)}`}</div>`
+          : `<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">🟢 ${lang==='en'?`Increase <strong>${esc(b)}</strong>: buy ~${fmtPLN(amt)}`:`Dokup <strong>${esc(b)}</strong>: ~${fmtPLN(amt)}`}</div>`,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev));
+
+  const sugEl = document.getElementById('allocSuggestions');
+  sugEl.innerHTML = sug.length
+    ? `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:14px;margin-bottom:6px">💡 ${lang==='en'?'Rebalancing suggestions':'Sugestie rebalansowania'}</div>${sug.map(s=>s.html).join('')}`
+    : `<div style="font-size:13px;color:var(--green);margin-top:10px">✓ ${lang==='en'?'Portfolio is within 5% of all targets':'Portfel mieści się w 5% od wszystkich celów'}</div>`;
+
+  // Re-render edit section if open
+  if (document.getElementById('allocEditSection')?.style.display !== 'none') _renderAllocEdit(bucketArr);
+}
+
+function _renderAllocEdit(bucketArr) {
+  const total = Object.values(allocData.targets).reduce((s, v) => s + v, 0);
+  const totalEl = document.getElementById('allocTotal');
+  if (totalEl) {
+    totalEl.textContent = `${total}% ${total === 100 ? '✓' : '⚠ (musi być 100%)'}`;
+    totalEl.style.color = total === 100 ? 'var(--green)' : 'var(--red)';
+  }
+
+  document.getElementById('allocEditTargets').innerHTML = Object.entries(allocData.targets).map(([b, pct]) =>
+    `<div class="alloc-edit-item">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">${esc(b)}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" min="0" max="100" step="1" value="${pct}"
+          style="width:58px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:4px 7px;color:var(--text);font-size:15px;font-weight:700"
+          onchange="updateAllocTarget('${esc(b)}',this.value)">
+        <span style="color:var(--muted);font-size:14px">%</span>
+      </div>
+    </div>`
+  ).join('');
+
+  const allBucketNames = [...new Set([...Object.keys(allocData.targets), ...bucketArr])];
+  document.getElementById('allocSymGrid').innerHTML = portfolio.holdings.map(h => {
+    const auto    = autoBucket(h.symbol);
+    const current = getBucket(h.symbol);
+    const isOverride = allocData.map[h.symbol] != null;
+    const opts = allBucketNames.map(b => `<option value="${esc(b)}"${b===current?' selected':''}>${esc(b)}</option>`).join('');
+    return `<div class="alloc-sym-chip">
+      <span style="font-weight:700">${esc(h.symbol)}</span>
+      <select style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 5px;font-size:11px;color:var(--text)"
+        onchange="changeSymbolBucket('${esc(h.symbol)}',this.value)">${opts}</select>
+      ${isOverride ? `<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0 2px" title="Reset auto: ${esc(auto)}" onclick="resetSymbolBucket('${esc(h.symbol)}')">↺</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleAllocEdit() {
+  const el  = document.getElementById('allocEditSection');
+  const btn = document.getElementById('allocEditBtn');
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  if (btn) btn.textContent = open ? '⚙️ Edytuj cele' : '✕ Zamknij';
+  if (!open) {
+    const bucketArr = [...new Set([...Object.keys(allocData.targets), ...portfolio.holdings.map(h => getBucket(h.symbol))])];
+    _renderAllocEdit(bucketArr);
+  }
+}
+
+function updateAllocTarget(bucket, val) {
+  const v = parseInt(val, 10);
+  if (isNaN(v) || v < 0 || v > 100) return;
+  allocData.targets[bucket] = v;
+  saveAlloc();
+  renderAllocationPanel();
+}
+
+function changeSymbolBucket(sym, bucket) {
+  allocData.map[sym] = bucket;
+  saveAlloc();
+  renderAllocationPanel();
+}
+
+function resetSymbolBucket(sym) {
+  delete allocData.map[sym];
+  saveAlloc();
+  renderAllocationPanel();
+}
+
 function calcRealizedPLN() {
   const sells = transactions.filter(t => t.type === 'SELL');
   if (!sells.length) return 0;
@@ -1877,6 +2076,7 @@ function render() {
   renderCash();
   renderPfCompare();
   renderPortfolioRisk();
+  renderAllocationPanel();
 }
 
 // ─── WATCHLIST & ALERTS ───────────────────────────────────────────────────────
