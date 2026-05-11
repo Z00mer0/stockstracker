@@ -388,6 +388,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab" data-tab="dywidendy" onclick="showTab('dywidendy')" data-i18n="tab.dywidendy">Dywidendy</button>
     <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')" data-i18n="tab.kalendarz">Kalendarz</button>
     <button class="nav-tab" data-tab="watchlist" onclick="showTab('watchlist')" data-i18n="tab.watchlist">👁 Watchlist</button>
+    <button class="nav-tab" data-tab="analiza" onclick="showTab('analiza')">📊 Analiza</button>
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
@@ -633,6 +634,16 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
 </main>
 
 <!-- ══════════════════════ TAB: WATCHLIST ══════════════════════ -->
+<main id="tab-analiza" style="display:none">
+  <div style="max-width:640px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div style="font-size:18px;font-weight:700">📊 Analiza Atrybuacji</div>
+      <button class="btn btn-outline" onclick="renderAttributionAnalysisTab()">↻ Odśwież</button>
+    </div>
+    <div id="attributionContent"></div>
+  </div>
+</main>
+
 <main id="tab-watchlist" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
     <div style="font-size:18px;font-weight:700">👁 Watchlist</div>
@@ -4131,9 +4142,306 @@ function kalGridNav(dir) {
   if (_kalRows) renderKalGrid(_kalRows, document.getElementById('kalendarContent'));
 }
 
+// ─── ANALIZA ATRYBUACJI ───────────────────────────────────────────────────────
+function calculateContribution(rows, totalCostPLN) {
+  return rows
+    .filter(r => r.valuePLN !== null && r.costPLN > 0)
+    .map(r => ({
+      symbol:       r.h.symbol,
+      name:         r.name,
+      contribution: totalCostPLN > 0 ? (r.pnlPLN / totalCostPLN) * 100 : 0,
+      pnlPct:       r.pnlPct,
+      sector:       mkt[r.h.symbol]?.sector || null,
+    }))
+    .sort((a, b) => b.contribution - a.contribution);
+}
+
+function getRankings(rows) {
+  const valid = rows.filter(r => r.valuePLN !== null && r.pnlPct !== null);
+  if (!valid.length) return { best: null, worst: null };
+  const sorted = [...valid].sort((a, b) => b.pnlPct - a.pnlPct);
+  return { best: sorted[0], worst: sorted[sorted.length - 1] };
+}
+
+function getSectorContribution(contributions) {
+  const map = {};
+  for (const c of contributions) {
+    const sec = c.sector || 'Inne';
+    map[sec] = (map[sec] || 0) + c.contribution;
+  }
+  return Object.entries(map).sort((a, b) => b[1] - a[1]);
+}
+
+function renderAttributionAnalysisTab() {
+  const el = document.getElementById('attributionContent');
+  const rows = _lastRows || [];
+  const valid = rows.filter(r => r.valuePLN !== null && r.costPLN > 0);
+
+  if (!valid.length) {
+    el.innerHTML = `<div style="color:var(--muted);text-align:center;padding:40px">Brak danych — odśwież portfel najpierw.</div>`;
+    return;
+  }
+
+  const totalCostPLN  = valid.reduce((s, r) => s + r.costPLN, 0);
+  const totalPnlPLN   = valid.reduce((s, r) => s + r.pnlPLN, 0);
+  const totalRetPct   = totalCostPLN > 0 ? (totalPnlPLN / totalCostPLN) * 100 : 0;
+
+  const contributions = calculateContribution(valid, totalCostPLN);
+  const contributors  = contributions.filter(c => c.contribution >= 0);
+  const drags         = contributions.filter(c => c.contribution < 0).reverse();
+  const { best, worst } = getRankings(valid);
+  const sectors       = getSectorContribution(contributions);
+
+  const sign  = v => v >= 0 ? '+' : '';
+  const pct   = v => `${sign(v)}${v.toFixed(1)}%`;
+  const color = v => v >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const rowHTML = (c, trophy) => `
+    <tr>
+      <td style="padding:6px 10px;font-weight:700">${c.symbol}</td>
+      <td style="padding:6px 10px;color:${color(c.contribution)};font-variant-numeric:tabular-nums">${pct(c.contribution)}</td>
+      <td style="padding:6px 10px;color:${color(c.pnlPct)};font-variant-numeric:tabular-nums">${pct(c.pnlPct)} zwrotu</td>
+      <td style="padding:6px 4px">${trophy ? '🏆' : ''}</td>
+    </tr>`;
+
+  const sectorRows = sectors.slice(0, 5).map(([sec, val]) => `
+    <tr>
+      <td style="padding:5px 10px">${sec}</td>
+      <td style="padding:5px 10px;color:${color(val)};font-variant-numeric:tabular-nums">${pct(val)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+        <span style="font-size:15px;font-weight:600;color:var(--muted)">Portfel łącznie</span>
+        <span style="font-size:22px;font-weight:800;color:${color(totalRetPct)}">${pct(totalRetPct)}</span>
+        <span style="font-size:13px;color:var(--muted)">(${pct(totalPnlPLN/1000*1000)} PLN zysku)</span>
+      </div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">TOP CONTRIBUTORS</div>
+        <table style="width:100%;border-collapse:collapse">
+          ${contributors.slice(0, 5).map((c, i) => rowHTML(c, i === 0)).join('')}
+        </table>
+      </div>
+      ${drags.length ? `
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">DRAGS</div>
+        <table style="width:100%;border-collapse:collapse">
+          ${drags.slice(0, 5).map(c => rowHTML(c, false)).join('')}
+        </table>
+      </div>` : ''}
+      <div style="padding:14px 20px;display:flex;gap:24px;flex-wrap:wrap">
+        ${best  ? `<div><div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.8px;margin-bottom:4px">TOP PERFORMER</div><div style="font-size:16px;font-weight:800;color:var(--green)">${best.h.symbol} ${pct(best.pnlPct)}</div></div>` : ''}
+        ${worst ? `<div><div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.8px;margin-bottom:4px">WORST</div><div style="font-size:16px;font-weight:800;color:var(--red)">${worst.h.symbol} ${pct(worst.pnlPct)}</div></div>` : ''}
+      </div>
+    </div>
+    ${sectors.length ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;margin-bottom:8px">SEKTORY</div>
+        <table style="width:100%;border-collapse:collapse">${sectorRows}</table>
+      </div>
+    </div>` : ''}
+    ${renderInsightsHTML(generateSmartInsights())}`;
+}
+
+function generateSmartInsights() {
+  const rows = _lastRows || [];
+  const valid = rows.filter(r => r.valuePLN !== null && r.costPLN > 0);
+  if (!valid.length) return [];
+
+  const insights = [];
+  const totalPortPLN = valid.reduce((s, r) => s + r.valuePLN, 0);
+  const totalCostPLN = valid.reduce((s, r) => s + r.costPLN, 0);
+  const totalPnlPct  = totalCostPLN > 0 ? (valid.reduce((s, r) => s + r.pnlPLN, 0) / totalCostPLN) * 100 : 0;
+
+  // ── 1. Single-stock concentration ──────────────────────────────────────────
+  const biggest = valid.map(r => ({ sym: r.h.symbol, pct: r.valuePLN / totalPortPLN * 100 }))
+                       .sort((a, b) => b.pct - a.pct)[0];
+  if (biggest && biggest.pct > 25) {
+    insights.push({ icon: '⚠️', title: 'Ryzyko koncentracji pozycji',
+      lines: [
+        `${biggest.sym} stanowi ${biggest.pct.toFixed(0)}% portfela.`,
+        'Zalecane max dla jednej spółki: 20-25%.',
+        '',
+        'Możliwości:',
+        `├─ Zmniejsz pozycję ${biggest.sym}`,
+        '├─ Dokup spółki z innych sektorów',
+        '└─ Ustaw target-weight i trzymaj się planu',
+      ]
+    });
+  }
+
+  // ── 2. Sector concentration ─────────────────────────────────────────────────
+  const secMap = {};
+  for (const r of valid) {
+    const sec = mkt[r.h.symbol]?.sector || 'Inne';
+    secMap[sec] = (secMap[sec] || 0) + r.valuePLN;
+  }
+  const topSec = Object.entries(secMap).sort((a, b) => b[1] - a[1])[0];
+  if (topSec && topSec[1] / totalPortPLN > 0.30) {
+    const sp = (topSec[1] / totalPortPLN * 100).toFixed(0);
+    insights.push({ icon: '⚠️', title: `Koncentracja sektora: ${topSec[0]}`,
+      lines: [
+        `Sektor ${topSec[0]} = ${sp}% portfela (benchmark: 25-30%).`,
+        '',
+        'Możliwości:',
+        '├─ Dodaj spółki z Energy / Healthcare / Utilities',
+        `├─ Zmniejsz ekspozycję na ${topSec[0]}`,
+        '└─ Rozważ ETF na szeroki rynek dla dywersyfikacji',
+      ]
+    });
+  }
+
+  // ── 3. Take profits ─────────────────────────────────────────────────────────
+  const bigWin = valid.filter(r => r.pnlPct > 100).sort((a, b) => b.pnlPct - a.pnlPct)[0];
+  if (bigWin) {
+    const tax = bigWin.pnlPLN * 0.19;
+    insights.push({ icon: '📈', title: `Realizacja zysku: ${bigWin.h.symbol} +${bigWin.pnlPct.toFixed(0)}%`,
+      lines: [
+        `Niezrealizowany zysk: ${fmtPLN(bigWin.pnlPLN)}.`,
+        `Podatek przy realizacji: ~${fmtPLN(tax)} (19%).`,
+        '',
+        'Rekomendacja:',
+        `├─ Rozważ sprzedaż części pozycji ${bigWin.h.symbol}`,
+        '├─ Ustaw stop-loss by chronić zysk',
+        '└─ Reinwestuj w niedoważone sektory',
+      ]
+    });
+  }
+
+  // ── 4. Tax loss harvesting ──────────────────────────────────────────────────
+  const losers  = valid.filter(r => r.pnlPLN < -500).sort((a, b) => a.pnlPLN - b.pnlPLN);
+  const hasGain = valid.some(r => r.pnlPLN > 500);
+  if (losers.length && hasGain) {
+    const totalLoss = losers.reduce((s, r) => s + r.pnlPLN, 0);
+    const saving    = Math.abs(totalLoss) * 0.19;
+    const li = losers.slice(0, 3).map((r, i, a) =>
+      `${i === a.length - 1 ? '└' : '├'}─ ${r.h.symbol}: ${fmtPLN(r.pnlPLN)}`);
+    insights.push({ icon: '💚', title: `Tax Loss Harvesting — oszczędność ~${fmtPLN(saving)}`,
+      lines: [
+        'Realizując straty możesz obniżyć podatek od zysków.',
+        '',
+        'Kandydaci do sprzedaży:',
+        ...li,
+        '',
+        'Uwaga: wash-sale — nie odkupuj przez 30 dni.',
+      ]
+    });
+  }
+
+  // ── 5. Valuation alerts ─────────────────────────────────────────────────────
+  for (const r of valid) {
+    const f   = fundamentals[r.h.symbol] || {};
+    const sec = f.sector || mkt[r.h.symbol]?.sector;
+    const spe = sec ? _SECTOR_PE[sec] : null;
+    if (!spe || !f.pe || f.pe <= 0) continue;
+    const diff = (f.pe - spe) / spe * 100;
+    if (diff > 30) {
+      insights.push({ icon: '🔴', title: `Wycena: ${r.h.symbol} drogi vs sektor`,
+        lines: [
+          `P/E ${r.h.symbol}: ${f.pe.toFixed(1)}x, sektor ${sec}: ${spe}x`,
+          `(${diff.toFixed(0)}% powyżej średniej).`,
+          '',
+          'Rekomendacja:',
+          `├─ Ogranicz dokupowanie ${r.h.symbol}`,
+          '├─ Ustaw alert cenowy na korekcie',
+          '└─ Szukaj tańszych alternatyw w sektorze',
+        ]
+      });
+      break;
+    }
+    if (diff < -15) {
+      insights.push({ icon: '🟢', title: `Okazja: ${r.h.symbol} tańszy od sektora`,
+        lines: [
+          `P/E ${r.h.symbol}: ${f.pe.toFixed(1)}x, sektor ${sec}: ${spe}x`,
+          `(${Math.abs(diff).toFixed(0)}% poniżej średniej — potencjalny dobry punkt wejścia).`,
+          '',
+          'Rekomendacja:',
+          `├─ Rozważ dokupienie ${r.h.symbol}`,
+          '├─ Potwierdź fundamenty (ROE, marże, dług)',
+          '└─ Ustaw order limit poniżej ceny rynkowej',
+        ]
+      });
+      break;
+    }
+  }
+
+  // ── 6. Upcoming earnings ────────────────────────────────────────────────────
+  const now   = Date.now();
+  const in14  = now + 14 * 86400000;
+  const fmtD  = ts => new Date(ts * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' });
+  const portE = valid.filter(r => { const ts = mkt[r.h.symbol]?.earningsTs; return ts && ts*1000 > now && ts*1000 < in14; })
+                     .sort((a, b) => (mkt[a.h.symbol]?.earningsTs||0) - (mkt[b.h.symbol]?.earningsTs||0));
+  const watchE = (watchlist||[]).filter(w => { const ts = mkt[w.symbol]?.earningsTs; return ts && ts*1000 > now && ts*1000 < in14; });
+  if (portE.length || watchE.length) {
+    const li = [
+      ...portE.slice(0, 4).map(r => `├─ ${fmtD(mkt[r.h.symbol].earningsTs)}: ${r.h.symbol} ⭐`),
+      ...watchE.slice(0, 3).map(w => `├─ ${fmtD(mkt[w.symbol].earningsTs)}: ${w.symbol} (watchlist)`),
+    ];
+    if (li.length) li[li.length - 1] = li[li.length - 1].replace('├', '└');
+    insights.push({ icon: '📅', title: 'Nadchodzące wyniki finansowe',
+      lines: ['Za najbliższe 2 tygodnie:', '', ...li, '', 'Uwaga: możliwa podwyższona zmienność ⚠️']
+    });
+  }
+
+  // ── 7. Portfolio Health Score ────────────────────────────────────────────────
+  const n = valid.length;
+  let divScore = Math.min(10, Math.max(2, n));
+  if (biggest?.pct > 40) divScore = Math.max(2, divScore - 3);
+  else if (biggest?.pct > 30) divScore = Math.max(3, divScore - 2);
+
+  let perfScore = totalPnlPct > 50 ? 10 : totalPnlPct > 20 ? 8 : totalPnlPct > 0 ? 6 : totalPnlPct > -20 ? 4 : 2;
+
+  const withPE = valid.filter(r => { const f = fundamentals[r.h.symbol]||{}; return f.pe > 0 && _SECTOR_PE[f.sector]; });
+  let valScore = 6;
+  if (withPE.length) {
+    const overCnt = withPE.filter(r => { const f = fundamentals[r.h.symbol]||{}; return f.pe > _SECTOR_PE[f.sector] * 1.2; }).length;
+    valScore = Math.max(1, Math.round(10 - (overCnt / withPE.length) * 6));
+  }
+
+  const riskScore = (biggest?.pct || 0) > 40 ? 4 : (biggest?.pct || 0) > 30 ? 5 : (biggest?.pct || 0) > 20 ? 7 : 8;
+  const total     = Math.round((divScore + valScore + perfScore + riskScore) / 4);
+  const label     = total >= 8 ? 'DOBRY ✅' : total >= 6 ? 'OK 🟡' : 'DO POPRAWY 🔴';
+
+  insights.push({ icon: '✅', title: `Health Check: ${total}/10 — ${label}`,
+    lines: [
+      `├─ Dywersyfikacja: ${divScore}/10`,
+      `├─ Wycena: ${valScore}/10`,
+      `├─ Wyniki: ${perfScore}/10`,
+      `└─ Ryzyko konc.: ${riskScore}/10`,
+      '',
+      total >= 8 ? 'Rekomendacja: HOLD & MONITOR' :
+      total >= 6 ? 'Rekomendacja: MONITORUJ, popraw dywersyfikację' :
+                   'Rekomendacja: PRZEJRZYJ skład i zredukuj ryzyko',
+    ]
+  });
+
+  return insights;
+}
+
+function renderInsightsHTML(insights) {
+  if (!insights.length) return '';
+  const cardColor = icon =>
+    icon === '⚠️' ? '#f59e0b22' : icon === '🔴' ? '#ef444422' :
+    icon === '🟢' || icon === '💚' ? '#22c55e22' : icon === '📈' ? '#3b82f622' : 'var(--surface2)';
+
+  const cards = insights.map(({ icon, title, lines }) => `
+    <div style="background:${cardColor(icon)};border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">${icon} ${title}</div>
+      <div style="font-family:monospace;font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap">${lines.join('\n')}</div>
+    </div>`).join('');
+
+  return `
+    <div style="margin-top:20px">
+      <div style="font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:12px">🤖 SMART INSIGHTS</div>
+      ${cards}
+    </div>`;
+}
+
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz', 'watchlist'].forEach(t =>
+  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz', 'watchlist', 'analiza'].forEach(t =>
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none');
   document.querySelectorAll('.nav-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === name));
@@ -4142,6 +4450,7 @@ function showTab(name) {
   if (name === 'dywidendy')  renderDywidendyTab();
   if (name === 'kalendarz')  renderKalendarzTab();
   if (name === 'watchlist')  renderWatchlistTab();
+  if (name === 'analiza')    renderAttributionAnalysisTab();
 }
 
 function setTimeframe(days, btn) {
