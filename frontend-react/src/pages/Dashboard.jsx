@@ -83,7 +83,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* KPI */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
           label="Wartość portfela"
           value={`${fmt(kpi.totalValue)} zł`}
@@ -126,6 +126,7 @@ export default function Dashboard() {
           <div className="px-5 py-4 border-b border-slate-700">
             <h2 className="text-sm font-semibold text-slate-300">Największe pozycje (wg kosztu)</h2>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
@@ -158,6 +159,7 @@ export default function Dashboard() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

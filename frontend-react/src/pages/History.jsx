@@ -38,7 +38,7 @@ export default function History() {
   return (
     <div className="space-y-5">
       {/* Podsumowanie */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Aktualna wartość</p>
           <p className="text-xl font-bold">{fmt(latest?.total)} zł</p>
@@ -66,6 +66,7 @@ export default function History() {
         <div className="px-5 py-4 border-b border-slate-700">
           <h2 className="text-sm font-semibold text-slate-300">Ostatnie 30 snapshots</h2>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
@@ -93,6 +94,7 @@ export default function History() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
