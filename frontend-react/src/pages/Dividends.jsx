@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Spinner from '../components/shared/Spinner';
+import useCalendarData from '../hooks/useCalendarData';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 
@@ -10,7 +11,16 @@ function fmt(n, decimals = 2) {
 }
 
 export default function Dividends() {
-  const { transactions, loading, fxRates } = useApp();
+  const { transactions, loading, fxRates, portfolio } = useApp();
+  const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
+  const { events: calEvents, loading: calLoading } = useCalendarData(symbols);
+
+  const upcomingDivs = useMemo(() =>
+    calEvents
+      .filter(e => e.type === 'DIV')
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    [calEvents]
+  );
 
   const dividends = useMemo(() =>
     [...transactions.filter(t => t.type === 'DIV')]
@@ -50,8 +60,64 @@ export default function Dividends() {
     );
   }
 
+  const today = new Date().toISOString().slice(0, 10);
+
   return (
     <div className="space-y-5">
+      {/* Nadchodzące dywidendy */}
+      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-300">Nadchodzące dywidendy</h2>
+          {calLoading && <Spinner size="sm" />}
+        </div>
+        {calLoading && upcomingDivs.length === 0 ? (
+          <div className="flex justify-center py-8"><Spinner size="md" /></div>
+        ) : upcomingDivs.length === 0 ? (
+          <div className="px-5 py-8 text-center text-slate-500 text-sm">
+            {symbols.length === 0
+              ? 'Dodaj spółki do portfela, by zobaczyć nadchodzące dywidendy'
+              : 'Brak prognozowanych dywidend w ciągu najbliższych 120 dni'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
+                  <th className="text-left px-5 py-2.5">Spółka</th>
+                  <th className="text-left px-5 py-2.5">Data ex-dywidendy</th>
+                  <th className="text-right px-5 py-2.5">Kwota/akcję</th>
+                  <th className="text-right px-5 py-2.5">Dni do daty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upcomingDivs.map((ev, i) => {
+                  const daysAway = Math.round((new Date(ev.date) - new Date(today)) / 86400000);
+                  return (
+                    <tr key={i} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
+                      <td className="px-5 py-3 font-bold text-slate-100">
+                        💰 {ev.symbol}
+                      </td>
+                      <td className="px-5 py-3 text-slate-300">
+                        {ev.date}
+                        {ev.projected && <span className="ml-2 text-xs text-slate-500">~prognoza</span>}
+                      </td>
+                      <td className="px-5 py-3 text-right text-yellow-400 font-semibold">
+                        {ev.amount != null ? `$${Number(ev.amount).toFixed(4)}` : '—'}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {daysAway <= 0
+                          ? <span className="text-rose-400 font-semibold">dziś / minęła</span>
+                          : <span className="text-slate-400">{daysAway} dni</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="rounded-xl border border-yellow-800/50 bg-yellow-950/30 px-5 py-4">
