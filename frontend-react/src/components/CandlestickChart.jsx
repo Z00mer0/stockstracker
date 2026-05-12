@@ -1,5 +1,5 @@
 // src/components/CandlestickChart.jsx
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 const M = { top: 12, right: 62, bottom: 25, left: 8 };
 const MAIN_H = 280;
@@ -92,6 +92,7 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
   const totalH  = xAxisY + M.bottom;
 
   const visible = candles.slice(view.start, view.end);
+  if (!visible.length) return <div ref={containerRef} className="w-full" style={{ height: MAIN_H + M.top + M.bottom }} />;
   const count   = visible.length || 1;
   const cw      = Math.max(2, Math.floor(chartW / count) - 1);
   const xScale  = (i) => M.left + i * (cw + 1) + cw / 2;
