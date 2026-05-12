@@ -54,7 +54,7 @@ export default function Dividends() {
   return (
     <div className="space-y-5">
       {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="rounded-xl border border-yellow-800/50 bg-yellow-950/30 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Łącznie dywidendy</p>
           <p className="text-2xl font-bold text-yellow-400">{fmt(totalPLN)} zł</p>
@@ -75,6 +75,7 @@ export default function Dividends() {
           <div className="px-5 py-4 border-b border-slate-700">
             <h2 className="text-sm font-semibold text-slate-300">Dywidendy per spółka</h2>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
@@ -98,6 +99,7 @@ export default function Dividends() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -107,6 +109,7 @@ export default function Dividends() {
           <h2 className="text-sm font-semibold text-slate-300">Historia wypłat</h2>
           <span className="text-xs text-slate-500">{dividends.length} wpisów</span>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
@@ -141,6 +144,7 @@ export default function Dividends() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
