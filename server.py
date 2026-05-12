@@ -10,6 +10,7 @@ import mimetypes
 import secrets
 import socket
 import os
+import time
 import urllib.parse
 import urllib.request
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -17,6 +18,32 @@ from pathlib import Path
 
 BASE       = Path(__file__).parent
 REACT_DIST = BASE / 'frontend-react' / 'dist'
+
+# ── CALENDAR CACHE ─────────────────────────────────────────────────────────────
+_CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
+_CAL_TTL   = 4 * 3600  # 4 hours
+
+_CAL_HEADERS = {
+    'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    'Accept':          'application/json, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+}
+
+def _fetch_calendar(week):
+    entry = _CAL_CACHE.get(week)
+    if entry and time.time() - entry['ts'] < _CAL_TTL:
+        return entry['data']
+    url = f'https://nfs.faireconomy.media/ff_calendar_{week}.json'
+    try:
+        req = urllib.request.Request(url, headers=_CAL_HEADERS)
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read())
+        _CAL_CACHE[week] = {'data': data, 'ts': time.time()}
+        return data
+    except Exception as e:
+        print(f'[calendar] {week}: {e}')
+        stale = _CAL_CACHE.get(week, {}).get('data')
+        return stale if stale is not None else []
 
 # Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
 _env = BASE / '.env'
@@ -163,7 +190,14 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split('?')[0]
 
-        if path == '/api/users':
+        if path == '/api/calendar':
+            qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            week = qs.get('week', 'thisweek')
+            if week not in ('thisweek', 'nextweek'):
+                self.send_json(400, {'error': 'invalid week'}); return
+            self.send_json(200, _fetch_calendar(week))
+
+        elif path == '/api/users':
             users = load_users()
             self.send_json(200, [
                 {'username': u, 'display_name': v['display_name']}

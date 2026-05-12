@@ -34,6 +34,12 @@ async function fetchProxy(url) {
   return res.json();
 }
 
+async function fetchCalendar(week) {
+  const res = await fetch(`/api/calendar?week=${week}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export default function useCalendarData(symbols) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +59,7 @@ export default function useCalendarData(symbols) {
         let data = fromCache(cacheKey);
         if (!data) {
           try {
-            data = await fetchProxy(`https://nfs.faireconomy.media/ff_calendar_${week}.json`);
+            data = await fetchCalendar(week);
             toCache(cacheKey, data);
           } catch { data = []; }
         }
