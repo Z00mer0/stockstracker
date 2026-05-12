@@ -179,8 +179,10 @@ async function fetchDividendEvents(sym) {
   const lastTs     = divs[divs.length - 1].ts;
   const lastAmount = divs[divs.length - 1].amount;
   let nextTs = lastTs + medianGap;
-  if (nextTs < nowSec - 14 * 86400) nextTs += medianGap;
-  if (nextTs < nowSec - 7 * 86400 || nextTs > nowSec + 180 * 86400) return [];
+  // Advance jeśli data już minęła
+  if (nextTs < nowSec) nextTs += medianGap;
+  // Nie pokazuj dat z przeszłości ani za dalekich
+  if (nextTs < nowSec || nextTs > nowSec + 180 * 86400) return [];
 
   const nextDate = new Date(nextTs * 1000).toISOString().slice(0, 10);
   return [{ date: nextDate, type: 'DIV', symbol: sym, amount: lastAmount, projected: true }];
@@ -209,7 +211,7 @@ export default function useCalendarData(symbols) {
         const [earnEvents, ...divResults] = await Promise.all([
           fetchEarningsEvents(symbols),
           ...symbols.map(sym => {
-            const divKey = `cal_div_${sym}`;
+            const divKey = `cal_div2_${sym}`;
             const cached = fromCache(divKey, DIV_TTL_MS);
             if (cached) return Promise.resolve(cached);
             return fetchDividendEvents(sym)
