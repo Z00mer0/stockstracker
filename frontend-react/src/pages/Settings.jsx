@@ -21,16 +21,16 @@ export default function Settings() {
             <span className="text-sm text-slate-400">API URL</span>
             <span className="text-xs text-slate-500 font-mono truncate max-w-xs">{apiUrl}</span>
           </div>
-          <div className="pt-2 border-t border-slate-700 flex gap-3">
+          <div className="pt-2 border-t border-slate-700 flex flex-col sm:flex-row gap-3">
             <button
               onClick={refresh}
-              className="text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors font-medium"
+              className="text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors font-medium min-h-[44px]"
             >
               Odśwież dane
             </button>
             <button
               onClick={logout}
-              className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors text-slate-300"
+              className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors text-slate-300 min-h-[44px]"
             >
               Wyloguj
             </button>
