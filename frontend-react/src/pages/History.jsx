@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import Sparkline from '../components/shared/Sparkline';
+import HistoryChart from '../components/HistoryChart';
 import Spinner from '../components/shared/Spinner';
 
 function fmt(n, decimals = 0) {
@@ -16,8 +16,6 @@ export default function History() {
     [snapshots]
   );
 
-  const values   = sorted.map(s => s.total    ?? 0);
-  const invested = sorted.map(s => s.invested ?? 0);
 
   const latest  = sorted[sorted.length - 1];
   const first   = sorted[0];
@@ -57,20 +55,10 @@ export default function History() {
         </div>
       </div>
 
-      {/* Wykres wartości */}
+      {/* Wykres historii portfela */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-5">
-        <p className="text-sm font-semibold text-slate-300 mb-4">Wartość portfela</p>
-        <div className="w-full overflow-x-auto">
-          <Sparkline data={values} width={900} height={120} />
-        </div>
-      </div>
-
-      {/* Wykres zainwestowanego kapitału */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-5">
-        <p className="text-sm font-semibold text-slate-300 mb-4">Zainwestowany kapitał</p>
-        <div className="w-full overflow-x-auto">
-          <Sparkline data={invested} width={900} height={120} />
-        </div>
+        <p className="text-sm font-semibold text-slate-300 mb-4">Historia wartości portfela</p>
+        <HistoryChart data={sorted} />
       </div>
 
       {/* Tabela ostatnich snapshots */}
