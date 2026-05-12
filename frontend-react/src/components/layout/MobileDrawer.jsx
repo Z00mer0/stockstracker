@@ -52,7 +52,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
             aria-label="Zamknij menu"
           >
             ✕
