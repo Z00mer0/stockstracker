@@ -36,7 +36,7 @@ export default function LoginForm({ onLogin }) {
         <div>
           <label className="text-sm text-slate-400 block mb-1">Nazwa użytkownika</label>
           <input
-            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-indigo-500"
             value={username}
             onChange={e => setUsername(e.target.value)}
             autoComplete="username"
@@ -48,7 +48,7 @@ export default function LoginForm({ onLogin }) {
           <label className="text-sm text-slate-400 block mb-1">Hasło</label>
           <input
             type="password"
-            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-indigo-500"
             value={password}
             onChange={e => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -60,7 +60,7 @@ export default function LoginForm({ onLogin }) {
         <button
           type="submit"
           disabled={loading || !username || !password}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded-lg py-2 text-sm font-semibold transition-colors"
+          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded-lg py-3 text-base font-semibold transition-colors"
         >
           {loading ? 'Logowanie…' : 'Zaloguj'}
         </button>
