@@ -24,9 +24,14 @@ _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...
 _CAL_TTL   = 4 * 3600  # 4 hours
 
 _CAL_HEADERS = {
-    'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    'Accept':          'application/json, */*',
+    'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept':          'application/json, text/plain, */*',
     'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Referer':         'https://www.forexfactory.com/',
+    'Origin':          'https://www.forexfactory.com',
+    'Cache-Control':   'no-cache',
+    'Pragma':          'no-cache',
 }
 
 def _fetch_calendar(week):
@@ -36,12 +41,18 @@ def _fetch_calendar(week):
     url = f'https://nfs.faireconomy.media/ff_calendar_{week}.json'
     try:
         req = urllib.request.Request(url, headers=_CAL_HEADERS)
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read())
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            # handle gzip
+            if resp.info().get('Content-Encoding') == 'gzip':
+                import gzip
+                raw = gzip.decompress(raw)
+            data = json.loads(raw)
+        print(f'[calendar] {week}: fetched {len(data)} events')
         _CAL_CACHE[week] = {'data': data, 'ts': time.time()}
         return data
     except Exception as e:
-        print(f'[calendar] {week}: {e}')
+        print(f'[calendar] {week} ERROR: {e}')
         stale = _CAL_CACHE.get(week, {}).get('data')
         return stale if stale is not None else []
 

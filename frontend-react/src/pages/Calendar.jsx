@@ -5,6 +5,11 @@ import Spinner from '../components/shared/Spinner';
 
 const DAY_NAMES = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd'];
 
+const MONTH_NAMES = [
+  'Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
+  'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień',
+];
+
 function getMonday(date) {
   const d = new Date(date);
   const dow = d.getDay();
@@ -55,13 +60,39 @@ export default function Calendar() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [filterImpact,  setFilterImpact]  = useState('All');
   const [filterCountry, setFilterCountry] = useState(null);
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
 
   const today = toISO(new Date());
-  const monday = getMonday(new Date());
 
-  const weeks = useMemo(() => [0, 1].map(w =>
-    Array.from({ length: 7 }, (_, d) => toISO(addDays(monday, w * 7 + d)))
-  ), [toISO(monday)]);
+  // Build month grid: full weeks (Mon–Sun) covering the entire month
+  const { weeks, calDays } = useMemo(() => {
+    const year  = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth  = new Date(year, month + 1, 0);
+
+    const gridStart = getMonday(firstOfMonth);
+    const lastDow   = lastOfMonth.getDay();
+    const gridEnd   = addDays(lastOfMonth, lastDow === 0 ? 0 : 7 - lastDow);
+
+    const days = [];
+    let d = new Date(gridStart);
+    while (toISO(d) <= toISO(gridEnd)) {
+      days.push(toISO(d));
+      d = addDays(d, 1);
+    }
+
+    const ws = [];
+    for (let i = 0; i < days.length; i += 7) ws.push(days.slice(i, i + 7));
+    return { weeks: ws, calDays: days };
+  }, [currentMonth]);
+
+  const minDate = calDays[0];
+  const maxDate = calDays[calDays.length - 1];
+  const curMonthStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
 
   const byDate = useMemo(() => {
     const map = {};
@@ -70,9 +101,6 @@ export default function Calendar() {
     }
     return map;
   }, [events]);
-
-  const minDate = weeks[0][0];
-  const maxDate = weeks[1][6];
 
   const listEvents = useMemo(() => {
     let base = selectedDay
@@ -86,7 +114,6 @@ export default function Calendar() {
     return base;
   }, [events, selectedDay, minDate, maxDate, filterImpact, filterCountry]);
 
-  // Group list events by date for rendering
   const groupedList = useMemo(() => {
     const groups = [];
     let lastDate = null;
@@ -97,18 +124,45 @@ export default function Calendar() {
     return groups;
   }, [listEvents]);
 
+  const prevMonth = () => setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  const goToday   = () => {
+    const d = new Date();
+    setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    setSelectedDay(null);
+  };
+
   if (appLoading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
 
   return (
     <div className="space-y-5">
-      {/* Week grid */}
+      {/* Month grid */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 p-5">
+        {/* Header: navigation */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-300">Kalendarz zdarzeń</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={prevMonth}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors text-lg"
+            >‹</button>
+            <h2 className="text-sm font-semibold text-slate-200 w-36 text-center">
+              {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+            </h2>
+            <button
+              onClick={nextMonth}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors text-lg"
+            >›</button>
+          </div>
           <div className="flex items-center gap-3">
             {loading && <Spinner size="sm" />}
+            <button
+              onClick={goToday}
+              className="text-xs px-2.5 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+            >
+              Dziś
+            </button>
             {selectedDay && (
               <button
                 onClick={() => setSelectedDay(null)}
@@ -121,27 +175,28 @@ export default function Calendar() {
         </div>
 
         <div className="overflow-x-auto">
-          <div style={{ minWidth: '480px' }}>
-            {/* Day name headers */}
-            <div className="grid grid-cols-7 gap-1.5 mb-1">
+          <div style={{ minWidth: '320px' }}>
+            {/* Day headers */}
+            <div className="grid grid-cols-7 gap-1 mb-1">
               {DAY_NAMES.map(n => (
                 <div key={n} className="text-center text-xs text-slate-500 py-0.5">{n}</div>
               ))}
             </div>
 
-            {/* Two week rows */}
+            {/* Weeks */}
             {weeks.map((week, wi) => (
-              <div key={wi} className="grid grid-cols-7 gap-1.5 mb-1.5">
+              <div key={wi} className="grid grid-cols-7 gap-1 mb-1">
                 {week.map(date => {
-                  const dayEvs = byDate[date] ?? [];
+                  const dayEvs    = byDate[date] ?? [];
                   const isToday    = date === today;
                   const isSelected = date === selectedDay;
                   const isPast     = date < today;
+                  const inMonth    = date.startsWith(curMonthStr);
                   return (
                     <button
                       key={date}
                       onClick={() => setSelectedDay(isSelected ? null : date)}
-                      className={`rounded-lg py-1.5 px-1 text-center transition-colors border ${
+                      className={`rounded-lg py-1.5 px-0.5 text-center transition-colors border ${
                         isSelected
                           ? 'bg-indigo-600 border-indigo-500'
                           : isToday
@@ -150,7 +205,13 @@ export default function Calendar() {
                       }`}
                     >
                       <div className={`text-xs font-medium mb-1 ${
-                        isPast && !isToday ? 'text-slate-500' : isSelected ? 'text-white' : 'text-slate-300'
+                        !inMonth
+                          ? 'text-slate-600'
+                          : isPast && !isToday
+                          ? 'text-slate-500'
+                          : isSelected
+                          ? 'text-white'
+                          : 'text-slate-300'
                       }`}>
                         {parseInt(date.slice(8), 10)}
                       </div>
@@ -180,7 +241,7 @@ export default function Calendar() {
       <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-700 flex flex-wrap items-center gap-3">
           <h2 className="text-sm font-semibold text-slate-300 mr-auto">
-            {selectedDay ? `Zdarzenia: ${selectedDay}` : 'Zdarzenia — bieżący i następny tydzień'}
+            {selectedDay ? `Zdarzenia: ${selectedDay}` : `Zdarzenia — ${MONTH_NAMES[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`}
           </h2>
           {/* Impact filter */}
           <div className="flex gap-1">
@@ -217,13 +278,12 @@ export default function Calendar() {
         ) : groupedList.length === 0 ? (
           <div className="px-5 py-8 text-center text-slate-500">
             <p>Brak zdarzeń w tym okresie</p>
-            {!symbols.length && <p className="text-xs mt-1">Dodaj spółki do portfela, by zobaczyć wyniki finansowe</p>}
+            {!symbols.length && <p className="text-xs mt-1">Dodaj spółki do portfela, by zobaczyć wyniki finansowe i dywidendy</p>}
           </div>
         ) : (
           <div>
             {groupedList.map(({ date, items }) => (
               <div key={date}>
-                {/* Date separator */}
                 <div className={`px-5 py-2 text-xs font-semibold tracking-wide uppercase ${
                   date === today ? 'text-indigo-400 bg-indigo-950/30' : 'text-slate-500 bg-slate-900/40'
                 }`}>
@@ -246,7 +306,7 @@ export default function Calendar() {
                           <span className="text-slate-100 font-semibold">{ev.symbol}</span>
                           <span className="text-slate-400 text-xs ml-2">Ex-dywidenda</span>
                           {ev.amount != null && (
-                            <span className="text-yellow-400 text-xs ml-2 font-medium">{ev.amount}</span>
+                            <span className="text-yellow-400 text-xs ml-2 font-medium">${Number(ev.amount).toFixed(4)}</span>
                           )}
                           {ev.projected && (
                             <span className="text-slate-600 text-xs ml-2">~prognoza</span>
