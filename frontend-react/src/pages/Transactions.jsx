@@ -50,7 +50,7 @@ export default function Transactions() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`text-xs px-3 py-2 min-h-[36px] rounded-lg font-medium transition-colors ${
               filter === f
                 ? 'bg-indigo-600 text-white'
                 : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
@@ -69,6 +69,7 @@ export default function Transactions() {
 
       {/* Tabela */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
@@ -107,6 +108,7 @@ export default function Transactions() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
