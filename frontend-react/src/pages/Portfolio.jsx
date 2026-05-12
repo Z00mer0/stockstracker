@@ -77,6 +77,7 @@ export default function Portfolio() {
           ))}
         </div>
 
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
@@ -126,6 +127,7 @@ export default function Portfolio() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
