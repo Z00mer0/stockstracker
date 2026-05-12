@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useChart } from '../context/ChartContext';
 import Spinner from '../components/shared/Spinner';
 
 const FX = { PLN: 1, USD: 3.95, EUR: 4.25, GBP: 5.0 };
@@ -13,6 +14,7 @@ const CUR_FLAG = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬
 
 export default function Portfolio() {
   const { portfolio, loading } = useApp();
+  const { openChart } = useChart();
   const [sortBy, setSortBy]   = useState('cost');
 
   const sorted = useMemo(() => {
@@ -91,8 +93,12 @@ export default function Portfolio() {
               const share   = totalCostPLN > 0 ? (costPLN / totalCostPLN) * 100 : 0;
               return (
                 <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="font-bold text-slate-100">{pos.symbol}</div>
+                  <td
+                    className="px-5 py-3 cursor-pointer"
+                    onClick={() => openChart(pos.symbol)}
+                    title={`Otwórz wykres ${pos.symbol}`}
+                  >
+                    <div className="font-bold text-indigo-400 hover:text-indigo-300 transition-colors">{pos.symbol}</div>
                     {pos.name && pos.name !== pos.symbol && (
                       <div className="text-xs text-slate-500">{pos.name}</div>
                     )}

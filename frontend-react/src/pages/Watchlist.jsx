@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useChart } from '../context/ChartContext';
 
 const WATCH_KEY = 'myfund_watchlist';
 
@@ -13,6 +14,7 @@ function loadWatchlist() {
 
 export default function Watchlist() {
   const { portfolio } = useApp();
+  const { openChart } = useChart();
   const [watchItems, setWatchItems] = useState([]);
 
   useEffect(() => {
@@ -52,7 +54,11 @@ export default function Watchlist() {
             <tbody>
               {watchItems.map(w => (
                 <tr key={w.id ?? w.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                  <td className="px-5 py-3 font-bold text-slate-100">
+                  <td
+                    className="px-5 py-3 font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors"
+                    onClick={() => openChart(w.symbol)}
+                    title={`Otwórz wykres ${w.symbol}`}
+                  >
                     {w.symbol}
                     {w.name && w.name !== w.symbol && (
                       <span className="ml-2 text-xs text-slate-500 font-normal">{w.name}</span>
@@ -107,7 +113,11 @@ export default function Watchlist() {
             <tbody>
               {portfolio.map(pos => (
                 <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                  <td className="px-5 py-3 font-bold text-slate-100">
+                  <td
+                    className="px-5 py-3 font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors"
+                    onClick={() => openChart(pos.symbol)}
+                    title={`Otwórz wykres ${pos.symbol}`}
+                  >
                     {pos.symbol}
                     {pos.name && pos.name !== pos.symbol && (
                       <span className="ml-2 text-xs text-slate-500 font-normal">{pos.name}</span>

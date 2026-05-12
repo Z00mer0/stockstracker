@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { ChartProvider } from './context/ChartContext';
 import Layout from './components/layout/Layout';
 import LoginForm from './components/LoginForm';
 
@@ -41,7 +42,9 @@ export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <AppProvider>
-        <AppRoutes />
+        <ChartProvider>
+          <AppRoutes />
+        </ChartProvider>
       </AppProvider>
     </BrowserRouter>
   );
