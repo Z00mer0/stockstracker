@@ -41,7 +41,7 @@ function parseYF(raw) {
     low:    q.low?.[i]    ?? null,
     close:  q.close?.[i]  ?? null,
     volume: q.volume?.[i] ?? null,
-  })).filter(c => c.open != null && c.close != null && !isNaN(c.close));
+  })).filter(c => c.timestamp != null && c.open != null && c.close != null && !isNaN(c.close));
 }
 
 export function usePriceHistory(symbol, period) {
@@ -51,11 +51,15 @@ export function usePriceHistory(symbol, period) {
 
   useEffect(() => {
     if (!symbol || !period) return;
+    let cancelled = false;
+
     const key = `chart_${symbol}_${period}`;
     const cached = getCached(key);
     if (cached) { setCandles(cached); return; }
 
-    const { range, interval } = PERIOD_MAP[period];
+    const mapping = PERIOD_MAP[period];
+    if (!mapping) { setError(`Nieznany okres: ${period}`); return; }
+    const { range, interval } = mapping;
     const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
 
@@ -64,12 +68,20 @@ export function usePriceHistory(symbol, period) {
     setCandles([]);
     api.get(proxyUrl)
       .then(res => {
+        if (cancelled) return;
         const data = parseYF(res.data);
         setCache(key, data);
         setCandles(data);
       })
-      .catch(err => setError(err.response?.data?.error ?? err.message))
-      .finally(() => setLoading(false));
+      .catch(err => {
+        if (cancelled) return;
+        setError(err.response?.data?.error ?? err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [symbol, period]);
 
   return { candles, loading, error };
