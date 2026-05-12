@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react';
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-const MONTHS = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-
 function parseFXDate(str) {
   if (!str) return null;
-  const m = str.match(/^(\w{3})\s+(\d{1,2})\s+(\d{4})$/);
-  if (!m) return null;
-  const month = MONTHS[m[1]];
-  if (month == null) return null;
-  return `${m[3]}-${String(month + 1).padStart(2, '0')}-${String(parseInt(m[2], 10)).padStart(2, '0')}`;
+  // ISO 8601: "2026-05-10T21:30:00-04:00" or "2026-05-10"
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+  return null;
+}
+
+function parseFXTime(str) {
+  if (!str) return null;
+  // Extract HH:MM from "2026-05-10T21:30:00-04:00"
+  const m = str.match(/T(\d{2}:\d{2})/);
+  return m ? m[1] : null;
 }
 
 function fromCache(key) {
@@ -38,14 +41,13 @@ export default function useCalendarData(symbols) {
   const symbolKey = symbols.join(',');
 
   useEffect(() => {
-    if (!symbols.length) return;
     let cancelled = false;
 
     async function fetchAll() {
       setLoading(true);
       const results = [];
 
-      // Macro events — this week + next week
+      // Macro events — always fetch regardless of portfolio
       for (const week of ['thisweek', 'nextweek']) {
         const cacheKey = `cal_macro_${week}`;
         let data = fromCache(cacheKey);
@@ -61,35 +63,41 @@ export default function useCalendarData(symbols) {
             if (!date) continue;
             results.push({
               date, type: 'MACRO',
-              title: ev.title, currency: ev.currency,
-              impact: ev.impact, time: ev.time,
-              forecast: ev.forecast, previous: ev.previous, actual: ev.actual,
+              title: ev.title,
+              currency: ev.country,   // API field is "country" (e.g. "USD", "EUR")
+              impact: ev.impact,
+              time: parseFXTime(ev.date),
+              forecast: ev.forecast,
+              previous: ev.previous,
+              actual: ev.actual,
             });
           }
         }
       }
 
-      // Earnings per symbol (parallel)
-      const earningsArr = await Promise.all(
-        symbols.map(async sym => {
-          const cacheKey = `cal_earn_${sym}`;
-          let data = fromCache(cacheKey);
-          if (!data) {
-            try {
-              data = await fetchProxy(
-                `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=calendarEvents`
-              );
-              toCache(cacheKey, data);
-            } catch { return []; }
-          }
-          const dates = data?.quoteSummary?.result?.[0]?.calendarEvents?.earnings?.earningsDate ?? [];
-          return dates
-            .map(ed => ed.fmt ?? (ed.raw ? new Date(ed.raw * 1000).toISOString().slice(0, 10) : null))
-            .filter(Boolean)
-            .map(date => ({ date, type: 'EARN', symbol: sym }));
-        })
-      );
-      for (const arr of earningsArr) results.push(...arr);
+      // Earnings per symbol (only if portfolio has symbols)
+      if (symbols.length) {
+        const earningsArr = await Promise.all(
+          symbols.map(async sym => {
+            const cacheKey = `cal_earn_${sym}`;
+            let data = fromCache(cacheKey);
+            if (!data) {
+              try {
+                data = await fetchProxy(
+                  `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${sym}?modules=calendarEvents`
+                );
+                toCache(cacheKey, data);
+              } catch { return []; }
+            }
+            const dates = data?.quoteSummary?.result?.[0]?.calendarEvents?.earnings?.earningsDate ?? [];
+            return dates
+              .map(ed => ed.fmt ?? (ed.raw ? new Date(ed.raw * 1000).toISOString().slice(0, 10) : null))
+              .filter(Boolean)
+              .map(date => ({ date, type: 'EARN', symbol: sym }));
+          })
+        );
+        for (const arr of earningsArr) results.push(...arr);
+      }
 
       if (!cancelled) {
         setEvents(results.sort((a, b) => a.date.localeCompare(b.date)));

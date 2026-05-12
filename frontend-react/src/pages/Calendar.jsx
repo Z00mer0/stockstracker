@@ -38,11 +38,22 @@ function impactBar(impact) {
   return 'bg-slate-500';
 }
 
+const IMPACT_OPTS  = ['All', 'High', 'Medium', 'Low'];
+const COUNTRY_OPTS = [
+  { label: 'All',  value: null },
+  { label: 'USD',  value: 'USD' },
+  { label: 'EUR',  value: 'EUR' },
+  { label: 'GBP',  value: 'GBP' },
+  { label: 'PLN',  value: 'PLN' },
+];
+
 export default function Calendar() {
   const { portfolio, loading: appLoading } = useApp();
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { events, loading } = useCalendarData(symbols);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [filterImpact,  setFilterImpact]  = useState('All');
+  const [filterCountry, setFilterCountry] = useState(null);
 
   const today = toISO(new Date());
   const monday = getMonday(new Date());
@@ -62,12 +73,16 @@ export default function Calendar() {
   const minDate = weeks[0][0];
   const maxDate = weeks[1][6];
 
-  const listEvents = useMemo(() =>
-    selectedDay
+  const listEvents = useMemo(() => {
+    let base = selectedDay
       ? events.filter(e => e.date === selectedDay)
-      : events.filter(e => e.date >= minDate && e.date <= maxDate),
-    [events, selectedDay, minDate, maxDate]
-  );
+      : events.filter(e => e.date >= minDate && e.date <= maxDate);
+    if (filterImpact !== 'All')
+      base = base.filter(e => e.type === 'EARN' || e.impact === filterImpact);
+    if (filterCountry)
+      base = base.filter(e => e.type === 'EARN' || e.currency === filterCountry);
+    return base;
+  }, [events, selectedDay, minDate, maxDate, filterImpact, filterCountry]);
 
   // Group list events by date for rendering
   const groupedList = useMemo(() => {
@@ -161,10 +176,38 @@ export default function Calendar() {
 
       {/* Event list */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-300">
+        <div className="px-5 py-3 border-b border-slate-700 flex flex-wrap items-center gap-3">
+          <h2 className="text-sm font-semibold text-slate-300 mr-auto">
             {selectedDay ? `Zdarzenia: ${selectedDay}` : 'Zdarzenia — bieżący i następny tydzień'}
           </h2>
+          {/* Impact filter */}
+          <div className="flex gap-1">
+            {IMPACT_OPTS.map(opt => (
+              <button
+                key={opt}
+                onClick={() => setFilterImpact(opt)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                  filterImpact === opt
+                    ? 'bg-slate-600 text-slate-100'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >{opt}</button>
+            ))}
+          </div>
+          {/* Country filter */}
+          <div className="flex gap-1">
+            {COUNTRY_OPTS.map(({ label, value }) => (
+              <button
+                key={label}
+                onClick={() => setFilterCountry(value)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                  filterCountry === value
+                    ? 'bg-slate-600 text-slate-100'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >{label}</button>
+            ))}
+          </div>
         </div>
 
         {loading && listEvents.length === 0 ? (
