@@ -4,10 +4,8 @@ import { useChart } from '../context/ChartContext';
 import Sparkline from '../components/shared/Sparkline';
 import Spinner from '../components/shared/Spinner';
 
-const FX = { PLN: 1, USD: 3.95, EUR: 4.25, GBP: 5.0 };
-
-function toPlnRate(currency) {
-  return FX[currency] ?? 1;
+function toPlnRate(currency, fx) {
+  return fx[currency] ?? 1;
 }
 
 function fmt(n, decimals = 2) {
@@ -40,7 +38,7 @@ function KpiCard({ label, value, sub, trend, color = 'slate' }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates } = useApp();
   const { openChart } = useChart();
 
   const kpi = useMemo(() => {
@@ -55,25 +53,25 @@ export default function Dashboard() {
     const realizedPLN = transactions
       .filter(t => t.type === 'SELL')
       .reduce((sum, tx) => {
-        const rate     = toPlnRate(tx.currency);
+        const rate     = toPlnRate(tx.currency, fxRates);
         const costBasis = tx.costBasis ?? tx.avgPrice ?? tx.price;
         return sum + (tx.price - costBasis) * tx.qty * rate;
       }, 0);
 
     const dividendsPLN = transactions
       .filter(t => t.type === 'DIV')
-      .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency), 0);
+      .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
 
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
     return { totalValue, totalInvested, unrealPLN, unrealPct, realizedPLN, dividendsPLN, sparkValues };
-  }, [snapshots, transactions]);
+  }, [snapshots, transactions, fxRates]);
 
   const topPositions = useMemo(
     () => [...portfolio]
-      .sort((a, b) => (b.qty * b.avgPrice * toPlnRate(b.currency)) - (a.qty * a.avgPrice * toPlnRate(a.currency)))
+      .sort((a, b) => (b.qty * b.avgPrice * toPlnRate(b.currency, fxRates)) - (a.qty * a.avgPrice * toPlnRate(a.currency, fxRates)))
       .slice(0, 7),
-    [portfolio]
+    [portfolio, fxRates]
   );
 
   if (loading && !portfolio.length) {
@@ -138,7 +136,7 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {topPositions.map((pos) => {
-                const costPLN = pos.qty * pos.avgPrice * toPlnRate(pos.currency);
+                const costPLN = pos.qty * pos.avgPrice * toPlnRate(pos.currency, fxRates);
                 return (
                   <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
                     <td

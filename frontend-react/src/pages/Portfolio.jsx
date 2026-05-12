@@ -3,8 +3,6 @@ import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
 import Spinner from '../components/shared/Spinner';
 
-const FX = { PLN: 1, USD: 3.95, EUR: 4.25, GBP: 5.0 };
-
 function fmt(n, decimals = 2) {
   if (n == null || isNaN(n)) return '—';
   return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -13,23 +11,23 @@ function fmt(n, decimals = 2) {
 const CUR_FLAG = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 
 export default function Portfolio() {
-  const { portfolio, loading } = useApp();
+  const { portfolio, loading, fxRates } = useApp();
   const { openChart } = useChart();
   const [sortBy, setSortBy]   = useState('cost');
 
   const sorted = useMemo(() => {
     return [...portfolio].sort((a, b) => {
-      const costA = a.qty * a.avgPrice * (FX[a.currency] ?? 1);
-      const costB = b.qty * b.avgPrice * (FX[b.currency] ?? 1);
+      const costA = a.qty * a.avgPrice * (fxRates[a.currency] ?? 1);
+      const costB = b.qty * b.avgPrice * (fxRates[b.currency] ?? 1);
       if (sortBy === 'cost')   return costB - costA;
       if (sortBy === 'symbol') return a.symbol.localeCompare(b.symbol);
       if (sortBy === 'qty')    return b.qty - a.qty;
       return 0;
     });
-  }, [portfolio, sortBy]);
+  }, [portfolio, sortBy, fxRates]);
 
   const totalCostPLN = portfolio.reduce(
-    (sum, p) => sum + p.qty * p.avgPrice * (FX[p.currency] ?? 1), 0
+    (sum, p) => sum + p.qty * p.avgPrice * (fxRates[p.currency] ?? 1), 0
   );
 
   if (loading && !portfolio.length) {
@@ -90,7 +88,7 @@ export default function Portfolio() {
           </thead>
           <tbody>
             {sorted.map((pos, i) => {
-              const costPLN = pos.qty * pos.avgPrice * (FX[pos.currency] ?? 1);
+              const costPLN = pos.qty * pos.avgPrice * (fxRates[pos.currency] ?? 1);
               const share   = totalCostPLN > 0 ? (costPLN / totalCostPLN) * 100 : 0;
               return (
                 <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">

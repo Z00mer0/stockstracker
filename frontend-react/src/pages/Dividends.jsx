@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import Spinner from '../components/shared/Spinner';
 
-const FX = { PLN: 1, USD: 3.95, EUR: 4.25, GBP: 5.0 };
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 
 function fmt(n, decimals = 2) {
@@ -11,7 +10,7 @@ function fmt(n, decimals = 2) {
 }
 
 export default function Dividends() {
-  const { transactions, loading } = useApp();
+  const { transactions, loading, fxRates } = useApp();
 
   const dividends = useMemo(() =>
     [...transactions.filter(t => t.type === 'DIV')]
@@ -21,8 +20,8 @@ export default function Dividends() {
 
   const totalPLN = useMemo(() =>
     dividends.reduce((sum, d) =>
-      sum + (d.price || 0) * (d.qty || 1) * (FX[d.currency] ?? 1), 0),
-    [dividends]
+      sum + (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1), 0),
+    [dividends, fxRates]
   );
 
   // Dywidendy per spółka
@@ -31,11 +30,11 @@ export default function Dividends() {
     dividends.forEach(d => {
       const key = d.symbol ?? 'INNE';
       if (!map[key]) map[key] = { symbol: key, name: d.name, totalPLN: 0, count: 0 };
-      map[key].totalPLN += (d.price || 0) * (d.qty || 1) * (FX[d.currency] ?? 1);
+      map[key].totalPLN += (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1);
       map[key].count++;
     });
     return Object.values(map).sort((a, b) => b.totalPLN - a.totalPLN);
-  }, [dividends]);
+  }, [dividends, fxRates]);
 
   if (loading && !transactions.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
@@ -123,7 +122,7 @@ export default function Dividends() {
           </thead>
           <tbody>
             {dividends.map(d => {
-              const approxPLN = (d.price || 0) * (d.qty || 1) * (FX[d.currency] ?? 1);
+              const approxPLN = (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1);
               return (
                 <tr key={d.id ?? d.date + d.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
                   <td className="px-5 py-3 text-slate-400">{d.date}</td>

@@ -3,7 +3,33 @@ import { api } from '../hooks/useApi';
 
 const AppContext = createContext(null);
 
-const TOKEN_KEY = 'myfund_auth_token';
+const TOKEN_KEY  = 'myfund_auth_token';
+const FX_CACHE_KEY = 'myfund_fx_rates';
+const FX_CACHE_TTL = 30 * 60 * 1000; // 30 min
+const FX_FALLBACK  = { PLN: 1, USD: 3.62, EUR: 4.24, GBP: 4.91 };
+
+async function loadFxRates() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || 'null');
+    if (cached?.ts && Date.now() - cached.ts < FX_CACHE_TTL) return cached.rates;
+  } catch {}
+  try {
+    const res = await fetch(
+      'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP',
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const r = data.rates;
+    if (!r?.PLN) throw new Error('no PLN in response');
+    const rates = { PLN: 1, USD: r.PLN, EUR: r.PLN / r.EUR, GBP: r.PLN / r.GBP };
+    localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates }));
+    return rates;
+  } catch (e) {
+    console.warn('[fx] fetch failed, using fallback:', e.message);
+    return FX_FALLBACK;
+  }
+}
 
 export function AppProvider({ children }) {
   const [token, setToken]           = useState(() => localStorage.getItem(TOKEN_KEY));
@@ -11,6 +37,11 @@ export function AppProvider({ children }) {
   const [rawData, setRawData]       = useState(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
+  const [fxRates, setFxRates]       = useState(FX_FALLBACK);
+
+  useEffect(() => {
+    loadFxRates().then(setFxRates);
+  }, []);
 
   function login(newToken, name) {
     localStorage.setItem(TOKEN_KEY, newToken);
@@ -63,6 +94,7 @@ export function AppProvider({ children }) {
     loading,
     error,
     refresh: fetchData,
+    fxRates,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
