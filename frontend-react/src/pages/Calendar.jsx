@@ -27,6 +27,7 @@ function addDays(date, n) {
 
 function dotColor(ev) {
   if (ev.type === 'EARN') return 'bg-indigo-400';
+  if (ev.type === 'DIV')  return 'bg-yellow-400';
   if (ev.impact === 'High') return 'bg-rose-500';
   if (ev.impact === 'Medium') return 'bg-yellow-400';
   return 'bg-slate-500';
@@ -77,10 +78,11 @@ export default function Calendar() {
     let base = selectedDay
       ? events.filter(e => e.date === selectedDay)
       : events.filter(e => e.date >= minDate && e.date <= maxDate);
+    const isPortfolioEvent = e => e.type === 'EARN' || e.type === 'DIV';
     if (filterImpact !== 'All')
-      base = base.filter(e => e.type === 'EARN' || e.impact === filterImpact);
+      base = base.filter(e => isPortfolioEvent(e) || e.impact === filterImpact);
     if (filterCountry)
-      base = base.filter(e => e.type === 'EARN' || e.currency === filterCountry);
+      base = base.filter(e => isPortfolioEvent(e) || e.currency === filterCountry);
     return base;
   }, [events, selectedDay, minDate, maxDate, filterImpact, filterCountry]);
 
@@ -168,8 +170,8 @@ export default function Calendar() {
         {/* Legend */}
         <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-700/60 text-xs text-slate-500">
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-400" /> Wyniki spółek</div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-400" /> Dywidenda / Makro średni</div>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Makro wysoki</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-400" /> Makro średni</div>
           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-500" /> Makro niski</div>
         </div>
       </div>
@@ -235,6 +237,20 @@ export default function Calendar() {
                         <div>
                           <span className="text-slate-100 font-semibold">{ev.symbol}</span>
                           <span className="text-slate-400 text-xs ml-2">Wyniki finansowe</span>
+                        </div>
+                      </>
+                    ) : ev.type === 'DIV' ? (
+                      <>
+                        <span className="text-lg leading-none mt-0.5">💰</span>
+                        <div>
+                          <span className="text-slate-100 font-semibold">{ev.symbol}</span>
+                          <span className="text-slate-400 text-xs ml-2">Ex-dywidenda</span>
+                          {ev.amount != null && (
+                            <span className="text-yellow-400 text-xs ml-2 font-medium">{ev.amount}</span>
+                          )}
+                          {ev.projected && (
+                            <span className="text-slate-600 text-xs ml-2">~prognoza</span>
+                          )}
                         </div>
                       </>
                     ) : (
