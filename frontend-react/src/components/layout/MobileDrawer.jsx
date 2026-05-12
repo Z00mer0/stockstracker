@@ -2,24 +2,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-
-const NAV_ITEMS = [
-  { to: '/',             icon: '📊', label: 'Dashboard'   },
-  { to: '/portfolio',    icon: '💼', label: 'Portfel'      },
-  { to: '/history',      icon: '📈', label: 'Historia'     },
-  { to: '/transactions', icon: '📋', label: 'Transakcje'   },
-  { to: '/dividends',    icon: '💰', label: 'Dywidendy'    },
-  { to: '/calendar',     icon: '📅', label: 'Kalendarz'    },
-  { to: '/watchlist',    icon: '👁', label: 'Watchlist'    },
-  { to: '/settings',     icon: '⚙️', label: 'Ustawienia'   },
-];
+import { NAV_ITEMS } from './navItems';
 
 export default function MobileDrawer({ isOpen, onClose }) {
   const { displayName, logout } = useApp();
-
-  function handleNavClick() {
-    onClose();
-  }
 
   function handleLogout() {
     onClose();
@@ -66,7 +52,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
               key={to}
               to={to}
               end={to === '/'}
-              onClick={handleNavClick}
+              onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors ${
                   isActive

@@ -1,17 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-
-const NAV_ITEMS = [
-  { to: '/',             icon: '📊', label: 'Dashboard'   },
-  { to: '/portfolio',    icon: '💼', label: 'Portfel'      },
-  { to: '/history',      icon: '📈', label: 'Historia'     },
-  { to: '/transactions', icon: '📋', label: 'Transakcje'   },
-  { to: '/dividends',    icon: '💰', label: 'Dywidendy'    },
-  { to: '/calendar',     icon: '📅', label: 'Kalendarz'    },
-  { to: '/watchlist',    icon: '👁', label: 'Watchlist'    },
-  { to: '/settings',     icon: '⚙️', label: 'Ustawienia'   },
-];
+import { NAV_ITEMS } from './navItems';
 
 export default function Sidebar() {
   const { displayName, logout } = useApp();

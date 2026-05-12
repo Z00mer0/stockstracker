@@ -1,12 +1,14 @@
 // src/components/layout/Layout.jsx
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileDrawer from './MobileDrawer';
 
 export default function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => { setIsMenuOpen(false); }, [pathname]);
 
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden">
