@@ -103,48 +103,52 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* Day name headers */}
-        <div className="grid grid-cols-7 gap-1.5 mb-1">
-          {DAY_NAMES.map(n => (
-            <div key={n} className="text-center text-xs text-slate-500 py-0.5">{n}</div>
-          ))}
-        </div>
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: '480px' }}>
+            {/* Day name headers */}
+            <div className="grid grid-cols-7 gap-1.5 mb-1">
+              {DAY_NAMES.map(n => (
+                <div key={n} className="text-center text-xs text-slate-500 py-0.5">{n}</div>
+              ))}
+            </div>
 
-        {/* Two week rows */}
-        {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 gap-1.5 mb-1.5">
-            {week.map(date => {
-              const dayEvs = byDate[date] ?? [];
-              const isToday    = date === today;
-              const isSelected = date === selectedDay;
-              const isPast     = date < today;
-              return (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDay(isSelected ? null : date)}
-                  className={`rounded-lg py-1.5 px-1 text-center transition-colors border ${
-                    isSelected
-                      ? 'bg-indigo-600 border-indigo-500'
-                      : isToday
-                      ? 'bg-slate-700/80 border-indigo-500/40'
-                      : 'border-transparent hover:bg-slate-700/40'
-                  }`}
-                >
-                  <div className={`text-xs font-medium mb-1 ${
-                    isPast && !isToday ? 'text-slate-500' : isSelected ? 'text-white' : 'text-slate-300'
-                  }`}>
-                    {parseInt(date.slice(8), 10)}
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-0.5 min-h-[8px]">
-                    {dayEvs.slice(0, 4).map((ev, i) => (
-                      <div key={i} className={`w-1.5 h-1.5 rounded-full ${dotColor(ev)}`} />
-                    ))}
-                  </div>
-                </button>
-              );
-            })}
+            {/* Two week rows */}
+            {weeks.map((week, wi) => (
+              <div key={wi} className="grid grid-cols-7 gap-1.5 mb-1.5">
+                {week.map(date => {
+                  const dayEvs = byDate[date] ?? [];
+                  const isToday    = date === today;
+                  const isSelected = date === selectedDay;
+                  const isPast     = date < today;
+                  return (
+                    <button
+                      key={date}
+                      onClick={() => setSelectedDay(isSelected ? null : date)}
+                      className={`rounded-lg py-1.5 px-1 text-center transition-colors border ${
+                        isSelected
+                          ? 'bg-indigo-600 border-indigo-500'
+                          : isToday
+                          ? 'bg-slate-700/80 border-indigo-500/40'
+                          : 'border-transparent hover:bg-slate-700/40'
+                      }`}
+                    >
+                      <div className={`text-xs font-medium mb-1 ${
+                        isPast && !isToday ? 'text-slate-500' : isSelected ? 'text-white' : 'text-slate-300'
+                      }`}>
+                        {parseInt(date.slice(8), 10)}
+                      </div>
+                      <div className="flex flex-wrap justify-center gap-0.5 min-h-[8px]">
+                        {dayEvs.slice(0, 4).map((ev, i) => (
+                          <div key={i} className={`w-1.5 h-1.5 rounded-full ${dotColor(ev)}`} />
+                        ))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
 
         {/* Legend */}
         <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-700/60 text-xs text-slate-500">
