@@ -47,15 +47,19 @@ export function AppProvider({ children }) {
     if (token) fetchData();
   }, [token]);
 
+  const snapshots = rawData?.snapshots
+    ? Object.entries(rawData.snapshots).map(([date, total]) => ({ date, total }))
+    : [];
+
   const value = {
     isAuthenticated: !!token,
     displayName,
     login,
     logout,
-    portfolio:    rawData?.portfolio    ?? [],
+    portfolio:    rawData?.portfolio?.holdings ?? [],
     transactions: rawData?.transactions ?? [],
-    snapshots:    rawData?.snapshots    ?? [],
-    cash:         rawData?.cash         ?? {},
+    snapshots,
+    cash:         rawData?.cash ?? {},
     loading,
     error,
     refresh: fetchData,
