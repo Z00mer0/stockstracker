@@ -45,14 +45,14 @@ function calcRSI(closes, period = 14) {
   }
   avgGain /= period;
   avgLoss /= period;
-  result[period] = 100 - 100 / (1 + avgGain / (avgLoss || 1e-10));
+  result[period] = (avgGain === 0 && avgLoss === 0) ? null : 100 - 100 / (1 + avgGain / (avgLoss || 1e-10));
   for (let i = period + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
     const gain = diff > 0 ? diff : 0;
     const loss = diff < 0 ? -diff : 0;
     avgGain = (avgGain * (period - 1) + gain) / period;
     avgLoss = (avgLoss * (period - 1) + loss) / period;
-    result[i] = 100 - 100 / (1 + avgGain / (avgLoss || 1e-10));
+    result[i] = (avgGain === 0 && avgLoss === 0) ? null : 100 - 100 / (1 + avgGain / (avgLoss || 1e-10));
   }
   return result;
 }
