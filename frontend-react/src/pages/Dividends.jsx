@@ -146,7 +146,7 @@ export default function Dividends() {
                         {ev.isManual && (
                           <div className="flex justify-end gap-2">
                             <button
-                              onClick={() => openEdit(manualDividends.find(d => d.id === ev.id))}
+                              onClick={() => { const src = manualDividends.find(d => d.id === ev.id); if (src) openEdit(src); }}
                               className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                             >Edytuj</button>
                             <button
