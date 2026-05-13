@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 
 const FINNHUB_KEY   = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 const CACHE_TTL_MS  = 6 * 60 * 60 * 1000;  // 6h dla makro
-const DIV_TTL_MS    = 60 * 60 * 1000;       // 1h dla dywidend
 
 // Hardcoded fallback gdy Finnhub nie odpowie
 const MACRO_FALLBACK = [
@@ -58,12 +57,6 @@ function capImpact(s) {
   if (l === 'high')   return 'High';
   if (l === 'medium') return 'Medium';
   return 'Low';
-}
-
-async function fetchProxy(url) {
-  const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
 }
 
 // ── Finnhub: ekonomiczny calendar ────────────────────────────────────────────
@@ -150,44 +143,6 @@ async function fetchEarningsEvents(symbols) {
   }
 }
 
-// ── Yahoo Finance: projekcja dywidendy ───────────────────────────────────────
-async function fetchDividendEvents(sym) {
-  const nowSec  = Math.floor(Date.now() / 1000);
-  const pastSec = nowSec - 400 * 86400;
-  const futSec  = nowSec + 180 * 86400;
-
-  const data = await fetchProxy(
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}` +
-    `?interval=1mo&period1=${pastSec}&period2=${futSec}&events=div`
-  );
-
-  const rawDivs = data?.chart?.result?.[0]?.events?.dividends ?? {};
-  const divs = Object.values(rawDivs)
-    .map(d => ({ ts: d.date, amount: d.amount }))
-    .sort((a, b) => a.ts - b.ts);
-
-  if (divs.length < 2) return [];
-
-  const gaps = [];
-  for (let i = 1; i < divs.length; i++) gaps.push(divs[i].ts - divs[i - 1].ts);
-  gaps.sort((a, b) => a - b);
-  const medianGap = gaps[Math.floor(gaps.length / 2)];
-
-  const minGap = gaps[0], maxGap = gaps[gaps.length - 1];
-  if (maxGap > 400 * 86400 || maxGap / minGap > 3) return [];
-
-  const lastTs     = divs[divs.length - 1].ts;
-  const lastAmount = divs[divs.length - 1].amount;
-  let nextTs = lastTs + medianGap;
-  // Advance jeśli data już minęła
-  if (nextTs < nowSec) nextTs += medianGap;
-  // Nie pokazuj dat z przeszłości ani za dalekich
-  if (nextTs < nowSec || nextTs > nowSec + 180 * 86400) return [];
-
-  const nextDate = new Date(nextTs * 1000).toISOString().slice(0, 10);
-  return [{ date: nextDate, type: 'DIV', symbol: sym, amount: lastAmount, projected: true }];
-}
-
 // ── Główny hook ───────────────────────────────────────────────────────────────
 export default function useCalendarData(symbols) {
   const [events, setEvents] = useState([]);
@@ -206,21 +161,10 @@ export default function useCalendarData(symbols) {
       const macroEvents = await fetchMacroEvents();
       results.push(...macroEvents);
 
-      // 2. Earnings + dywidendy per spółka
+      // 2. Earnings per spółka
       if (symbols.length) {
-        const [earnEvents, ...divResults] = await Promise.all([
-          fetchEarningsEvents(symbols),
-          ...symbols.map(sym => {
-            const divKey = `cal_div2_${sym}`;
-            const cached = fromCache(divKey, DIV_TTL_MS);
-            if (cached) return Promise.resolve(cached);
-            return fetchDividendEvents(sym)
-              .then(evs => { toCache(divKey, evs); return evs; })
-              .catch(() => []);
-          }),
-        ]);
+        const earnEvents = await fetchEarningsEvents(symbols);
         results.push(...earnEvents);
-        for (const arr of divResults) results.push(...arr);
       }
 
       if (!cancelled) {
