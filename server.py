@@ -261,6 +261,38 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json(502, {'error': str(e)})
 
+        elif path.startswith('/api/dividends/upcoming'):
+            qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbols = [s.strip() for s in qs.get('symbols', '').split(',') if s.strip()]
+            token   = os.environ.get('FINNHUB_TOKEN', 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg')
+            today   = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
+            results = []
+
+            for symbol in symbols:
+                # Tylko US stocks (bez przyrostka giełdowego)
+                if '.' in symbol:
+                    continue
+                try:
+                    url = f'https://finnhub.io/api/v1/stock/dividend2?symbol={symbol}&token={token}'
+                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=6) as resp:
+                        data = json.loads(resp.read())
+                    upcoming = [d for d in data.get('data', []) if (d.get('payDate') or '') >= today]
+                    if upcoming:
+                        nxt = upcoming[0]
+                        results.append({
+                            'symbol':   symbol,
+                            'exDate':   nxt.get('exDate'),
+                            'payDate':  nxt.get('payDate'),
+                            'amount':   nxt.get('amount'),
+                            'currency': 'USD',
+                            'isManual': False,
+                        })
+                except Exception as e:
+                    print(f'[dividends] {symbol}: {e}')
+
+            self.send_json(200, results)
+
         elif path in ('/', '/index.html', '/myfund.html'):
             content = (BASE / 'myfund.html').read_bytes()
             self.send_response(200)
