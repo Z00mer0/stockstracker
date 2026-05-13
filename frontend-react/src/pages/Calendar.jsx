@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import useCalendarData from '../hooks/useCalendarData';
+import useDividendEvents from '../hooks/useDividendEvents';
 import Spinner from '../components/shared/Spinner';
 
 const DAY_NAMES = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd'];
@@ -56,7 +57,15 @@ const COUNTRY_OPTS = [
 export default function Calendar() {
   const { portfolio, loading: appLoading } = useApp();
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
-  const { events, loading } = useCalendarData(symbols);
+  const { events: calEvents, loading: calLoading } = useCalendarData(symbols);
+  const { allCalendarEvents: divEvents, loading: divLoading } = useDividendEvents(symbols);
+
+  // Połącz makro+earnings z dywidendami, posortuj po dacie
+  const events = useMemo(() =>
+    [...calEvents, ...divEvents].sort((a, b) => a.date.localeCompare(b.date)),
+    [calEvents, divEvents]
+  );
+  const loading = calLoading || divLoading;
   const [selectedDay, setSelectedDay] = useState(null);
   const [filterImpact,  setFilterImpact]  = useState('All');
   const [filterCountry, setFilterCountry] = useState(null);
