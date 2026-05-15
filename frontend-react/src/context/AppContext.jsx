@@ -82,6 +82,23 @@ export function AppProvider({ children }) {
     ? Object.entries(rawData.snapshots).map(([date, total]) => ({ date, total }))
     : [];
 
+  async function saveCash(newCash) {
+    setRawData(prev => ({ ...prev, cash: newCash }));
+    await api.post('/api/data', { ...rawData, cash: newCash });
+  }
+
+  async function saveHoldings(newHoldings) {
+    const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings } };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
+  async function saveTransactions(newTransactions) {
+    const updated = { ...rawData, transactions: newTransactions };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   const value = {
     isAuthenticated: !!token,
     displayName,
@@ -95,6 +112,9 @@ export function AppProvider({ children }) {
     error,
     refresh: fetchData,
     fxRates,
+    saveCash,
+    saveHoldings,
+    saveTransactions,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

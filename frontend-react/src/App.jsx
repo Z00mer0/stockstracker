@@ -13,6 +13,7 @@ import Dividends    from './pages/Dividends';
 import Calendar     from './pages/Calendar';
 import Watchlist    from './pages/Watchlist';
 import ScenarioLab  from './pages/ScenarioLab';
+import Analysis     from './pages/Analysis';
 import Settings     from './pages/Settings';
 
 function AppRoutes() {
@@ -33,6 +34,7 @@ function AppRoutes() {
         <Route path="calendar"    element={<Calendar />} />
         <Route path="watchlist"   element={<Watchlist />} />
         <Route path="scenario"    element={<ScenarioLab />} />
+        <Route path="analysis"    element={<Analysis />} />
         <Route path="settings"    element={<Settings />} />
         <Route path="*"           element={<Navigate to="/" replace />} />
       </Route>

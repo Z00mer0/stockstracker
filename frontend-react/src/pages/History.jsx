@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import HistoryChart from '../components/HistoryChart';
 import Spinner from '../components/shared/Spinner';
@@ -22,9 +22,19 @@ const PERIODS = [
   { key: 'MAX', label: 'MAX', days: null },
 ];
 
+const BENCHMARKS = [
+  { key: null,       label: 'Brak' },
+  { key: '^GSPC',    label: 'S&P 500' },
+  { key: 'WIG20.WA', label: 'WIG20' },
+  { key: 'URTH',     label: 'MSCI World' },
+];
+
 export default function History() {
   const { snapshots, loading } = useApp();
   const [period, setPeriod] = useState('MAX');
+  const [benchmark, setBenchmark] = useState(null);
+  const [benchData, setBenchData] = useState([]);
+  const [benchLoading, setBenchLoading] = useState(false);
 
   const sorted = useMemo(
     () => [...snapshots].sort((a, b) => a.date.localeCompare(b.date)),
@@ -61,6 +71,48 @@ export default function History() {
     () => sorted.reduce((best, s) => (s.total ?? 0) > (best?.total ?? 0) ? s : best, null),
     [sorted]
   );
+
+  useEffect(() => {
+    if (!benchmark) { setBenchData([]); return; }
+    setBenchLoading(true);
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(benchmark)}?interval=1d&range=5y`;
+    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) })
+      .then(r => r.json())
+      .then(json => {
+        const result = json?.chart?.result?.[0];
+        if (!result) return;
+        const timestamps = result.timestamp ?? [];
+        const closes = result.indicators?.quote?.[0]?.close ?? [];
+        const pts = timestamps
+          .map((ts, i) => ({
+            date: new Date(ts * 1000).toISOString().slice(0, 10),
+            price: closes[i],
+          }))
+          .filter(p => p.price != null);
+        setBenchData(pts);
+      })
+      .catch(() => setBenchData([]))
+      .finally(() => setBenchLoading(false));
+  }, [benchmark]);
+
+  const benchNormalized = useMemo(() => {
+    if (!benchData.length || !filtered.length) return [];
+    const priceAtDate = (date) => {
+      let last = null;
+      for (const pt of benchData) {
+        if (pt.date <= date) last = pt.price;
+        else break;
+      }
+      return last;
+    };
+    const firstBenchPrice = priceAtDate(filtered[0].date);
+    if (!firstBenchPrice) return [];
+    const firstPortValue = filtered[0].total ?? 0;
+    return filtered.map(s => ({
+      date: s.date,
+      value: ((priceAtDate(s.date) ?? firstBenchPrice) / firstBenchPrice) * firstPortValue,
+    }));
+  }, [benchData, filtered]);
 
   if (loading && !snapshots.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
@@ -119,7 +171,7 @@ export default function History() {
 
       {/* Wykres historii portfela */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-slate-300">Historia wartości portfela</p>
           <div className="flex gap-1">
             {PERIODS.map(p => (
@@ -137,7 +189,27 @@ export default function History() {
             ))}
           </div>
         </div>
-        <HistoryChart data={filtered} />
+        {/* Benchmark */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs text-slate-500">Benchmark:</span>
+          <div className="flex gap-1">
+            {BENCHMARKS.map(b => (
+              <button
+                key={String(b.key)}
+                onClick={() => setBenchmark(b.key)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                  benchmark === b.key
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                }`}
+              >
+                {b.label}
+                {benchLoading && benchmark === b.key && ' …'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <HistoryChart data={filtered} benchData={benchNormalized} benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label} />
       </div>
 
       {/* Tabela */}

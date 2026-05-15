@@ -1,10 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
+import { usePrivacy } from '../context/PrivacyContext';
 import Sparkline from '../components/shared/Sparkline';
 import Spinner from '../components/shared/Spinner';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
+import { Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 function toPlnRate(currency, fx) {
   return fx[currency] ?? 1;
@@ -21,7 +25,7 @@ function fmt(n, decimals = 2) {
 const CUR_FLAG_DASH = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 const COL_LABEL_DASH = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
-function renderCellDash(key, pos) {
+function renderCellDash(key, pos, isPrivate) {
   const flag = CUR_FLAG_DASH[pos.currency] ?? pos.currency;
   switch (key) {
     case 'qty':
@@ -38,15 +42,15 @@ function renderCellDash(key, pos) {
       return <span className={up ? 'text-emerald-400' : 'text-rose-400'}>{up ? '+' : ''}{fmt(pos.dailyChg, 2)}%</span>;
     }
     case 'costPLN':
-      return <span className="text-slate-200 font-semibold">{fmt(pos.costPLN)} zł</span>;
+      return <span className={`text-slate-200 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.costPLN)} zł</span>;
     case 'valuePLN':
       return pos.valuePLN != null
-        ? <span className="text-slate-200 font-semibold">{fmt(pos.valuePLN)} zł</span>
+        ? <span className={`text-slate-200 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN)} zł</span>
         : <span className="text-slate-600">—</span>;
     case 'plPLN': {
       if (pos.plPLN == null) return <span className="text-slate-600">—</span>;
       const up = pos.plPLN >= 0;
-      return <span className={up ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>{up ? '+' : ''}{fmt(pos.plPLN)} zł</span>;
+      return <span className={`${up ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}${isPrivate ? ' privacy-blur' : ''}`}>{up ? '+' : ''}{fmt(pos.plPLN)} zł</span>;
     }
     case 'period':
       return <span className="text-slate-400">{fmtPeriod(pos.periodDays)}</span>;
@@ -68,7 +72,124 @@ function renderCellDash(key, pos) {
   }
 }
 
+const SECTOR_CACHE_KEY = 'finnhub_sectors';
+const SECTOR_TTL = 24 * 60 * 60 * 1000;
+const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
+
+function AllocationChart({ positions }) {
+  const [tab, setTab] = useState('stocks');
+  const [sectors, setSectors] = useState(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem(SECTOR_CACHE_KEY) || 'null');
+      return c?.ts && Date.now() - c.ts < SECTOR_TTL ? c.data : {};
+    } catch { return {}; }
+  });
+
+  useEffect(() => {
+    const missing = positions.map(p => p.symbol).filter(sym => !(sym in sectors));
+    if (!missing.length) return;
+    let cancelled = false;
+    Promise.allSettled(
+      missing.map(sym =>
+        fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FINNHUB_TOKEN}`)
+          .then(r => r.json())
+          .then(j => ({ sym, sector: j.finnhubIndustry || 'Inne' }))
+          .catch(() => ({ sym, sector: 'Inne' }))
+      )
+    ).then(results => {
+      if (cancelled) return;
+      setSectors(prev => {
+        const updated = { ...prev };
+        results.forEach(r => { if (r.status === 'fulfilled') updated[r.value.sym] = r.value.sector; });
+        localStorage.setItem(SECTOR_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: updated }));
+        return updated;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [positions]);
+
+  const grouped = (() => {
+    if (tab === 'stocks') {
+      return positions.reduce((acc, p) => {
+        acc[p.symbol] = (acc[p.symbol] ?? 0) + (p.valuePLN ?? 0);
+        return acc;
+      }, {});
+    }
+    if (tab === 'currencies') {
+      return positions.reduce((acc, p) => {
+        acc[p.currency] = (acc[p.currency] ?? 0) + (p.valuePLN ?? 0);
+        return acc;
+      }, {});
+    }
+    // sectors
+    return positions.reduce((acc, p) => {
+      const sector = sectors[p.symbol] || 'Ładowanie…';
+      acc[sector] = (acc[sector] ?? 0) + (p.valuePLN ?? 0);
+      return acc;
+    }, {});
+  })();
+
+  const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+  const labels = Object.keys(grouped);
+  const data = {
+    labels,
+    datasets: [{
+      data: labels.map(k => grouped[k]),
+      backgroundColor: COLORS.slice(0, labels.length),
+      borderColor: '#1e293b',
+      borderWidth: 2,
+    }],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+            return ` ${ctx.label}: ${ctx.parsed.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} zł (${pct}%)`;
+          },
+        },
+      },
+    },
+  };
+
+  if (!positions.length) return null;
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-slate-300">Alokacja portfela</p>
+        <div className="flex gap-1">
+          {[['stocks', 'Spółki'], ['currencies', 'Waluty'], ['sectors', 'Sektory']].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                tab === key ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="max-w-sm mx-auto">
+        <Doughnut data={data} options={options} />
+      </div>
+    </div>
+  );
+}
+
 function KpiCard({ label, value, sub, trend, color = 'slate' }) {
+  const { isPrivate } = usePrivacy();
   const colors = {
     slate:   'border-slate-700 bg-slate-800',
     indigo:  'border-indigo-800/60 bg-indigo-950/40',
@@ -81,17 +202,118 @@ function KpiCard({ label, value, sub, trend, color = 'slate' }) {
   return (
     <div className={`rounded-xl border px-5 py-4 ${colors[color]}`}>
       <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-bold text-slate-100">{value}</p>
+      <p className={`text-2xl font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{value}</p>
       {sub != null && (
-        <p className={`text-sm mt-1 font-medium ${trendColor}`}>{sub}</p>
+        <p className={`text-sm mt-1 font-medium ${trendColor}${isPrivate ? ' privacy-blur' : ''}`}>{sub}</p>
       )}
     </div>
   );
 }
 
+const CUR_FLAGS = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
+const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
+
+function CashSection({ cash, fxRates, saveCash }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  function openModal() {
+    setForm({ PLN: cash.PLN ?? 0, USD: cash.USD ?? 0, EUR: cash.EUR ?? 0, GBP: cash.GBP ?? 0 });
+    setIsOpen(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await saveCash(Object.fromEntries(CURRENCIES.map(c => [c, parseFloat(form[c]) || 0])));
+      setIsOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const hasCash = CURRENCIES.some(c => (cash[c] ?? 0) > 0);
+
+  return (
+    <>
+      <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-slate-300">Gotówka</p>
+          <button
+            onClick={openModal}
+            className="text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors"
+          >
+            ✎ Zarządzaj
+          </button>
+        </div>
+        {!hasCash ? (
+          <p className="text-xs text-slate-500 py-2">Brak gotówki — kliknij „Zarządzaj" aby dodać.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {CURRENCIES.filter(c => (cash[c] ?? 0) > 0).map(cur => {
+              const amt = cash[cur] ?? 0;
+              const pln = amt * (fxRates[cur] ?? 1);
+              return (
+                <div key={cur} className="bg-slate-900/50 rounded-lg px-4 py-2.5 min-w-[110px]">
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">{CUR_FLAGS[cur]} {cur}</p>
+                  <p className="text-base font-bold text-slate-100">{amt.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  {cur !== 'PLN' && <p className="text-xs text-slate-500 mt-0.5">≈ {Math.round(pln).toLocaleString('pl-PL')} zł</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             onClick={() => setIsOpen(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+               onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-slate-100 mb-4">Zarządzaj gotówką</h2>
+            <p className="text-xs text-slate-500 mb-4">Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.</p>
+            <div className="space-y-3">
+              {CURRENCIES.map(cur => (
+                <div key={cur} className="flex items-center gap-3">
+                  <label className="text-sm text-slate-300 w-16">{CUR_FLAGS[cur]} {cur}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form[cur] ?? 0}
+                    onChange={e => setForm(prev => ({ ...prev, [cur]: e.target.value }))}
+                    className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              >
+                {saving ? 'Zapisywanie…' : 'Zapisz'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash } = useApp();
   const { openChart } = useChart();
+  const { isPrivate } = usePrivacy();
   const [cols] = useState(loadColumnConfig);
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
@@ -130,6 +352,22 @@ export default function Dashboard() {
     [portfolio, fxRates, enrichPosition]
   );
 
+  const dailyChange = useMemo(() => {
+    const pln = topPositions.reduce((sum, pos) => {
+      if (pos.valuePLN != null && pos.dailyChg != null) {
+        return sum + pos.valuePLN * pos.dailyChg / 100;
+      }
+      return sum;
+    }, 0);
+    const pct = kpi.totalValue > 0 ? (pln / kpi.totalValue) * 100 : null;
+    return { pln, pct };
+  }, [topPositions, kpi.totalValue]);
+
+  const cashTotalPLN = useMemo(
+    () => Object.entries(cash).reduce((sum, [cur, amt]) => sum + (amt || 0) * (fxRates[cur] ?? 1), 0),
+    [cash, fxRates]
+  );
+
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
@@ -137,7 +375,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
         <KpiCard
           label="Wartość portfela"
           value={`${fmt(kpi.totalValue)} zł`}
@@ -161,7 +399,27 @@ export default function Dashboard() {
           value={`${fmt(kpi.dividendsPLN)} zł`}
           color="yellow"
         />
+        <KpiCard
+          label="Zmiana dzienna"
+          value={`${dailyChange.pln >= 0 ? '+' : ''}${fmt(dailyChange.pln)} zł`}
+          sub={dailyChange.pct != null ? `${dailyChange.pct >= 0 ? '+' : ''}${fmt(dailyChange.pct, 2)}%` : undefined}
+          trend={dailyChange.pln}
+          color={dailyChange.pln >= 0 ? 'green' : 'red'}
+        />
+        <KpiCard
+          label="Gotówka"
+          value={`${fmt(cashTotalPLN)} zł`}
+          color="slate"
+        />
       </div>
+
+      {/* Gotówka */}
+      <CashSection cash={cash} fxRates={fxRates} saveCash={saveCash} />
+
+      {/* Alokacja */}
+      {topPositions.length > 0 && (
+        <AllocationChart positions={topPositions} />
+      )}
 
       {/* Sparkline historii */}
       {kpi.sparkValues.length > 1 && (
@@ -207,7 +465,7 @@ export default function Dashboard() {
                     </td>
                     {cols.map(key => (
                       <td key={key} className="px-4 py-3 text-right whitespace-nowrap">
-                        {renderCellDash(key, pos)}
+                        {renderCellDash(key, pos, isPrivate)}
                       </td>
                     ))}
                   </tr>

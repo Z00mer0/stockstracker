@@ -8,7 +8,7 @@ function fmtVal(n) {
   return n.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-export default function HistoryChart({ data }) {
+export default function HistoryChart({ data, benchData = [], benchLabel = '' }) {
   const containerRef = useRef(null);
   const svgRef       = useRef(null);
   const [svgWidth, setSvgWidth] = useState(800);
@@ -29,7 +29,10 @@ export default function HistoryChart({ data }) {
   const investeds = data.map(d => d.invested ?? 0);
   const hasInvested = data.some(d => d.invested != null && d.invested > 0);
 
-  const allVals = hasInvested ? [...totals, ...investeds] : totals;
+  const benchValues = benchData.map(b => b.value);
+  const allVals = hasInvested
+    ? [...totals, ...investeds, ...benchValues]
+    : [...totals, ...benchValues];
   const minVal  = Math.min(...allVals) * 0.995;
   const maxVal  = Math.max(...allVals) * 1.005;
   const range   = maxVal - minVal || 1;
@@ -42,6 +45,9 @@ export default function HistoryChart({ data }) {
 
   const totalPath = buildPath(totals);
   const areaPath  = `${totalPath} L${xScale(data.length - 1).toFixed(1)},${(M.top + H).toFixed(1)} L${M.left.toFixed(1)},${(M.top + H).toFixed(1)} Z`;
+
+  const hasBench = benchData.length === data.length;
+  const benchPath = hasBench ? buildPath(benchData.map(b => b.value)) : null;
 
   const isUp      = totals[totals.length - 1] >= totals[0];
   const lineColor = isUp ? '#10b981' : '#f43f5e';
@@ -72,6 +78,7 @@ export default function HistoryChart({ data }) {
       total:    d.total,
       invested: d.invested,
       pl,
+      idx,
     });
   };
 
@@ -107,6 +114,11 @@ export default function HistoryChart({ data }) {
 
         {/* Area fill */}
         <path d={areaPath} fill="url(#hc-area)" />
+
+        {/* Benchmark line */}
+        {hasBench && benchPath && (
+          <path d={benchPath} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4,2" opacity={0.7} />
+        )}
 
         {/* Invested line (dashed, slate) */}
         {hasInvested && (
@@ -164,6 +176,12 @@ export default function HistoryChart({ data }) {
                 </span>
               </>
             )}
+            {hasBench && benchData[tooltip.idx] != null && (
+              <>
+                <span>{benchLabel || 'Benchmark'}</span>
+                <span className="text-amber-400 text-right">{fmtVal(benchData[tooltip.idx]?.value)} zł</span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -178,6 +196,14 @@ export default function HistoryChart({ data }) {
           <div className="flex items-center gap-1.5">
             <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="#475569" strokeWidth="1.5" strokeDasharray="5,3" /></svg>
             Zainwestowano
+          </div>
+        )}
+        {hasBench && benchLabel && (
+          <div className="flex items-center gap-1.5">
+            <svg width="16" height="4">
+              <line x1="0" y1="2" x2="16" y2="2" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4,2" />
+            </svg>
+            {benchLabel} (znorm.)
           </div>
         )}
       </div>

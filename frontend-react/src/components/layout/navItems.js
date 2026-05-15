@@ -7,5 +7,6 @@ export const NAV_ITEMS = [
   { to: '/calendar',     icon: '📅', label: 'Kalendarz'    },
   { to: '/watchlist',    icon: '👁', label: 'Watchlist'    },
   { to: '/scenario',     icon: '🧪', label: 'Scenario Lab' },
+  { to: '/analysis',     icon: '🔍', label: 'Atrybuacja'   },
   { to: '/settings',     icon: '⚙️', label: 'Ustawienia'   },
 ];

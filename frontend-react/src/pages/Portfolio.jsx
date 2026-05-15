@@ -1,6 +1,7 @@
 // frontend-react/src/pages/Portfolio.jsx
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import CsvImportModal from '../components/CsvImportModal';
 import { useChart } from '../context/ChartContext';
 import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
@@ -98,7 +99,8 @@ function renderCell(key, pos, fxRates) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, loading, fxRates } = useApp();
+  const { portfolio, transactions, loading, fxRates, saveHoldings, refresh } = useApp();
+  const [showImport, setShowImport] = useState(false);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [cols, setCols] = useState(loadColumnConfig);
@@ -177,6 +179,12 @@ export default function Portfolio() {
           ))}
           <div className="flex-1" />
           {metricsLoading && <Spinner size="sm" />}
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+          >
+            ⬆ Import CSV
+          </button>
           <ColumnPicker cols={cols} onChange={handleColChange} />
         </div>
 
@@ -236,6 +244,13 @@ export default function Portfolio() {
           </table>
         </div>
       </div>
+      {showImport && (
+        <CsvImportModal
+          existingHoldings={portfolio}
+          onSave={async (holdings) => { await saveHoldings(holdings); refresh(); }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   );
 }

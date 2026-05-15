@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
+import BrokerImportModal from '../components/BrokerImportModal';
 
 function ApiKeySection() {
   const [key,   setKey]   = useState(getMdApiKey);
@@ -62,8 +63,9 @@ function ApiKeySection() {
 }
 
 export default function Settings() {
-  const { displayName, logout, refresh, fxRates } = useApp();
+  const { displayName, logout, refresh, fxRates, transactions, saveTransactions } = useApp();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
+  const [showBrokerImport, setShowBrokerImport] = useState(false);
 
   return (
     <div className="space-y-5 max-w-xl">
@@ -101,6 +103,28 @@ export default function Settings() {
       {/* Klucze API */}
       <ApiKeySection />
 
+      {/* Import danych brokera */}
+      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-700">
+          <h2 className="text-sm font-semibold text-slate-300">Import danych brokera</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Importuj historię z pliku CSV eksportowanego z brokera (eToro, itp.)
+          </p>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-xs text-slate-400 mb-3">
+            Obsługiwane pliki: <span className="text-slate-300">Closed Positions</span> i <span className="text-slate-300">Cash Operations</span>.
+            Format wykrywany automatycznie. Duplikaty są pomijane.
+          </p>
+          <button
+            onClick={() => setShowBrokerImport(true)}
+            className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors text-white font-medium"
+          >
+            ⬆ Importuj CSV brokera
+          </button>
+        </div>
+      </div>
+
       {/* Kursy walut */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-700">
@@ -126,6 +150,14 @@ export default function Settings() {
           Dane przechowywane na Render (PostgreSQL).
         </p>
       </div>
+
+      {showBrokerImport && (
+        <BrokerImportModal
+          existingTransactions={transactions}
+          onSave={async (newTxs) => { await saveTransactions(newTxs); refresh(); }}
+          onClose={() => setShowBrokerImport(false)}
+        />
+      )}
     </div>
   );
 }

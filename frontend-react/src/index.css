@@ -40,3 +40,8 @@ body {
 ::-webkit-scrollbar-track    { background: transparent; }
 ::-webkit-scrollbar-thumb    { background: #334155; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+body.privacy-mode .privacy-blur {
+  filter: blur(6px);
+  user-select: none;
+}
