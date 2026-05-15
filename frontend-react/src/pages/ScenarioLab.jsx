@@ -10,6 +10,18 @@ import {
 
 const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 
+function dteToDateStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + Math.max(1, days));
+  return d.toISOString().slice(0, 10);
+}
+
+function dateStrToDte(str) {
+  if (!str) return 1;
+  const diff = Math.round((new Date(str) - new Date()) / 86400000);
+  return Math.max(1, diff);
+}
+
 Chart.register(...registerables, Annotation);
 
 const STRATEGIES = [
@@ -96,6 +108,7 @@ export default function ScenarioLab() {
   const [strike2,  setStrike2]  = useState(110);
   const [premium,  setPremium]  = useState(3.50);
   const [dte,      setDte]      = useState(30);
+  const [expiryDate, setExpiryDate] = useState(() => dteToDateStr(30));
   const [iv,       setIv]       = useState(30);
   const [wing,     setWing]     = useState(5);
   const [hideStock, setHideStock] = useState(false);
@@ -175,8 +188,8 @@ export default function ScenarioLab() {
     if (!isLeg2) {
       setSelectedSym1(sym);
       setStrike(c.strike);
-      if (c.dte   != null) setDte(c.dte);
-      if (c.iv    != null) setIv(Math.round(c.iv * 100));
+      if (c.dte != null) { setDte(c.dte); setExpiryDate(dteToDateStr(c.dte)); }
+      if (c.iv  != null) setIv(Math.round(c.iv * 100));
       if (!SPREAD_STRATEGIES.has(strategy)) {
         const mid = c.mid ?? (c.bid != null && c.ask != null ? (c.bid + c.ask) / 2 : null);
         if (mid != null) setPremium(parseFloat(mid.toFixed(2)));
@@ -192,7 +205,7 @@ export default function ScenarioLab() {
       const c1 = chain.contracts.find(x => x.optionSymbol === sym1);
       const c2 = chain.contracts.find(x => x.optionSymbol === sym2);
       if (c1 && c2) {
-        if (c1.dte != null) setDte(c1.dte);
+        if (c1.dte != null) { setDte(c1.dte); setExpiryDate(dteToDateStr(c1.dte)); }
         if (c1.iv  != null) setIv(Math.round(c1.iv * 100));
         const mid1 = c1.mid ?? (c1.bid != null && c1.ask != null ? (c1.bid + c1.ask) / 2 : 0);
         const mid2 = c2.mid ?? (c2.bid != null && c2.ask != null ? (c2.bid + c2.ask) / 2 : 0);
@@ -522,9 +535,14 @@ export default function ScenarioLab() {
             <input type="number" value={premium} min="0" step="0.01"
               onChange={e => setPremium(parseFloat(e.target.value) || 0)} className={inputCls} />
           </Field>
-          <Field label="Dni do wygaśnięcia (DTE)">
-            <input type="number" value={dte} min="1" step="1"
-              onChange={e => setDte(parseInt(e.target.value) || 30)} className={inputCls} />
+          <Field label={`Data wygaśnięcia (DTE: ${dte})`}>
+            <input
+              type="date"
+              value={expiryDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={e => { setExpiryDate(e.target.value); setDte(dateStrToDte(e.target.value)); }}
+              className={inputCls}
+            />
           </Field>
           <Field label="IV — Implied Volatility (%)">
             <input type="number" value={iv} min="1" max="500" step="1"
