@@ -8,6 +8,12 @@ function fmt(n, decimals = 0) {
   return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
 const PERIODS = [
   { key: '1M',  label: '1M',  days: 30  },
   { key: '3M',  label: '3M',  days: 90  },
@@ -147,24 +153,37 @@ export default function History() {
                 <th className="text-right px-5 py-2.5">Wartość</th>
                 <th className="text-right px-5 py-2.5">Zainwestowano</th>
                 <th className="text-right px-5 py-2.5">P&L</th>
+                <th className="text-right px-5 py-2.5">Δ dnia</th>
               </tr>
             </thead>
             <tbody>
-              {[...filtered].reverse().slice(0, 30).map((s, i) => {
-                const pl  = (s.total ?? 0) - (s.invested ?? 0);
-                const pct = s.invested > 0 ? (pl / s.invested) * 100 : 0;
-                return (
-                  <tr key={s.date + i} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                    <td className="px-5 py-2.5 text-slate-400">{s.date}</td>
-                    <td className="px-5 py-2.5 text-right font-semibold">{fmt(s.total)} zł</td>
-                    <td className="px-5 py-2.5 text-right text-slate-400">{fmt(s.invested)} zł</td>
-                    <td className={`px-5 py-2.5 text-right font-medium ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {pl >= 0 ? '+' : ''}{fmt(pl)} zł
-                      <span className="text-xs ml-1 opacity-70">({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {(() => {
+                const rows = [...filtered].reverse().slice(0, 30);
+                return rows.map((s, i) => {
+                  const pl      = (s.total ?? 0) - (s.invested ?? 0);
+                  const pct     = s.invested > 0 ? (pl / s.invested) * 100 : 0;
+                  const prev    = rows[i + 1];
+                  const delta   = prev != null ? (s.total ?? 0) - (prev.total ?? 0) : null;
+                  const deltaUp = delta != null && delta >= 0;
+                  const valueUp = prev != null ? (s.total ?? 0) >= (prev.total ?? 0) : null;
+                  return (
+                    <tr key={s.date + i} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
+                      <td className="px-5 py-2.5 text-slate-400">{fmtDate(s.date)}</td>
+                      <td className={`px-5 py-2.5 text-right font-semibold ${
+                        valueUp === true ? 'text-emerald-300' : valueUp === false ? 'text-rose-300' : 'text-slate-100'
+                      }`}>{fmt(s.total)} zł</td>
+                      <td className="px-5 py-2.5 text-right text-slate-400">{fmt(s.invested)} zł</td>
+                      <td className={`px-5 py-2.5 text-right font-medium ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {pl >= 0 ? '+' : ''}{fmt(pl)} zł
+                        <span className="text-xs ml-1 opacity-70">({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span>
+                      </td>
+                      <td className={`px-5 py-2.5 text-right text-xs ${delta == null ? 'text-slate-600' : deltaUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta)} zł`}
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
