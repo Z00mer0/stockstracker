@@ -6,5 +6,6 @@ export const NAV_ITEMS = [
   { to: '/dividends',    icon: '💰', label: 'Dywidendy'    },
   { to: '/calendar',     icon: '📅', label: 'Kalendarz'    },
   { to: '/watchlist',    icon: '👁', label: 'Watchlist'    },
+  { to: '/scenario',     icon: '🧪', label: 'Scenario Lab' },
   { to: '/settings',     icon: '⚙️', label: 'Ustawienia'   },
 ];
