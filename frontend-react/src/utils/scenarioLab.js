@@ -14,12 +14,13 @@ export function normCDF(x) {
   return 0.5 * (1 + sign * y);
 }
 
-export function normPDF(x) {
+function normPDF(x) {
   return Math.exp(-0.5*x*x) / Math.sqrt(2*Math.PI);
 }
 
 export function bsPrice(S, K, T, r, sigma, type) {
   if (T <= 0) return type === 'call' ? Math.max(0, S-K) : Math.max(0, K-S);
+  if (sigma <= 0) return type === 'call' ? Math.max(0, S-K) : Math.max(0, K-S);
   const sqrtT = Math.sqrt(T);
   const d1 = (Math.log(S/K) + (r + 0.5*sigma*sigma)*T) / (sigma*sqrtT);
   const d2 = d1 - sigma*sqrtT;
@@ -29,12 +30,14 @@ export function bsPrice(S, K, T, r, sigma, type) {
 
 export function bsDelta(S, K, T, r, sigma, type) {
   if (T <= 0) return type==='call' ? (S>K?1:0) : (S<K?-1:0);
+  if (sigma <= 0) return type === 'call' ? (S > K ? 1 : 0) : (S < K ? -1 : 0);
   const d1 = (Math.log(S/K) + (r+0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
   return type === 'call' ? normCDF(d1) : normCDF(d1) - 1;
 }
 
 export function bsTheta(S, K, T, r, sigma, type) {
   if (T <= 0) return 0;
+  if (sigma <= 0) return 0;
   const sqrtT = Math.sqrt(T);
   const d1 = (Math.log(S/K) + (r+0.5*sigma*sigma)*T) / (sigma*sqrtT);
   const d2 = d1 - sigma*sqrtT;
@@ -68,7 +71,7 @@ export function makePrices(entry, iv, dte, steps = 60) {
 // ── Payoff ───────────────────────────────────────────────────────────────────
 
 export function calcPayoff(strategy, prices, params) {
-  const { entry, qty, strike, strike2 = strike + 5, premium, T, iv, wing = 5 } = params;
+  const { entry, qty, strike, strike2 = strike, premium, T, iv, wing = 5 } = params;
   const C = CONTRACT_SIZE;
   const nC = qty / C;
   const r = R;
@@ -91,26 +94,25 @@ export function calcPayoff(strategy, prices, params) {
   });
 
   const t0 = prices.map(p => {
-    const r2 = r;
     switch (strategy) {
       case 'long-call':
-        return (bsPrice(p, strike, T, r2, iv, 'call') - premium) * C * qty;
+        return (bsPrice(p, strike, T, r, iv, 'call') - premium) * C * qty;
       case 'long-put':
-        return (bsPrice(p, strike, T, r2, iv, 'put') - premium) * C * qty;
+        return (bsPrice(p, strike, T, r, iv, 'put') - premium) * C * qty;
       case 'covered-call':
-        return (p-entry)*qty + (premium - bsPrice(p, strike, T, r2, iv, 'call'))*C*nC;
+        return (p-entry)*qty + (premium - bsPrice(p, strike, T, r, iv, 'call'))*C*nC;
       case 'protective-put':
-        return (p-entry)*qty + (bsPrice(p, strike, T, r2, iv, 'put') - premium)*C*nC;
+        return (p-entry)*qty + (bsPrice(p, strike, T, r, iv, 'put') - premium)*C*nC;
       case 'csp':
-        return (premium - bsPrice(p, strike, T, r2, iv, 'put')) * C;
+        return (premium - bsPrice(p, strike, T, r, iv, 'put')) * C;
       case 'bull-call-spread':
-        return (bsPrice(p,strike,T,r2,iv,'call') - bsPrice(p,strike2,T,r2,iv,'call') - premium) * C * qty;
+        return (bsPrice(p,strike,T,r,iv,'call') - bsPrice(p,strike2,T,r,iv,'call') - premium) * C * qty;
       case 'bear-put-spread':
-        return (bsPrice(p,strike,T,r2,iv,'put') - bsPrice(p,strike2,T,r2,iv,'put') - premium) * C * qty;
+        return (bsPrice(p,strike,T,r,iv,'put') - bsPrice(p,strike2,T,r,iv,'put') - premium) * C * qty;
       case 'iron-condor': {
         const K1b = strike - wing, K2b = strike2 + wing;
-        return (bsPrice(p,K1b,T,r2,iv,'put') - bsPrice(p,strike,T,r2,iv,'put')
-               - bsPrice(p,strike2,T,r2,iv,'call') + bsPrice(p,K2b,T,r2,iv,'call') + premium) * C;
+        return (bsPrice(p,K1b,T,r,iv,'put') - bsPrice(p,strike,T,r,iv,'put')
+               - bsPrice(p,strike2,T,r,iv,'call') + bsPrice(p,K2b,T,r,iv,'call') + premium) * C;
       }
       default: return 0;
     }
@@ -123,7 +125,7 @@ export function calcPayoff(strategy, prices, params) {
 // ── KPIs ─────────────────────────────────────────────────────────────────────
 
 export function calcKPIs(strategy, params) {
-  const { entry, qty, strike, strike2 = strike + 5, premium, T, iv, wing = 5 } = params;
+  const { entry, qty, strike, strike2 = strike, premium, T, iv, wing = 5 } = params;
   const C = CONTRACT_SIZE;
   const nC = qty / C;
 
@@ -245,7 +247,7 @@ export function calcKPIs(strategy, params) {
 // ── Greeks ───────────────────────────────────────────────────────────────────
 
 export function calcGreeks(strategy, params) {
-  const { entry, strike, strike2 = strike + 5, T, iv, wing = 5 } = params;
+  const { entry, strike, strike2 = strike, T, iv, wing = 5 } = params;
   const r = R;
 
   function d(S, K, type) { return bsDelta(S, K, T, r, iv, type); }
