@@ -389,6 +389,7 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     <button class="nav-tab" data-tab="kalendarz" onclick="showTab('kalendarz')" data-i18n="tab.kalendarz">Kalendarz</button>
     <button class="nav-tab" data-tab="watchlist" onclick="showTab('watchlist')" data-i18n="tab.watchlist">👁 Watchlist</button>
     <button class="nav-tab" data-tab="analiza" onclick="showTab('analiza')">📊 Analiza</button>
+    <button class="nav-tab" data-tab="scenario" onclick="showTab('scenario')">🧪 Lab</button>
   </nav>
   <div class="header-right">
     <button class="privacy-btn" id="privacyBtn" onclick="togglePrivacy()" title="Tryb prywatności">👁</button>
@@ -653,6 +654,47 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
     </div>
   </div>
   <div id="watchlistContent"></div>
+</main>
+
+<main id="tab-scenario" style="display:none">
+  <div style="max-width:860px;margin:0 auto">
+    <div style="font-size:18px;font-weight:700;margin-bottom:18px">🧪 Scenario Lab — Akcje vs Opcje</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">STRATEGIA</label>
+        <select id="strategy-select" onchange="renderScenarioLab()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;width:100%;outline:none">
+          <option value="long-call">Long Call</option>
+          <option value="long-put">Long Put</option>
+          <option value="covered-call">Covered Call</option>
+          <option value="protective-put">Protective Put</option>
+          <option value="csp">Cash-Secured Put</option>
+        </select>
+        <label style="font-size:12px;color:var(--muted);font-weight:600">TICKER</label>
+        <input id="sl-ticker" value="NVDA" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:700;width:100%;outline:none" oninput="this.value=this.value.toUpperCase()">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">CENA WEJŚCIA ($)</label>
+        <input id="sl-entry" type="number" value="100" min="0" step="0.01" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">ILOŚĆ AKCJI / KONTRAKTÓW</label>
+        <input id="sl-qty" type="number" value="1" min="1" step="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px">
+        <label id="sl-strike-label" style="font-size:12px;color:var(--muted);font-weight:600">STRIKE ($)</label>
+        <input id="sl-strike" type="number" value="105" min="0" step="0.01" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">PREMIA (PREMIUM, $ / opcja)</label>
+        <input id="sl-premium" type="number" value="3.50" min="0" step="0.01" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">DNI DO WYGAŚNIĘCIA</label>
+        <input id="sl-dte" type="number" value="30" min="1" step="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+        <div id="sl-strike2-wrap" style="display:none;flex-direction:column;gap:6px">
+          <label style="font-size:12px;color:var(--muted);font-weight:600">DRUGI STRIKE / SZEROKOŚĆ ($)</label>
+          <input id="sl-strike2" type="number" value="110" min="0" step="0.01" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-accent" onclick="renderScenarioLab()" style="width:100%;justify-content:center;margin-bottom:16px">▶ Oblicz i pokaż wykres</button>
+    <div id="sl-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px">
+      <canvas id="sl-chart" height="320"></canvas>
+    </div>
+  </div>
 </main>
 
 <!-- ══════════════════════ MODAL: FUNDAMENTALS ══════════════════════ -->
@@ -4441,7 +4483,7 @@ function renderInsightsHTML(insights) {
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz', 'watchlist', 'analiza'].forEach(t =>
+  ['portfel', 'historia', 'transakcje', 'dywidendy', 'kalendarz', 'watchlist', 'analiza', 'scenario'].forEach(t =>
     document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none');
   document.querySelectorAll('.nav-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.tab === name));
@@ -4451,6 +4493,107 @@ function showTab(name) {
   if (name === 'kalendarz')  renderKalendarzTab();
   if (name === 'watchlist')  renderWatchlistTab();
   if (name === 'analiza')    renderAttributionAnalysisTab();
+  if (name === 'scenario')   renderScenarioLab();
+}
+
+let _slChart = null;
+
+function renderScenarioLab() {
+  const strategy = document.getElementById('strategy-select').value;
+  const entry    = parseFloat(document.getElementById('sl-entry').value)   || 100;
+  const qty      = parseInt(document.getElementById('sl-qty').value)       || 1;
+  const strike   = parseFloat(document.getElementById('sl-strike').value)  || 105;
+  const premium  = parseFloat(document.getElementById('sl-premium').value) || 3.50;
+
+  const strikeLabels = { 'long-call': 'STRIKE CALL ($)', 'long-put': 'STRIKE PUT ($)', 'covered-call': 'STRIKE CALL ($)', 'protective-put': 'STRIKE PUT ($)', 'csp': 'STRIKE PUT ($)' };
+  document.getElementById('sl-strike-label').textContent = strikeLabels[strategy] || 'STRIKE ($)';
+
+  const lo = entry * 0.80, hi = entry * 1.50;
+  const steps = 60;
+  const prices = Array.from({length: steps + 1}, (_, i) => lo + (hi - lo) * i / steps);
+
+  const stockPnL    = prices.map(p => (p - entry) * qty);
+  const strategyPnL = prices.map(p => {
+    switch (strategy) {
+      case 'long-call':      return (Math.max(0, p - strike) - premium) * 100 * qty;
+      case 'long-put':       return (Math.max(0, strike - p) - premium) * 100 * qty;
+      case 'covered-call':   return ((Math.min(p, strike) - entry) * qty) + (premium * 100 * (qty / 100));
+      case 'protective-put': return ((Math.max(p, strike) - entry) * qty) - (premium * 100 * (qty / 100));
+      case 'csp':            return (Math.max(0, p - strike) === 0 ? (p - strike) * 100 : 0) + (premium * 100);
+    }
+  });
+
+  const stat = (label, val, color) =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">${label}</div>
+      <div style="font-size:16px;font-weight:700;color:${color || 'var(--text)'}">${val}</div>
+    </div>`;
+
+  let kpiHtml = '';
+  switch (strategy) {
+    case 'long-call':
+      kpiHtml = stat('Break-even', '$' + (strike + premium).toFixed(2), 'var(--blue)') +
+                stat('Max Strata', '-$' + (premium * 100 * qty).toFixed(2), 'var(--red)') +
+                stat('Max Zysk', '∞', 'var(--green)') +
+                stat('Koszt Opcji', '$' + (premium * 100 * qty).toFixed(2), 'var(--muted)');
+      break;
+    case 'long-put':
+      kpiHtml = stat('Break-even', '$' + (strike - premium).toFixed(2), 'var(--blue)') +
+                stat('Max Strata', '-$' + (premium * 100 * qty).toFixed(2), 'var(--red)') +
+                stat('Max Zysk', '$' + ((strike - premium) * 100 * qty).toFixed(0), 'var(--green)') +
+                stat('Koszt Opcji', '$' + (premium * 100 * qty).toFixed(2), 'var(--muted)');
+      break;
+    case 'covered-call': {
+      const maxProfit = (strike - entry) * qty + premium * 100 * (qty / 100);
+      kpiHtml = stat('Break-even', '$' + (entry - premium * 100 / qty).toFixed(2), 'var(--blue)') +
+                stat('Max Zysk', '$' + maxProfit.toFixed(2), 'var(--green)') +
+                stat('Premia (wpływ)', '+$' + (premium * 100 * (qty / 100)).toFixed(2), 'var(--yellow)') +
+                stat('Cap (cena max)', '$' + strike.toFixed(2), 'var(--muted)');
+      break;
+    }
+    case 'protective-put': {
+      const maxLoss = -((entry - strike) * qty + premium * 100 * (qty / 100));
+      kpiHtml = stat('Break-even', '$' + (entry + premium * 100 / qty).toFixed(2), 'var(--blue)') +
+                stat('Max Strata', '$' + maxLoss.toFixed(2), 'var(--red)') +
+                stat('Koszt Ubezp.', '$' + (premium * 100 * (qty / 100)).toFixed(2), 'var(--yellow)') +
+                stat('Floor (min cena)', '$' + strike.toFixed(2), 'var(--muted)');
+      break;
+    }
+    case 'csp':
+      kpiHtml = stat('Break-even', '$' + (strike - premium).toFixed(2), 'var(--blue)') +
+                stat('Max Zysk', '$' + (premium * 100).toFixed(2), 'var(--green)') +
+                stat('Max Strata', '-$' + ((strike - premium) * 100).toFixed(2), 'var(--red)') +
+                stat('Wymagane Cash', '$' + (strike * 100).toFixed(0), 'var(--muted)');
+      break;
+  }
+  document.getElementById('sl-stats').innerHTML = kpiHtml;
+
+  const hedged = strategy === 'covered-call' || strategy === 'protective-put';
+  const stratNames = { 'long-call': 'Long Call', 'long-put': 'Long Put', 'covered-call': 'Covered Call', 'protective-put': 'Protective Put', 'csp': 'Cash-Secured Put' };
+  const datasets = [];
+  if (hedged) {
+    datasets.push({ label: 'Tylko Akcje', data: stockPnL, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.06)', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, tension: 0.1 });
+  }
+  datasets.push({ label: stratNames[strategy], data: strategyPnL, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,.08)', borderWidth: 2.5, pointRadius: 0, tension: 0.1 });
+
+  const canvas = document.getElementById('sl-chart');
+  if (_slChart) { _slChart.destroy(); _slChart = null; }
+  _slChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: prices.map(p => '$' + p.toFixed(0)), datasets },
+    options: {
+      responsive: true, interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e2e8f0', font: { size: 12, weight: '600' } } },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2) } }
+      },
+      scales: {
+        x: { ticks: { color: '#8892a4', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { ticks: { color: '#8892a4', callback: v => '$' + v.toFixed(0) }, grid: { color: 'rgba(255,255,255,.05)' },
+             title: { display: true, text: 'Zysk / Strata ($)', color: '#8892a4', font: { size: 11 } } }
+      }
+    }
+  });
 }
 
 function setTimeframe(days, btn) {
