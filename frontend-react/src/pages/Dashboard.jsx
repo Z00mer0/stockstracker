@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
 import Sparkline from '../components/shared/Sparkline';
 import Spinner from '../components/shared/Spinner';
+import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
+import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
 
 function toPlnRate(currency, fx) {
   return fx[currency] ?? 1;
@@ -14,6 +16,56 @@ function fmt(n, decimals = 2) {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+}
+
+const CUR_FLAG_DASH = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
+const COL_LABEL_DASH = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
+
+function renderCellDash(key, pos) {
+  const flag = CUR_FLAG_DASH[pos.currency] ?? pos.currency;
+  switch (key) {
+    case 'qty':
+      return <span className="text-slate-300">{fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}</span>;
+    case 'avgPrice':
+      return <span className="text-slate-400">{fmt(pos.avgPrice)} <span className="text-xs">{flag}</span></span>;
+    case 'price':
+      return pos.price != null
+        ? <span className="text-slate-300">{fmt(pos.price)} <span className="text-xs">{flag}</span></span>
+        : <span className="text-slate-600">—</span>;
+    case 'dailyChg': {
+      if (pos.dailyChg == null) return <span className="text-slate-600">—</span>;
+      const up = pos.dailyChg >= 0;
+      return <span className={up ? 'text-emerald-400' : 'text-rose-400'}>{up ? '+' : ''}{fmt(pos.dailyChg, 2)}%</span>;
+    }
+    case 'costPLN':
+      return <span className="text-slate-200 font-semibold">{fmt(pos.costPLN)} zł</span>;
+    case 'valuePLN':
+      return pos.valuePLN != null
+        ? <span className="text-slate-200 font-semibold">{fmt(pos.valuePLN)} zł</span>
+        : <span className="text-slate-600">—</span>;
+    case 'plPLN': {
+      if (pos.plPLN == null) return <span className="text-slate-600">—</span>;
+      const up = pos.plPLN >= 0;
+      return <span className={up ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>{up ? '+' : ''}{fmt(pos.plPLN)} zł</span>;
+    }
+    case 'period':
+      return <span className="text-slate-400">{fmtPeriod(pos.periodDays)}</span>;
+    case 'moic':
+      return pos.moic != null ? <span className="text-slate-300">{fmt(pos.moic, 2)}x</span> : <span className="text-slate-600">—</span>;
+    case 'irr': {
+      if (pos.irr == null) return <span className="text-slate-600">—</span>;
+      const up = pos.irr >= 0;
+      return <span className={up ? 'text-emerald-400' : 'text-rose-400'}>{up ? '+' : ''}{fmt(pos.irr, 1)}%</span>;
+    }
+    case 'pe':
+      return pos.pe != null ? <span className="text-slate-400">{fmt(pos.pe, 1)}</span> : <span className="text-slate-600">—</span>;
+    case 'peFwd':
+      return pos.peFwd != null ? <span className="text-slate-400">{fmt(pos.peFwd, 1)}</span> : <span className="text-slate-600">—</span>;
+    case 'pb':
+      return pos.pb != null ? <span className="text-slate-400">{fmt(pos.pb, 2)}</span> : <span className="text-slate-600">—</span>;
+    default:
+      return <span className="text-slate-600">—</span>;
+  }
 }
 
 function KpiCard({ label, value, sub, trend, color = 'slate' }) {
@@ -40,6 +92,8 @@ function KpiCard({ label, value, sub, trend, color = 'slate' }) {
 export default function Dashboard() {
   const { portfolio, transactions, snapshots, loading, fxRates } = useApp();
   const { openChart } = useChart();
+  const [cols] = useState(loadColumnConfig);
+  const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const kpi = useMemo(() => {
     const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
@@ -70,8 +124,10 @@ export default function Dashboard() {
   const topPositions = useMemo(
     () => [...portfolio]
       .sort((a, b) => (b.qty * b.avgPrice * toPlnRate(b.currency, fxRates)) - (a.qty * a.avgPrice * toPlnRate(a.currency, fxRates)))
-      .slice(0, 7),
-    [portfolio, fxRates]
+      .slice(0, 7)
+      .map(pos => enrichPosition(pos)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [portfolio, fxRates, enrichPosition]
   );
 
   if (loading && !portfolio.length) {
@@ -125,19 +181,19 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-slate-300">Największe pozycje (wg kosztu)</h2>
           </div>
           <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                <th className="text-left px-5 py-2.5">Symbol</th>
-                <th className="text-right px-5 py-2.5">Ilość</th>
-                <th className="text-right px-5 py-2.5">Śr. cena</th>
-                <th className="text-right px-5 py-2.5">Koszt (PLN)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topPositions.map((pos) => {
-                const costPLN = pos.qty * pos.avgPrice * toPlnRate(pos.currency, fxRates);
-                return (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
+                  <th className="text-left px-5 py-2.5">Symbol</th>
+                  {cols.map(key => (
+                    <th key={key} className="text-right px-4 py-2.5 whitespace-nowrap">
+                      {COL_LABEL_DASH[key] ?? key}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {topPositions.map((pos) => (
                   <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
                     <td
                       className="px-5 py-3 font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors"
@@ -149,14 +205,15 @@ export default function Dashboard() {
                         <span className="ml-2 text-xs text-slate-500 font-normal">{pos.name}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-300">{fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}</td>
-                    <td className="px-5 py-3 text-right text-slate-400">{fmt(pos.avgPrice)} {pos.currency}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-slate-200">{fmt(costPLN)} zł</td>
+                    {cols.map(key => (
+                      <td key={key} className="px-4 py-3 text-right whitespace-nowrap">
+                        {renderCellDash(key, pos)}
+                      </td>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
