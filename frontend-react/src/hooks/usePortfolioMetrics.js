@@ -40,7 +40,26 @@ export function fmtPeriod(days) {
   return `${(days / 365).toFixed(1)}yr`;
 }
 
-// ── Finnhub fetch ────────────────────────────────────────────────────────────
+// ── Yahoo Finance fallback (for non-US tickers Finnhub can't price) ──────────
+async function fetchYahooQuote(sym) {
+  try {
+    const res  = await fetch(
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const json = await res.json();
+    const meta = json?.chart?.result?.[0]?.meta;
+    if (!meta?.regularMarketPrice) return null;
+    const price    = meta.regularMarketPrice;
+    const prev     = meta.chartPreviousClose ?? meta.previousClose ?? null;
+    const dailyChg = prev ? ((price - prev) / prev) * 100 : null;
+    return { price, dailyChg };
+  } catch {
+    return null;
+  }
+}
+
+// ── Finnhub fetch (with Yahoo Finance fallback for missing prices) ────────────
 async function fetchAllMetrics(symbols) {
   const results = {};
   await Promise.allSettled(
@@ -58,12 +77,22 @@ async function fetchAllMetrics(symbols) {
         ]);
         const q = qRes.status === 'fulfilled' ? qRes.value : null;
         const m = mRes.status === 'fulfilled' ? mRes.value?.metric : null;
+
+        let price    = (q?.c  > 0) ? q.c  : null;
+        let dailyChg = (q?.dp != null && q.c > 0) ? q.dp : null;
+
+        // Fallback to Yahoo Finance when Finnhub has no price (e.g. non-US exchanges)
+        if (price == null) {
+          const yq = await fetchYahooQuote(sym);
+          if (yq) { price = yq.price; dailyChg = yq.dailyChg; }
+        }
+
         results[sym] = {
-          price:    q?.c  ?? null,
-          dailyChg: q?.dp ?? null,
-          pe:       m?.peBasicExclExtraTTM ?? null,
-          peFwd:    m?.peForwardDiluted    ?? null,
-          pb:       m?.pbAnnual            ?? null,
+          price,
+          dailyChg,
+          pe:   m?.peBasicExclExtraTTM ?? null,
+          peFwd: m?.peForwardDiluted   ?? null,
+          pb:   m?.pbAnnual            ?? null,
         };
       } catch {
         results[sym] = { price: null, dailyChg: null, pe: null, peFwd: null, pb: null };
