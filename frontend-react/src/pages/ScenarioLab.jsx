@@ -2,9 +2,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import Annotation from 'chartjs-plugin-annotation';
+import { useApp } from '../context/AppContext';
 import {
   calcSigma, makePrices, calcPayoff, calcKPIs, calcGreeks,
 } from '../utils/scenarioLab';
+
+const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 
 Chart.register(...registerables, Annotation);
 
@@ -81,6 +84,7 @@ function Field({ label, children }) {
 }
 
 export default function ScenarioLab() {
+  const { portfolio } = useApp();
   const canvasRef = useRef(null);
   const chartRef  = useRef(null);
 
@@ -94,6 +98,34 @@ export default function ScenarioLab() {
   const [iv,       setIv]       = useState(30);
   const [wing,     setWing]     = useState(5);
   const [hideStock, setHideStock] = useState(false);
+
+  const [selectedSymbol, setSelectedSymbol] = useState('');
+  const [livePrice,      setLivePrice]      = useState(null);
+  const [fetchingPrice,  setFetchingPrice]  = useState(false);
+
+  useEffect(() => {
+    if (!selectedSymbol) { setLivePrice(null); return; }
+    const pos = portfolio.find(p => p.symbol === selectedSymbol);
+    setFetchingPrice(true);
+    fetch(`https://finnhub.io/api/v1/quote?symbol=${selectedSymbol}&token=${FINNHUB_TOKEN}`)
+      .then(r => r.json())
+      .then(data => {
+        const price = data?.c > 0 ? data.c : pos?.avgPrice ?? 100;
+        setLivePrice(data?.c > 0 ? data.c : null);
+        setEntry(price);
+        if (pos && !SPREAD_STRATEGIES.has(strategy)) {
+          setQty(Math.round(pos.qty) || 1);
+        }
+        // suggested strike near ATM
+        setStrike(parseFloat((price * 1.05).toFixed(2)));
+        setStrike2(parseFloat((price * 1.10).toFixed(2)));
+      })
+      .catch(() => {
+        if (pos) { setEntry(pos.avgPrice); setStrike(parseFloat((pos.avgPrice * 1.05).toFixed(2))); }
+      })
+      .finally(() => setFetchingPrice(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol]);
 
   const isSpread = SPREAD_STRATEGIES.has(strategy);
   const isWing   = WING_STRATEGIES.has(strategy);
@@ -216,6 +248,41 @@ export default function ScenarioLab() {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <h2 className="text-lg font-bold text-slate-100">🧪 Scenario Lab — Akcje vs Opcje</h2>
+
+      {/* Stock picker */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-4">
+        <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
+          Spółka z portfela
+        </label>
+        <select
+          value={selectedSymbol}
+          onChange={e => setSelectedSymbol(e.target.value)}
+          className={inputCls + ' max-w-xs'}
+        >
+          <option value="">— własne wartości —</option>
+          {portfolio.map(pos => (
+            <option key={pos.id ?? pos.symbol} value={pos.symbol}>
+              {pos.symbol}{pos.name && pos.name !== pos.symbol ? ` — ${pos.name}` : ''}
+            </option>
+          ))}
+        </select>
+        {fetchingPrice && (
+          <span className="text-xs text-slate-400 animate-pulse">Pobieranie kursu…</span>
+        )}
+        {livePrice != null && !fetchingPrice && (
+          <span className="text-xs bg-indigo-900/60 border border-indigo-700 text-indigo-300 rounded-md px-2 py-1 font-mono">
+            {livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        )}
+        {selectedSymbol && !fetchingPrice && (
+          <button
+            onClick={() => setSelectedSymbol('')}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-auto"
+          >
+            ✕ wyczyść
+          </button>
+        )}
+      </div>
 
       {/* Form grid */}
       <div className="grid grid-cols-2 gap-3">
