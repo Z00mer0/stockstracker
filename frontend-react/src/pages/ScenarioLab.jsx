@@ -47,6 +47,7 @@ const PREMIUM_LABELS = {
 };
 
 function fmtDollar(n) {
+  if (isNaN(n)) return '—';
   if (!isFinite(n)) return n > 0 ? '∞' : '-∞';
   const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (n < 0 ? '-$' : '$') + abs;
@@ -105,6 +106,9 @@ export default function ScenarioLab() {
   const renderChart = useCallback(() => {
     if (!canvasRef.current) return;
 
+    const isSpreadLocal = SPREAD_STRATEGIES.has(strategy);
+    const isHedgedLocal = HEDGED_STRATEGIES.has(strategy);
+
     const ivDec  = iv / 100;
     const T      = dte / 365;
     const sig    = calcSigma(entry, ivDec, dte);
@@ -126,7 +130,7 @@ export default function ScenarioLab() {
     const labels   = prices.map(p => '$' + p.toFixed(0));
     const datasets = [];
 
-    if ((isHedged || isSpread) && !hideStock) {
+    if ((isHedgedLocal || isSpreadLocal) && !hideStock) {
       datasets.push({
         label: 'Tylko Akcje',
         data: stock,
@@ -185,6 +189,7 @@ export default function ScenarioLab() {
       data: { labels, datasets },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { color: '#e2e8f0', font: { size: 12, weight: '600' } } },
@@ -201,7 +206,7 @@ export default function ScenarioLab() {
         },
       },
     });
-  }, [strategy, entry, qty, strike, strike2, premium, dte, iv, wing, hideStock, isHedged, isSpread]);
+  }, [strategy, entry, qty, strike, strike2, premium, dte, iv, wing, hideStock]);
 
   useEffect(() => {
     renderChart();
@@ -300,8 +305,8 @@ export default function ScenarioLab() {
       )}
 
       {/* Chart */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <canvas ref={canvasRef} height={320} />
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4" style={{height: '360px'}}>
+        <canvas ref={canvasRef} />
       </div>
 
       {/* Greeks */}
