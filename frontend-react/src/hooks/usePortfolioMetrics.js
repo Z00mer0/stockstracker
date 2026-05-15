@@ -40,13 +40,12 @@ export function fmtPeriod(days) {
   return `${(days / 365).toFixed(1)}yr`;
 }
 
-// ── Yahoo Finance fallback (for non-US tickers Finnhub can't price) ──────────
+// ── Yahoo Finance via backend proxy (avoids CORS) ────────────────────────────
 async function fetchYahooQuote(sym) {
   try {
-    const res  = await fetch(
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`,
-      { signal: AbortSignal.timeout(8000) }
-    );
+    const yfUrl  = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
+    const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
+    const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
     const json = await res.json();
     const meta = json?.chart?.result?.[0]?.meta;
     if (!meta?.regularMarketPrice) return null;
