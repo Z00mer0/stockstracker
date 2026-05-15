@@ -4709,29 +4709,29 @@ function renderScenarioLab() {
       const moic = (premium*CONTRACT_SIZE/bpe*100).toFixed(1);
       kpiHtml = stat('Break-even','$'+be.toFixed(2),'var(--blue)') +
                 stat('Max Zysk','$'+(premium*CONTRACT_SIZE).toFixed(2),'var(--green)') +
-                stat('PoP',popPct(be,true),'var(--yellow)') +
-                stat('MOIC',moic+'%','var(--yellow)');
+                stat('BPE (depozyt)','$'+bpe.toFixed(2),'var(--muted)') +
+                stat('PoP / MOIC',popPct(be,true)+' / '+moic+'%','var(--yellow)');
       break;
     }
     case 'bull-call-spread': {
       const be = strike + premium;
       const maxP = (strike2-strike-premium)*CONTRACT_SIZE*qty;
-      const maxL = premium*CONTRACT_SIZE*qty;
-      const moic = maxL > 0 ? (maxP/maxL).toFixed(2) : '∞';
+      const bpe = premium*CONTRACT_SIZE*qty;
+      const moic = bpe > 0 ? (maxP/bpe).toFixed(2) : '∞';
       kpiHtml = stat('Break-even','$'+be.toFixed(2),'var(--blue)') +
                 stat('Max Zysk','$'+maxP.toFixed(2),'var(--green)') +
-                stat('Max Strata','-$'+maxL.toFixed(2),'var(--red)') +
+                stat('BPE (depozyt)','$'+bpe.toFixed(2),'var(--muted)') +
                 stat('PoP / MOIC',popPct(be,true)+' / '+moic+'x','var(--yellow)');
       break;
     }
     case 'bear-put-spread': {
       const be = strike - premium;
       const maxP = (strike-strike2-premium)*CONTRACT_SIZE*qty;
-      const maxL = premium*CONTRACT_SIZE*qty;
-      const moic = maxL > 0 ? (maxP/maxL).toFixed(2) : '∞';
+      const bpe = premium*CONTRACT_SIZE*qty;
+      const moic = bpe > 0 ? (maxP/bpe).toFixed(2) : '∞';
       kpiHtml = stat('Break-even','$'+be.toFixed(2),'var(--blue)') +
                 stat('Max Zysk','$'+maxP.toFixed(2),'var(--green)') +
-                stat('Max Strata','-$'+maxL.toFixed(2),'var(--red)') +
+                stat('BPE (depozyt)','$'+bpe.toFixed(2),'var(--muted)') +
                 stat('PoP / MOIC',popPct(be,false)+' / '+moic+'x','var(--yellow)');
       break;
     }
