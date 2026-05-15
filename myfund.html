@@ -683,17 +683,26 @@ textarea{resize:vertical;min-height:90px;font-size:12px;font-family:monospace}
         <input id="sl-premium" type="number" value="3.50" min="0" step="0.01" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
         <label style="font-size:12px;color:var(--muted);font-weight:600">DNI DO WYGAŚNIĘCIA</label>
         <input id="sl-dte" type="number" value="30" min="1" step="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
+        <label style="font-size:12px;color:var(--muted);font-weight:600">IV — IMPLIED VOLATILITY (%)</label>
+        <input id="sl-iv" type="number" value="30" min="1" max="500" step="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
         <div id="sl-strike2-wrap" style="display:none;flex-direction:column;gap:6px">
           <label style="font-size:12px;color:var(--muted);font-weight:600">DRUGI STRIKE / SZEROKOŚĆ ($)</label>
           <input id="sl-strike2" type="number" value="110" min="0" step="0.01" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:14px;width:100%;outline:none">
         </div>
       </div>
     </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--muted);user-select:none">
+        <input id="sl-hide-stock" type="checkbox" onchange="renderScenarioLab()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
+        Ukryj linię bazową akcji
+      </label>
+    </div>
     <button class="btn btn-accent" onclick="renderScenarioLab()" style="width:100%;justify-content:center;margin-bottom:16px">▶ Oblicz i pokaż wykres</button>
     <div id="sl-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
       <canvas id="sl-chart" height="320"></canvas>
     </div>
+    <div id="sl-greeks"></div>
   </div>
 </main>
 
@@ -4498,28 +4507,85 @@ function showTab(name) {
 
 let _slChart = null;
 
+// Black-Scholes helpers (sl-prefixed to avoid global conflicts)
+function slNormCDF(x) {
+  const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  const ax = Math.abs(x);
+  const t = 1 / (1 + p * ax);
+  const y = 1 - (t*(a1+t*(a2+t*(a3+t*(a4+t*a5))))) * Math.exp(-ax*ax);
+  return 0.5 * (1 + sign * y);
+}
+function slNormPDF(x) { return Math.exp(-0.5*x*x) / Math.sqrt(2*Math.PI); }
+function slBS(S, K, T, r, sigma, type) {
+  if (T <= 0) return type === 'call' ? Math.max(0, S-K) : Math.max(0, K-S);
+  const sqrtT = Math.sqrt(T);
+  const d1 = (Math.log(S/K) + (r + 0.5*sigma*sigma)*T) / (sigma*sqrtT);
+  const d2 = d1 - sigma*sqrtT;
+  if (type === 'call') return S*slNormCDF(d1) - K*Math.exp(-r*T)*slNormCDF(d2);
+  return K*Math.exp(-r*T)*slNormCDF(-d2) - S*slNormCDF(-d1);
+}
+function slDelta(S, K, T, r, sigma, type) {
+  if (T <= 0) { return type==='call' ? (S>K?1:0) : (S<K?-1:0); }
+  const d1 = (Math.log(S/K) + (r+0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
+  return type === 'call' ? slNormCDF(d1) : slNormCDF(d1) - 1;
+}
+function slTheta(S, K, T, r, sigma, type) {
+  if (T <= 0) return 0;
+  const sqrtT = Math.sqrt(T);
+  const d1 = (Math.log(S/K) + (r+0.5*sigma*sigma)*T) / (sigma*sqrtT);
+  const d2 = d1 - sigma*sqrtT;
+  const base = -(S * slNormPDF(d1) * sigma) / (2*sqrtT);
+  if (type === 'call') return (base - r*K*Math.exp(-r*T)*slNormCDF(d2)) / 365;
+  return (base + r*K*Math.exp(-r*T)*slNormCDF(-d2)) / 365;
+}
+
 function renderScenarioLab() {
-  const strategy = document.getElementById('strategy-select').value;
-  const entry    = parseFloat(document.getElementById('sl-entry').value)   || 100;
-  const qty      = parseInt(document.getElementById('sl-qty').value)       || 1;
-  const strike   = parseFloat(document.getElementById('sl-strike').value)  || 105;
-  const premium  = parseFloat(document.getElementById('sl-premium').value) || 3.50;
+  const CONTRACT_SIZE = 100;
+  const R = 0.05;
+  const strategy  = document.getElementById('strategy-select').value;
+  const entry     = parseFloat(document.getElementById('sl-entry').value)   || 100;
+  const qty       = parseInt(document.getElementById('sl-qty').value)       || 100;
+  const strike    = parseFloat(document.getElementById('sl-strike').value)  || 105;
+  const premium   = parseFloat(document.getElementById('sl-premium').value) || 3.50;
+  const dte       = parseInt(document.getElementById('sl-dte').value)       || 30;
+  const iv        = (parseFloat(document.getElementById('sl-iv').value)     || 30) / 100;
+  const hideStock = document.getElementById('sl-hide-stock').checked;
 
   const strikeLabels = { 'long-call': 'STRIKE CALL ($)', 'long-put': 'STRIKE PUT ($)', 'covered-call': 'STRIKE CALL ($)', 'protective-put': 'STRIKE PUT ($)', 'csp': 'STRIKE PUT ($)' };
   document.getElementById('sl-strike-label').textContent = strikeLabels[strategy] || 'STRIKE ($)';
 
+  const T = dte / 365;
+  const nContracts = qty / CONTRACT_SIZE;
+
   const lo = entry * 0.80, hi = entry * 1.50;
   const steps = 60;
-  const prices = Array.from({length: steps + 1}, (_, i) => lo + (hi - lo) * i / steps);
+  const prices = Array.from({length: steps + 1}, (_, i) => lo + (hi-lo)*i/steps);
 
   const stockPnL    = prices.map(p => (p - entry) * qty);
   const strategyPnL = prices.map(p => {
     switch (strategy) {
-      case 'long-call':      return (Math.max(0, p - strike) - premium) * 100 * qty;
-      case 'long-put':       return (Math.max(0, strike - p) - premium) * 100 * qty;
-      case 'covered-call':   return ((Math.min(p, strike) - entry) * qty) + (premium * 100 * (qty / 100));
-      case 'protective-put': return ((Math.max(p, strike) - entry) * qty) - (premium * 100 * (qty / 100));
-      case 'csp':            return (Math.max(0, p - strike) === 0 ? (p - strike) * 100 : 0) + (premium * 100);
+      case 'long-call':      return (Math.max(0, p-strike) - premium) * CONTRACT_SIZE * qty;
+      case 'long-put':       return (Math.max(0, strike-p) - premium) * CONTRACT_SIZE * qty;
+      case 'covered-call':   return (p-entry)*qty + (Math.min(0, strike-p) + premium)*CONTRACT_SIZE*nContracts;
+      case 'protective-put': return (p-entry)*qty + (Math.max(0, strike-p) - premium)*CONTRACT_SIZE*nContracts;
+      case 'csp':            return (Math.min(0, p-strike) + premium) * CONTRACT_SIZE;
+      default: return 0;
+    }
+  });
+
+  // T+0 line: current option value at each price point (not at expiry)
+  const isCall = strategy === 'long-call' || strategy === 'covered-call';
+  const optType = isCall ? 'call' : 'put';
+  const t0PnL = prices.map(p => {
+    const bsVal = slBS(p, strike, T, R, iv, optType);
+    switch (strategy) {
+      case 'long-call':      return (bsVal - premium) * CONTRACT_SIZE * qty;
+      case 'long-put':       return (bsVal - premium) * CONTRACT_SIZE * qty;
+      case 'covered-call':   return (p-entry)*qty + (premium - bsVal)*CONTRACT_SIZE*nContracts;
+      case 'protective-put': return (p-entry)*qty + (bsVal - premium)*CONTRACT_SIZE*nContracts;
+      case 'csp':            return (premium - bsVal) * CONTRACT_SIZE;
+      default: return 0;
     }
   });
 
@@ -4532,38 +4598,38 @@ function renderScenarioLab() {
   let kpiHtml = '';
   switch (strategy) {
     case 'long-call':
-      kpiHtml = stat('Break-even', '$' + (strike + premium).toFixed(2), 'var(--blue)') +
-                stat('Max Strata', '-$' + (premium * 100 * qty).toFixed(2), 'var(--red)') +
+      kpiHtml = stat('Break-even', '$'+(strike+premium).toFixed(2), 'var(--blue)') +
+                stat('Max Strata', '-$'+(premium*CONTRACT_SIZE*qty).toFixed(2), 'var(--red)') +
                 stat('Max Zysk', '∞', 'var(--green)') +
-                stat('Koszt Opcji', '$' + (premium * 100 * qty).toFixed(2), 'var(--muted)');
+                stat('Koszt Opcji', '$'+(premium*CONTRACT_SIZE*qty).toFixed(2), 'var(--muted)');
       break;
     case 'long-put':
-      kpiHtml = stat('Break-even', '$' + (strike - premium).toFixed(2), 'var(--blue)') +
-                stat('Max Strata', '-$' + (premium * 100 * qty).toFixed(2), 'var(--red)') +
-                stat('Max Zysk', '$' + ((strike - premium) * 100 * qty).toFixed(0), 'var(--green)') +
-                stat('Koszt Opcji', '$' + (premium * 100 * qty).toFixed(2), 'var(--muted)');
+      kpiHtml = stat('Break-even', '$'+(strike-premium).toFixed(2), 'var(--blue)') +
+                stat('Max Strata', '-$'+(premium*CONTRACT_SIZE*qty).toFixed(2), 'var(--red)') +
+                stat('Max Zysk', '$'+((strike-premium)*CONTRACT_SIZE*qty).toFixed(0), 'var(--green)') +
+                stat('Koszt Opcji', '$'+(premium*CONTRACT_SIZE*qty).toFixed(2), 'var(--muted)');
       break;
     case 'covered-call': {
-      const maxProfit = (strike - entry) * qty + premium * 100 * (qty / 100);
-      kpiHtml = stat('Break-even', '$' + (entry - premium * 100 / qty).toFixed(2), 'var(--blue)') +
-                stat('Max Zysk', '$' + maxProfit.toFixed(2), 'var(--green)') +
-                stat('Premia (wpływ)', '+$' + (premium * 100 * (qty / 100)).toFixed(2), 'var(--yellow)') +
-                stat('Cap (cena max)', '$' + strike.toFixed(2), 'var(--muted)');
+      const maxProfit = (strike-entry)*qty + premium*CONTRACT_SIZE*nContracts;
+      kpiHtml = stat('Break-even', '$'+(entry-premium).toFixed(2), 'var(--blue)') +
+                stat('Max Zysk', '$'+maxProfit.toFixed(2), 'var(--green)') +
+                stat('Premia (wpływ)', '+$'+(premium*CONTRACT_SIZE*nContracts).toFixed(2), 'var(--yellow)') +
+                stat('Cap (cena max)', '$'+strike.toFixed(2), 'var(--muted)');
       break;
     }
     case 'protective-put': {
-      const maxLoss = -((entry - strike) * qty + premium * 100 * (qty / 100));
-      kpiHtml = stat('Break-even', '$' + (entry + premium * 100 / qty).toFixed(2), 'var(--blue)') +
-                stat('Max Strata', '$' + maxLoss.toFixed(2), 'var(--red)') +
-                stat('Koszt Ubezp.', '$' + (premium * 100 * (qty / 100)).toFixed(2), 'var(--yellow)') +
-                stat('Floor (min cena)', '$' + strike.toFixed(2), 'var(--muted)');
+      const maxLoss = (entry-strike)*qty + premium*CONTRACT_SIZE*nContracts;
+      kpiHtml = stat('Break-even', '$'+(entry+premium).toFixed(2), 'var(--blue)') +
+                stat('Max Strata', '-$'+maxLoss.toFixed(2), 'var(--red)') +
+                stat('Koszt Ubezp.', '$'+(premium*CONTRACT_SIZE*nContracts).toFixed(2), 'var(--yellow)') +
+                stat('Floor (min cena)', '$'+strike.toFixed(2), 'var(--muted)');
       break;
     }
     case 'csp':
-      kpiHtml = stat('Break-even', '$' + (strike - premium).toFixed(2), 'var(--blue)') +
-                stat('Max Zysk', '$' + (premium * 100).toFixed(2), 'var(--green)') +
-                stat('Max Strata', '-$' + ((strike - premium) * 100).toFixed(2), 'var(--red)') +
-                stat('Wymagane Cash', '$' + (strike * 100).toFixed(0), 'var(--muted)');
+      kpiHtml = stat('Break-even', '$'+(strike-premium).toFixed(2), 'var(--blue)') +
+                stat('Max Zysk', '$'+(premium*CONTRACT_SIZE).toFixed(2), 'var(--green)') +
+                stat('Max Strata', '-$'+((strike-premium)*CONTRACT_SIZE).toFixed(2), 'var(--red)') +
+                stat('Wymagane Cash', '$'+(strike*CONTRACT_SIZE).toFixed(0), 'var(--muted)');
       break;
   }
   document.getElementById('sl-stats').innerHTML = kpiHtml;
@@ -4571,29 +4637,62 @@ function renderScenarioLab() {
   const hedged = strategy === 'covered-call' || strategy === 'protective-put';
   const stratNames = { 'long-call': 'Long Call', 'long-put': 'Long Put', 'covered-call': 'Covered Call', 'protective-put': 'Protective Put', 'csp': 'Cash-Secured Put' };
   const datasets = [];
-  if (hedged) {
-    datasets.push({ label: 'Tylko Akcje', data: stockPnL, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.06)', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, tension: 0.1 });
+  if (hedged && !hideStock) {
+    datasets.push({ label: 'Tylko Akcje', data: stockPnL, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.06)', borderWidth: 2, borderDash: [5,4], pointRadius: 0, tension: 0.1 });
   }
   datasets.push({ label: stratNames[strategy], data: strategyPnL, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,.08)', borderWidth: 2.5, pointRadius: 0, tension: 0.1 });
+  datasets.push({ label: 'Zysk/Strata Dzisiaj (T+0)', data: t0PnL, borderColor: '#c084fc', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 });
 
   const canvas = document.getElementById('sl-chart');
   if (_slChart) { _slChart.destroy(); _slChart = null; }
   _slChart = new Chart(canvas, {
     type: 'line',
-    data: { labels: prices.map(p => '$' + p.toFixed(0)), datasets },
+    data: { labels: prices.map(p => '$'+p.toFixed(0)), datasets },
     options: {
       responsive: true, interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e2e8f0', font: { size: 12, weight: '600' } } },
-        tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2) } }
+        tooltip: { callbacks: { label: ctx => ' '+ctx.dataset.label+': $'+ctx.parsed.y.toFixed(2) } }
       },
       scales: {
         x: { ticks: { color: '#8892a4', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,.05)' } },
-        y: { ticks: { color: '#8892a4', callback: v => '$' + v.toFixed(0) }, grid: { color: 'rgba(255,255,255,.05)' },
+        y: { ticks: { color: '#8892a4', callback: v => '$'+v.toFixed(0) }, grid: { color: 'rgba(255,255,255,.05)' },
              title: { display: true, text: 'Zysk / Strata ($)', color: '#8892a4', font: { size: 11 } } }
       }
     }
   });
+
+  // Greeks at current stock price (entry)
+  const rawDelta = slDelta(entry, strike, T, R, iv, optType);
+  const rawTheta = slTheta(entry, strike, T, R, iv, optType);
+  let posDelta, posTheta;
+  if (strategy === 'covered-call') {
+    posDelta = 1 - rawDelta;
+    posTheta = -rawTheta;
+  } else if (strategy === 'protective-put') {
+    posDelta = 1 + rawDelta;
+    posTheta = rawTheta;
+  } else if (strategy === 'csp') {
+    posDelta = -rawDelta;
+    posTheta = -rawTheta;
+  } else {
+    posDelta = rawDelta;
+    posTheta = rawTheta;
+  }
+  const gc = v => v >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('sl-greeks').innerHTML =
+    `<div style="display:flex;gap:16px;margin-top:4px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 18px;flex:1">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">Δ DELTA (pozycja)</div>
+        <div style="font-size:20px;font-weight:700;color:${gc(posDelta)}">${posDelta.toFixed(3)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">zmiana P&amp;L na $1 ruchu akcji</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 18px;flex:1">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">Θ THETA (dzienny, na opcję)</div>
+        <div style="font-size:20px;font-weight:700;color:${gc(posTheta)}">${posTheta.toFixed(4)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">dzienny upływ wartości czasowej</div>
+      </div>
+    </div>`;
 }
 
 function setTimeframe(days, btn) {
