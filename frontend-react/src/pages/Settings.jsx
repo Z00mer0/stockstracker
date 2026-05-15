@@ -1,5 +1,65 @@
-import React from 'react';
+// frontend-react/src/pages/Settings.jsx
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
+
+function ApiKeySection() {
+  const [key,   setKey]   = useState(getMdApiKey);
+  const [saved, setSaved] = useState(false);
+
+  function save() {
+    setMdApiKey(key);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  const isSet = !!getMdApiKey();
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-300">Klucze API</h2>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Wymagane do pobierania łańcucha opcji w Scenario Lab
+        </p>
+      </div>
+      <div className="px-5 py-4 space-y-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide flex items-center gap-2">
+            MarketData.app
+            {isSet
+              ? <span className="text-emerald-400 normal-case font-normal">✓ ustawiony</span>
+              : <span className="text-amber-400 normal-case font-normal">nie ustawiony</span>
+            }
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={key}
+              onChange={e => setKey(e.target.value)}
+              placeholder="Wklej klucz API…"
+              className="flex-1 bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 text-sm outline-none focus:border-indigo-500 font-mono"
+            />
+            <button
+              onClick={save}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors min-w-[80px] ${
+                saved
+                  ? 'bg-emerald-700 text-emerald-100'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+              }`}
+            >
+              {saved ? '✓ Zapisano' : 'Zapisz'}
+            </button>
+          </div>
+          <p className="text-xs text-slate-600">
+            Klucz przechowywany tylko lokalnie (localStorage). Zdobądź darmowy klucz na{' '}
+            <span className="text-slate-400">marketdata.app</span>.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { displayName, logout, refresh, fxRates } = useApp();
@@ -37,6 +97,9 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Klucze API */}
+      <ApiKeySection />
 
       {/* Kursy walut */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
