@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 
-// ── Parser ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function detectSep(line) {
-  // Count commas and semicolons outside quotes
   let commas = 0, semis = 0, inQ = false;
   for (const ch of line) {
     if (ch === '"') inQ = !inQ;
@@ -25,56 +25,66 @@ function splitRow(line, sep) {
   return cells;
 }
 
-function parseDate(str) {
-  if (!str) return null;
-  // "2026-04-28 14:29:58" → "2026-04-28"
+function parseDate(val) {
+  if (!val) return null;
+  // Excel serial date number
+  if (typeof val === 'number') {
+    const d = XLSX.SSF.parse_date_code(val);
+    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  const str = String(val);
   return str.slice(0, 10).replace(/\//g, '-');
 }
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
-function parseBrokerCsv(text) {
-  const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 5) return { type: 'unknown', transactions: [], error: 'Za mało wierszy — sprawdź format pliku.' };
+// ── Core parser (works on array-of-arrays rows) ───────────────────────────────
 
-  // Detect file type from row 2
-  const fileTypeLine = lines[1]?.toLowerCase() ?? '';
+function parseBrokerRows(rows) {
+  if (rows.length < 5) return { type: 'unknown', transactions: [], error: 'Za mało wierszy.' };
+
+  // Row index 1 → file type label
+  const fileTypeLine = String(rows[1]?.[0] ?? '').toLowerCase();
   const isClosedPositions = fileTypeLine.includes('closed');
   const isCashOperations  = fileTypeLine.includes('cash');
 
-  // Row 5 (index 4) = header
-  const sep = detectSep(lines[4]);
-  const headers = splitRow(lines[4], sep).map(h => h.toLowerCase().trim());
+  // Row index 4 → headers
+  const headers = (rows[4] ?? []).map(h => String(h ?? '').toLowerCase().trim());
 
   function col(row, name) {
     const idx = headers.indexOf(name.toLowerCase());
-    return idx >= 0 ? (row[idx] ?? '').trim() : '';
+    return idx >= 0 ? String(row[idx] ?? '').trim() : '';
+  }
+  function colRaw(row, name) {
+    const idx = headers.indexOf(name.toLowerCase());
+    return idx >= 0 ? row[idx] : undefined;
   }
 
   const transactions = [];
   const errors = [];
 
-  for (let i = 5; i < lines.length; i++) {
-    const row = splitRow(lines[i], sep);
-    if (row.length < 3 || !row.some(c => c)) continue;
+  for (let i = 5; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row.some(c => c != null && c !== '')) continue;
 
     if (isClosedPositions) {
-      const ticker   = col(row, 'ticker') || col(row, 'instrument');
-      const type     = col(row, 'type').toUpperCase();
-      const qty      = parseFloat(col(row, 'volume'));
+      const ticker     = col(row, 'ticker') || col(row, 'instrument');
+      const type       = col(row, 'type').toUpperCase();
+      const qty        = parseFloat(col(row, 'volume'));
       const openPrice  = parseFloat(col(row, 'open price'));
       const closePrice = parseFloat(col(row, 'close price'));
-      const openDate   = parseDate(col(row, 'open time (utc)'));
-      const closeDate  = parseDate(col(row, 'close time (utc)'));
+      const openDate   = parseDate(colRaw(row, 'open time (utc)'));
+      const closeDate  = parseDate(colRaw(row, 'close time (utc)'));
       const pl         = parseFloat(col(row, 'profit/loss')) || 0;
       const positionId = col(row, 'position id');
 
-      if (!ticker || isNaN(qty) || isNaN(openPrice)) { errors.push(`Wiersz ${i + 1}: brak danych`); continue; }
+      if (!ticker || isNaN(qty) || isNaN(openPrice)) {
+        errors.push(`Wiersz ${i + 1}: brak danych`);
+        continue;
+      }
 
-      // Determine currency: Polish tickers (.WA, .PL) → PLN, else USD
       const currency = /\.(WA|PL)$/i.test(ticker) ? 'PLN' : 'USD';
 
-      // BUY transaction (opening)
       transactions.push({
         id: genId(),
         type: type === 'SELL' ? 'SELL' : 'BUY',
@@ -83,11 +93,10 @@ function parseBrokerCsv(text) {
         price: openPrice,
         currency,
         date: openDate || closeDate || new Date().toISOString().slice(0, 10),
-        note: `Import brokera`,
+        note: 'Import brokera',
         brokerPositionId: positionId,
       });
 
-      // SELL transaction (closing) — only if we have a close price
       if (!isNaN(closePrice) && closeDate) {
         transactions.push({
           id: genId(),
@@ -103,24 +112,21 @@ function parseBrokerCsv(text) {
       }
 
     } else if (isCashOperations) {
-      // Try common Cash Operations format
-      // Headers may vary — look for: Date, Type, Amount, Details, Position ID
-      const dateStr  = col(row, 'date');
-      const opType   = col(row, 'type').toLowerCase();
-      const amount   = parseFloat(col(row, 'amount'));
-      const details  = col(row, 'details');
+      const dateStr    = col(row, 'date');
+      const opType     = col(row, 'type').toLowerCase();
+      const amount     = parseFloat(col(row, 'amount'));
+      const details    = col(row, 'details');
       const positionId = col(row, 'position id');
 
       if (!dateStr || isNaN(amount)) continue;
 
       let txType = null;
-      if (opType.includes('dividend'))     txType = 'DIV';
-      else if (opType.includes('buy') || opType.includes('stock buy'))  txType = 'BUY';
+      if (opType.includes('dividend'))                               txType = 'DIV';
+      else if (opType.includes('buy')  || opType.includes('stock buy'))  txType = 'BUY';
       else if (opType.includes('sell') || opType.includes('stock sell')) txType = 'SELL';
       else if (opType.includes('deposit') || opType.includes('withdrawal')) txType = 'CASH';
-      else continue; // skip unknown types
+      else continue;
 
-      // Try to extract symbol from details (e.g. "Dividend from AAPL")
       const symbolMatch = details.match(/\b([A-Z0-9]{1,6}(\.[A-Z]{2})?)\b/);
       const symbol = symbolMatch?.[1] || 'UNKNOWN';
 
@@ -145,30 +151,77 @@ function parseBrokerCsv(text) {
   };
 }
 
+// ── Entry points (CSV text or Excel ArrayBuffer) ──────────────────────────────
+
+function parseBrokerCsv(text) {
+  const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 5) return { type: 'unknown', transactions: [], error: 'Za mało wierszy.' };
+  const sep = detectSep(lines[4]);
+  const rows = lines.map(l => splitRow(l, sep));
+  return parseBrokerRows(rows);
+}
+
+function parseBrokerXlsx(buffer) {
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+  const allResults = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (rows.length < 5) continue;
+    const result = parseBrokerRows(rows);
+    if (result.type !== 'unknown' || result.transactions.length > 0) {
+      allResults.push({ sheetName, ...result });
+    }
+  }
+
+  if (!allResults.length) {
+    return [{ type: 'unknown', transactions: [], errors: [], error: 'Nie znaleziono arkuszy z danymi.' }];
+  }
+  return allResults;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BrokerImportModal({ existingTransactions, onSave, onClose }) {
-  const [results, setResults]   = useState([]); // parsed per file
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
-  const [error, setError]       = useState('');
+  const [results, setResults] = useState([]);
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [error, setError]     = useState('');
   const inputRef = useRef(null);
 
   function handleFiles(files) {
     setError('');
     setSaved(false);
     const fileArr = Array.from(files);
-    const readers = fileArr.map(file =>
-      new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const parsed = parseBrokerCsv(e.target.result);
-          resolve({ name: file.name, ...parsed });
-        };
-        reader.readAsText(file, 'utf-8');
-      })
-    );
-    Promise.all(readers).then(setResults);
+
+    const readers = fileArr.flatMap(file => {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isExcel = ext === 'xls' || ext === 'xlsx';
+
+      if (isExcel) {
+        return [new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const sheetResults = parseBrokerXlsx(new Uint8Array(e.target.result));
+            // Return one entry per sheet that had data
+            resolve(sheetResults.map(r => ({ name: `${file.name} [${r.sheetName ?? ''}]`, ...r })));
+          };
+          reader.readAsArrayBuffer(file);
+        }).then(arr => arr)];
+      } else {
+        return [new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const parsed = parseBrokerCsv(e.target.result);
+            resolve([{ name: file.name, ...parsed }]);
+          };
+          reader.readAsText(file, 'utf-8');
+        })];
+      }
+    });
+
+    Promise.all(readers).then(groups => setResults(groups.flat()));
   }
 
   function handleDrop(e) {
@@ -176,7 +229,6 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
     handleFiles(e.dataTransfer.files);
   }
 
-  // Deduplicate against existing + within this import
   const allNewTxs = results.flatMap(r => r.transactions);
   const existingBrokerIds = new Set(existingTransactions.map(t => t.brokerPositionId).filter(Boolean));
   const existingKeys = new Set(existingTransactions.map(t => `${t.symbol}_${t.date}_${t.type}_${t.price}`));
@@ -188,7 +240,6 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
     return true;
   });
 
-  // Count unique instruments
   const instruments = new Set(deduped.map(t => t.symbol));
 
   async function handleImport() {
@@ -198,12 +249,16 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
     try {
       await onSave([...existingTransactions, ...deduped]);
       setSaved(true);
-    } catch(e) {
+    } catch (e) {
       setError(e.message || 'Błąd zapisu');
     } finally {
       setSaving(false);
     }
   }
+
+  const typeLabel = t =>
+    t === 'closed_positions' ? 'Closed Positions' :
+    t === 'cash_operations'  ? 'Cash Operations'  : '❓ Nieznany';
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -213,8 +268,9 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
 
         <h2 className="text-base font-bold text-slate-100 mb-1">Import danych brokera</h2>
         <p className="text-xs text-slate-500 mb-4">
-          Obsługuje pliki CSV: <span className="text-slate-400">Closed Positions</span> i <span className="text-slate-400">Cash Operations</span>.
-          Pomiń 4 wiersze metadanych — format jest wykrywany automatycznie.
+          Obsługuje <span className="text-slate-400">CSV</span>, <span className="text-slate-400">XLS</span> i <span className="text-slate-400">XLSX</span>:
+          pliki <span className="text-slate-300">Closed Positions</span> i <span className="text-slate-300">Cash Operations</span>.
+          Format wykrywany automatycznie.
         </p>
 
         {/* Dropzone */}
@@ -227,26 +283,23 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
           <input
             ref={inputRef}
             type="file"
-            accept=".csv"
+            accept=".csv,.xls,.xlsx"
             multiple
             className="hidden"
             onChange={e => handleFiles(e.target.files)}
           />
           <p className="text-sm text-slate-400">
-            Przeciągnij pliki CSV lub <span className="text-indigo-400 underline">kliknij aby wybrać</span>
+            Przeciągnij pliki lub <span className="text-indigo-400 underline">kliknij aby wybrać</span>
           </p>
-          <p className="text-xs text-slate-600 mt-1">Można wybrać kilka plików naraz</p>
+          <p className="text-xs text-slate-600 mt-1">CSV, XLS, XLSX — można wybrać kilka naraz</p>
         </div>
 
-        {/* Results per file */}
+        {/* Results per file/sheet */}
         {results.map((r, i) => (
           <div key={i} className="mb-3 bg-slate-900/50 rounded-lg px-4 py-3">
             <p className="text-xs font-semibold text-slate-300 mb-1 truncate">📄 {r.name}</p>
             <p className="text-xs text-slate-400">
-              Typ: <span className="text-slate-200">
-                {r.type === 'closed_positions' ? 'Closed Positions' :
-                 r.type === 'cash_operations'  ? 'Cash Operations'  : '❓ Nieznany'}
-              </span>
+              Typ: <span className="text-slate-200">{typeLabel(r.type)}</span>
             </p>
             <p className="text-xs text-slate-400">
               Znalezione transakcje: <span className="text-slate-200">{r.transactions.length}</span>
@@ -261,16 +314,16 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
         {/* Summary */}
         {results.length > 0 && (
           <div className={`rounded-lg px-4 py-3 mb-4 ${
-            deduped.length > 0 ? 'bg-emerald-950/40 border border-emerald-800/40' : 'bg-slate-900/40'
+            deduped.length > 0
+              ? 'bg-emerald-950/40 border border-emerald-800/40'
+              : 'bg-slate-900/40'
           }`}>
             {deduped.length > 0 ? (
               <p className="text-sm text-emerald-400 font-semibold">
                 ✓ {deduped.length} nowych transakcji dla {instruments.size} instrumentów
               </p>
             ) : (
-              <p className="text-sm text-slate-400">
-                Wszystkie transakcje już istnieją (duplikaty pominięte).
-              </p>
+              <p className="text-sm text-slate-400">Wszystkie transakcje już istnieją (duplikaty pominięte).</p>
             )}
             {(allNewTxs.length - deduped.length) > 0 && (
               <p className="text-xs text-slate-500 mt-1">
@@ -280,10 +333,8 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
           </div>
         )}
 
-        {saved && (
-          <p className="text-sm text-emerald-400 mb-3">✓ Zaimportowano pomyślnie!</p>
-        )}
-        {error && <p className="text-xs text-rose-400 mb-3">{error}</p>}
+        {saved  && <p className="text-sm text-emerald-400 mb-3">✓ Zaimportowano pomyślnie!</p>}
+        {error  && <p className="text-xs text-rose-400 mb-3">{error}</p>}
 
         <div className="flex gap-3">
           <button onClick={onClose}
