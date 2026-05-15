@@ -40,18 +40,21 @@ export default function History() {
     return sorted.filter(s => s.date >= cutStr);
   }, [sorted, period]);
 
-  const latest = sorted[sorted.length - 1];
-  const first  = sorted[0];
+  const latest       = sorted[sorted.length - 1];
+  const filteredFirst = filtered[0];
+  const filteredLast  = filtered[filtered.length - 1];
 
-  // KPI computed over full history
-  const gainPLN = latest && first ? (latest.total ?? 0) - (first.total ?? 0) : 0;
-  const gainPct = first?.total > 0 ? (gainPLN / first.total) * 100 : null;
+  // KPI scoped to selected period
+  const gainPLN = filteredLast && filteredFirst
+    ? (filteredLast.total ?? 0) - (filteredFirst.total ?? 0) : 0;
+  const gainPct = filteredFirst?.total > 0 ? (gainPLN / filteredFirst.total) * 100 : null;
 
-  const days = first && latest
-    ? Math.round((new Date(latest.date) - new Date(first.date)) / 86400000)
+  const days = filteredFirst && filteredLast
+    ? Math.round((new Date(filteredLast.date) - new Date(filteredFirst.date)) / 86400000)
     : 0;
-  const cagr = days > 1 && first?.total > 0 && latest?.total > 0
-    ? (Math.pow(latest.total / first.total, 365 / days) - 1) * 100
+  // CAGR: annualized return on invested capital (total / invested ratio), min 90d
+  const cagr = days >= 90 && latest?.invested > 0 && latest?.total > 0
+    ? (Math.pow(latest.total / latest.invested, 365 / days) - 1) * 100
     : null;
 
   const ath = useMemo(
@@ -109,7 +112,7 @@ export default function History() {
           <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">ATH (szczyt)</p>
             <p className="text-xl font-bold text-amber-400">{fmt(ath.total)} zł</p>
-            <p className="text-xs text-slate-500 mt-0.5">{ath.date}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{fmtDate(ath.date)}</p>
           </div>
         )}
       </div>
@@ -158,7 +161,7 @@ export default function History() {
             </thead>
             <tbody>
               {(() => {
-                const rows = [...filtered].reverse().slice(0, 30);
+                const rows = [...filtered].reverse();
                 return rows.map((s, i) => {
                   const pl      = (s.total ?? 0) - (s.invested ?? 0);
                   const pct     = s.invested > 0 ? (pl / s.invested) * 100 : 0;
