@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import Annotation from 'chartjs-plugin-annotation';
 import { useApp } from '../context/AppContext';
+import { fetchOptionChain, getMdApiKey } from '../services/MarketDataService';
 import {
   calcSigma, makePrices, calcPayoff, calcKPIs, calcGreeks,
 } from '../utils/scenarioLab';
@@ -103,6 +104,14 @@ export default function ScenarioLab() {
   const [livePrice,      setLivePrice]      = useState(null);
   const [fetchingPrice,  setFetchingPrice]  = useState(false);
 
+  const [chain,          setChain]          = useState(null);
+  const [chainLoading,   setChainLoading]   = useState(false);
+  const [chainError,     setChainError]     = useState(null);
+  const [chainTicker,    setChainTicker]    = useState('');
+  const [selectedExpiry, setSelectedExpiry] = useState('');
+  const [selectedSym1,   setSelectedSym1]   = useState('');
+  const [selectedSym2,   setSelectedSym2]   = useState('');
+
   useEffect(() => {
     if (!selectedSymbol) { setLivePrice(null); return; }
     const pos = portfolio.find(p => p.symbol === selectedSymbol);
@@ -126,6 +135,79 @@ export default function ScenarioLab() {
       .finally(() => setFetchingPrice(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSymbol]);
+
+  const expiryContracts = chain
+    ? chain.contracts.filter(c => c.expiry === selectedExpiry)
+    : [];
+
+  const leg1Side = ['long-put','protective-put','csp','bear-put-spread'].includes(strategy) ? 'put'
+                 : strategy === 'iron-condor' ? 'put'
+                 : 'call';
+  const leg2Side = ['bull-call-spread','iron-condor'].includes(strategy) ? 'call' : 'put';
+
+  const leg1Contracts = expiryContracts.filter(c => c.side === leg1Side);
+  const leg2Contracts = expiryContracts.filter(c => c.side === leg2Side);
+
+  async function handleFetchChain() {
+    const ticker = (chainTicker || selectedSymbol || '').toUpperCase().trim();
+    if (!ticker) { setChainError('Wprowadź ticker (np. AAPL)'); return; }
+    if (!getMdApiKey()) { setChainError('Brak klucza API — ustaw go w Ustawienia → Klucze API'); return; }
+    setChainLoading(true);
+    setChainError(null);
+    setChain(null);
+    setSelectedExpiry('');
+    setSelectedSym1('');
+    setSelectedSym2('');
+    try {
+      const data = await fetchOptionChain(ticker);
+      setChain(data);
+      if (data.expirations.length) setSelectedExpiry(data.expirations[0]);
+    } catch (e) {
+      setChainError(e.message);
+    } finally {
+      setChainLoading(false);
+    }
+  }
+
+  function applyContract(sym, isLeg2 = false) {
+    const c = chain?.contracts.find(x => x.optionSymbol === sym);
+    if (!c) return;
+    if (!isLeg2) {
+      setSelectedSym1(sym);
+      setStrike(c.strike);
+      if (c.dte   != null) setDte(c.dte);
+      if (c.iv    != null) setIv(Math.round(c.iv * 100));
+      if (!SPREAD_STRATEGIES.has(strategy)) {
+        const mid = c.mid ?? (c.bid != null && c.ask != null ? (c.bid + c.ask) / 2 : null);
+        if (mid != null) setPremium(parseFloat(mid.toFixed(2)));
+      }
+    } else {
+      setSelectedSym2(sym);
+      setStrike2(c.strike);
+    }
+
+    const sym1 = isLeg2 ? selectedSym1 : sym;
+    const sym2 = isLeg2 ? sym : selectedSym2;
+    if (SPREAD_STRATEGIES.has(strategy) && sym1 && sym2) {
+      const c1 = chain.contracts.find(x => x.optionSymbol === sym1);
+      const c2 = chain.contracts.find(x => x.optionSymbol === sym2);
+      if (c1 && c2) {
+        if (c1.dte != null) setDte(c1.dte);
+        if (c1.iv  != null) setIv(Math.round(c1.iv * 100));
+        const mid1 = c1.mid ?? (c1.bid != null && c1.ask != null ? (c1.bid + c1.ask) / 2 : 0);
+        const mid2 = c2.mid ?? (c2.bid != null && c2.ask != null ? (c2.bid + c2.ask) / 2 : 0);
+        if (strategy === 'iron-condor') {
+          const longPut  = chain.contracts.find(x => x.side === 'put'  && Math.abs(x.strike - (c1.strike - wing)) < 0.01 && x.expiry === c1.expiry);
+          const longCall = chain.contracts.find(x => x.side === 'call' && Math.abs(x.strike - (c2.strike + wing)) < 0.01 && x.expiry === c2.expiry);
+          const lp = longPut?.mid  ?? longPut?.ask  ?? 0;
+          const lc = longCall?.mid ?? longCall?.ask ?? 0;
+          setPremium(parseFloat(Math.max(0, mid1 + mid2 - lp - lc).toFixed(2)));
+        } else {
+          setPremium(parseFloat(Math.max(0, mid1 - mid2).toFixed(2)));
+        }
+      }
+    }
+  }
 
   const isSpread = SPREAD_STRATEGIES.has(strategy);
   const isWing   = WING_STRATEGIES.has(strategy);
@@ -249,38 +331,151 @@ export default function ScenarioLab() {
     <div className="max-w-4xl mx-auto space-y-4">
       <h2 className="text-lg font-bold text-slate-100">🧪 Scenario Lab — Akcje vs Opcje</h2>
 
-      {/* Stock picker */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-4">
-        <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
-          Spółka z portfela
-        </label>
-        <select
-          value={selectedSymbol}
-          onChange={e => setSelectedSymbol(e.target.value)}
-          className={inputCls + ' max-w-xs'}
-        >
-          <option value="">— własne wartości —</option>
-          {portfolio.map(pos => (
-            <option key={pos.id ?? pos.symbol} value={pos.symbol}>
-              {pos.symbol}{pos.name && pos.name !== pos.symbol ? ` — ${pos.name}` : ''}
-            </option>
-          ))}
-        </select>
-        {fetchingPrice && (
-          <span className="text-xs text-slate-400 animate-pulse">Pobieranie kursu…</span>
-        )}
-        {livePrice != null && !fetchingPrice && (
-          <span className="text-xs bg-indigo-900/60 border border-indigo-700 text-indigo-300 rounded-md px-2 py-1 font-mono">
-            {livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        )}
-        {selectedSymbol && !fetchingPrice && (
-          <button
-            onClick={() => setSelectedSymbol('')}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-auto"
+      {/* Stock picker + chain fetch */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 space-y-3">
+        {/* Row 1: portfolio selector */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
+            Spółka z portfela
+          </label>
+          <select
+            value={selectedSymbol}
+            onChange={e => { setSelectedSymbol(e.target.value); if (e.target.value) setChainTicker(e.target.value); }}
+            className={inputCls + ' max-w-xs'}
           >
-            ✕ wyczyść
+            <option value="">— własne wartości —</option>
+            {portfolio.map(pos => (
+              <option key={pos.id ?? pos.symbol} value={pos.symbol}>
+                {pos.symbol}{pos.name && pos.name !== pos.symbol ? ` — ${pos.name}` : ''}
+              </option>
+            ))}
+          </select>
+          {fetchingPrice && <span className="text-xs text-slate-400 animate-pulse">Pobieranie kursu…</span>}
+          {livePrice != null && !fetchingPrice && (
+            <span className="text-xs bg-indigo-900/60 border border-indigo-700 text-indigo-300 rounded-md px-2 py-1 font-mono">
+              {livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          )}
+          {selectedSymbol && !fetchingPrice && (
+            <button onClick={() => setSelectedSymbol('')} className="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-auto">
+              ✕ wyczyść
+            </button>
+          )}
+        </div>
+
+        {/* Row 2: ticker input + fetch button */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
+            Ticker opcji
+          </label>
+          <input
+            type="text"
+            value={chainTicker}
+            onChange={e => setChainTicker(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key === 'Enter' && handleFetchChain()}
+            placeholder="np. AAPL"
+            className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm w-28 outline-none focus:border-indigo-500 font-mono uppercase"
+          />
+          <button
+            onClick={handleFetchChain}
+            disabled={chainLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-wait text-sm font-semibold transition-colors"
+          >
+            {chainLoading
+              ? <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : '🔍'}
+            Pobierz łańcuch
           </button>
+          {chain && !chainLoading && (
+            <span className="text-xs text-emerald-400">
+              ✓ {chain.contracts.length} kontraktów ({chain.expirations.length} dat)
+            </span>
+          )}
+          {chainError && <span className="text-xs text-rose-400">{chainError}</span>}
+        </div>
+
+        {/* Row 3: chain dropdowns */}
+        {chain && (
+          <div className="border-t border-slate-700 pt-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                Wygaśnięcie
+              </label>
+              <select
+                value={selectedExpiry}
+                onChange={e => { setSelectedExpiry(e.target.value); setSelectedSym1(''); setSelectedSym2(''); }}
+                className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500"
+              >
+                {chain.expirations.map(exp => {
+                  const c = chain.contracts.find(x => x.expiry === exp);
+                  return (
+                    <option key={exp} value={exp}>
+                      {exp}{c?.dte != null ? ` (${c.dte}d)` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {!SPREAD_STRATEGIES.has(strategy) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                  Kontrakt
+                </label>
+                <select
+                  value={selectedSym1}
+                  onChange={e => applyContract(e.target.value, false)}
+                  className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500 flex-1 min-w-[200px]"
+                >
+                  <option value="">— wybierz strike —</option>
+                  {leg1Contracts.map(c => (
+                    <option key={c.optionSymbol} value={c.optionSymbol}>
+                      ${c.strike} · mid {c.mid != null ? `$${c.mid.toFixed(2)}` : '—'} · IV {c.iv != null ? `${(c.iv*100).toFixed(0)}%` : '—'} · Δ {c.delta != null ? c.delta.toFixed(2) : '—'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {SPREAD_STRATEGIES.has(strategy) && (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                    {strategy === 'iron-condor' ? 'Short Put' : 'Noga długa'}
+                  </label>
+                  <select
+                    value={selectedSym1}
+                    onChange={e => applyContract(e.target.value, false)}
+                    className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500 flex-1 min-w-[200px]"
+                  >
+                    <option value="">— wybierz strike —</option>
+                    {leg1Contracts.map(c => (
+                      <option key={c.optionSymbol} value={c.optionSymbol}>
+                        ${c.strike} · mid {c.mid != null ? `$${c.mid.toFixed(2)}` : '—'} · IV {c.iv != null ? `${(c.iv*100).toFixed(0)}%` : '—'} · Δ {c.delta != null ? c.delta.toFixed(2) : '—'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                    {strategy === 'iron-condor' ? 'Short Call' : 'Noga krótka'}
+                  </label>
+                  <select
+                    value={selectedSym2}
+                    onChange={e => applyContract(e.target.value, true)}
+                    className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500 flex-1 min-w-[200px]"
+                  >
+                    <option value="">— wybierz strike —</option>
+                    {leg2Contracts.map(c => (
+                      <option key={c.optionSymbol} value={c.optionSymbol}>
+                        ${c.strike} · mid {c.mid != null ? `$${c.mid.toFixed(2)}` : '—'} · IV {c.iv != null ? `${(c.iv*100).toFixed(0)}%` : '—'} · Δ {c.delta != null ? c.delta.toFixed(2) : '—'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 
