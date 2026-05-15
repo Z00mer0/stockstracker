@@ -22,7 +22,7 @@ export async function fetchOptionChain(ticker) {
   try {
     const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
     if (cached?.ts && Date.now() - cached.ts < CACHE_TTL) return cached.data;
-  } catch {}
+  } catch { /* invalid cache — will re-fetch */ }
 
   const url = `https://api.marketdata.app/v1/options/chain/${encodeURIComponent(sym)}/?token=${token}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
@@ -30,6 +30,10 @@ export async function fetchOptionChain(ticker) {
   const json = await res.json().catch(() => { throw new Error(`HTTP ${res.status}`); });
   if (!res.ok || json.s === 'error') {
     throw new Error(json.errmsg || `HTTP ${res.status}`);
+  }
+
+  if (!json.optionSymbol?.length) {
+    throw new Error(`Brak kontraktów dla ${sym}`);
   }
 
   const n = (json.optionSymbol || []).length;
