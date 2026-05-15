@@ -2,7 +2,7 @@
 
 export const MD_API_KEY_LS = 'marketdata_api_key';
 const CACHE_PREFIX = 'marketdata_chain_';
-const CACHE_TTL    = 5 * 60 * 1000;
+const CACHE_TTL    = 10 * 60 * 1000;
 
 export function getMdApiKey() {
   return localStorage.getItem(MD_API_KEY_LS) || '';
@@ -10,6 +10,15 @@ export function getMdApiKey() {
 
 export function setMdApiKey(key) {
   localStorage.setItem(MD_API_KEY_LS, key.trim());
+}
+
+export function getChainFromCache(ticker) {
+  try {
+    const cacheKey = CACHE_PREFIX + ticker.toUpperCase().trim();
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached?.ts && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  } catch {}
+  return null;
 }
 
 export async function fetchOptionChain(ticker) {

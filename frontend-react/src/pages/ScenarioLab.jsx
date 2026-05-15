@@ -222,6 +222,23 @@ export default function ScenarioLab() {
     }
   }
 
+  function resetParams() {
+    const base = livePrice ?? entry;
+    setIv(30);
+    setDte(30);
+    setExpiryDate(dteToDateStr(30));
+    setPremium(3.50);
+    setQty(1);
+    if (livePrice) {
+      setEntry(livePrice);
+      setStrike(parseFloat((livePrice * 1.05).toFixed(2)));
+      setStrike2(parseFloat((livePrice * 1.10).toFixed(2)));
+    } else {
+      setStrike(parseFloat((base * 1.05).toFixed(2)));
+      setStrike2(parseFloat((base * 1.10).toFixed(2)));
+    }
+  }
+
   const isSpread = SPREAD_STRATEGIES.has(strategy);
   const isWing   = WING_STRATEGIES.has(strategy);
   const isHedged = HEDGED_STRATEGIES.has(strategy);
@@ -492,6 +509,16 @@ export default function ScenarioLab() {
         )}
       </div>
 
+      {/* Toolbar */}
+      <div className="flex justify-end">
+        <button
+          onClick={resetParams}
+          className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors border border-slate-600"
+        >
+          ↺ Reset parametrów
+        </button>
+      </div>
+
       {/* Form grid */}
       <div className="grid grid-cols-2 gap-3">
         {/* Left panel */}
@@ -504,6 +531,9 @@ export default function ScenarioLab() {
           <Field label="Cena wejścia ($)">
             <input type="number" value={entry} min="0.01" step="0.01"
               onChange={e => setEntry(parseFloat(e.target.value) || 100)} className={inputCls} />
+            {strategy === 'covered-call' && livePrice != null && Math.abs((entry - livePrice) / livePrice) > 0.15 && (
+              <span className="text-xs text-amber-400">⚠ Cena akcji znacznie odbiega od rynkowej ({livePrice.toFixed(2)})</span>
+            )}
           </Field>
           {!isSpread && (
             <Field label="Ilość akcji / kontraktów">
@@ -577,6 +607,20 @@ export default function ScenarioLab() {
           )}
           {kpis.moic != null && (
             <StatCard label="MOIC" value={kpis.moic.toFixed(2) + 'x'} color="yellow" />
+          )}
+          {isFinite(kpis.maxProfit) && isFinite(kpis.maxLoss) && kpis.maxLoss !== 0 && (
+            <StatCard
+              label="R/R Ratio"
+              value={(Math.abs(kpis.maxProfit) / Math.abs(kpis.maxLoss)).toFixed(2) + ' : 1'}
+              color="muted"
+            />
+          )}
+          {kpis.bpe > 0 && isFinite(kpis.maxProfit) && (
+            <StatCard
+              label="Return on Capital"
+              value={((kpis.maxProfit / kpis.bpe) * 100).toFixed(1) + '%'}
+              color={kpis.maxProfit >= 0 ? 'green' : 'red'}
+            />
           )}
           {sigma != null && (
             <StatCard label="±1σ zakres" value={'±$' + sigma.toFixed(2)} color="muted" />
