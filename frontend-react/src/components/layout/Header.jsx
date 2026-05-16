@@ -4,6 +4,16 @@ import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 
+function isEuropeDST() {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const lastSunMarch = new Date(Date.UTC(y, 2, 31));
+  while (lastSunMarch.getUTCDay() !== 0) lastSunMarch.setUTCDate(lastSunMarch.getUTCDate() - 1);
+  const lastSunOct = new Date(Date.UTC(y, 9, 31));
+  while (lastSunOct.getUTCDay() !== 0) lastSunOct.setUTCDate(lastSunOct.getUTCDate() - 1);
+  return now >= lastSunMarch && now < lastSunOct;
+}
+
 function getMarketStatuses() {
   const now = new Date();
   const day = now.getUTCDay();
@@ -11,10 +21,15 @@ function getMarketStatuses() {
   const m = now.getUTCMinutes();
   const t = h * 60 + m;
   const isWeekday = day >= 1 && day <= 5;
+  const dst = isEuropeDST();
+  const gpwOpen = dst ? 7 * 60 : 8 * 60;
+  const gpwClose = dst ? 15 * 60 + 5 : 16 * 60 + 5;
+  const lseOpen = dst ? 7 * 60 : 8 * 60;
+  const lseClose = dst ? 15 * 60 + 30 : 16 * 60 + 30;
   return [
     { label: 'NYSE', open: isWeekday && t >= 870 && t < 1260 },
-    { label: 'GPW',  open: isWeekday && t >= 480 && t < 965 },
-    { label: 'LSE',  open: isWeekday && t >= 480 && t < 990 },
+    { label: 'GPW',  open: isWeekday && t >= gpwOpen && t < gpwClose },
+    { label: 'LSE',  open: isWeekday && t >= lseOpen && t < lseClose },
   ];
 }
 
