@@ -10,6 +10,27 @@ import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
+function xirr(cashflows) {
+  if (cashflows.length < 2) return null;
+  const t0 = new Date(cashflows[0].date).getTime();
+  const days = cashflows.map(cf => (new Date(cf.date).getTime() - t0) / 86400000);
+  let rate = 0.1;
+  for (let iter = 0; iter < 100; iter++) {
+    let f = 0, df = 0;
+    for (let i = 0; i < cashflows.length; i++) {
+      const t = days[i] / 365;
+      const denom = Math.pow(1 + rate, t);
+      f  += cashflows[i].amount / denom;
+      df -= t * cashflows[i].amount / (denom * (1 + rate));
+    }
+    if (Math.abs(f) < 1e-7) return rate;
+    const next = rate - f / df;
+    if (!isFinite(next)) return null;
+    rate = next;
+  }
+  return Math.abs(rate) < 50 ? rate : null;
+}
+
 function toPlnRate(currency, fx) {
   return fx[currency] ?? 1;
 }
@@ -358,6 +379,20 @@ export default function Dashboard() {
     [portfolio, fxRates, enrichPosition]
   );
 
+  const portfolioIrr = useMemo(() => {
+    const cashflows = transactions
+      .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DIV')
+      .map(t => ({
+        amount: t.type === 'BUY'
+          ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
+          : t.qty * t.price * (fxRates[t.currency] ?? 1),
+        date: t.date,
+      }));
+    const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
+    if (totalValue > 0) cashflows.push({ amount: totalValue, date: new Date().toISOString() });
+    return xirr(cashflows);
+  }, [transactions, fxRates, allPositions]);
+
   const dailyChange = useMemo(() => {
     const pln = allPositions.reduce((sum, pos) => {
       if (pos.valuePLN != null && pos.dailyChg != null) {
@@ -376,7 +411,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KpiCard
           label="Wartość portfela"
           value={`${fmt(kpi.totalValue)} zł`}
@@ -406,6 +441,12 @@ export default function Dashboard() {
           sub={dailyChange.pct != null ? `${dailyChange.pct >= 0 ? '+' : ''}${fmt(dailyChange.pct, 2)}%` : undefined}
           trend={dailyChange.pln}
           color={dailyChange.pln >= 0 ? 'green' : 'red'}
+        />
+        <KpiCard
+          label="IRR portfela"
+          value={portfolioIrr != null ? (portfolioIrr * 100).toFixed(1) + '%' : '—'}
+          sub="ważona roczna stopa zwrotu"
+          color={portfolioIrr > 0 ? 'green' : portfolioIrr < 0 ? 'red' : 'slate'}
         />
       </div>
 
