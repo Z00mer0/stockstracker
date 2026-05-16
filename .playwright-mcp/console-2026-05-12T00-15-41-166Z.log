@@ -1,0 +1,22 @@
+[  196923ms] [ERROR] TypeError: n is not iterable
+    at http://localhost:8765/app/assets/index-CIkuaRQQ.js:59:13252
+    at Object.bd [as useMemo] (http://localhost:8765/app/assets/index-CIkuaRQQ.js:38:21314)
+    at A.useMemo (http://localhost:8765/app/assets/index-CIkuaRQQ.js:9:6193)
+    at mx (http://localhost:8765/app/assets/index-CIkuaRQQ.js:59:13227)
+    at Yi (http://localhost:8765/app/assets/index-CIkuaRQQ.js:38:16952)
+    at Gs (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:3134)
+    at hf (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:44562)
+    at df (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:39575)
+    at Nm (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:39503)
+    at oo (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:39357) @ http://localhost:8765/app/assets/index-CIkuaRQQ.js:39
+[  196968ms] TypeError: n is not iterable
+    at http://localhost:8765/app/assets/index-CIkuaRQQ.js:59:13252
+    at Object.bd [as useMemo] (http://localhost:8765/app/assets/index-CIkuaRQQ.js:38:21314)
+    at A.useMemo (http://localhost:8765/app/assets/index-CIkuaRQQ.js:9:6193)
+    at mx (http://localhost:8765/app/assets/index-CIkuaRQQ.js:59:13227)
+    at Yi (http://localhost:8765/app/assets/index-CIkuaRQQ.js:38:16952)
+    at Gs (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:3134)
+    at hf (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:44562)
+    at df (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:39575)
+    at Nm (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:39503)
+    at oo (http://localhost:8765/app/assets/index-CIkuaRQQ.js:40:39357)

@@ -1,0 +1,4 @@
+[    1291ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://stockstracker.onrender.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker.onrender.com/app:0
+[    1292ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    1292ms] [WARNING] [fx] fetch failed, using fallback: Failed to fetch @ https://stockstracker.onrender.com/app/assets/index-CFG--ax_.js:58
+[    1350ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker.onrender.com/api/data:0

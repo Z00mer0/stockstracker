@@ -14,8 +14,9 @@ async function loadFxRates() {
     if (cached?.ts && Date.now() - cached.ts < FX_CACHE_TTL) return cached.rates;
   } catch {}
   try {
+    const fxUrl = 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP';
     const res = await fetch(
-      'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP',
+      `/api/proxy?url=${encodeURIComponent(fxUrl)}`,
       { signal: AbortSignal.timeout(5000) }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

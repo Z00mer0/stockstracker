@@ -1,0 +1,10 @@
+- generic [ref=e4]:
+  - heading "Zaloguj się" [level=2] [ref=e5]
+  - paragraph [ref=e6]: StocksTracker — konto z Render
+  - generic [ref=e7]:
+    - generic [ref=e8]: Nazwa użytkownika
+    - textbox [active] [ref=e9]
+  - generic [ref=e10]:
+    - generic [ref=e11]: Hasło
+    - textbox [ref=e12]
+  - button "Zaloguj" [disabled] [ref=e13]

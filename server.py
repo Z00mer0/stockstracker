@@ -239,6 +239,7 @@ class Handler(SimpleHTTPRequestHandler):
                 'https://finance.yahoo.com/',
                 'https://stooq.com/',
                 'https://nfs.faireconomy.media/',
+                'https://api.frankfurter.app/',
             )
             if not any(target.startswith(a) for a in allowed):
                 self.send_json(403, {'error': 'forbidden'}); return

@@ -1,0 +1,5 @@
+[    2559ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8765/api/data:0
+[    2584ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/favicon.ico:0
+[    2783ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'http://localhost:8765' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:8765/app/dividends:0
+[    2784ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    2784ms] [WARNING] [fx] fetch failed, using fallback: Failed to fetch @ http://localhost:8765/app/assets/index-DFMdk2TC.js:58

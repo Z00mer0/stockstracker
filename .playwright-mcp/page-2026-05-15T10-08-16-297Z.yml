@@ -1,0 +1,60 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3] [cursor=pointer]: StocksTracker
+    - generic [ref=e4] [cursor=pointer]:
+      - generic [ref=e5]: 💼
+      - generic [ref=e6]: Mój portfel
+      - generic [ref=e7]: ▾
+    - navigation [ref=e8]:
+      - button "Portfel" [ref=e9] [cursor=pointer]
+      - button "Historia" [ref=e10] [cursor=pointer]
+      - button "Transakcje" [ref=e11] [cursor=pointer]
+      - button "Dywidendy" [ref=e12] [cursor=pointer]
+      - button "Kalendarz" [ref=e13] [cursor=pointer]
+      - button "👁 Watchlist" [ref=e14] [cursor=pointer]
+      - button "📊 Analiza" [ref=e15] [cursor=pointer]
+      - button "🧪 Lab" [active] [ref=e16] [cursor=pointer]
+    - generic [ref=e17]:
+      - button "👁" [ref=e18] [cursor=pointer]
+      - button "🇬🇧 EN" [ref=e19] [cursor=pointer]
+      - button "🌙 Dark" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]: 🇵🇱 Otwarte
+        - generic [ref=e24]: 🇺🇸 Zamknięte
+      - generic [ref=e28]: Brak danych
+      - button "Ładowanie…" [disabled] [ref=e99]: Ładowanie…
+      - generic [ref=e101]:
+        - generic [ref=e102]: Adam
+        - button "Wyloguj" [ref=e103] [cursor=pointer]
+  - main [ref=e442]:
+    - generic [ref=e443]:
+      - generic [ref=e444]: 🧪 Scenario Lab — Akcje vs Opcje
+      - generic [ref=e445]:
+        - generic [ref=e446]:
+          - generic [ref=e447]: TICKER
+          - textbox [ref=e448]: NVDA
+          - generic [ref=e449]: CENA WEJŚCIA ($)
+          - spinbutton [ref=e450]: "100"
+          - generic [ref=e451]: ILOŚĆ AKCJI / KONTRAKTÓW
+          - spinbutton [ref=e452]: "1"
+        - generic [ref=e453]:
+          - generic [ref=e454]: STRIKE OPCJI CALL ($)
+          - spinbutton [ref=e455]: "105"
+          - generic [ref=e456]: PREMIA (PREMIUM, $ / opcja)
+          - spinbutton [ref=e457]: "3.50"
+          - generic [ref=e458]: DNI DO WYGAŚNIĘCIA
+          - spinbutton [ref=e459]: "30"
+      - button "▶ Oblicz i pokaż wykres" [ref=e460] [cursor=pointer]
+      - generic [ref=e461]:
+        - generic [ref=e462]:
+          - generic [ref=e463]: Break-even Akcje
+          - generic [ref=e464]: $100.00
+        - generic [ref=e465]:
+          - generic [ref=e466]: Break-even Opcja
+          - generic [ref=e467]: $108.50
+        - generic [ref=e468]:
+          - generic [ref=e469]: Koszt Akcje
+          - generic [ref=e470]: $100
+        - generic [ref=e471]:
+          - generic [ref=e472]: Koszt Opcja (premia)
+          - generic [ref=e473]: $350.00

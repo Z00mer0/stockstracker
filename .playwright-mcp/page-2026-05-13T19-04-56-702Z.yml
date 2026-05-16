@@ -1,0 +1,109 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "💰 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 💰
+        - text: Dywidendy
+      - link "📅 Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 📅
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "⚙️ Ustawienia" [ref=e25] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e26]: ⚙️
+        - text: Ustawienia
+    - button "Wyloguj →" [ref=e28] [cursor=pointer]
+  - generic [ref=e29]:
+    - banner [ref=e30]:
+      - heading "Dywidendy" [level=1] [ref=e31]
+      - button "↻ Odśwież" [ref=e38] [cursor=pointer]:
+        - generic [ref=e33]: ↻
+        - generic [ref=e34]: Odśwież
+    - main [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e39]:
+          - paragraph [ref=e40]: ℹ️ Daty dywidend GPW (XTB.WA, VOT.WA itp.) są dodawane ręcznie — brak darmowego API dla GPW. Daty dla spółek US (NVDA, HOOD itp.) są pobierane automatycznie z Finnhub.
+          - button "+ Dodaj dywidendę GPW" [ref=e41] [cursor=pointer]
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - heading "Nadchodzące dywidendy" [level=2] [ref=e44]
+            - button "+ Dodaj ręcznie" [ref=e46] [cursor=pointer]
+          - generic [ref=e47]:
+            - text: Brak nadchodzących dywidend.
+            - generic [ref=e48]: "US stocks: Finnhub może nie mieć danych dla tej spółki."
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - paragraph [ref=e51]: Łącznie dywidendy
+            - paragraph [ref=e52]: 0,00 zł
+          - generic [ref=e53]:
+            - paragraph [ref=e54]: Liczba wypłat
+            - paragraph [ref=e55]: "0"
+          - generic [ref=e56]:
+            - paragraph [ref=e57]: Spółki dywidendowe
+            - paragraph [ref=e58]: "0"
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - heading "➕ Dodaj dywidendę" [level=3] [ref=e62]
+            - button "×" [ref=e63] [cursor=pointer]
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - generic [ref=e66]: Spółka
+              - combobox [active] [ref=e67]:
+                - option "— wybierz —" [selected]
+                - option "ALE.WA"
+                - option "CBF.WA"
+                - option "DNP.WA"
+                - option "HOOD"
+                - option "KRU.WA"
+                - option "MDV.WA"
+                - option "NVDA"
+                - option "PKN.WA"
+                - option "VOT.WA"
+                - option "XTB.WA"
+            - generic [ref=e68]:
+              - generic [ref=e69]: Ex-date *
+              - textbox [ref=e70]
+            - generic [ref=e71]:
+              - generic [ref=e72]: Pay-date (opcjonalnie)
+              - textbox [ref=e73]
+            - generic [ref=e74]:
+              - generic [ref=e75]:
+                - generic [ref=e76]: Kwota / akcję *
+                - spinbutton [ref=e77]
+              - generic [ref=e78]:
+                - generic [ref=e79]: Waluta
+                - combobox [ref=e80]:
+                  - option "PLN" [selected]
+                  - option "USD"
+                  - option "EUR"
+                  - option "GBP"
+            - generic [ref=e81]:
+              - generic [ref=e82]: Notatka (opcjonalnie)
+              - textbox "np. wypłata za 2025" [ref=e83]
+          - generic [ref=e84]:
+            - button "Anuluj" [ref=e85] [cursor=pointer]
+            - button "Zapisz ✓" [disabled] [ref=e86]

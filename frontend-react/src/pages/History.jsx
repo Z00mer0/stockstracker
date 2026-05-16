@@ -131,7 +131,7 @@ export default function History() {
   return (
     <div className="space-y-5">
       {/* KPI */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Aktualna wartość</p>
           <p className="text-xl font-bold text-slate-100">{fmt(latest?.total)} zł</p>

@@ -1,0 +1,87 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3] [cursor=pointer]: StocksTracker
+    - generic [ref=e4] [cursor=pointer]:
+      - generic [ref=e5]: 💼
+      - generic [ref=e6]: Mój portfel
+      - generic [ref=e7]: ▾
+    - navigation [ref=e8]:
+      - button "Portfel" [ref=e9] [cursor=pointer]
+      - button "Historia" [ref=e10] [cursor=pointer]
+      - button "Transakcje" [ref=e11] [cursor=pointer]
+      - button "Dywidendy" [ref=e12] [cursor=pointer]
+      - button "Kalendarz" [ref=e13] [cursor=pointer]
+      - button "👁 Watchlist" [ref=e14] [cursor=pointer]
+      - button "📊 Analiza" [ref=e15] [cursor=pointer]
+      - button "🧪 Lab" [ref=e16] [cursor=pointer]
+    - generic [ref=e17]:
+      - button "👁" [ref=e18] [cursor=pointer]
+      - button "🇬🇧 EN" [ref=e19] [cursor=pointer]
+      - button "🌙 Dark" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]: 🇵🇱 Otwarte
+        - generic [ref=e24]: 🇺🇸 Zamknięte
+      - generic [ref=e28]: Brak danych
+      - button "↻ Odśwież" [ref=e29] [cursor=pointer]:
+        - generic [ref=e30]: ↻
+        - generic [ref=e31]: Odśwież
+  - main [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: Wartość portfela (PLN)
+        - generic [ref=e36]: —
+        - generic [ref=e37]: Akcje + gotówka
+      - generic [ref=e38]:
+        - generic [ref=e39]: Zmiana dzienna
+        - generic [ref=e40]: —
+        - generic [ref=e41]: vs. poprzednie zamknięcie
+      - generic [ref=e42]:
+        - generic [ref=e43]: Niezrealizowany zysk
+        - generic [ref=e44]: —
+        - generic [ref=e45]: na otwartych pozycjach
+      - generic [ref=e46]:
+        - generic [ref=e47]: Zrealizowany zysk
+        - generic [ref=e48]: —
+        - generic [ref=e49]: ze sprzedanych pozycji
+      - generic [ref=e50]:
+        - generic [ref=e51]: Gotówka
+        - generic [ref=e52]: 0,00 zł
+        - generic [ref=e53]: łączna w PLN
+      - generic [ref=e54]:
+        - generic [ref=e55]: IRR portfela
+        - generic [ref=e56]: —
+        - generic [ref=e57]: ważona roczna stopa zwrotu
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]: Moje pozycje
+          - generic [ref=e62]:
+            - button "⚙️" [ref=e64] [cursor=pointer]
+            - button "⬆ Import CSV" [ref=e65] [cursor=pointer]
+            - button "+ Dodaj spółkę" [ref=e66] [cursor=pointer]
+        - generic [ref=e67]:
+          - generic [ref=e68]: 📊
+          - paragraph [ref=e69]: Portfel jest pusty
+          - paragraph [ref=e70]: Kliknij „+ Dodaj spółkę" lub zaimportuj CSV, aby zacząć
+      - generic [ref=e71]:
+        - generic [ref=e72]: Alokacja portfela
+        - generic [ref=e73]:
+          - button "Spółki" [ref=e74] [cursor=pointer]
+          - button "Sektory" [ref=e75] [cursor=pointer]
+          - button "Waluty" [ref=e76] [cursor=pointer]
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]: 💵 Gotówka w portfelu
+        - button "✎ Zarządzaj gotówką" [ref=e81] [cursor=pointer]
+      - generic [ref=e83]: Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.
+  - generic [ref=e86]:
+    - generic [ref=e87]: StocksTracker
+    - generic [ref=e88]: Zaloguj się
+    - generic [ref=e89]:
+      - generic [ref=e90]: Nazwa użytkownika
+      - textbox "nazwa użytkownika" [ref=e91]: adamxdd
+    - generic [ref=e92]:
+      - generic [ref=e93]: Hasło
+      - textbox "••••••" [ref=e94]: Piwoiwo123
+    - button "Zaloguj się" [ref=e96] [cursor=pointer]
+    - button "+ Utwórz nowe konto" [ref=e98] [cursor=pointer]

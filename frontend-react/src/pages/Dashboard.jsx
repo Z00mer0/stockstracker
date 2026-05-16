@@ -352,8 +352,14 @@ export default function Dashboard() {
     [portfolio, fxRates, enrichPosition]
   );
 
+  const allPositions = useMemo(
+    () => portfolio.map(pos => enrichPosition(pos)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [portfolio, fxRates, enrichPosition]
+  );
+
   const dailyChange = useMemo(() => {
-    const pln = topPositions.reduce((sum, pos) => {
+    const pln = allPositions.reduce((sum, pos) => {
       if (pos.valuePLN != null && pos.dailyChg != null) {
         return sum + pos.valuePLN * pos.dailyChg / 100;
       }
@@ -361,12 +367,7 @@ export default function Dashboard() {
     }, 0);
     const pct = kpi.totalValue > 0 ? (pln / kpi.totalValue) * 100 : null;
     return { pln, pct };
-  }, [topPositions, kpi.totalValue]);
-
-  const cashTotalPLN = useMemo(
-    () => Object.entries(cash).reduce((sum, [cur, amt]) => sum + (amt || 0) * (fxRates[cur] ?? 1), 0),
-    [cash, fxRates]
-  );
+  }, [allPositions, kpi.totalValue]);
 
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
@@ -375,7 +376,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KpiCard
           label="Wartość portfela"
           value={`${fmt(kpi.totalValue)} zł`}
@@ -406,19 +407,14 @@ export default function Dashboard() {
           trend={dailyChange.pln}
           color={dailyChange.pln >= 0 ? 'green' : 'red'}
         />
-        <KpiCard
-          label="Gotówka"
-          value={`${fmt(cashTotalPLN)} zł`}
-          color="slate"
-        />
       </div>
 
       {/* Gotówka */}
       <CashSection cash={cash} fxRates={fxRates} saveCash={saveCash} />
 
       {/* Alokacja */}
-      {topPositions.length > 0 && (
-        <AllocationChart positions={topPositions} />
+      {allPositions.length > 0 && (
+        <AllocationChart positions={allPositions} />
       )}
 
       {/* Sparkline historii */}

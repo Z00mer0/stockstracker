@@ -1,0 +1,69 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3] [cursor=pointer]: StocksTracker
+    - generic [ref=e4] [cursor=pointer]:
+      - generic [ref=e5]: 💼
+      - generic [ref=e6]: Mój portfel
+      - generic [ref=e7]: ▾
+    - navigation [ref=e8]:
+      - button "Portfel" [ref=e9] [cursor=pointer]
+      - button "Historia" [ref=e10] [cursor=pointer]
+      - button "Transakcje" [ref=e11] [cursor=pointer]
+      - button "Dywidendy" [ref=e12] [cursor=pointer]
+      - button "Kalendarz" [ref=e13] [cursor=pointer]
+      - button "👁 Watchlist" [ref=e14] [cursor=pointer]
+      - button "📊 Analiza" [ref=e15] [cursor=pointer]
+      - button "🧪 Lab" [active] [ref=e16] [cursor=pointer]
+    - generic [ref=e17]:
+      - button "👁" [ref=e18] [cursor=pointer]
+      - button "🇬🇧 EN" [ref=e19] [cursor=pointer]
+      - button "🌙 Dark" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]: 🇵🇱 Otwarte
+        - generic [ref=e24]: 🇺🇸 Zamknięte
+      - generic [ref=e28]: "Odświeżono: 12:14"
+      - button "↻ Odśwież" [ref=e29] [cursor=pointer]:
+        - generic [ref=e85]: ↻
+        - generic [ref=e86]: Odśwież
+      - generic [ref=e87]:
+        - generic [ref=e88]: Adam
+        - button "Wyloguj" [ref=e89] [cursor=pointer]
+  - main [ref=e90]:
+    - generic [ref=e91]:
+      - generic [ref=e92]: 🧪 Scenario Lab — Akcje vs Opcje
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - generic [ref=e95]: STRATEGIA
+          - combobox [ref=e96]:
+            - option "Long Call" [selected]
+            - option "Long Put"
+            - option "Covered Call"
+            - option "Protective Put"
+            - option "Cash-Secured Put"
+          - generic [ref=e97]: TICKER
+          - textbox [ref=e98]: NVDA
+          - generic [ref=e99]: CENA WEJŚCIA ($)
+          - spinbutton [ref=e100]: "100"
+          - generic [ref=e101]: ILOŚĆ AKCJI / KONTRAKTÓW
+          - spinbutton [ref=e102]: "1"
+        - generic [ref=e103]:
+          - generic [ref=e104]: STRIKE CALL ($)
+          - spinbutton [ref=e105]: "105"
+          - generic [ref=e106]: PREMIA (PREMIUM, $ / opcja)
+          - spinbutton [ref=e107]: "3.50"
+          - generic [ref=e108]: DNI DO WYGAŚNIĘCIA
+          - spinbutton [ref=e109]: "30"
+      - button "▶ Oblicz i pokaż wykres" [ref=e110] [cursor=pointer]
+      - generic [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]: Break-even
+          - generic [ref=e114]: $108.50
+        - generic [ref=e115]:
+          - generic [ref=e116]: Max Strata
+          - generic [ref=e117]: "-$350.00"
+        - generic [ref=e118]:
+          - generic [ref=e119]: Max Zysk
+          - generic [ref=e120]: ∞
+        - generic [ref=e121]:
+          - generic [ref=e122]: Koszt Opcji
+          - generic [ref=e123]: $350.00
