@@ -1,8 +1,31 @@
 // src/components/layout/Header.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
+
+function getMarketStatuses() {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  const t = h * 60 + m;
+  const isWeekday = day >= 1 && day <= 5;
+  return [
+    { label: 'NYSE', open: isWeekday && t >= 870 && t < 1260 },
+    { label: 'GPW',  open: isWeekday && t >= 480 && t < 965 },
+    { label: 'LSE',  open: isWeekday && t >= 480 && t < 990 },
+  ];
+}
+
+function useMarketStatus() {
+  const [markets, setMarkets] = useState(getMarketStatuses);
+  useEffect(() => {
+    const id = setInterval(() => setMarkets(getMarketStatuses()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  return markets;
+}
 
 const PAGE_TITLES = {
   '/':             'Dashboard',
@@ -21,6 +44,7 @@ export default function Header({ onMenuToggle }) {
   const { loading, refresh } = useApp();
   const { isPrivate, toggle } = usePrivacy();
   const title = PAGE_TITLES[pathname] ?? 'StocksTracker';
+  const markets = useMarketStatus();
 
   return (
     <header className="h-14 flex-shrink-0 flex items-center gap-3 px-4 md:px-6 border-b border-slate-800 bg-slate-900/80 backdrop-blur">
@@ -59,6 +83,15 @@ export default function Header({ onMenuToggle }) {
           </svg>
         )}
       </button>
+
+      <div className="hidden sm:flex items-center gap-2 text-xs">
+        {markets.map(m => (
+          <span key={m.label} className="flex items-center gap-1 text-slate-500">
+            <span className={`w-1.5 h-1.5 rounded-full ${m.open ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+            {m.label}
+          </span>
+        ))}
+      </div>
 
       {/* Odśwież */}
       <button
