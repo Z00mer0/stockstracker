@@ -311,7 +311,7 @@ function CashSection({ cash, fxRates, saveCash }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested } = useApp();
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const [cols] = useState(loadColumnConfig);
@@ -321,8 +321,8 @@ export default function Dashboard() {
     const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const latest = sorted[sorted.length - 1];
 
-    const totalValue    = latest?.total    ?? 0;
-    const totalInvested = latest?.invested ?? 0;
+    const totalValue    = latest?.total ?? 0;
+    const totalInvested = invested ?? 0;
     const unrealPLN     = totalValue - totalInvested;
     const unrealPct     = totalInvested > 0 ? (unrealPLN / totalInvested) * 100 : 0;
 
@@ -341,7 +341,7 @@ export default function Dashboard() {
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
     return { totalValue, totalInvested, unrealPLN, unrealPct, realizedPLN, dividendsPLN, sparkValues };
-  }, [snapshots, transactions, fxRates]);
+  }, [snapshots, transactions, fxRates, invested]);
 
   const topPositions = useMemo(
     () => [...portfolio]

@@ -4,6 +4,32 @@ import { useChart } from '../context/ChartContext';
 
 const WATCH_KEY = 'myfund_watchlist';
 
+const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
+
+async function fetchLivePrice(sym) {
+  try {
+    const q = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`,
+      { signal: AbortSignal.timeout(8000) }
+    ).then(r => r.json());
+    if (q?.c > 0) return { price: q.c, dailyChg: q.dp ?? null };
+  } catch {}
+  // Yahoo fallback for non-US exchanges
+  try {
+    const yfUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
+    const json = await fetch(`/api/proxy?url=${encodeURIComponent(yfUrl)}`, { signal: AbortSignal.timeout(8000) }).then(r => r.json());
+    const meta = json?.chart?.result?.[0]?.meta;
+    if (meta?.regularMarketPrice) {
+      const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;
+      return {
+        price: meta.regularMarketPrice,
+        dailyChg: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : null,
+      };
+    }
+  } catch {}
+  return null;
+}
+
 function loadWatchlist() {
   try {
     return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]');
@@ -88,10 +114,30 @@ export default function Watchlist() {
   const { openChart } = useChart();
   const [watchItems, setWatchItems] = useState([]);
   const [alertTarget, setAlertTarget] = useState(null);
+  const [livePrices, setLivePrices] = useState({});
+  const [pricesLoading, setPricesLoading] = useState(false);
 
   useEffect(() => {
     setWatchItems(loadWatchlist());
   }, []);
+
+  useEffect(() => {
+    if (!watchItems.length) return;
+    setPricesLoading(true);
+    const symbols = [...new Set(watchItems.map(w => w.symbol))];
+    Promise.allSettled(symbols.map(async sym => {
+      const data = await fetchLivePrice(sym);
+      return { sym, data };
+    })).then(results => {
+      const prices = {};
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.data) {
+          prices[r.value.sym] = r.value.data;
+        }
+      });
+      setLivePrices(prices);
+    }).finally(() => setPricesLoading(false));
+  }, [watchItems.length]);
 
   function addAlert(itemId, alert) {
     setWatchItems(prev => {
@@ -143,6 +189,8 @@ export default function Watchlist() {
                 <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
                   <th className="text-left px-5 py-2.5">Symbol</th>
                   <th className="text-right px-5 py-2.5">Cena przy dodaniu</th>
+                  <th className="text-right px-5 py-2.5">Aktualna cena</th>
+                  <th className="text-right px-5 py-2.5">Zmiana dz.</th>
                   <th className="text-left px-5 py-2.5">Notatka</th>
                   <th className="text-right px-5 py-2.5">Alerty</th>
                 </tr>
@@ -162,6 +210,21 @@ export default function Watchlist() {
                     </td>
                     <td className="px-5 py-3 text-right text-slate-400">
                       {w.addedPrice != null ? `${w.addedPrice.toFixed(2)} ${w.currency ?? ''}` : '—'}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {pricesLoading && !livePrices[w.symbol]
+                        ? <span className="text-slate-600 text-xs">…</span>
+                        : livePrices[w.symbol]
+                        ? <span className="text-slate-200 font-semibold">{livePrices[w.symbol].price.toFixed(2)} {w.currency ?? ''}</span>
+                        : <span className="text-slate-600">—</span>
+                      }
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {livePrices[w.symbol]?.dailyChg != null ? (
+                        <span className={livePrices[w.symbol].dailyChg >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                          {livePrices[w.symbol].dailyChg >= 0 ? '+' : ''}{livePrices[w.symbol].dailyChg.toFixed(2)}%
+                        </span>
+                      ) : <span className="text-slate-600">—</span>}
                     </td>
                     <td className="px-5 py-3 text-slate-500 text-xs">{w.note || '—'}</td>
                     <td className="px-5 py-3 text-right">

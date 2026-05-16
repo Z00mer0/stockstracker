@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { usePrivacy } from '../context/PrivacyContext';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import Spinner from '../components/shared/Spinner';
 
@@ -173,6 +174,7 @@ function RebalanceSection({ enriched, totalValue }) {
 
 export default function Analysis() {
   const { portfolio, transactions, fxRates, loading } = useApp();
+  const { isPrivate } = usePrivacy();
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const enriched = useMemo(
@@ -272,7 +274,7 @@ export default function Analysis() {
             {Object.entries(byCurrency).sort((a, b) => b[1] - a[1]).map(([cur, val]) => (
               <tr key={cur} className="border-t border-slate-700/60 hover:bg-slate-700/30">
                 <td className="px-5 py-2.5 font-semibold text-slate-300">{cur}</td>
-                <td className="px-5 py-2.5 text-right text-slate-200">{fmt(val)} zł</td>
+                <td className={`px-5 py-2.5 text-right text-slate-200${isPrivate ? ' privacy-blur' : ''}`}>{fmt(val)} zł</td>
                 <td className="px-5 py-2.5 text-right text-slate-400">
                   {totalValue > 0 ? `${fmt((val / totalValue) * 100, 1)}%` : '—'}
                 </td>
@@ -280,7 +282,7 @@ export default function Analysis() {
             ))}
             <tr className="border-t border-slate-600 bg-slate-900/30">
               <td className="px-5 py-2.5 font-bold text-slate-300">Razem</td>
-              <td className="px-5 py-2.5 text-right font-bold text-slate-100">{fmt(totalValue)} zł</td>
+              <td className={`px-5 py-2.5 text-right font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{fmt(totalValue)} zł</td>
               <td className="px-5 py-2.5 text-right text-slate-400">100%</td>
             </tr>
           </tbody>
@@ -305,7 +307,7 @@ export default function Analysis() {
               {sortedByValue.map((pos) => (
                 <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30">
                   <td className="px-5 py-2.5 font-bold text-indigo-400">{pos.symbol}</td>
-                  <td className="px-5 py-2.5 text-right text-slate-200">{fmt(pos.valuePLN)} zł</td>
+                  <td className={`px-5 py-2.5 text-right text-slate-200${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN)} zł</td>
                   <td className="px-5 py-2.5 text-right text-slate-400">
                     {totalValue > 0 ? `${fmt((pos.valuePLN / totalValue) * 100, 1)}%` : '—'}
                   </td>
@@ -320,6 +322,7 @@ export default function Analysis() {
 }
 
 function PerformanceTable({ title, positions }) {
+  const { isPrivate } = usePrivacy();
   function fmt(n, decimals = 0) {
     if (n == null || isNaN(n)) return '—';
     return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -344,7 +347,7 @@ function PerformanceTable({ title, positions }) {
             return (
               <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30">
                 <td className="px-5 py-2.5 font-bold text-indigo-400">{pos.symbol}</td>
-                <td className={`px-5 py-2.5 text-right font-medium ${up ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <td className={`px-5 py-2.5 text-right font-medium ${up ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
                   {up ? '+' : ''}{fmt(pos.plPLN)} zł
                 </td>
                 <td className={`px-5 py-2.5 text-right ${up ? 'text-emerald-400' : 'text-rose-400'}`}>

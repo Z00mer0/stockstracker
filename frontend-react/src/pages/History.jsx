@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { usePrivacy } from '../context/PrivacyContext';
 import HistoryChart from '../components/HistoryChart';
 import Spinner from '../components/shared/Spinner';
 
@@ -30,7 +31,8 @@ const BENCHMARKS = [
 ];
 
 export default function History() {
-  const { snapshots, loading } = useApp();
+  const { snapshots, loading, invested } = useApp();
+  const { isPrivate } = usePrivacy();
   const [period, setPeriod] = useState('MAX');
   const [benchmark, setBenchmark] = useState(null);
   const [benchData, setBenchData] = useState([]);
@@ -63,9 +65,14 @@ export default function History() {
     ? Math.round((new Date(filteredLast.date) - new Date(filteredFirst.date)) / 86400000)
     : 0;
   // CAGR: annualized return on invested capital (total / invested ratio), min 90d
-  const cagr = days >= 90 && latest?.invested > 0 && latest?.total > 0
-    ? (Math.pow(latest.total / latest.invested, 365 / days) - 1) * 100
+  const cagr = days >= 90 && invested > 0 && filteredLast?.total > 0
+    ? (Math.pow(filteredLast.total / invested, 365 / days) - 1) * 100
     : null;
+
+  const filteredWithInvested = useMemo(
+    () => filtered.map(s => ({ ...s, invested: invested > 0 ? invested : s.invested })),
+    [filtered, invested]
+  );
 
   const ath = useMemo(
     () => sorted.reduce((best, s) => (s.total ?? 0) > (best?.total ?? 0) ? s : best, null),
@@ -134,19 +141,19 @@ export default function History() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Aktualna wartość</p>
-          <p className="text-xl font-bold text-slate-100">{fmt(latest?.total)} zł</p>
+          <p className={`text-xl font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{fmt(latest?.total)} zł</p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Zainwestowano</p>
-          <p className="text-xl font-bold text-slate-100">{fmt(latest?.invested)} zł</p>
+          <p className={`text-xl font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{fmt(invested)} zł</p>
         </div>
         <div className={`rounded-xl border px-5 py-4 ${gainPLN >= 0 ? 'border-emerald-800/60 bg-emerald-950/30' : 'border-rose-800/60 bg-rose-950/30'}`}>
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Zmiana od początku</p>
-          <p className={`text-xl font-bold ${gainPLN >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <p className={`text-xl font-bold ${gainPLN >= 0 ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
             {gainPLN >= 0 ? '+' : ''}{fmt(gainPLN)} zł
           </p>
           {gainPct != null && (
-            <p className={`text-xs mt-0.5 ${gainPLN >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            <p className={`text-xs mt-0.5 ${gainPLN >= 0 ? 'text-emerald-500' : 'text-rose-500'}${isPrivate ? ' privacy-blur' : ''}`}>
               {gainPct >= 0 ? '+' : ''}{fmt(gainPct, 1)}%
             </p>
           )}
@@ -154,7 +161,7 @@ export default function History() {
         {cagr != null && (
           <div className="rounded-xl border border-indigo-800/60 bg-indigo-950/30 px-5 py-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">CAGR (annualizowany)</p>
-            <p className={`text-xl font-bold ${cagr >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
+            <p className={`text-xl font-bold ${cagr >= 0 ? 'text-indigo-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
               {cagr >= 0 ? '+' : ''}{fmt(cagr, 1)}%
             </p>
             <p className="text-xs text-slate-500 mt-0.5">{days}d historii</p>
@@ -163,7 +170,7 @@ export default function History() {
         {ath && (
           <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">ATH (szczyt)</p>
-            <p className="text-xl font-bold text-amber-400">{fmt(ath.total)} zł</p>
+            <p className={`text-xl font-bold text-amber-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(ath.total)} zł</p>
             <p className="text-xs text-slate-500 mt-0.5">{fmtDate(ath.date)}</p>
           </div>
         )}
@@ -209,7 +216,7 @@ export default function History() {
             ))}
           </div>
         </div>
-        <HistoryChart data={filtered} benchData={benchNormalized} benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label} />
+        <HistoryChart data={filteredWithInvested} benchData={benchNormalized} benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label} />
       </div>
 
       {/* Tabela */}
@@ -246,13 +253,13 @@ export default function History() {
                       <td className="px-5 py-2.5 text-slate-400">{fmtDate(s.date)}</td>
                       <td className={`px-5 py-2.5 text-right font-semibold ${
                         valueUp === true ? 'text-emerald-300' : valueUp === false ? 'text-rose-300' : 'text-slate-100'
-                      }`}>{fmt(s.total)} zł</td>
-                      <td className="px-5 py-2.5 text-right text-slate-400">{fmt(s.invested)} zł</td>
-                      <td className={`px-5 py-2.5 text-right font-medium ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      }${isPrivate ? ' privacy-blur' : ''}`}>{fmt(s.total)} zł</td>
+                      <td className={`px-5 py-2.5 text-right text-slate-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(s.invested)} zł</td>
+                      <td className={`px-5 py-2.5 text-right font-medium ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
                         {pl >= 0 ? '+' : ''}{fmt(pl)} zł
                         <span className="text-xs ml-1 opacity-70">({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span>
                       </td>
-                      <td className={`px-5 py-2.5 text-right text-xs ${delta == null ? 'text-slate-600' : deltaUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      <td className={`px-5 py-2.5 text-right text-xs ${delta == null ? 'text-slate-600' : deltaUp ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
                         {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta)} zł`}
                       </td>
                     </tr>

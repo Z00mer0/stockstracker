@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../hooks/useApi';
 
 const AppContext = createContext(null);
@@ -83,6 +83,13 @@ export function AppProvider({ children }) {
     ? Object.entries(rawData.snapshots).map(([date, total]) => ({ date, total }))
     : [];
 
+  const portfolioInvested = useMemo(() => {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    return holdings.reduce((sum, pos) =>
+      sum + (pos.qty ?? 0) * (pos.avgPrice ?? 0) * (fxRates[pos.currency] ?? 1),
+    0);
+  }, [rawData, fxRates]);
+
   async function saveCash(newCash) {
     setRawData(prev => ({ ...prev, cash: newCash }));
     await api.post('/api/data', { ...rawData, cash: newCash });
@@ -113,6 +120,7 @@ export function AppProvider({ children }) {
     error,
     refresh: fetchData,
     fxRates,
+    invested: portfolioInvested,
     saveCash,
     saveHoldings,
     saveTransactions,

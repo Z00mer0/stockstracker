@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { usePrivacy } from '../context/PrivacyContext';
 import Spinner from '../components/shared/Spinner';
 import AddDividendModal from '../components/AddDividendModal';
 import useDividendEvents from '../hooks/useDividendEvents';
@@ -13,6 +14,7 @@ function fmt(n, decimals = 2) {
 
 export default function Dividends() {
   const { transactions, loading, fxRates, portfolio } = useApp();
+  const { isPrivate } = usePrivacy();
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
 
   const {
@@ -136,7 +138,7 @@ export default function Dividends() {
                       <td className="px-5 py-3 font-bold text-slate-100">💰 {ev.symbol}</td>
                       <td className="px-5 py-3 text-slate-300">{ev.date}</td>
                       <td className="px-5 py-3 text-slate-400">{ev.payDate ?? '—'}</td>
-                      <td className="px-5 py-3 text-right text-yellow-400 font-semibold">
+                      <td className={`px-5 py-3 text-right text-yellow-400 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>
                         {ev.amount != null ? `${fmt(ev.amount)} ${cur}` : '—'}
                       </td>
                       <td className="px-5 py-3 text-xs text-slate-500">
@@ -169,7 +171,7 @@ export default function Dividends() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="rounded-xl border border-yellow-800/50 bg-yellow-950/30 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Łącznie dywidendy</p>
-          <p className="text-2xl font-bold text-yellow-400">{fmt(totalPLN)} zł</p>
+          <p className={`text-2xl font-bold text-yellow-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(totalPLN)} zł</p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Liczba wypłat</p>
@@ -206,7 +208,7 @@ export default function Dividends() {
                       )}
                     </td>
                     <td className="px-5 py-2.5 text-right text-slate-400">{row.count}×</td>
-                    <td className="px-5 py-2.5 text-right font-semibold text-yellow-400">{fmt(row.totalPLN)} zł</td>
+                    <td className={`px-5 py-2.5 text-right font-semibold text-yellow-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(row.totalPLN)} zł</td>
                   </tr>
                 ))}
               </tbody>
@@ -246,11 +248,11 @@ export default function Dividends() {
                           <span className="ml-2 text-xs text-slate-500 font-normal">{d.name}</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right text-yellow-400 font-semibold">
+                      <td className={`px-5 py-3 text-right text-yellow-400 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>
                         {fmt(d.price)} {CUR_SYMBOLS[d.currency] ?? d.currency}
                       </td>
                       <td className="px-5 py-3 text-right text-slate-400">{d.qty ?? '—'}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-slate-200">{fmt(approxPLN)} zł</td>
+                      <td className={`px-5 py-3 text-right font-semibold text-slate-200${isPrivate ? ' privacy-blur' : ''}`}>{fmt(approxPLN)} zł</td>
                       <td className="px-5 py-3 text-slate-500 text-xs">{d.note || '—'}</td>
                     </tr>
                   );
