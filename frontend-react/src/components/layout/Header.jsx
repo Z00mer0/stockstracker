@@ -4,6 +4,14 @@ import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 
+const THEME_KEY = 'myfund_theme';
+function getTheme() { return localStorage.getItem(THEME_KEY) || 'dark'; }
+function applyTheme(t) {
+  document.documentElement.classList.toggle('light', t === 'light');
+  localStorage.setItem(THEME_KEY, t);
+}
+applyTheme(getTheme());
+
 function isEuropeDST() {
   const now = new Date();
   const y = now.getUTCFullYear();
@@ -60,6 +68,12 @@ export default function Header({ onMenuToggle }) {
   const { isPrivate, toggle } = usePrivacy();
   const title = PAGE_TITLES[pathname] ?? 'StocksTracker';
   const markets = useMarketStatus();
+  const [theme, setTheme] = useState(getTheme);
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    setTheme(next);
+  }
 
   return (
     <header className="h-14 flex-shrink-0 flex items-center gap-3 px-4 md:px-6 border-b border-slate-800 bg-slate-900/80 backdrop-blur">
@@ -78,6 +92,14 @@ export default function Header({ onMenuToggle }) {
 
       {/* Tytuł strony */}
       <h1 className="flex-1 text-base font-semibold text-slate-100 truncate">{title}</h1>
+
+      <button
+        onClick={toggleTheme}
+        className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+        title={theme === 'dark' ? 'Motyw jasny' : 'Motyw ciemny'}
+      >
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
 
       {/* Privacy toggle */}
       <button

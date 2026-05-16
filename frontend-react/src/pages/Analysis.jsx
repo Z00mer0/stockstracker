@@ -297,6 +297,120 @@ function RebalanceSection({ enriched, totalValue }) {
   );
 }
 
+function SmartInsightsSection({ enrichedPositions, transactions, fxRates }) {
+  const valid = enrichedPositions.filter(p => p.valuePLN != null && p.costPLN > 0);
+  if (valid.length === 0) return null;
+
+  const totalValue = valid.reduce((s, p) => s + p.valuePLN, 0);
+  const totalCost  = valid.reduce((s, p) => s + p.costPLN, 0);
+  const totalPnlPct = totalCost > 0 ? (valid.reduce((s, p) => s + p.pnlPLN, 0) / totalCost) * 100 : 0;
+
+  let sectorMap = {};
+  try { sectorMap = JSON.parse(localStorage.getItem('finnhub_sectors') || '{}'); } catch {}
+
+  const insights = [];
+
+  const biggest = valid.map(p => ({ sym: p.symbol, pct: p.valuePLN / totalValue * 100 }))
+    .sort((a, b) => b.pct - a.pct)[0];
+  if (biggest?.pct > 25) {
+    insights.push({
+      icon: '⚠️', bg: 'bg-amber-950/40 border-amber-800/40',
+      title: 'Ryzyko koncentracji pozycji',
+      lines: [
+        `${biggest.sym} stanowi ${biggest.pct.toFixed(0)}% portfela.`,
+        'Zalecane max dla jednej spółki: 20–25%.',
+        'Rozważ zmniejszenie pozycji lub dokupienie innych spółek.',
+      ]
+    });
+  }
+
+  const secMap = {};
+  for (const p of valid) {
+    const sec = sectorMap[p.symbol] || 'Inne';
+    secMap[sec] = (secMap[sec] || 0) + p.valuePLN;
+  }
+  const topSec = Object.entries(secMap).sort((a, b) => b[1] - a[1])[0];
+  if (topSec && topSec[1] / totalValue > 0.30 && topSec[0] !== 'Inne') {
+    insights.push({
+      icon: '⚠️', bg: 'bg-amber-950/40 border-amber-800/40',
+      title: `Koncentracja sektora: ${topSec[0]}`,
+      lines: [
+        `Sektor ${topSec[0]} = ${(topSec[1] / totalValue * 100).toFixed(0)}% portfela (max zalecane: 30%).`,
+        'Dodaj spółki z innych sektorów dla lepszej dywersyfikacji.',
+      ]
+    });
+  }
+
+  const bigWin = valid.filter(p => p.pnlPct > 100).sort((a, b) => b.pnlPct - a.pnlPct)[0];
+  if (bigWin) {
+    const tax = bigWin.pnlPLN * 0.19;
+    insights.push({
+      icon: '📈', bg: 'bg-blue-950/40 border-blue-800/40',
+      title: `Realizacja zysku: ${bigWin.symbol} +${bigWin.pnlPct.toFixed(0)}%`,
+      lines: [
+        `Niezrealizowany zysk: ${bigWin.pnlPLN.toFixed(0)} PLN.`,
+        `Podatek przy realizacji: ~${tax.toFixed(0)} PLN (19%).`,
+        'Rozważ częściową sprzedaż i reinwestycję w niedoważone sektory.',
+      ]
+    });
+  }
+
+  const losers = valid.filter(p => p.pnlPLN < -500).sort((a, b) => a.pnlPLN - b.pnlPLN);
+  const hasGain = valid.some(p => p.pnlPLN > 500);
+  if (losers.length && hasGain) {
+    const totalLoss = losers.reduce((s, p) => s + p.pnlPLN, 0);
+    const saving = Math.abs(totalLoss) * 0.19;
+    insights.push({
+      icon: '💚', bg: 'bg-emerald-950/40 border-emerald-800/40',
+      title: `Tax Loss Harvesting — oszczędność ~${saving.toFixed(0)} PLN`,
+      lines: [
+        'Realizując straty możesz obniżyć podatek od zysków.',
+        `Kandydaci: ${losers.slice(0, 3).map(p => `${p.symbol} (${p.pnlPLN.toFixed(0)} PLN)`).join(', ')}.`,
+        'Uwaga: nie odkupuj w ciągu 30 dni (wash-sale).',
+      ]
+    });
+  }
+
+  const n = valid.length;
+  const bigPct = biggest?.pct || 0;
+  const divScore   = Math.min(10, Math.max(2, n)) - (bigPct > 40 ? 3 : bigPct > 30 ? 2 : 0);
+  const perfScore  = totalPnlPct > 50 ? 10 : totalPnlPct > 20 ? 8 : totalPnlPct > 0 ? 6 : totalPnlPct > -20 ? 4 : 2;
+  const riskScore  = bigPct > 40 ? 4 : bigPct > 30 ? 5 : bigPct > 20 ? 7 : 8;
+  const total      = Math.round((Math.max(2, divScore) + perfScore + riskScore) / 3);
+  const healthLabel = total >= 8 ? 'DOBRY ✅' : total >= 6 ? 'OK 🟡' : 'DO POPRAWY 🔴';
+  insights.push({
+    icon: '🏥', bg: 'bg-slate-900/60 border-slate-700/60',
+    title: `Health Score: ${total}/10 — ${healthLabel}`,
+    lines: [
+      `Dywersyfikacja: ${Math.max(2, divScore)}/10`,
+      `Wyniki: ${perfScore}/10`,
+      `Ryzyko konc.: ${riskScore}/10`,
+      total >= 8 ? 'Rekomendacja: HOLD & MONITOR' : total >= 6 ? 'Rekomendacja: Popraw dywersyfikację' : 'Rekomendacja: Przejrzyj skład portfela',
+    ]
+  });
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-300">Smart Insights</h2>
+        <p className="text-xs text-slate-500 mt-0.5">Automatyczne rekomendacje na podstawie Twojego portfela</p>
+      </div>
+      <div className="p-4 space-y-3">
+        {insights.map((ins, i) => (
+          <div key={i} className={`rounded-lg border px-4 py-3 ${ins.bg}`}>
+            <div className="text-sm font-semibold text-slate-200 mb-1">{ins.icon} {ins.title}</div>
+            <ul className="space-y-0.5">
+              {ins.lines.map((line, j) => (
+                <li key={j} className="text-xs text-slate-400">{line}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Analysis() {
   const { portfolio, transactions, fxRates, loading, snapshots } = useApp();
   const { isPrivate } = usePrivacy();
@@ -443,6 +557,16 @@ export default function Analysis() {
           </table>
         </div>
       </div>
+
+      <SmartInsightsSection
+        enrichedPositions={enriched.map(p => ({
+          ...p,
+          pnlPLN: p.plPLN ?? 0,
+          pnlPct: p.costPLN > 0 ? ((p.plPLN ?? 0) / p.costPLN) * 100 : 0,
+        }))}
+        transactions={transactions}
+        fxRates={fxRates}
+      />
     </div>
   );
 }
