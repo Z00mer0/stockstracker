@@ -387,7 +387,8 @@ export default function Dashboard() {
           ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
           : t.qty * t.price * (fxRates[t.currency] ?? 1),
         date: t.date,
-      }));
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
     const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
     if (totalValue > 0) cashflows.push({ amount: totalValue, date: new Date().toISOString() });
     return xirr(cashflows);
