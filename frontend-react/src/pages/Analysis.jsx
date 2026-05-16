@@ -1,8 +1,133 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import Spinner from '../components/shared/Spinner';
+
+function calcDailyReturns(values) {
+  const r = [];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i-1] > 0) r.push((values[i] - values[i-1]) / values[i-1]);
+  }
+  return r;
+}
+
+function calcVolatility(values) {
+  const r = calcDailyReturns(values);
+  if (r.length < 5) return null;
+  const mean = r.reduce((s, x) => s + x, 0) / r.length;
+  const variance = r.reduce((s, x) => s + (x - mean) ** 2, 0) / r.length;
+  return Math.sqrt(variance * 252) * 100;
+}
+
+function calcMaxDrawdown(values) {
+  let peak = -Infinity, maxDD = 0;
+  for (const v of values) {
+    if (v > peak) peak = v;
+    const dd = (peak - v) / peak * 100;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return maxDD;
+}
+
+function calcSharpe(values, rf = 0.045) {
+  const r = calcDailyReturns(values);
+  if (r.length < 5) return null;
+  const mean = r.reduce((s, x) => s + x, 0) / r.length * 252;
+  const vol = calcVolatility(values) / 100;
+  return vol > 0 ? (mean - rf) / vol : null;
+}
+
+function calcSortino(values, rf = 0.045) {
+  const r = calcDailyReturns(values);
+  if (r.length < 5) return null;
+  const mean = r.reduce((s, x) => s + x, 0) / r.length * 252;
+  const downside = r.filter(x => x < 0);
+  if (!downside.length) return null;
+  const downVar = downside.reduce((s, x) => s + x ** 2, 0) / downside.length;
+  const downVol = Math.sqrt(downVar * 252);
+  return downVol > 0 ? (mean - rf) / downVol : null;
+}
+
+function calcBeta(portValues, bmValues) {
+  const portR = calcDailyReturns(portValues);
+  const bmR = [];
+  for (let i = 1; i < portValues.length; i++) bmR.push(bmValues[i] != null && bmValues[i-1] != null ? (bmValues[i]-bmValues[i-1])/bmValues[i-1] : null);
+  const pairs = portR.map((r, i) => [r, bmR[i]]).filter(([a,b]) => b != null);
+  if (pairs.length < 10) return null;
+  const n = pairs.length;
+  const meanP = pairs.reduce((s,[p]) => s+p, 0) / n;
+  const meanB = pairs.reduce((s,[,b]) => s+b, 0) / n;
+  const cov = pairs.reduce((s,[p,b]) => s+(p-meanP)*(b-meanB), 0) / n;
+  const varB = pairs.reduce((s,[,b]) => s+(b-meanB)**2, 0) / n;
+  return varB > 0 ? cov / varB : null;
+}
+
+function RiskSection({ snapshots }) {
+  const values = snapshots.map(s => s.total).filter(v => v > 0);
+  const [beta, setBeta] = useState(null);
+  const [betaLoading, setBetaLoading] = useState(false);
+
+  useEffect(() => {
+    if (values.length < 10) return;
+    const ctrl = new AbortController();
+    setBetaLoading(true);
+    const dates = snapshots.map(s => s.date);
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5y';
+    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: ctrl.signal })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(data => {
+        const result = data.chart?.result?.[0];
+        if (!result) return;
+        const timestamps = result.timestamp;
+        const prices = result.indicators?.adjclose?.[0]?.adjclose;
+        if (!timestamps || !prices) return;
+        const priceMap = {};
+        timestamps.forEach((ts, i) => {
+          const d = new Date(ts * 1000).toISOString().slice(0, 10);
+          priceMap[d] = prices[i];
+        });
+        const bmValues = dates.map(d => priceMap[d] ?? null);
+        let last = null;
+        const filled = bmValues.map(v => { if (v != null) last = v; return last; });
+        setBeta(calcBeta(values, filled));
+      })
+      .catch(e => { if (e.name !== 'AbortError') console.warn('[risk/beta]', e.message); })
+      .finally(() => setBetaLoading(false));
+    return () => ctrl.abort();
+  }, [snapshots.length]);
+
+  const vol = calcVolatility(values);
+  const maxDD = calcMaxDrawdown(values);
+  const sharpe = calcSharpe(values);
+  const sortino = calcSortino(values);
+
+  if (values.length < 5) return null;
+
+  const metric = (label, value, tooltip) => (
+    <div className="rounded-lg bg-slate-900/60 px-4 py-3 flex flex-col gap-1">
+      <span className="text-xs text-slate-500 uppercase tracking-wide">{label}</span>
+      <span className="text-xl font-bold text-slate-100">{value ?? '—'}</span>
+      <span className="text-xs text-slate-600">{tooltip}</span>
+    </div>
+  );
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-300">Analiza ryzyka</h2>
+        <p className="text-xs text-slate-500 mt-0.5">Na podstawie historii snapshotów portfela</p>
+      </div>
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {metric('Zmienność (rok.)', vol != null ? <span className={vol < 15 ? 'text-emerald-400' : vol > 30 ? 'text-red-400' : 'text-amber-400'}>{vol.toFixed(1)}%</span> : '—', 'Odch. std. zwrotów × √252')}
+        {metric('Max Drawdown', maxDD > 0 ? <span className={maxDD < 10 ? 'text-emerald-400' : maxDD > 25 ? 'text-red-400' : 'text-amber-400'}>-{maxDD.toFixed(1)}%</span> : '—', 'Największy spadek od szczytu')}
+        {metric('Sharpe Ratio', sharpe != null ? <span className={sharpe >= 1 ? 'text-emerald-400' : sharpe < 0 ? 'text-red-400' : 'text-slate-300'}>{sharpe.toFixed(2)}</span> : '—', 'Zwrot / ryzyko (RF=4,5%)')}
+        {metric('Sortino Ratio', sortino != null ? <span className={sortino >= 1 ? 'text-emerald-400' : sortino < 0 ? 'text-red-400' : 'text-slate-300'}>{sortino.toFixed(2)}</span> : '—', 'Jak Sharpe, tylko dół')}
+        {metric('Beta (S&P 500)', betaLoading ? <span className="text-slate-500 text-sm">ładowanie…</span> : beta != null ? <span className="text-slate-100">{beta.toFixed(2)}</span> : '—', 'Korelacja z rynkiem US')}
+      </div>
+    </div>
+  );
+}
 
 function fmt(n, decimals = 0) {
   if (n == null || isNaN(n)) return '—';
@@ -173,7 +298,7 @@ function RebalanceSection({ enriched, totalValue }) {
 }
 
 export default function Analysis() {
-  const { portfolio, transactions, fxRates, loading } = useApp();
+  const { portfolio, transactions, fxRates, loading, snapshots } = useApp();
   const { isPrivate } = usePrivacy();
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
@@ -225,6 +350,7 @@ export default function Analysis() {
 
   return (
     <div className="space-y-6">
+      <RiskSection snapshots={snapshots ?? []} />
       <RebalanceSection enriched={enriched} totalValue={totalValue} />
 
       {/* Statystyki */}
