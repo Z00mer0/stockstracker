@@ -44,7 +44,7 @@ export function fmtPeriod(days) {
 async function fetchYahooQuote(sym) {
   // v7/finance/quote returns price + fundamentals (P/E, P/B) for all markets
   try {
-    const yfUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}&fields=regularMarketPrice,regularMarketChangePercent,trailingPE,forwardPE,priceToBook`;
+    const yfUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}&fields=regularMarketPrice,regularMarketChangePercent,trailingPE,forwardPE,priceToBook,sector,earningsTimestamp`;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
     const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -52,11 +52,13 @@ async function fetchYahooQuote(sym) {
     const q = json?.quoteResponse?.result?.[0];
     if (!q?.regularMarketPrice) throw new Error('no price');
     return {
-      price:    q.regularMarketPrice,
-      dailyChg: q.regularMarketChangePercent ?? null,
-      pe:       q.trailingPE  ?? null,
-      peFwd:    q.forwardPE   ?? null,
-      pb:       q.priceToBook ?? null,
+      price:      q.regularMarketPrice,
+      dailyChg:   q.regularMarketChangePercent ?? null,
+      pe:         q.trailingPE  ?? null,
+      peFwd:      q.forwardPE   ?? null,
+      pb:         q.priceToBook ?? null,
+      sector:     q.sector      ?? null,
+      earningsTs: q.earningsTimestamp ?? q.earningsTimestampStart ?? null,
     };
   } catch {
     // fallback: v8/finance/chart (price only, no fundamentals)
@@ -83,12 +85,12 @@ async function fetchAllMetrics(symbols) {
   await Promise.allSettled(
     symbols.map(async (sym) => {
       try {
-        let price = null, dailyChg = null, pe = null, peFwd = null, pb = null;
+        let price = null, dailyChg = null, pe = null, peFwd = null, pb = null, sector = null, earningsTs = null;
 
         if (sym.includes('.')) {
           // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance directly
           const yq = await fetchYahooQuote(sym);
-          if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; }
+          if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; sector = yq.sector; earningsTs = yq.earningsTs; }
         } else {
           // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
           const [qRes, mRes] = await Promise.allSettled([
@@ -111,18 +113,20 @@ async function fetchAllMetrics(symbols) {
           if (price == null || pe == null) {
             const yq = await fetchYahooQuote(sym);
             if (yq) {
-              price    = price    ?? yq.price;
-              dailyChg = dailyChg ?? yq.dailyChg;
-              pe       = pe       ?? yq.pe;
-              peFwd    = peFwd    ?? yq.peFwd;
-              pb       = pb       ?? yq.pb;
+              price      = price      ?? yq.price;
+              dailyChg   = dailyChg   ?? yq.dailyChg;
+              pe         = pe         ?? yq.pe;
+              peFwd      = peFwd      ?? yq.peFwd;
+              pb         = pb         ?? yq.pb;
+              sector     = sector     ?? yq.sector;
+              earningsTs = earningsTs ?? yq.earningsTs;
             }
           }
         }
 
-        results[sym] = { price, dailyChg, pe, peFwd, pb };
+        results[sym] = { price, dailyChg, pe, peFwd, pb, sector, earningsTs };
       } catch {
-        results[sym] = { price: null, dailyChg: null, pe: null, peFwd: null, pb: null };
+        results[sym] = { price: null, dailyChg: null, pe: null, peFwd: null, pb: null, sector: null, earningsTs: null };
       }
     })
   );
@@ -202,6 +206,8 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       pe:          m.pe          ?? null,
       peFwd:       m.peFwd       ?? null,
       pb:          m.pb          ?? null,
+      sector:      m.sector      ?? null,
+      earningsTs:  m.earningsTs  ?? null,
       costPLN,
       valuePLN,
       plPLN,

@@ -314,19 +314,24 @@ function RebalanceSection({ enriched, totalValue }) {
   );
 }
 
-function SmartInsightsSection({ enrichedPositions, transactions, fxRates }) {
+const _SECTOR_PE = {
+  'Technology': 26, 'Financial Services': 15, 'Healthcare': 22,
+  'Consumer Cyclical': 20, 'Consumer Defensive': 20, 'Energy': 14,
+  'Industrials': 19, 'Communication Services': 21, 'Real Estate': 24,
+  'Basic Materials': 16, 'Utilities': 18, 'Financial': 15,
+};
+
+function SmartInsightsSection({ enrichedPositions }) {
   const valid = enrichedPositions.filter(p => p.valuePLN != null && p.costPLN > 0);
   if (valid.length === 0) return null;
 
-  const totalValue = valid.reduce((s, p) => s + p.valuePLN, 0);
-  const totalCost  = valid.reduce((s, p) => s + p.costPLN, 0);
+  const totalValue  = valid.reduce((s, p) => s + p.valuePLN, 0);
+  const totalCost   = valid.reduce((s, p) => s + p.costPLN, 0);
   const totalPnlPct = totalCost > 0 ? (valid.reduce((s, p) => s + p.pnlPLN, 0) / totalCost) * 100 : 0;
-
-  let sectorMap = {};
-  try { sectorMap = JSON.parse(localStorage.getItem('finnhub_sectors') || '{}'); } catch {}
 
   const insights = [];
 
+  // 1. Single-stock concentration
   const biggest = valid.map(p => ({ sym: p.symbol, pct: p.valuePLN / totalValue * 100 }))
     .sort((a, b) => b.pct - a.pct)[0];
   if (biggest?.pct > 25) {
@@ -336,14 +341,19 @@ function SmartInsightsSection({ enrichedPositions, transactions, fxRates }) {
       lines: [
         `${biggest.sym} stanowi ${biggest.pct.toFixed(0)}% portfela.`,
         'Zalecane max dla jednej spółki: 20–25%.',
-        'Rozważ zmniejszenie pozycji lub dokupienie innych spółek.',
+        '',
+        'Możliwości:',
+        `├─ Zmniejsz pozycję ${biggest.sym}`,
+        '├─ Dokup spółki z innych sektorów',
+        '└─ Ustaw target-weight i trzymaj się planu',
       ]
     });
   }
 
+  // 2. Sector concentration (from Yahoo Finance sector field)
   const secMap = {};
   for (const p of valid) {
-    const sec = sectorMap[p.symbol] || 'Inne';
+    const sec = p.sector || 'Inne';
     secMap[sec] = (secMap[sec] || 0) + p.valuePLN;
   }
   const topSec = Object.entries(secMap).sort((a, b) => b[1] - a[1])[0];
@@ -352,12 +362,17 @@ function SmartInsightsSection({ enrichedPositions, transactions, fxRates }) {
       icon: '⚠️', bg: 'bg-amber-950/40 border-amber-800/40',
       title: `Koncentracja sektora: ${topSec[0]}`,
       lines: [
-        `Sektor ${topSec[0]} = ${(topSec[1] / totalValue * 100).toFixed(0)}% portfela (max zalecane: 30%).`,
-        'Dodaj spółki z innych sektorów dla lepszej dywersyfikacji.',
+        `Sektor ${topSec[0]} = ${(topSec[1] / totalValue * 100).toFixed(0)}% portfela (max: 30%).`,
+        '',
+        'Możliwości:',
+        '├─ Dodaj spółki z Energy / Healthcare / Utilities',
+        `├─ Zmniejsz ekspozycję na ${topSec[0]}`,
+        '└─ Rozważ ETF na szeroki rynek dla dywersyfikacji',
       ]
     });
   }
 
+  // 3. Take profits
   const bigWin = valid.filter(p => p.pnlPct > 100).sort((a, b) => b.pnlPct - a.pnlPct)[0];
   if (bigWin) {
     const tax = bigWin.pnlPLN * 0.19;
@@ -367,42 +382,124 @@ function SmartInsightsSection({ enrichedPositions, transactions, fxRates }) {
       lines: [
         `Niezrealizowany zysk: ${bigWin.pnlPLN.toFixed(0)} PLN.`,
         `Podatek przy realizacji: ~${tax.toFixed(0)} PLN (19%).`,
-        'Rozważ częściową sprzedaż i reinwestycję w niedoważone sektory.',
+        '',
+        'Rekomendacja:',
+        `├─ Rozważ sprzedaż części pozycji ${bigWin.symbol}`,
+        '├─ Ustaw stop-loss by chronić zysk',
+        '└─ Reinwestuj w niedoważone sektory',
       ]
     });
   }
 
+  // 4. Tax loss harvesting
   const losers = valid.filter(p => p.pnlPLN < -500).sort((a, b) => a.pnlPLN - b.pnlPLN);
   const hasGain = valid.some(p => p.pnlPLN > 500);
   if (losers.length && hasGain) {
     const totalLoss = losers.reduce((s, p) => s + p.pnlPLN, 0);
     const saving = Math.abs(totalLoss) * 0.19;
+    const li = losers.slice(0, 3).map((p, i, a) =>
+      `${i === a.length - 1 ? '└' : '├'}─ ${p.symbol}: ${p.pnlPLN.toFixed(0)} PLN`);
     insights.push({
       icon: '💚', bg: 'bg-emerald-950/40 border-emerald-800/40',
       title: `Tax Loss Harvesting — oszczędność ~${saving.toFixed(0)} PLN`,
       lines: [
         'Realizując straty możesz obniżyć podatek od zysków.',
-        `Kandydaci: ${losers.slice(0, 3).map(p => `${p.symbol} (${p.pnlPLN.toFixed(0)} PLN)`).join(', ')}.`,
-        'Uwaga: nie odkupuj w ciągu 30 dni (wash-sale).',
+        '',
+        'Kandydaci do sprzedaży:',
+        ...li,
+        '',
+        'Uwaga: wash-sale — nie odkupuj przez 30 dni.',
       ]
     });
   }
 
+  // 5. Valuation alert (P/E vs sector benchmark)
+  for (const p of valid) {
+    const spe = p.sector ? _SECTOR_PE[p.sector] : null;
+    if (!spe || !p.pe || p.pe <= 0) continue;
+    const diff = (p.pe - spe) / spe * 100;
+    if (diff > 30) {
+      insights.push({
+        icon: '🔴', bg: 'bg-red-950/40 border-red-800/40',
+        title: `Wycena: ${p.symbol} drogi vs sektor`,
+        lines: [
+          `P/E ${p.symbol}: ${p.pe.toFixed(1)}x, sektor ${p.sector}: ${spe}x`,
+          `(${diff.toFixed(0)}% powyżej średniej).`,
+          '',
+          'Rekomendacja:',
+          `├─ Ogranicz dokupowanie ${p.symbol}`,
+          '├─ Ustaw alert cenowy na korekcie',
+          '└─ Szukaj tańszych alternatyw w sektorze',
+        ]
+      });
+      break;
+    }
+    if (diff < -15) {
+      insights.push({
+        icon: '🟢', bg: 'bg-emerald-950/40 border-emerald-800/40',
+        title: `Okazja: ${p.symbol} tańszy od sektora`,
+        lines: [
+          `P/E ${p.symbol}: ${p.pe.toFixed(1)}x, sektor ${p.sector}: ${spe}x`,
+          `(${Math.abs(diff).toFixed(0)}% poniżej średniej — potencjalny dobry punkt wejścia).`,
+          '',
+          'Rekomendacja:',
+          `├─ Rozważ dokupienie ${p.symbol}`,
+          '├─ Potwierdź fundamenty (ROE, marże, dług)',
+          '└─ Ustaw order limit poniżej ceny rynkowej',
+        ]
+      });
+      break;
+    }
+  }
+
+  // 6. Upcoming earnings (next 14 days)
+  const now  = Date.now();
+  const in14 = now + 14 * 86400000;
+  const upcoming = valid
+    .filter(p => p.earningsTs && p.earningsTs * 1000 > now && p.earningsTs * 1000 < in14)
+    .sort((a, b) => a.earningsTs - b.earningsTs);
+  if (upcoming.length) {
+    const fmtD = ts => new Date(ts * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' });
+    const li = upcoming.slice(0, 4).map((p, i, a) =>
+      `${i === a.length - 1 ? '└' : '├'}─ ${fmtD(p.earningsTs)}: ${p.symbol} ⭐`);
+    insights.push({
+      icon: '📅', bg: 'bg-purple-950/40 border-purple-800/40',
+      title: 'Nadchodzące wyniki finansowe',
+      lines: ['Za najbliższe 14 dni:', '', ...li, '', 'Uwaga: możliwa podwyższona zmienność ⚠️'],
+    });
+  }
+
+  // 7. Health Score (4 dimensions: dywersyfikacja, wycena, wyniki, ryzyko)
   const n = valid.length;
   const bigPct = biggest?.pct || 0;
-  const divScore   = Math.min(10, Math.max(2, n)) - (bigPct > 40 ? 3 : bigPct > 30 ? 2 : 0);
-  const perfScore  = totalPnlPct > 50 ? 10 : totalPnlPct > 20 ? 8 : totalPnlPct > 0 ? 6 : totalPnlPct > -20 ? 4 : 2;
-  const riskScore  = bigPct > 40 ? 4 : bigPct > 30 ? 5 : bigPct > 20 ? 7 : 8;
-  const total      = Math.round((Math.max(2, divScore) + perfScore + riskScore) / 3);
+  let divScore = Math.min(10, Math.max(2, n));
+  if (bigPct > 40) divScore = Math.max(2, divScore - 3);
+  else if (bigPct > 30) divScore = Math.max(3, divScore - 2);
+
+  const perfScore = totalPnlPct > 50 ? 10 : totalPnlPct > 20 ? 8 : totalPnlPct > 0 ? 6 : totalPnlPct > -20 ? 4 : 2;
+
+  const withPE = valid.filter(p => p.pe > 0 && p.sector && _SECTOR_PE[p.sector]);
+  let valScore = 6;
+  if (withPE.length) {
+    const overCnt = withPE.filter(p => p.pe > _SECTOR_PE[p.sector] * 1.2).length;
+    valScore = Math.max(1, Math.round(10 - (overCnt / withPE.length) * 6));
+  }
+
+  const riskScore = bigPct > 40 ? 4 : bigPct > 30 ? 5 : bigPct > 20 ? 7 : 8;
+  const total     = Math.round((divScore + valScore + perfScore + riskScore) / 4);
   const healthLabel = total >= 8 ? 'DOBRY ✅' : total >= 6 ? 'OK 🟡' : 'DO POPRAWY 🔴';
   insights.push({
     icon: '🏥', bg: 'bg-slate-900/60 border-slate-700/60',
     title: `Health Score: ${total}/10 — ${healthLabel}`,
     lines: [
-      `Dywersyfikacja: ${Math.max(2, divScore)}/10`,
-      `Wyniki: ${perfScore}/10`,
-      `Ryzyko konc.: ${riskScore}/10`,
-      total >= 8 ? 'Rekomendacja: HOLD & MONITOR' : total >= 6 ? 'Rekomendacja: Popraw dywersyfikację' : 'Rekomendacja: Przejrzyj skład portfela',
+      `├─ Dywersyfikacja: ${divScore}/10`,
+      `├─ Wycena: ${valScore}/10`,
+      `├─ Wyniki: ${perfScore}/10`,
+      `└─ Ryzyko konc.: ${riskScore}/10`,
+      '',
+      total >= 8 ? 'Rekomendacja: HOLD & MONITOR' :
+      total >= 6 ? 'Rekomendacja: MONITORUJ, popraw dywersyfikację' :
+                   'Rekomendacja: PRZEJRZYJ skład i zredukuj ryzyko',
     ]
   });
 
@@ -415,12 +512,10 @@ function SmartInsightsSection({ enrichedPositions, transactions, fxRates }) {
       <div className="p-4 space-y-3">
         {insights.map((ins, i) => (
           <div key={i} className={`rounded-lg border px-4 py-3 ${ins.bg}`}>
-            <div className="text-sm font-semibold text-slate-200 mb-1">{ins.icon} {ins.title}</div>
-            <ul className="space-y-0.5">
-              {ins.lines.map((line, j) => (
-                <li key={j} className="text-xs text-slate-400">{line}</li>
-              ))}
-            </ul>
+            <div className="text-sm font-semibold text-slate-200 mb-1.5">{ins.icon} {ins.title}</div>
+            <div className="font-mono text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">
+              {ins.lines.join('\n')}
+            </div>
           </div>
         ))}
       </div>
@@ -581,8 +676,6 @@ export default function Analysis() {
           pnlPLN: p.plPLN ?? 0,
           pnlPct: p.costPLN > 0 ? ((p.plPLN ?? 0) / p.costPLN) * 100 : 0,
         }))}
-        transactions={transactions}
-        fxRates={fxRates}
       />
     </div>
   );
