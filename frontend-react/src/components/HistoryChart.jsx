@@ -3,6 +3,13 @@ import React, { useRef, useState, useEffect } from 'react';
 const M = { top: 10, right: 75, bottom: 28, left: 10 };
 const H = 220;
 
+const PL_MONTHS = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
+function fmtXDate(iso) {
+  if (!iso) return '';
+  const [, m, d] = iso.split('-');
+  return `${parseInt(d)} ${PL_MONTHS[parseInt(m) - 1]}`;
+}
+
 function fmtVal(n) {
   if (n == null || isNaN(n)) return '—';
   return n.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -148,7 +155,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '' }) 
         {/* X-axis date labels */}
         {dateLabels.map(({ i, date }) => (
           <text key={i} x={xScale(i)} y={M.top + H + 17} fill="#64748b" fontSize={9} textAnchor="middle">
-            {date.slice(2, 10)}
+            {fmtXDate(date)}
           </text>
         ))}
       </svg>

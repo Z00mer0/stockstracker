@@ -70,7 +70,7 @@ export default function History() {
     : null;
 
   const filteredWithInvested = useMemo(
-    () => filtered.map(s => ({ ...s, invested: invested > 0 ? invested : s.invested })),
+    () => filtered.map(s => ({ ...s, invested: s.invested ?? (invested > 0 ? invested : null) })),
     [filtered, invested]
   );
 

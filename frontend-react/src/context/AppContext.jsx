@@ -5,8 +5,10 @@ const AppContext = createContext(null);
 
 const TOKEN_KEY  = 'myfund_auth_token';
 const FX_CACHE_KEY = 'myfund_fx_rates';
+const FX_PERSIST_KEY = 'myfund_fx_last';
 const FX_CACHE_TTL = 30 * 60 * 1000; // 30 min
 const FX_FALLBACK  = { PLN: 1, USD: 3.62, EUR: 4.24, GBP: 4.91 };
+const DISPLAY_NAME_KEY = 'myfund_display_name';
 
 async function loadFxRates() {
   try {
@@ -17,7 +19,7 @@ async function loadFxRates() {
     const fxUrl = 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP';
     const res = await fetch(
       `/api/proxy?url=${encodeURIComponent(fxUrl)}`,
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(15000) }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -25,16 +27,21 @@ async function loadFxRates() {
     if (!r?.PLN) throw new Error('no PLN in response');
     const rates = { PLN: 1, USD: r.PLN, EUR: r.PLN / r.EUR, GBP: r.PLN / r.GBP };
     localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates }));
+    localStorage.setItem(FX_PERSIST_KEY, JSON.stringify({ rates }));
     return rates;
   } catch (e) {
     console.warn('[fx] fetch failed, using fallback:', e.message);
+    try {
+      const persisted = JSON.parse(localStorage.getItem(FX_PERSIST_KEY) || 'null');
+      if (persisted?.rates) return persisted.rates;
+    } catch {}
     return FX_FALLBACK;
   }
 }
 
 export function AppProvider({ children }) {
   const [token, setToken]           = useState(() => localStorage.getItem(TOKEN_KEY));
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem(DISPLAY_NAME_KEY) || '');
   const [rawData, setRawData]       = useState(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
@@ -46,12 +53,14 @@ export function AppProvider({ children }) {
 
   function login(newToken, name) {
     localStorage.setItem(TOKEN_KEY, newToken);
+    localStorage.setItem(DISPLAY_NAME_KEY, name || '');
     setToken(newToken);
     setDisplayName(name || '');
   }
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(DISPLAY_NAME_KEY);
     setToken(null);
     setRawData(null);
     setDisplayName('');
@@ -79,8 +88,10 @@ export function AppProvider({ children }) {
     if (token) fetchData();
   }, [token]);
 
+  const snapshotsInv = rawData?.snapshotsInvested ?? {};
   const snapshots = rawData?.snapshots
-    ? Object.entries(rawData.snapshots).map(([date, total]) => ({ date, total }))
+    ? Object.entries(rawData.snapshots)
+        .map(([date, total]) => ({ date, total, invested: snapshotsInv[date] ?? null }))
     : [];
 
   const portfolioInvested = useMemo(() => {
@@ -107,6 +118,17 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
+  async function saveSnapshot(totalValue, investedValue) {
+    const today = new Date().toISOString().slice(0, 10);
+    const updated = {
+      ...rawData,
+      snapshots: { ...(rawData.snapshots ?? {}), [today]: totalValue },
+      snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [today]: investedValue },
+    };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   const value = {
     isAuthenticated: !!token,
     displayName,
@@ -124,6 +146,7 @@ export function AppProvider({ children }) {
     saveCash,
     saveHoldings,
     saveTransactions,
+    saveSnapshot,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -332,7 +332,7 @@ function CashSection({ cash, fxRates, saveCash }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested, saveSnapshot } = useApp();
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const [cols] = useState(loadColumnConfig);
@@ -393,6 +393,14 @@ export default function Dashboard() {
     if (totalValue > 0) cashflows.push({ amount: totalValue, date: new Date().toISOString() });
     return xirr(cashflows);
   }, [transactions, fxRates, allPositions]);
+
+  useEffect(() => {
+    const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0) + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
+    const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
+    if (totalValue > 0 && investedValue > 0 && !loading) {
+      saveSnapshot(totalValue, investedValue);
+    }
+  }, [allPositions.length, loading]);
 
   const dailyChange = useMemo(() => {
     const pln = allPositions.reduce((sum, pos) => {
