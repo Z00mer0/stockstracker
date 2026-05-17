@@ -344,19 +344,29 @@ export default function Dashboard() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const nextDividend = allCalendarEvents.find(e => e.date >= todayStr);
 
+  // ── Live positions (market prices + enrichment) ──────────────────────────
+  const allPositions = useMemo(
+    () => portfolio.map(pos => enrichPosition(pos)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [portfolio, fxRates, enrichPosition]
+  );
+
+  const topPositions = useMemo(
+    () => [...portfolio]
+      .sort((a, b) => (b.qty * b.avgPrice * toPlnRate(b.currency, fxRates)) - (a.qty * a.avgPrice * toPlnRate(a.currency, fxRates)))
+      .slice(0, 7)
+      .map(pos => enrichPosition(pos)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [portfolio, fxRates, enrichPosition]
+  );
+
+  // ── KPI — real-time values from live positions, not stale snapshots ────────
   const kpi = useMemo(() => {
-    const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
-    const latest = sorted[sorted.length - 1];
-
-    const totalValue    = latest?.total ?? 0;
-    const totalInvested = invested ?? 0;
-    const unrealPLN     = totalValue - totalInvested;
-    const unrealPct     = totalInvested > 0 ? (unrealPLN / totalInvested) * 100 : 0;
-
+    // Transaction-derived (no live price needed)
     const realizedPLN = transactions
       .filter(t => t.type === 'SELL')
       .reduce((sum, tx) => {
-        const rate     = toPlnRate(tx.currency, fxRates);
+        const rate      = toPlnRate(tx.currency, fxRates);
         const costBasis = tx.costBasis ?? tx.avgPrice ?? tx.price;
         return sum + (tx.price - costBasis) * tx.qty * rate;
       }, 0);
@@ -372,48 +382,86 @@ export default function Dashboard() {
       .filter(t => t.type === 'DIV' && t.date >= yearCutStr)
       .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
 
+    const sorted      = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
-    return { totalValue, totalInvested, unrealPLN, unrealPct, realizedPLN, dividendsPLN, annualDivPLN, sparkValues };
-  }, [snapshots, transactions, fxRates, invested]);
+    // Live values — use real-time position prices, fall back to cost for unpriced positions
+    const positionsValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? p.costPLN ?? 0), 0);
+    const cashValue      = Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
+    const totalValue     = positionsValue + cashValue;
 
-  const topPositions = useMemo(
-    () => [...portfolio]
-      .sort((a, b) => (b.qty * b.avgPrice * toPlnRate(b.currency, fxRates)) - (a.qty * a.avgPrice * toPlnRate(a.currency, fxRates)))
-      .slice(0, 7)
-      .map(pos => enrichPosition(pos)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portfolio, fxRates, enrichPosition]
-  );
+    // Unrealized P&L: sum of per-position P&L (null if price unknown → 0)
+    const costBasis  = invested ?? 0; // = sum(qty * avgPrice * fx) for current holdings
+    const unrealPLN  = allPositions.reduce((s, p) => s + (p.plPLN ?? 0), 0);
+    const unrealPct  = costBasis > 0 ? (unrealPLN / costBasis) * 100 : 0;
 
-  const allPositions = useMemo(
-    () => portfolio.map(pos => enrichPosition(pos)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portfolio, fxRates, enrichPosition]
-  );
+    // Total ROI: (positionsValue + realizedPLN + dividendsPLN - costBasis) / costBasis
+    const totalROI = costBasis > 0
+      ? ((positionsValue + realizedPLN + dividendsPLN - costBasis) / costBasis) * 100
+      : null;
 
+    const pricesLoaded = allPositions.some(p => p.valuePLN != null);
+
+    console.log('[KPI] Total Invested vs Total Value', {
+      costBasis:       costBasis.toFixed(2),
+      positionsValue:  positionsValue.toFixed(2),
+      cashValue:       cashValue.toFixed(2),
+      totalValue:      totalValue.toFixed(2),
+      unrealPLN:       unrealPLN.toFixed(2),
+      unrealPct:       unrealPct.toFixed(2) + '%',
+      totalROI:        totalROI != null ? totalROI.toFixed(2) + '%' : 'n/a',
+      pricesLoaded,
+    });
+
+    return {
+      totalValue, positionsValue, cashValue, costBasis,
+      unrealPLN, unrealPct, totalROI,
+      realizedPLN, dividendsPLN, annualDivPLN,
+      sparkValues, pricesLoaded,
+    };
+  }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
+
+  // ── Portfolio IRR — requires ≥30 days of history ──────────────────────────
   const portfolioIrr = useMemo(() => {
     const cashflows = transactions
       .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DIV')
       .map(t => ({
         amount: t.type === 'BUY'
           ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
-          : t.qty * t.price * (fxRates[t.currency] ?? 1),
+          :  +(t.qty * t.price * (fxRates[t.currency] ?? 1)),
         date: t.date,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
-    if (totalValue > 0) cashflows.push({ amount: totalValue, date: new Date().toISOString() });
+
+    if (!cashflows.length) return null;
+
+    // Require at least 30 days of history — shorter periods give misleading annualized rates
+    const daySpan = Math.round((Date.now() - new Date(cashflows[0].date).getTime()) / 86400000);
+    if (daySpan < 30) return null;
+
+    // Terminal value: current positions at market price (exclude cash to avoid double-counting)
+    const terminalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
+    if (terminalValue <= 0) return null; // prices not loaded yet
+
+    cashflows.push({ amount: terminalValue, date: new Date().toISOString().slice(0, 10) });
     return xirr(cashflows);
   }, [transactions, fxRates, allPositions]);
 
+  // ── Snapshot — only save when real prices are loaded ─────────────────────
+  const positionsValueKey = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0).toFixed(0);
   useEffect(() => {
-    const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0) + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
+    if (loading) return;
+    const pricesLoaded = allPositions.some(p => p.valuePLN != null);
+    if (!pricesLoaded) return; // wait until market data arrives
+
+    const totalValue    = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0)
+      + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
     const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
-    if (totalValue > 0 && investedValue > 0 && !loading) {
+    if (totalValue > 0 && investedValue > 0) {
       saveSnapshot(totalValue, investedValue);
     }
-  }, [allPositions.length, loading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionsValueKey, loading]);
 
   const dailyChange = useMemo(() => {
     const pln = allPositions.reduce((sum, pos) => {
@@ -442,13 +490,14 @@ export default function Dashboard() {
         <KpiCard
           label="Unrealized P&L"
           value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmt(kpi.unrealPLN)} zł`}
-          sub={`${kpi.unrealPct >= 0 ? '+' : ''}${fmt(kpi.unrealPct)}%`}
+          sub={`${kpi.unrealPct >= 0 ? '+' : ''}${fmt(kpi.unrealPct)}%${!kpi.pricesLoaded ? ' (ceny ładuję…)' : ''}`}
           trend={kpi.unrealPLN}
           color={kpi.unrealPLN >= 0 ? 'green' : 'red'}
         />
         <KpiCard
           label="Realized P&L"
           value={`${kpi.realizedPLN >= 0 ? '+' : ''}${fmt(kpi.realizedPLN)} zł`}
+          sub={kpi.totalROI != null ? `Total ROI: ${kpi.totalROI >= 0 ? '+' : ''}${fmt(kpi.totalROI, 1)}%` : undefined}
           trend={kpi.realizedPLN}
           color={kpi.realizedPLN >= 0 ? 'green' : 'red'}
         />
@@ -467,9 +516,9 @@ export default function Dashboard() {
         />
         <KpiCard
           label="IRR portfela"
-          value={portfolioIrr != null ? (portfolioIrr * 100).toFixed(1) + '%' : '—'}
-          sub="ważona roczna stopa zwrotu"
-          color={portfolioIrr > 0 ? 'green' : portfolioIrr < 0 ? 'red' : 'slate'}
+          value={portfolioIrr != null ? (portfolioIrr * 100).toFixed(1) + '%' : 'N/A'}
+          sub={portfolioIrr != null ? 'ważona roczna stopa zwrotu' : '< 30 dni historii'}
+          color={portfolioIrr != null ? (portfolioIrr > 0 ? 'green' : 'red') : 'slate'}
         />
       </div>
 
