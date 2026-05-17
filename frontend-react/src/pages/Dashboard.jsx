@@ -422,7 +422,14 @@ export default function Dashboard() {
   }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
 
   // ── Portfolio IRR — requires ≥30 days of history ──────────────────────────
-  const portfolioIrr = useMemo(() => {
+  const { portfolioIrr, irrMissingSymbols } = useMemo(() => {
+    const symbolsWithBuy = new Set(
+      transactions.filter(t => t.type === 'BUY').map(t => t.symbol)
+    );
+    const missingSymbols = allPositions
+      .filter(p => !symbolsWithBuy.has(p.symbol))
+      .map(p => p.symbol);
+
     const cashflows = transactions
       .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DIV')
       .map(t => ({
@@ -433,18 +440,20 @@ export default function Dashboard() {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    if (!cashflows.length) return null;
+    if (!cashflows.length) return { portfolioIrr: null, irrMissingSymbols: missingSymbols };
 
     // Require at least 30 days of history — shorter periods give misleading annualized rates
     const daySpan = Math.round((Date.now() - new Date(cashflows[0].date).getTime()) / 86400000);
-    if (daySpan < 30) return null;
+    if (daySpan < 30) return { portfolioIrr: null, irrMissingSymbols: missingSymbols };
 
-    // Terminal value: current positions at market price (exclude cash to avoid double-counting)
-    const terminalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
-    if (terminalValue <= 0) return null; // prices not loaded yet
+    // Only include positions with documented BUY transactions to avoid inflating IRR
+    const terminalValue = allPositions
+      .filter(p => symbolsWithBuy.has(p.symbol))
+      .reduce((s, p) => s + (p.valuePLN ?? 0), 0);
+    if (terminalValue <= 0) return { portfolioIrr: null, irrMissingSymbols: missingSymbols }; // prices not loaded yet
 
     cashflows.push({ amount: terminalValue, date: new Date().toISOString().slice(0, 10) });
-    return xirr(cashflows);
+    return { portfolioIrr: xirr(cashflows), irrMissingSymbols: missingSymbols };
   }, [transactions, fxRates, allPositions]);
 
   // ── Snapshot — only save when real prices are loaded ─────────────────────
@@ -517,7 +526,13 @@ export default function Dashboard() {
         <KpiCard
           label="IRR portfela"
           value={portfolioIrr != null ? (portfolioIrr * 100).toFixed(1) + '%' : 'N/A'}
-          sub={portfolioIrr != null ? 'ważona roczna stopa zwrotu' : '< 30 dni historii'}
+          sub={
+            portfolioIrr != null
+              ? irrMissingSymbols.length > 0
+                ? `bez ${irrMissingSymbols.join(', ')} (brak BUY)`
+                : 'ważona roczna stopa zwrotu'
+              : '< 30 dni historii'
+          }
           color={portfolioIrr != null ? (portfolioIrr > 0 ? 'green' : 'red') : 'slate'}
         />
       </div>

@@ -42,19 +42,38 @@ export function fmtPeriod(days) {
 
 // ── Yahoo Finance via backend proxy (avoids CORS) ────────────────────────────
 async function fetchYahooQuote(sym) {
+  // v7/finance/quote returns price + fundamentals (P/E, P/B) for all markets
   try {
-    const yfUrl  = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
+    const yfUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}&fields=regularMarketPrice,regularMarketChangePercent,trailingPE,forwardPE,priceToBook`;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
     const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    const meta = json?.chart?.result?.[0]?.meta;
-    if (!meta?.regularMarketPrice) return null;
-    const price    = meta.regularMarketPrice;
-    const prev     = meta.chartPreviousClose ?? meta.previousClose ?? null;
-    const dailyChg = prev ? ((price - prev) / prev) * 100 : null;
-    return { price, dailyChg };
+    const q = json?.quoteResponse?.result?.[0];
+    if (!q?.regularMarketPrice) throw new Error('no price');
+    return {
+      price:    q.regularMarketPrice,
+      dailyChg: q.regularMarketChangePercent ?? null,
+      pe:       q.trailingPE  ?? null,
+      peFwd:    q.forwardPE   ?? null,
+      pb:       q.priceToBook ?? null,
+    };
   } catch {
-    return null;
+    // fallback: v8/finance/chart (price only, no fundamentals)
+    try {
+      const yfUrl  = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
+      const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
+      const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      const json = await res.json();
+      const meta = json?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) return null;
+      const price    = meta.regularMarketPrice;
+      const prev     = meta.chartPreviousClose ?? meta.previousClose ?? null;
+      const dailyChg = prev ? ((price - prev) / prev) * 100 : null;
+      return { price, dailyChg, pe: null, peFwd: null, pb: null };
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -69,9 +88,9 @@ async function fetchAllMetrics(symbols) {
         if (sym.includes('.')) {
           // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance directly
           const yq = await fetchYahooQuote(sym);
-          if (yq) { price = yq.price; dailyChg = yq.dailyChg; }
+          if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; }
         } else {
-          // US stocks — Finnhub primary, Yahoo fallback
+          // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
           const [qRes, mRes] = await Promise.allSettled([
             fetch(
               `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`,
@@ -89,9 +108,15 @@ async function fetchAllMetrics(symbols) {
           pe    = m?.peBasicExclExtraTTM ?? null;
           peFwd = m?.peForwardDiluted   ?? null;
           pb    = m?.pbAnnual            ?? null;
-          if (price == null) {
+          if (price == null || pe == null) {
             const yq = await fetchYahooQuote(sym);
-            if (yq) { price = yq.price; dailyChg = yq.dailyChg; }
+            if (yq) {
+              price    = price    ?? yq.price;
+              dailyChg = dailyChg ?? yq.dailyChg;
+              pe       = pe       ?? yq.pe;
+              peFwd    = peFwd    ?? yq.peFwd;
+              pb       = pb       ?? yq.pb;
+            }
           }
         }
 

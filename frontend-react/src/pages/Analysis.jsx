@@ -69,7 +69,14 @@ function calcBeta(portValues, bmValues) {
 }
 
 function RiskSection({ snapshots }) {
-  const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  // Filter out anomalous snapshots from the race condition bug where stock prices
+  // hadn't loaded yet (total showed only cash). Threshold: 40% of all-time high.
+  const maxTotal = Math.max(...snapshots.map(s => s.total), 0);
+  const cleanSnapshots = maxTotal > 0
+    ? snapshots.filter(s => s.total >= maxTotal * 0.4)
+    : snapshots;
+
+  const sorted = [...cleanSnapshots].sort((a, b) => a.date.localeCompare(b.date));
   const values = sorted.map(s => s.total).filter(v => v > 0);
   const dates = sorted.map(s => s.date).filter((_, i) => sorted[i].total > 0);
   const daySpan = dates.length >= 2
@@ -82,7 +89,7 @@ function RiskSection({ snapshots }) {
     if (values.length < 10 || daySpan < 14) return;
     const ctrl = new AbortController();
     setBetaLoading(true);
-    const dates = snapshots.map(s => s.date);
+    const dates = sorted.map(s => s.date);
     const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5y';
     fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: ctrl.signal })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
