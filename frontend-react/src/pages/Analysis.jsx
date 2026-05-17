@@ -7,16 +7,19 @@ import Spinner from '../components/shared/Spinner';
 function calcDailyReturns(values) {
   const r = [];
   for (let i = 1; i < values.length; i++) {
-    if (values[i-1] > 0) r.push((values[i] - values[i-1]) / values[i-1]);
+    if (values[i-1] > 0) {
+      const ret = (values[i] - values[i-1]) / values[i-1];
+      if (Math.abs(ret) <= 0.5) r.push(ret);
+    }
   }
   return r;
 }
 
 function calcVolatility(values) {
   const r = calcDailyReturns(values);
-  if (r.length < 5) return null;
+  if (r.length < 10) return null;
   const mean = r.reduce((s, x) => s + x, 0) / r.length;
-  const variance = r.reduce((s, x) => s + (x - mean) ** 2, 0) / r.length;
+  const variance = r.reduce((s, x) => s + (x - mean) ** 2, 0) / (r.length - 1);
   return Math.sqrt(variance * 252) * 100;
 }
 
@@ -24,15 +27,17 @@ function calcMaxDrawdown(values) {
   let peak = -Infinity, maxDD = 0;
   for (const v of values) {
     if (v > peak) peak = v;
-    const dd = (peak - v) / peak * 100;
-    if (dd > maxDD) maxDD = dd;
+    if (peak > 0) {
+      const dd = (peak - v) / peak * 100;
+      if (dd > maxDD) maxDD = dd;
+    }
   }
   return maxDD;
 }
 
 function calcSharpe(values, rf = 0.045) {
   const r = calcDailyReturns(values);
-  if (r.length < 5) return null;
+  if (r.length < 10) return null;
   const mean = r.reduce((s, x) => s + x, 0) / r.length * 252;
   const vol = calcVolatility(values) / 100;
   return vol > 0 ? (mean - rf) / vol : null;
@@ -40,7 +45,7 @@ function calcSharpe(values, rf = 0.045) {
 
 function calcSortino(values, rf = 0.045) {
   const r = calcDailyReturns(values);
-  if (r.length < 5) return null;
+  if (r.length < 10) return null;
   const mean = r.reduce((s, x) => s + x, 0) / r.length * 252;
   const downside = r.filter(x => x < 0);
   if (!downside.length) return null;
@@ -102,7 +107,7 @@ function RiskSection({ snapshots }) {
   const sharpe = calcSharpe(values);
   const sortino = calcSortino(values);
 
-  if (values.length < 5) return null;
+  if (values.length < 10) return null;
 
   const metric = (label, value, tooltip) => (
     <div className="rounded-lg bg-slate-900/60 px-4 py-3 flex flex-col gap-1">
