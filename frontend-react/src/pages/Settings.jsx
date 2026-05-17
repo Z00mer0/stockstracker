@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
+import { US_TAX_KEY } from '../services/dividendService';
 import BrokerImportModal from '../components/BrokerImportModal';
 
 function ApiKeySection() {
@@ -62,6 +63,52 @@ function ApiKeySection() {
   );
 }
 
+function DividendTaxSection() {
+  const [usTax, setUsTax] = useState(() => localStorage.getItem(US_TAX_KEY) || '15');
+
+  function save(val) {
+    setUsTax(val);
+    localStorage.setItem(US_TAX_KEY, val);
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-300">Podatek od dywidend</h2>
+        <p className="text-xs text-slate-500 mt-0.5">Stawka stosowana w widoku netto na stronie Dywidendy</p>
+      </div>
+      <div className="px-5 py-4 space-y-3">
+        <div className="flex items-center justify-between py-1">
+          <span className="text-sm text-slate-400">GPW (.WA)</span>
+          <span className="text-sm font-semibold text-slate-300">19% ryczałt (stała)</span>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Akcje US (USD)</p>
+          <div className="flex gap-2">
+            {[
+              { val: '15', label: '15%', desc: 'Umowa PL-US (standardowo)' },
+              { val: '30', label: '30%', desc: 'Pełny withholding' },
+            ].map(opt => (
+              <button
+                key={opt.val}
+                onClick={() => save(opt.val)}
+                className={`flex-1 px-4 py-3 rounded-lg text-left border transition-colors ${
+                  usTax === opt.val
+                    ? 'border-indigo-500 bg-indigo-950/50 text-indigo-300'
+                    : 'border-slate-600 bg-slate-700 text-slate-400 hover:bg-slate-600'
+                }`}
+              >
+                <div className="font-bold text-base mb-0.5">{opt.label}</div>
+                <div className="text-xs opacity-70">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { displayName, logout, refresh, fxRates, transactions, saveTransactions } = useApp();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
@@ -102,6 +149,9 @@ export default function Settings() {
 
       {/* Klucze API */}
       <ApiKeySection />
+
+      {/* Podatek od dywidend */}
+      <DividendTaxSection />
 
       {/* Import danych brokera */}
       <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">

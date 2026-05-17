@@ -5,6 +5,7 @@ import { usePrivacy } from '../context/PrivacyContext';
 import Sparkline from '../components/shared/Sparkline';
 import Spinner from '../components/shared/Spinner';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
+import useDividendEvents from '../hooks/useDividendEvents';
 import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -338,6 +339,11 @@ export default function Dashboard() {
   const [cols] = useState(loadColumnConfig);
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
+  const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
+  const { allCalendarEvents } = useDividendEvents(symbols);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const nextDividend = allCalendarEvents.find(e => e.date >= todayStr);
+
   const kpi = useMemo(() => {
     const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const latest = sorted[sorted.length - 1];
@@ -359,9 +365,16 @@ export default function Dashboard() {
       .filter(t => t.type === 'DIV')
       .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
 
+    const yearAgo = new Date();
+    yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+    const yearCutStr = yearAgo.toISOString().slice(0, 10);
+    const annualDivPLN = transactions
+      .filter(t => t.type === 'DIV' && t.date >= yearCutStr)
+      .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
+
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
-    return { totalValue, totalInvested, unrealPLN, unrealPct, realizedPLN, dividendsPLN, sparkValues };
+    return { totalValue, totalInvested, unrealPLN, unrealPct, realizedPLN, dividendsPLN, annualDivPLN, sparkValues };
   }, [snapshots, transactions, fxRates, invested]);
 
   const topPositions = useMemo(
@@ -440,8 +453,9 @@ export default function Dashboard() {
           color={kpi.realizedPLN >= 0 ? 'green' : 'red'}
         />
         <KpiCard
-          label="Dywidendy"
-          value={`${fmt(kpi.dividendsPLN)} zł`}
+          label="Roczna Dywidenda"
+          value={`${fmt(kpi.annualDivPLN)} zł`}
+          sub="ostatnie 12 miesięcy"
           color="yellow"
         />
         <KpiCard
@@ -475,6 +489,19 @@ export default function Dashboard() {
             <span className="text-xs text-slate-500">{kpi.sparkValues.length} punktów</span>
           </div>
           <Sparkline data={kpi.sparkValues} width={800} height={80} />
+          {nextDividend && (
+            <div className="mt-3 pt-3 border-t border-slate-700/60 flex items-center gap-3 text-xs">
+              <span className="text-slate-500">Najbliższa dywidenda:</span>
+              <span className="font-bold text-yellow-400">{nextDividend.symbol}</span>
+              <span className="text-slate-400">{nextDividend.date}</span>
+              {nextDividend.amount != null && (
+                <span className="text-slate-500">
+                  {nextDividend.amount.toFixed(4)} {nextDividend.currency ?? ''}
+                </span>
+              )}
+              <span className="text-slate-600 ml-auto">{nextDividend.isManual ? '✍️ ręczne' : '🤖 auto'}</span>
+            </div>
+          )}
         </div>
       )}
 

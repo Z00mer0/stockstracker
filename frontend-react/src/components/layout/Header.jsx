@@ -55,7 +55,7 @@ const PAGE_TITLES = {
   '/portfolio':    'Portfel',
   '/history':      'Historia wartości',
   '/transactions': 'Transakcje',
-  '/dividends':    'Dywidendy',
+  '/dividends':    'Kalendarz Dywidend',
   '/calendar':     'Kalendarz',
   '/watchlist':    'Watchlist',
   '/analysis':     'Analiza atrybuacji',
