@@ -64,35 +64,38 @@ async function fetchAllMetrics(symbols) {
   await Promise.allSettled(
     symbols.map(async (sym) => {
       try {
-        const [qRes, mRes] = await Promise.allSettled([
-          fetch(
-            `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`,
-            { signal: AbortSignal.timeout(8000) }
-          ).then(r => r.json()),
-          fetch(
-            `https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FINNHUB_TOKEN}`,
-            { signal: AbortSignal.timeout(8000) }
-          ).then(r => r.json()),
-        ]);
-        const q = qRes.status === 'fulfilled' ? qRes.value : null;
-        const m = mRes.status === 'fulfilled' ? mRes.value?.metric : null;
+        let price = null, dailyChg = null, pe = null, peFwd = null, pb = null;
 
-        let price    = (q?.c  > 0) ? q.c  : null;
-        let dailyChg = (q?.dp != null && q.c > 0) ? q.dp : null;
-
-        // Fallback to Yahoo Finance when Finnhub has no price (e.g. non-US exchanges)
-        if (price == null) {
+        if (sym.includes('.')) {
+          // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance directly
           const yq = await fetchYahooQuote(sym);
           if (yq) { price = yq.price; dailyChg = yq.dailyChg; }
+        } else {
+          // US stocks — Finnhub primary, Yahoo fallback
+          const [qRes, mRes] = await Promise.allSettled([
+            fetch(
+              `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`,
+              { signal: AbortSignal.timeout(8000) }
+            ).then(r => r.json()),
+            fetch(
+              `https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FINNHUB_TOKEN}`,
+              { signal: AbortSignal.timeout(8000) }
+            ).then(r => r.json()),
+          ]);
+          const q = qRes.status === 'fulfilled' ? qRes.value : null;
+          const m = mRes.status === 'fulfilled' ? mRes.value?.metric : null;
+          price    = (q?.c  > 0) ? q.c  : null;
+          dailyChg = (q?.dp != null && q.c > 0) ? q.dp : null;
+          pe    = m?.peBasicExclExtraTTM ?? null;
+          peFwd = m?.peForwardDiluted   ?? null;
+          pb    = m?.pbAnnual            ?? null;
+          if (price == null) {
+            const yq = await fetchYahooQuote(sym);
+            if (yq) { price = yq.price; dailyChg = yq.dailyChg; }
+          }
         }
 
-        results[sym] = {
-          price,
-          dailyChg,
-          pe:   m?.peBasicExclExtraTTM ?? null,
-          peFwd: m?.peForwardDiluted   ?? null,
-          pb:   m?.pbAnnual            ?? null,
-        };
+        results[sym] = { price, dailyChg, pe, peFwd, pb };
       } catch {
         results[sym] = { price: null, dailyChg: null, pe: null, peFwd: null, pb: null };
       }

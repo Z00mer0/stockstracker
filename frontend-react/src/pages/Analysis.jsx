@@ -69,12 +69,17 @@ function calcBeta(portValues, bmValues) {
 }
 
 function RiskSection({ snapshots }) {
-  const values = snapshots.map(s => s.total).filter(v => v > 0);
+  const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  const values = sorted.map(s => s.total).filter(v => v > 0);
+  const dates = sorted.map(s => s.date).filter((_, i) => sorted[i].total > 0);
+  const daySpan = dates.length >= 2
+    ? Math.round((new Date(dates[dates.length - 1]) - new Date(dates[0])) / 86400000)
+    : 0;
   const [beta, setBeta] = useState(null);
   const [betaLoading, setBetaLoading] = useState(false);
 
   useEffect(() => {
-    if (values.length < 10) return;
+    if (values.length < 10 || daySpan < 14) return;
     const ctrl = new AbortController();
     setBetaLoading(true);
     const dates = snapshots.map(s => s.date);
@@ -107,7 +112,7 @@ function RiskSection({ snapshots }) {
   const sharpe = calcSharpe(values);
   const sortino = calcSortino(values);
 
-  if (values.length < 10) return null;
+  if (values.length < 10 || daySpan < 14) return null;
 
   const metric = (label, value, tooltip) => (
     <div className="rounded-lg bg-slate-900/60 px-4 py-3 flex flex-col gap-1">
