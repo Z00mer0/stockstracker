@@ -79,6 +79,46 @@ async function fetchYahooQuote(sym) {
   }
 }
 
+// ── Hardcoded sectors for GPW (.WA) — Yahoo Finance v7 returns 401 for PL tickers ──
+const WA_SECTOR_MAP = {
+  'XTB.WA':  'Financial Services',
+  'PKN.WA':  'Energy',
+  'ALE.WA':  'Energy',
+  'CDR.WA':  'Technology',
+  'PKO.WA':  'Financial Services',
+  'PEO.WA':  'Financial Services',
+  'PZU.WA':  'Financial Services',
+  'LPP.WA':  'Consumer Cyclical',
+  'DNP.WA':  'Healthcare',
+  'KGH.WA':  'Basic Materials',
+  'JSW.WA':  'Basic Materials',
+  'CPS.WA':  'Technology',
+  'MDV.WA':  'Real Estate',
+  'OPL.WA':  'Communication Services',
+  'MBK.WA':  'Financial Services',
+  'PCO.WA':  'Technology',
+  'SPL.WA':  'Financial Services',
+  'TEN.WA':  'Consumer Cyclical',
+  'MRC.WA':  'Consumer Cyclical',
+  'CCC.WA':  'Consumer Cyclical',
+  'AMC.WA':  'Consumer Defensive',
+  'ING.WA':  'Financial Services',
+  'BNP.WA':  'Financial Services',
+};
+
+async function fetchFinnhubEarningsTs(sym) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const future = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
+    const url = `https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${future}&symbol=${sym}&token=${FINNHUB_TOKEN}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const events = json?.earningsCalendar ?? [];
+    return events.length > 0 ? new Date(events[0].date).getTime() / 1000 : null;
+  } catch { return null; }
+}
+
 // ── Finnhub fetch (with Yahoo Finance fallback for missing prices) ────────────
 async function fetchAllMetrics(symbols) {
   const results = {};
@@ -88,9 +128,14 @@ async function fetchAllMetrics(symbols) {
         let price = null, dailyChg = null, pe = null, peFwd = null, pb = null, sector = null, earningsTs = null;
 
         if (sym.includes('.')) {
-          // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance directly
+          // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance for price/fundamentals
           const yq = await fetchYahooQuote(sym);
           if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; sector = yq.sector; earningsTs = yq.earningsTs; }
+          // .WA: Yahoo returns 401 for sector/earnings — use hardcoded sector + Finnhub calendar
+          if (sym.endsWith('.WA')) {
+            sector     = sector     ?? WA_SECTOR_MAP[sym] ?? null;
+            earningsTs = earningsTs ?? await fetchFinnhubEarningsTs(sym);
+          }
         } else {
           // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
           const [qRes, mRes] = await Promise.allSettled([
