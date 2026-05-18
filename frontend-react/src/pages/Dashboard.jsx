@@ -94,41 +94,9 @@ function renderCellDash(key, pos, isPrivate) {
   }
 }
 
-const SECTOR_CACHE_KEY = 'finnhub_sectors';
-const SECTOR_TTL = 24 * 60 * 60 * 1000;
-const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 
 function AllocationChart({ positions }) {
   const [tab, setTab] = useState('stocks');
-  const [sectors, setSectors] = useState(() => {
-    try {
-      const c = JSON.parse(localStorage.getItem(SECTOR_CACHE_KEY) || 'null');
-      return c?.ts && Date.now() - c.ts < SECTOR_TTL ? c.data : {};
-    } catch { return {}; }
-  });
-
-  useEffect(() => {
-    const missing = positions.map(p => p.symbol).filter(sym => !(sym in sectors));
-    if (!missing.length) return;
-    let cancelled = false;
-    Promise.allSettled(
-      missing.map(sym =>
-        fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FINNHUB_TOKEN}`)
-          .then(r => r.json())
-          .then(j => ({ sym, sector: j.finnhubIndustry || 'Inne' }))
-          .catch(() => ({ sym, sector: 'Inne' }))
-      )
-    ).then(results => {
-      if (cancelled) return;
-      setSectors(prev => {
-        const updated = { ...prev };
-        results.forEach(r => { if (r.status === 'fulfilled') updated[r.value.sym] = r.value.sector; });
-        localStorage.setItem(SECTOR_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: updated }));
-        return updated;
-      });
-    });
-    return () => { cancelled = true; };
-  }, [positions]);
 
   const grouped = (() => {
     if (tab === 'stocks') {
@@ -143,9 +111,9 @@ function AllocationChart({ positions }) {
         return acc;
       }, {});
     }
-    // sectors
+    // sectors — use sector from enrichPosition (covers US via Yahoo + .WA via WA_SECTOR_MAP)
     return positions.reduce((acc, p) => {
-      const sector = sectors[p.symbol] || 'Ładowanie…';
+      const sector = p.sector || 'Inne';
       acc[sector] = (acc[sector] ?? 0) + (p.valuePLN ?? 0);
       return acc;
     }, {});
