@@ -33,8 +33,8 @@ export async function fetchOptionChain(ticker) {
     if (cached?.ts && Date.now() - cached.ts < CACHE_TTL) return cached.data;
   } catch { /* invalid cache — will re-fetch */ }
 
-  // dte=1-365 filters out expired contracts (avoids "These option contracts have expired" error)
-  const url = `https://api.marketdata.app/v1/options/chain/${encodeURIComponent(sym)}/?dte=1-365&token=${token}`;
+  // expiration=all returns the full chain across all future expirations
+  const url = `https://api.marketdata.app/v1/options/chain/${encodeURIComponent(sym)}/?expiration=all&token=${token}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
 
   const json = await res.json().catch(() => { throw new Error(`HTTP ${res.status}`); });
