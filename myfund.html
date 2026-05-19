@@ -1445,6 +1445,41 @@ async function fetchChartQuote(symbol) {
   };
 }
 
+async function fetchStooqQuote(symbol) {
+  // PKN.WA → pkn (no suffix), HOOD → hood.us
+  const stooqSym = symbol.endsWith('.WA')
+    ? symbol.slice(0, -3).toLowerCase()
+    : symbol.toLowerCase() + '.us';
+  const url = `https://stooq.com/q/l/?s=${stooqSym}&f=sd2ohlcv&h&e=csv`;
+  const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error('stooq_http_' + res.status);
+  const text = await res.text();
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) throw new Error('stooq_no_data');
+  const cols = lines[1].split(',');
+  // Symbol,Date,Open,High,Low,Close,Volume
+  const price = parseFloat(cols[5]);
+  const open  = parseFloat(cols[2]);
+  if (!(price > 0)) throw new Error('stooq_bad_price');
+  const prev = mkt[symbol] || {};
+  mkt[symbol] = {
+    price,
+    prevClose:  open, // Stooq CSV has no prev-close; use open as approximation
+    change:     price - open,
+    changePct:  open ? ((price - open) / open) * 100 : 0,
+    name:       prev.name || symbol,
+    currency:   symbol.endsWith('.WA') ? 'PLN' : 'USD',
+    earningsTs:  prev.earningsTs  || null,
+    earningsEnd: prev.earningsEnd || null,
+    exDivTs:     prev.exDivTs    || null,
+    divPayTs:    prev.divPayTs   || null,
+    divRate:     prev.divRate    ?? null,
+    pe:          prev.pe         ?? null,
+    fwdPE:       prev.fwdPE      ?? null,
+    pb:          prev.pb         ?? null,
+  };
+}
+
 function _applyQuoteResults(results) {
   results.forEach(q => {
     const prev    = mkt[q.symbol] || {};
@@ -1499,9 +1534,18 @@ async function fetchQuotes(symbols) {
     } catch (e) { console.warn('proxy v7 failed on', host, e.message); }
   }
 
-  // 3. Last resort: v8/chart per symbol
+  // 3. Fallback: v8/chart per symbol
   console.info('Fallback: v8/chart per symbol');
-  await Promise.allSettled(symbols.map(fetchChartQuote));
+  const chartResults = await Promise.allSettled(symbols.map(fetchChartQuote));
+
+  // 4. Last resort: Stooq CSV for symbols where chart also failed
+  const stillMissing = symbols.filter((sym, i) =>
+    chartResults[i].status === 'rejected' || !(mkt[sym]?.price > 0)
+  );
+  if (stillMissing.length) {
+    console.info('Fallback: Stooq CSV for', stillMissing);
+    await Promise.allSettled(stillMissing.map(fetchStooqQuote));
+  }
 }
 
 async function fetchFX() {

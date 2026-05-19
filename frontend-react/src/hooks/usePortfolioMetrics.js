@@ -40,6 +40,25 @@ export function fmtPeriod(days) {
   return `${(days / 365).toFixed(1)}yr`;
 }
 
+// ── Stooq CSV fallback — works without auth, no CORS issues via proxy ────────
+async function fetchStooqPrice(sym) {
+  // PKN.WA → pkn, HOOD → hood.us
+  const stooqSym = sym.endsWith('.WA')
+    ? sym.slice(0, -3).toLowerCase()
+    : sym.toLowerCase() + '.us';
+  const url = `https://stooq.com/q/l/?s=${stooqSym}&f=sd2ohlcv&h&e=csv`;
+  try {
+    const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return null;
+    const cols = lines[1].split(',');
+    const close = parseFloat(cols[5]); // Symbol,Date,Open,High,Low,Close,Volume
+    return close > 0 ? close : null;
+  } catch { return null; }
+}
+
 // ── Yahoo Finance via backend proxy (avoids CORS) ────────────────────────────
 async function fetchYahooQuote(sym) {
   // v7/finance/quote returns price + fundamentals (P/E, P/B) for all markets
@@ -61,20 +80,22 @@ async function fetchYahooQuote(sym) {
       earningsTs: q.earningsTimestamp ?? q.earningsTimestampStart ?? null,
     };
   } catch {
-    // fallback: v8/finance/chart (price only, no fundamentals)
+    // fallback: v8/finance/chart, then Stooq CSV
     try {
       const yfUrl  = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
       const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
       const json = await res.json();
       const meta = json?.chart?.result?.[0]?.meta;
-      if (!meta?.regularMarketPrice) return null;
+      if (!meta?.regularMarketPrice) throw new Error('no price');
       const price    = meta.regularMarketPrice;
       const prev     = meta.chartPreviousClose ?? meta.previousClose ?? null;
       const dailyChg = prev ? ((price - prev) / prev) * 100 : null;
       return { price, dailyChg, pe: null, peFwd: null, pb: null };
     } catch {
-      return null;
+      // final fallback: Stooq CSV (price only)
+      const price = await fetchStooqPrice(sym);
+      return price ? { price, dailyChg: null, pe: null, peFwd: null, pb: null } : null;
     }
   }
 }
@@ -131,10 +152,10 @@ async function fetchAllMetrics(symbols) {
           // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance for price/fundamentals
           const yq = await fetchYahooQuote(sym);
           if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; sector = yq.sector; earningsTs = yq.earningsTs; }
-          // .WA: Yahoo returns 401 for sector/earnings — use hardcoded sector + Finnhub calendar
+          // .WA: Yahoo returns 401 for sector — use hardcoded sector map
+          // Finnhub earnings calendar returns 403 for .WA on free tier, so skip it
           if (sym.endsWith('.WA')) {
-            sector     = sector     ?? WA_SECTOR_MAP[sym] ?? null;
-            earningsTs = earningsTs ?? await fetchFinnhubEarningsTs(sym);
+            sector = sector ?? WA_SECTOR_MAP[sym] ?? null;
           }
         } else {
           // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
@@ -155,7 +176,7 @@ async function fetchAllMetrics(symbols) {
           pe    = m?.peBasicExclExtraTTM ?? null;
           peFwd = m?.peForwardDiluted   ?? null;
           pb    = m?.pbAnnual            ?? null;
-          if (price == null || pe == null) {
+          if (price == null || pe == null || sector == null) {
             const yq = await fetchYahooQuote(sym);
             if (yq) {
               price      = price      ?? yq.price;
