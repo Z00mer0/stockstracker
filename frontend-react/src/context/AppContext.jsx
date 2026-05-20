@@ -16,10 +16,10 @@ async function loadFxRates() {
     if (cached?.ts && Date.now() - cached.ts < FX_CACHE_TTL) return cached.rates;
   } catch {}
   try {
-    const fxUrl = 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP';
+    // Direct call — Frankfurter supports CORS, no proxy/auth needed
     const res = await fetch(
-      `/api/proxy?url=${encodeURIComponent(fxUrl)}`,
-      { signal: AbortSignal.timeout(15000), headers: { 'X-Auth-Token': localStorage.getItem(TOKEN_KEY) || '' } }
+      'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP',
+      { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
