@@ -21,7 +21,7 @@ export async function fetchDividendHistory(symbol) {
   } catch {}
   try {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2y&events=div`;
-    const r = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
+    const r = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const json = await r.json();
     const evts = json?.chart?.result?.[0]?.events?.dividends ?? {};

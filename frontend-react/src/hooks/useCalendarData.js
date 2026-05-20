@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 
+function authHeader() {
+  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+}
+
 const CACHE_TTL_MS  = 6 * 60 * 60 * 1000;  // 6h dla makro
 
 // Hardcoded fallback gdy Finnhub nie odpowie
@@ -70,7 +74,7 @@ async function fetchMacroEvents() {
   try {
     const res = await fetch(
       `/api/finnhub/v1/calendar/economic?from=${from}&to=${to}`,
-      { signal: AbortSignal.timeout(10000) }
+      { signal: AbortSignal.timeout(10000), headers: authHeader() }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -117,7 +121,7 @@ async function fetchEarningsEvents(symbols) {
   try {
     const res = await fetch(
       `/api/finnhub/v1/calendar/earnings?from=${from}&to=${to}`,
-      { signal: AbortSignal.timeout(10000) }
+      { signal: AbortSignal.timeout(10000), headers: authHeader() }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();

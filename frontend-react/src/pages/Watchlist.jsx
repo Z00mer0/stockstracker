@@ -4,18 +4,22 @@ import { useChart } from '../context/ChartContext';
 
 const WATCH_KEY = 'myfund_watchlist';
 
+function authHeader() {
+  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+}
+
 async function fetchLivePrice(sym) {
   try {
     const q = await fetch(
       `/api/finnhub/v1/quote?symbol=${sym}`,
-      { signal: AbortSignal.timeout(8000) }
+      { signal: AbortSignal.timeout(8000), headers: authHeader() }
     ).then(r => r.json());
     if (q?.c > 0) return { price: q.c, dailyChg: q.dp ?? null };
   } catch {}
   // Yahoo fallback for non-US exchanges
   try {
     const yfUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
-    const json = await fetch(`/api/proxy?url=${encodeURIComponent(yfUrl)}`, { signal: AbortSignal.timeout(8000) }).then(r => r.json());
+    const json = await fetch(`/api/proxy?url=${encodeURIComponent(yfUrl)}`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json());
     const meta = json?.chart?.result?.[0]?.meta;
     if (meta?.regularMarketPrice) {
       const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;

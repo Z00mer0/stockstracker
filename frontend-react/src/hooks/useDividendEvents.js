@@ -39,7 +39,7 @@ async function fetchAutoUS(usSymbols) {
   try {
     const res = await fetch(
       `/api/dividends/upcoming?symbols=${usSymbols.join(',')}`,
-      { signal: AbortSignal.timeout(8000) }
+      { signal: AbortSignal.timeout(8000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();

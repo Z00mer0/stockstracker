@@ -127,7 +127,9 @@ export default function ScenarioLab() {
     if (!selectedSymbol) { setLivePrice(null); return; }
     const pos = portfolio.find(p => p.symbol === selectedSymbol);
     setFetchingPrice(true);
-    fetch(`/api/finnhub/v1/quote?symbol=${selectedSymbol}`)
+    fetch(`/api/finnhub/v1/quote?symbol=${selectedSymbol}`, {
+      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
+    })
       .then(r => r.json())
       .then(data => {
         const price = data?.c > 0 ? data.c : pos?.avgPrice ?? 100;

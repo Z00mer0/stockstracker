@@ -91,7 +91,7 @@ function RiskSection({ snapshots }) {
     setBetaLoading(true);
     const dates = sorted.map(s => s.date);
     const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5y';
-    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: ctrl.signal })
+    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: ctrl.signal, headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(data => {
         const result = data.chart?.result?.[0];

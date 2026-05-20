@@ -1,6 +1,10 @@
 // frontend-react/src/hooks/usePortfolioMetrics.js
 import { useState, useEffect } from 'react';
 
+function authHeader() {
+  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+}
+
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min
 
@@ -47,7 +51,7 @@ async function fetchStooqPrice(sym) {
     : sym.toLowerCase() + '.us';
   const url = `https://stooq.com/q/l/?s=${stooqSym}&f=sd2ohlcv&h&e=csv`;
   try {
-    const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000), headers: authHeader() });
     if (!res.ok) return null;
     const text = await res.text();
     const lines = text.trim().split('\n');
@@ -64,7 +68,7 @@ async function fetchYahooQuote(sym) {
   try {
     const yfUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}&fields=regularMarketPrice,regularMarketChangePercent,trailingPE,forwardPE,priceToBook,sector,earningsTimestamp`;
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
-    const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+    const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000), headers: authHeader() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const q = json?.quoteResponse?.result?.[0];
@@ -83,7 +87,7 @@ async function fetchYahooQuote(sym) {
     try {
       const yfUrl  = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
-      const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000), headers: authHeader() });
       const json = await res.json();
       const meta = json?.chart?.result?.[0]?.meta;
       if (!meta?.regularMarketPrice) throw new Error('no price');
@@ -131,7 +135,7 @@ async function fetchFinnhubEarningsTs(sym) {
     const today = new Date().toISOString().slice(0, 10);
     const future = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     const url = `/api/finnhub/v1/calendar/earnings?from=${today}&to=${future}&symbol=${sym}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000), headers: authHeader() });
     if (!res.ok) return null;
     const json = await res.json();
     const events = json?.earningsCalendar ?? [];
@@ -159,8 +163,8 @@ async function fetchAllMetrics(symbols) {
         } else {
           // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
           const [qRes, mRes] = await Promise.allSettled([
-            fetch(`/api/finnhub/v1/quote?symbol=${sym}`, { signal: AbortSignal.timeout(8000) }).then(r => r.json()),
-            fetch(`/api/finnhub/v1/stock/metric?symbol=${sym}&metric=all`, { signal: AbortSignal.timeout(8000) }).then(r => r.json()),
+            fetch(`/api/finnhub/v1/quote?symbol=${sym}`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json()),
+            fetch(`/api/finnhub/v1/stock/metric?symbol=${sym}&metric=all`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json()),
           ]);
           const q = qRes.status === 'fulfilled' ? qRes.value : null;
           const m = mRes.status === 'fulfilled' ? mRes.value?.metric : null;

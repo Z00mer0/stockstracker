@@ -83,7 +83,7 @@ export default function History() {
     if (!benchmark) { setBenchData([]); return; }
     setBenchLoading(true);
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(benchmark)}?interval=1d&range=5y`;
-    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) })
+    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } })
       .then(r => r.json())
       .then(json => {
         const result = json?.chart?.result?.[0];
