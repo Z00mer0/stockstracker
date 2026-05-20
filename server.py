@@ -220,6 +220,8 @@ class Handler(SimpleHTTPRequestHandler):
         # Assets mają hash w nazwie → można cachować długo
         self.send_header('Cache-Control',
                          'public, max-age=31536000, immutable' if in_assets else 'no-store, no-cache')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'SAMEORIGIN')
         self.end_headers()
         self.wfile.write(content)
 
@@ -236,6 +238,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
         self.send_header('Cache-Control', 'no-store, no-cache')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
         self.end_headers()
         self.wfile.write(body)
 
@@ -538,6 +543,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
         self.end_headers()
 
     def log_message(self, fmt, *args):
