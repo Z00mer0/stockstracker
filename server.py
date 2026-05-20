@@ -558,6 +558,19 @@ async function doRecover() {
         elif path in ('/app', '/app/') or path.startswith('/app/'):
             self._serve_react()
 
+        elif path.startswith('/assets/') or path in ('/favicon.ico', '/favicon.png'):
+            # Static assets built by Vite — serve from frontend-react/dist
+            rel = path.lstrip('/')
+            filepath = (REACT_DIST / rel).resolve()
+            try:
+                filepath.relative_to(REACT_DIST.resolve())
+            except ValueError:
+                self.send_response(403); self.end_headers(); return
+            if filepath.exists() and filepath.is_file():
+                self._serve_static(filepath)
+            else:
+                self.send_response(404); self.end_headers()
+
         else:
             self.send_response(404)
             self.end_headers()
