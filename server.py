@@ -6,6 +6,7 @@ W chmurze: przechowuje dane w PostgreSQL (zmienna DATABASE_URL).
 """
 import json
 import hashlib
+import bcrypt
 import mimetypes
 import re
 import secrets
@@ -186,8 +187,14 @@ else:
         (BASE / f'portfolio_{username}.json').write_bytes(raw)
 
 
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def check_password(password: str, stored_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode(), stored_hash.encode())
+    except Exception:
+        return False
 
 
 def get_username(handler):
@@ -425,7 +432,16 @@ class Handler(SimpleHTTPRequestHandler):
                 if not _USERNAME_RE.match(username):
                     self.send_json(400, {'ok': False, 'error': 'Nieprawidłowa nazwa użytkownika'}); return
                 users = load_users()
-                if username in users and users[username]['password_hash'] == hash_password(password):
+                authenticated = False
+                if username in users:
+                    stored = users[username]['password_hash']
+                    if check_password(password, stored):
+                        authenticated = True
+                    elif hashlib.sha256(password.encode()).hexdigest() == stored:
+                        # Migrate legacy SHA-256 hash to bcrypt on first login
+                        save_user(username, users[username]['display_name'], hash_password(password))
+                        authenticated = True
+                if authenticated:
                     token = secrets.token_hex(24)
                     SESSIONS[token] = username
                     self.send_json(200, {'ok': True, 'token': token,
@@ -476,7 +492,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if len(new_pw) < 6:
                     self.send_json(400, {'ok': False, 'error': 'Nowe hasło musi mieć co najmniej 6 znaków'}); return
                 users = load_users()
-                if users.get(username, {}).get('password_hash') != hash_password(current_pw):
+                if not check_password(current_pw, users.get(username, {}).get('password_hash', '')):
                     self.send_json(401, {'ok': False, 'error': 'Aktualne hasło jest nieprawidłowe'}); return
                 save_user(username, users[username]['display_name'], hash_password(new_pw))
                 self.send_json(200, {'ok': True})
