@@ -427,17 +427,14 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(content)
 
-        # ── React SPA pod /app/* ──────────────────────────────────────────────
-        elif path in ('/app', '/app/'):
-            self._serve_react()
-
-        elif path.startswith('/app/'):
-            rel = path[5:].lstrip('/')     # np. 'assets/index-abc.js'
-            fp  = REACT_DIST / rel
-            if fp.exists() and fp.is_file():
-                self._serve_static(fp)
-            else:
-                self._serve_react()        # SPA fallback dla React Router
+        # ── React SPA przeniesiony na Vercel — redirect 301 ──────────────────
+        elif path in ('/app', '/app/') or path.startswith('/app/'):
+            qs     = self.path.split('?', 1)[1] if '?' in self.path else ''
+            target = 'https://stockstracker-mu.vercel.app' + path + ('?' + qs if qs else '')
+            self.send_response(301)
+            self.send_header('Location', target)
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
 
         else:
             self.send_response(404)
