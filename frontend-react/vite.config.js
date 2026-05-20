@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_URL || 'http://localhost:8765';
 
   return {
-    base: isProd ? '/app/' : '/',
+    base: '/',
     plugins: [react()],
 
     server: {
