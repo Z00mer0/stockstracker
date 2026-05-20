@@ -19,7 +19,7 @@ async function loadFxRates() {
     const fxUrl = 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP';
     const res = await fetch(
       `/api/proxy?url=${encodeURIComponent(fxUrl)}`,
-      { signal: AbortSignal.timeout(15000) }
+      { signal: AbortSignal.timeout(15000), headers: { 'X-Auth-Token': localStorage.getItem(TOKEN_KEY) || '' } }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();

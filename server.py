@@ -427,6 +427,134 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(content)
 
+        elif path == '/recover':
+            html = b'''<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recover Portfolio Data</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:32px;max-width:520px;width:100%}
+h1{font-size:1.25rem;font-weight:700;margin-bottom:8px;color:#f8fafc}
+p{color:#94a3b8;font-size:.9rem;margin-bottom:20px;line-height:1.5}
+input{width:100%;padding:10px 14px;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#f1f5f9;font-size:.9rem;margin-bottom:12px}
+input:focus{outline:2px solid #6366f1;border-color:transparent}
+button{width:100%;padding:11px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary{background:#6366f1;color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-success{background:#059669;color:#fff;margin-top:8px}
+.btn-success:hover{opacity:.85}
+.msg{padding:12px 16px;border-radius:8px;margin-top:16px;font-size:.875rem;line-height:1.5}
+.msg-ok{background:#052e16;border:1px solid #166534;color:#4ade80}
+.msg-err{background:#2d0a0a;border:1px solid #7f1d1d;color:#f87171}
+.msg-info{background:#0c1a2e;border:1px solid #1d4ed8;color:#93c5fd}
+pre{font-size:.75rem;margin-top:8px;overflow:auto;max-height:200px;padding:8px;background:#0f172a;border-radius:6px;color:#94a3b8}
+</style></head><body>
+<div class="card">
+<h1>&#128190; Odzysk danych portfela</h1>
+<p>Ta strona odczyta dane portfela z Twojej przeglądarki i przywróci je do bazy danych.<br>
+Zaloguj się, a następnie kliknij <strong>Przywróć dane</strong>.</p>
+<div id="loginForm">
+  <input id="uname" type="text" placeholder="Nazwa użytkownika" autocomplete="username">
+  <input id="upass" type="password" placeholder="Hasło" autocomplete="current-password">
+  <button class="btn-primary" onclick="doLogin()">Zaloguj się i sprawdź dane</button>
+</div>
+<div id="recoverSection" style="display:none">
+  <div id="foundMsg"></div>
+  <button class="btn-success" id="recoverBtn" style="display:none" onclick="doRecover()">&#128190; Przywróć dane do chmury</button>
+</div>
+<div id="msg"></div>
+</div>
+<script>
+let _token = null;
+let _oldData = null;
+
+function showMsg(text, type='info') {
+  document.getElementById('msg').innerHTML = `<div class="msg msg-${type}">${text}</div>`;
+}
+
+function readOldData() {
+  const portfolio = JSON.parse(localStorage.getItem('myfund_v3_portfolio') || 'null');
+  const transactions = JSON.parse(localStorage.getItem('myfund_v3_transactions') || 'null');
+  const snapshots = JSON.parse(localStorage.getItem('myfund_v3_snapshots') || 'null');
+  const cash = JSON.parse(localStorage.getItem('myfund_v4_cash') || 'null');
+  return { portfolio, transactions, snapshots, cash };
+}
+
+async function doLogin() {
+  const u = document.getElementById('uname').value.trim();
+  const p = document.getElementById('upass').value;
+  if (!u || !p) { showMsg('Podaj login i hasło.', 'err'); return; }
+  showMsg('Logowanie...', 'info');
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const d = await r.json();
+    if (!d.ok) { showMsg('Błąd logowania: ' + d.error, 'err'); return; }
+    _token = d.token;
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('recoverSection').style.display = 'block';
+    checkOldData();
+  } catch(e) { showMsg('Błąd: ' + e.message, 'err'); }
+}
+
+function checkOldData() {
+  const old = readOldData();
+  const holdings = old.portfolio?.holdings || [];
+  const transactions = old.transactions || [];
+  const snapKeys = Object.keys(old.snapshots || {}).length;
+  const div = document.getElementById('foundMsg');
+  if (holdings.length === 0 && transactions.length === 0 && snapKeys === 0) {
+    div.innerHTML = '<div class="msg msg-err">Brak danych portfela w tej przeglądarce.<br>Dane mogły zostać usunięte lub używasz innej przeglądarki/urządzenia niż wcześniej.</div>';
+    return;
+  }
+  div.innerHTML = `<div class="msg msg-info">Znaleziono dane:<ul style="margin-top:8px;padding-left:18px">
+    <li>${holdings.length} pozycji w portfelu</li>
+    <li>${transactions.length} transakcji</li>
+    <li>${snapKeys} snapshotów historii</li>
+    </ul></div>`;
+  _oldData = old;
+  document.getElementById('recoverBtn').style.display = 'block';
+}
+
+async function doRecover() {
+  if (!_oldData || !_token) return;
+  showMsg('Przywracanie danych...', 'info');
+  try {
+    const current = await fetch('/api/data', {
+      headers: { 'X-Auth-Token': _token }
+    }).then(r => r.json());
+    const merged = {
+      ...current,
+      portfolio: _oldData.portfolio || current.portfolio,
+      transactions: _oldData.transactions || current.transactions,
+      snapshots: { ...(current.snapshots || {}), ...(_oldData.snapshots || {}) },
+      cash: _oldData.cash || current.cash,
+    };
+    const r = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'X-Auth-Token': _token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(merged)
+    });
+    if (r.ok) {
+      showMsg('&#10003; Dane przywrócone! <a href="https://stockstracker-mu.vercel.app" style="color:#818cf8">Przejdź do aplikacji</a>', 'ok');
+      document.getElementById('recoverBtn').style.display = 'none';
+    } else {
+      showMsg('Błąd zapisu: HTTP ' + r.status, 'err');
+    }
+  } catch(e) { showMsg('Błąd: ' + e.message, 'err'); }
+}
+</script></body></html>'''
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(html)))
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            self.wfile.write(html)
+
         # ── React SPA przeniesiony na Vercel — redirect 301 ──────────────────
         elif path in ('/app', '/app/') or path.startswith('/app/'):
             qs     = self.path.split('?', 1)[1] if '?' in self.path else ''
