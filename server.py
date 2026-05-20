@@ -428,7 +428,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(content)
 
         elif path == '/recover':
-            html = b'''<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
+            html = '''<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Recover Portfolio Data</title>
 <style>
@@ -547,7 +547,7 @@ async function doRecover() {
     }
   } catch(e) { showMsg('Błąd: ' + e.message, 'err'); }
 }
-</script></body></html>'''
+</script></body></html>'''.encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(html)))
