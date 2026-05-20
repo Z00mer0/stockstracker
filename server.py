@@ -303,7 +303,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                self.send_json(502, {'error': str(e)})
+                print(f'[proxy] {e}')
+                self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/alphavantage':
             key = os.environ.get('ALPHAVANTAGE_KEY', '')
@@ -322,7 +323,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                self.send_json(502, {'error': str(e)})
+                print(f'[proxy] {e}')
+                self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/proxy':
             qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
@@ -356,7 +358,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                self.send_json(502, {'error': str(e)})
+                print(f'[proxy] {e}')
+                self.send_json(502, {'error': 'upstream request failed'})
 
         elif path.startswith('/api/dividends/upcoming'):
             qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
