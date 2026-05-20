@@ -385,6 +385,24 @@ class Handler(SimpleHTTPRequestHandler):
             SESSIONS.pop(self.headers.get('X-Auth-Token', ''), None)
             self.send_json(200, {'ok': True})
 
+        elif path == '/api/change-password':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'ok': False, 'error': 'unauthorized'}); return
+            try:
+                body         = self.read_json()
+                current_pw   = str(body.get('current_password', ''))
+                new_pw       = str(body.get('new_password', ''))
+                if len(new_pw) < 6:
+                    self.send_json(400, {'ok': False, 'error': 'Nowe hasło musi mieć co najmniej 6 znaków'}); return
+                users = load_users()
+                if users.get(username, {}).get('password_hash') != hash_password(current_pw):
+                    self.send_json(401, {'ok': False, 'error': 'Aktualne hasło jest nieprawidłowe'}); return
+                save_user(username, users[username]['display_name'], hash_password(new_pw))
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(400, {'ok': False, 'error': str(e)})
+
         elif path == '/api/data':
             username = get_username(self)
             if not username:

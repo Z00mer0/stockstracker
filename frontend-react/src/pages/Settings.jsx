@@ -1,6 +1,7 @@
 // frontend-react/src/pages/Settings.jsx
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../hooks/useApi';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
 import { US_TAX_KEY } from '../services/dividendService';
 import BrokerImportModal from '../components/BrokerImportModal';
@@ -59,6 +60,70 @@ function ApiKeySection() {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ChangePasswordSection() {
+  const [current,  setCurrent]  = useState('');
+  const [next,     setNext]     = useState('');
+  const [next2,    setNext2]    = useState('');
+  const [error,    setError]    = useState(null);
+  const [success,  setSuccess]  = useState(false);
+  const [loading,  setLoading]  = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    if (next !== next2) { setError('Nowe hasła nie są identyczne'); return; }
+    setLoading(true);
+    try {
+      await api.post('/api/change-password', { current_password: current, new_password: next });
+      setSuccess(true);
+      setCurrent(''); setNext(''); setNext2('');
+    } catch (err) {
+      setError(err.response?.data?.error ?? 'Błąd zmiany hasła');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-300">Zmiana hasła</h2>
+      </div>
+      <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+        {[
+          { label: 'Aktualne hasło',   value: current, set: setCurrent, ac: 'current-password' },
+          { label: 'Nowe hasło',        value: next,    set: setNext,    ac: 'new-password' },
+          { label: 'Powtórz nowe hasło',value: next2,   set: setNext2,   ac: 'new-password' },
+        ].map(({ label, value, set, ac }) => (
+          <div key={label}>
+            <label className="text-xs text-slate-400 block mb-1">{label}</label>
+            <input
+              type="password"
+              value={value}
+              onChange={e => set(e.target.value)}
+              autoComplete={ac}
+              className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+            />
+          </div>
+        ))}
+        <p className="text-xs text-slate-600">Minimum 6 znaków</p>
+
+        {error   && <p className="text-red-400 text-sm">{error}</p>}
+        {success && <p className="text-emerald-400 text-sm">Hasło zostało zmienione</p>}
+
+        <button
+          type="submit"
+          disabled={loading || !current || !next || !next2}
+          className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-sm font-semibold transition-colors min-h-[40px]"
+        >
+          {loading ? 'Zapisywanie…' : 'Zmień hasło'}
+        </button>
+      </form>
     </div>
   );
 }
@@ -146,6 +211,9 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Zmiana hasła */}
+      <ChangePasswordSection />
 
       {/* Klucze API */}
       <ApiKeySection />
