@@ -4,12 +4,10 @@ import { useChart } from '../context/ChartContext';
 
 const WATCH_KEY = 'myfund_watchlist';
 
-const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
-
 async function fetchLivePrice(sym) {
   try {
     const q = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`,
+      `/api/finnhub/v1/quote?symbol=${sym}`,
       { signal: AbortSignal.timeout(8000) }
     ).then(r => r.json());
     if (q?.c > 0) return { price: q.c, dailyChg: q.dp ?? null };

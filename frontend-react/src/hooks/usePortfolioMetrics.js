@@ -1,7 +1,6 @@
 // frontend-react/src/hooks/usePortfolioMetrics.js
 import { useState, useEffect } from 'react';
 
-const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min
 
@@ -131,7 +130,7 @@ async function fetchFinnhubEarningsTs(sym) {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const future = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
-    const url = `https://finnhub.io/api/v1/calendar/earnings?from=${today}&to=${future}&symbol=${sym}&token=${FINNHUB_TOKEN}`;
+    const url = `/api/finnhub/v1/calendar/earnings?from=${today}&to=${future}&symbol=${sym}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const json = await res.json();
@@ -160,14 +159,8 @@ async function fetchAllMetrics(symbols) {
         } else {
           // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
           const [qRes, mRes] = await Promise.allSettled([
-            fetch(
-              `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_TOKEN}`,
-              { signal: AbortSignal.timeout(8000) }
-            ).then(r => r.json()),
-            fetch(
-              `https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FINNHUB_TOKEN}`,
-              { signal: AbortSignal.timeout(8000) }
-            ).then(r => r.json()),
+            fetch(`/api/finnhub/v1/quote?symbol=${sym}`, { signal: AbortSignal.timeout(8000) }).then(r => r.json()),
+            fetch(`/api/finnhub/v1/stock/metric?symbol=${sym}&metric=all`, { signal: AbortSignal.timeout(8000) }).then(r => r.json()),
           ]);
           const q = qRes.status === 'fulfilled' ? qRes.value : null;
           const m = mRes.status === 'fulfilled' ? mRes.value?.metric : null;

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 
-const FINNHUB_KEY   = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 const CACHE_TTL_MS  = 6 * 60 * 60 * 1000;  // 6h dla makro
 
 // Hardcoded fallback gdy Finnhub nie odpowie
@@ -70,7 +69,7 @@ async function fetchMacroEvents() {
 
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${FINNHUB_KEY}`,
+      `/api/finnhub/v1/calendar/economic?from=${from}&to=${to}`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -117,7 +116,7 @@ async function fetchEarningsEvents(symbols) {
 
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${FINNHUB_KEY}`,
+      `/api/finnhub/v1/calendar/earnings?from=${from}&to=${to}`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

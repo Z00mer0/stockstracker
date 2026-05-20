@@ -8,8 +8,6 @@ import {
   calcSigma, makePrices, calcPayoff, calcKPIs, calcGreeks,
 } from '../utils/scenarioLab';
 
-const FINNHUB_TOKEN = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
-
 function dteToDateStr(days) {
   const d = new Date();
   d.setDate(d.getDate() + Math.max(1, days));
@@ -129,7 +127,7 @@ export default function ScenarioLab() {
     if (!selectedSymbol) { setLivePrice(null); return; }
     const pos = portfolio.find(p => p.symbol === selectedSymbol);
     setFetchingPrice(true);
-    fetch(`https://finnhub.io/api/v1/quote?symbol=${selectedSymbol}&token=${FINNHUB_TOKEN}`)
+    fetch(`/api/finnhub/v1/quote?symbol=${selectedSymbol}`)
       .then(r => r.json())
       .then(data => {
         const price = data?.c > 0 ? data.c : pos?.avgPrice ?? 100;

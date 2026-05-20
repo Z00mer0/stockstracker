@@ -1300,8 +1300,6 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.col-gear-wrap')) document.getElementById('colGearPanel')?.classList.remove('open');
 });
 
-const AV_KEY       = 'CT6XEGKOZITNTN25';
-const FINNHUB_KEY  = 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg';
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SK_PORT = 'myfund_v3_portfolio';
@@ -3805,12 +3803,12 @@ async function refreshCalendarEvents(symbols) {
   const from = today();
   const to   = (() => { const d = new Date(); d.setDate(d.getDate() + 180); return d.toISOString().split('T')[0]; })();
 
-  if (FINNHUB_KEY) {
+  {
     // ── 1. Bulk earnings: one call covers all portfolio symbols ──────────────
     const bareToFull = new Map(symbols.map(s => [s.split('.')[0].toUpperCase(), s]));
     try {
       const r = await fetch(
-        `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${FINNHUB_KEY}`,
+        `/api/finnhub/v1/calendar/earnings?from=${from}&to=${to}`,
         { signal: AbortSignal.timeout(10000) }
       );
       if (r.ok) {
@@ -3835,7 +3833,7 @@ async function refreshCalendarEvents(symbols) {
     // ── 2. Economic calendar: live macro events ──────────────────────────────
     try {
       const r = await fetch(
-        `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${FINNHUB_KEY}`,
+        `/api/finnhub/v1/calendar/economic?from=${from}&to=${to}`,
         { signal: AbortSignal.timeout(10000) }
       );
       if (r.ok) {
@@ -3993,7 +3991,7 @@ async function fetchCalendarSummary(symbol) {
 async function fetchFundamentalsOne(symbol) {
   // Alpha Vantage uses bare tickers; strip exchange suffix (.WA, .L, etc.)
   const avSym = symbol.includes('.') ? symbol.split('.')[0] : symbol;
-  const url = `https://www.alphavantage.co/query?function=COMPANY_OVERVIEW&symbol=${encodeURIComponent(avSym)}&apikey=${AV_KEY}`;
+  const url = `/api/alphavantage?function=COMPANY_OVERVIEW&symbol=${encodeURIComponent(avSym)}`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
     if (!r.ok) return;

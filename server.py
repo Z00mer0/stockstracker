@@ -249,6 +249,46 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
+        elif path.startswith('/api/finnhub/'):
+            token = os.environ.get('FINNHUB_TOKEN', '')
+            if not token:
+                self.send_json(503, {'error': 'FINNHUB_TOKEN not configured'}); return
+            sub = path[len('/api/finnhub'):]          # e.g. /v1/quote
+            qs  = self.path.split('?', 1)[1] if '?' in self.path else ''
+            sep = '&' if qs else ''
+            url = f'https://finnhub.io/api{sub}?{qs}{sep}token={token}'
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data = resp.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'no-store, no-cache')
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self.send_json(502, {'error': str(e)})
+
+        elif path == '/api/alphavantage':
+            key = os.environ.get('ALPHAVANTAGE_KEY', '')
+            if not key:
+                self.send_json(503, {'error': 'ALPHAVANTAGE_KEY not configured'}); return
+            qs  = self.path.split('?', 1)[1] if '?' in self.path else ''
+            url = f'https://www.alphavantage.co/query?{qs}&apikey={key}'
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = resp.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'no-store, no-cache')
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self.send_json(502, {'error': str(e)})
+
         elif path == '/api/proxy':
             qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             target = qs.get('url', '')
@@ -284,7 +324,7 @@ class Handler(SimpleHTTPRequestHandler):
         elif path.startswith('/api/dividends/upcoming'):
             qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             symbols = [s.strip() for s in qs.get('symbols', '').split(',') if s.strip()]
-            token   = os.environ.get('FINNHUB_TOKEN', 'd7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg')
+            token   = os.environ.get('FINNHUB_TOKEN', '')
             today   = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
             results = []
 
