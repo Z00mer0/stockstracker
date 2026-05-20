@@ -281,6 +281,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
 
         elif path.startswith('/api/finnhub/'):
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
             token = os.environ.get('FINNHUB_TOKEN', '')
             if not token:
                 self.send_json(503, {'error': 'FINNHUB_TOKEN not configured'}); return
@@ -307,6 +309,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/alphavantage':
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
             key = os.environ.get('ALPHAVANTAGE_KEY', '')
             if not key:
                 self.send_json(503, {'error': 'ALPHAVANTAGE_KEY not configured'}); return
@@ -327,6 +331,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/proxy':
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
             qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             target = qs.get('url', '')
             if not target or len(target) > 2000:
@@ -362,6 +368,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path.startswith('/api/dividends/upcoming'):
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
             qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             _sym_re = re.compile(r'^[A-Z0-9]{1,10}$')
             symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()]

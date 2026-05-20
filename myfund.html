@@ -1373,7 +1373,8 @@ function save(key, val) {
 // ─── API ──────────────────────────────────────────────────────────────────────
 const PROXIES = [
   { build: url => `/api/proxy?url=${encodeURIComponent(url)}`,
-    parse: t => JSON.parse(t) },
+    parse: t => JSON.parse(t),
+    headers: () => ({ 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }) },
   { build: url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     parse: t => JSON.parse(t) },
   { build: url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
@@ -1385,7 +1386,7 @@ const PROXIES = [
 async function proxyfetch(url) {
   return Promise.any(
     PROXIES.map(p =>
-      fetch(p.build(url), { signal: AbortSignal.timeout(7000) })
+      fetch(p.build(url), { signal: AbortSignal.timeout(7000), headers: p.headers ? p.headers() : {} })
         .then(r => { if (!r.ok) throw new Error('http_' + r.status); return r.text(); })
         .then(t => p.parse(t))
     )
@@ -1449,7 +1450,10 @@ async function fetchStooqQuote(symbol) {
     ? symbol.slice(0, -3).toLowerCase()
     : symbol.toLowerCase() + '.us';
   const url = `https://stooq.com/q/l/?s=${stooqSym}&f=sd2ohlcv&h&e=csv`;
-  const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+  const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, {
+    signal: AbortSignal.timeout(8000),
+    headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
+  });
   if (!res.ok) throw new Error('stooq_http_' + res.status);
   const text = await res.text();
   const lines = text.trim().split('\n');
@@ -3809,7 +3813,7 @@ async function refreshCalendarEvents(symbols) {
     try {
       const r = await fetch(
         `/api/finnhub/v1/calendar/earnings?from=${from}&to=${to}`,
-        { signal: AbortSignal.timeout(10000) }
+        { signal: AbortSignal.timeout(10000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } }
       );
       if (r.ok) {
         const data = await r.json();
@@ -3834,7 +3838,7 @@ async function refreshCalendarEvents(symbols) {
     try {
       const r = await fetch(
         `/api/finnhub/v1/calendar/economic?from=${from}&to=${to}`,
-        { signal: AbortSignal.timeout(10000) }
+        { signal: AbortSignal.timeout(10000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } }
       );
       if (r.ok) {
         const data = await r.json();
@@ -3993,7 +3997,7 @@ async function fetchFundamentalsOne(symbol) {
   const avSym = symbol.includes('.') ? symbol.split('.')[0] : symbol;
   const url = `/api/alphavantage?function=COMPANY_OVERVIEW&symbol=${encodeURIComponent(avSym)}`;
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    const r = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } });
     if (!r.ok) return;
     const d = await r.json();
     if (!d.Symbol || d.Information || d.Note) return; // rate-limited or no data
