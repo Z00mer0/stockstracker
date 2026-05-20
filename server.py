@@ -272,7 +272,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 body = load_data(username)
             except Exception as e:
-                self.send_json(503, {'error': 'db_error', 'detail': str(e)}); return
+                print(f'[db] load_data error for {username}: {e}')
+                self.send_json(503, {'error': 'db_error'}); return
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
