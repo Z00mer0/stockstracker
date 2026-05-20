@@ -19,6 +19,25 @@ from pathlib import Path
 BASE       = Path(__file__).parent
 REACT_DIST = BASE / 'frontend-react' / 'dist'
 
+# ── RATE LIMITER ───────────────────────────────────────────────────────────────
+_RL_WINDOW  = 15 * 60   # seconds
+_RL_MAX     = 10        # attempts per window
+_rl_store   = {}        # { ip: [timestamp, ...] }
+_rl_lock    = __import__('threading').Lock()
+
+def _rate_limited(ip: str) -> bool:
+    """Return True if ip has exceeded the limit; prune old timestamps as a side-effect."""
+    now = time.time()
+    with _rl_lock:
+        ts = _rl_store.get(ip, [])
+        ts = [t for t in ts if now - t < _RL_WINDOW]
+        if len(ts) >= _RL_MAX:
+            _rl_store[ip] = ts
+            return True
+        ts.append(now)
+        _rl_store[ip] = ts
+        return False
+
 # ── CALENDAR CACHE ─────────────────────────────────────────────────────────────
 _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
 _CAL_TTL   = 4 * 3600  # 4 hours
@@ -320,6 +339,11 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split('?')[0]
+
+        if path in ('/api/login', '/api/register'):
+            ip = self.headers.get('X-Forwarded-For', self.client_address[0]).split(',')[0].strip()
+            if _rate_limited(ip):
+                self.send_json(429, {'ok': False, 'error': 'Za dużo prób. Spróbuj ponownie za 15 minut.'}); return
 
         if path == '/api/login':
             try:
