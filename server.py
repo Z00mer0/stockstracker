@@ -46,6 +46,12 @@ _MAX_BODY_DATA   = 512 * 1024   # 512 KB  — portfolio JSON
 _MAX_SYMBOLS     = 30
 _USERNAME_RE     = re.compile(r'^[a-z0-9_\-]{1,64}$')
 
+# ── CORS ───────────────────────────────────────────────────────────────────────
+_ALLOWED_ORIGINS = {'https://stockstracker.onrender.com'}
+_extra_origin = os.environ.get('CORS_EXTRA_ORIGIN', '').strip()
+if _extra_origin:
+    _ALLOWED_ORIGINS.add(_extra_origin)
+
 def _str(val, max_len: int, field: str) -> str:
     """Assert val is a string, strip whitespace, enforce max_len."""
     if not isinstance(val, str):
@@ -208,6 +214,10 @@ def get_username(handler):
 
 class Handler(SimpleHTTPRequestHandler):
 
+    def _cors_origin(self):
+        origin = self.headers.get('Origin', '')
+        return origin if origin in _ALLOWED_ORIGINS else 'https://stockstracker.onrender.com'
+
     def _serve_static(self, filepath):
         """Serwuje plik statyczny z React dist."""
         content  = filepath.read_bytes()
@@ -216,7 +226,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', mime or 'application/octet-stream')
         self.send_header('Content-Length', str(len(content)))
-        self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+        self.send_header('Access-Control-Allow-Origin', self._cors_origin())
         # Assets mają hash w nazwie → można cachować długo
         self.send_header('Cache-Control',
                          'public, max-age=31536000, immutable' if in_assets else 'no-store, no-cache')
@@ -236,7 +246,7 @@ class Handler(SimpleHTTPRequestHandler):
         body = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+        self.send_header('Access-Control-Allow-Origin', self._cors_origin())
         self.send_header('Cache-Control', 'no-store, no-cache')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'DENY')
@@ -281,7 +291,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(503, {'error': 'db_error'}); return
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+            self.send_header('Access-Control-Allow-Origin', self._cors_origin())
             self.send_header('Cache-Control', 'no-store, no-cache')
             self.end_headers()
             self.wfile.write(body)
@@ -306,7 +316,7 @@ class Handler(SimpleHTTPRequestHandler):
                     data = resp.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+                self.send_header('Access-Control-Allow-Origin', self._cors_origin())
                 self.send_header('Cache-Control', 'no-store, no-cache')
                 self.end_headers()
                 self.wfile.write(data)
@@ -328,7 +338,7 @@ class Handler(SimpleHTTPRequestHandler):
                     data = resp.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+                self.send_header('Access-Control-Allow-Origin', self._cors_origin())
                 self.send_header('Cache-Control', 'no-store, no-cache')
                 self.end_headers()
                 self.wfile.write(data)
@@ -365,7 +375,7 @@ class Handler(SimpleHTTPRequestHandler):
                     data = resp.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+                self.send_header('Access-Control-Allow-Origin', self._cors_origin())
                 self.send_header('Cache-Control', 'no-store, no-cache')
                 self.end_headers()
                 self.wfile.write(data)
@@ -540,7 +550,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', 'https://stockstracker.onrender.com')
+        self.send_header('Access-Control-Allow-Origin', self._cors_origin())
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token')
         self.send_header('X-Content-Type-Options', 'nosniff')
