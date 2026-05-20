@@ -1,9 +1,7 @@
 {
   "buildCommand": "cd frontend-react && npm install && npm run build",
   "outputDirectory": "frontend-react/dist",
-  "routes": [
-    { "src": "/api/(.*)", "dest": "https://stockstracker.onrender.com/api/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://stockstracker.onrender.com/api/:path*" }
   ]
 }
