@@ -7,6 +7,7 @@ W chmurze: przechowuje dane w PostgreSQL (zmienna DATABASE_URL).
 import json
 import hashlib
 import mimetypes
+import re
 import secrets
 import socket
 import os
@@ -37,6 +38,21 @@ def _rate_limited(ip: str) -> bool:
         ts.append(now)
         _rl_store[ip] = ts
         return False
+
+# ── INPUT VALIDATION ──────────────────────────────────────────────────────────
+_MAX_BODY_AUTH   =   4 * 1024   #   4 KB  — login / register / change-password
+_MAX_BODY_DATA   = 512 * 1024   # 512 KB  — portfolio JSON
+_MAX_SYMBOLS     = 30
+_USERNAME_RE     = re.compile(r'^[a-z0-9_\-]{1,64}$')
+
+def _str(val, max_len: int, field: str) -> str:
+    """Assert val is a string, strip whitespace, enforce max_len."""
+    if not isinstance(val, str):
+        raise ValueError(f'{field}: must be a string')
+    v = val.strip()
+    if len(v) > max_len:
+        raise ValueError(f'{field}: too long (max {max_len} chars)')
+    return v
 
 # ── CALENDAR CACHE ─────────────────────────────────────────────────────────────
 _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
@@ -175,7 +191,10 @@ def hash_password(password):
 
 
 def get_username(handler):
-    return SESSIONS.get(handler.headers.get('X-Auth-Token', ''))
+    token = handler.headers.get('X-Auth-Token', '')
+    if not isinstance(token, str) or len(token) > 100:
+        return None
+    return SESSIONS.get(token)
 
 
 # ── HTTP HANDLER ───────────────────────────────────────────────────────────────
@@ -213,9 +232,14 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def read_json(self):
+    def read_json(self, max_size: int = 8 * 1024):
         length = int(self.headers.get('Content-Length', 0))
-        return json.loads(self.rfile.read(length))
+        if length > max_size:
+            raise ValueError('Request body too large')
+        body = json.loads(self.rfile.read(max(0, length)))
+        if not isinstance(body, dict):
+            raise ValueError('Expected JSON object')
+        return body
 
     def do_GET(self):
         path = self.path.split('?')[0]
@@ -254,7 +278,11 @@ class Handler(SimpleHTTPRequestHandler):
             if not token:
                 self.send_json(503, {'error': 'FINNHUB_TOKEN not configured'}); return
             sub = path[len('/api/finnhub'):]          # e.g. /v1/quote
+            if not re.fullmatch(r'[/a-zA-Z0-9_\-\.]+', sub) or '..' in sub:
+                self.send_json(400, {'error': 'invalid path'}); return
             qs  = self.path.split('?', 1)[1] if '?' in self.path else ''
+            if len(qs) > 500:
+                self.send_json(400, {'error': 'query too long'}); return
             sep = '&' if qs else ''
             url = f'https://finnhub.io/api{sub}?{qs}{sep}token={token}'
             try:
@@ -292,6 +320,8 @@ class Handler(SimpleHTTPRequestHandler):
         elif path == '/api/proxy':
             qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             target = qs.get('url', '')
+            if not target or len(target) > 2000:
+                self.send_json(400, {'error': 'invalid url'}); return
             allowed = (
                 'https://query1.finance.yahoo.com/',
                 'https://query2.finance.yahoo.com/',
@@ -323,7 +353,9 @@ class Handler(SimpleHTTPRequestHandler):
 
         elif path.startswith('/api/dividends/upcoming'):
             qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
-            symbols = [s.strip() for s in qs.get('symbols', '').split(',') if s.strip()]
+            _sym_re = re.compile(r'^[A-Z0-9]{1,10}$')
+            symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()]
+            symbols = [s for s in symbols if _sym_re.match(s)][:_MAX_SYMBOLS]
             token   = os.environ.get('FINNHUB_TOKEN', '')
             today   = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
             results = []
@@ -387,10 +419,12 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path == '/api/login':
             try:
-                body     = self.read_json()
-                username = body.get('username', '').strip().lower()
-                password = str(body.get('password', ''))
-                users    = load_users()
+                body     = self.read_json(_MAX_BODY_AUTH)
+                username = _str(body.get('username', ''), 64, 'username').lower()
+                password = _str(body.get('password', ''), 1024, 'password')
+                if not _USERNAME_RE.match(username):
+                    self.send_json(400, {'ok': False, 'error': 'Nieprawidłowa nazwa użytkownika'}); return
+                users = load_users()
                 if username in users and users[username]['password_hash'] == hash_password(password):
                     token = secrets.token_hex(24)
                     SESSIONS[token] = username
@@ -398,18 +432,22 @@ class Handler(SimpleHTTPRequestHandler):
                                          'display_name': users[username]['display_name']})
                 else:
                     self.send_json(401, {'ok': False, 'error': 'Błędny login lub hasło'})
-            except Exception as e:
+            except ValueError as e:
                 self.send_json(400, {'ok': False, 'error': str(e)})
+            except Exception as e:
+                self.send_json(400, {'ok': False, 'error': 'Bad request'})
 
         elif path == '/api/register':
             try:
-                body         = self.read_json()
-                username     = body.get('username', '').strip().lower()
-                display_name = body.get('display_name', '').strip()
-                password     = str(body.get('password', ''))
-                if not username or len(password) < 6:
+                body         = self.read_json(_MAX_BODY_AUTH)
+                username     = _str(body.get('username', ''), 64, 'username').lower()
+                display_name = _str(body.get('display_name', ''), 64, 'display_name')
+                password     = _str(body.get('password', ''), 1024, 'password')
+                if not _USERNAME_RE.match(username):
                     self.send_json(400, {'ok': False,
-                                         'error': 'Wymagana nazwa użytkownika i hasło (min. 6 znaków)'}); return
+                                         'error': 'Nazwa użytkownika: 1–64 znaków, tylko litery/cyfry/-/_'}); return
+                if len(password) < 6:
+                    self.send_json(400, {'ok': False, 'error': 'Hasło musi mieć co najmniej 6 znaków'}); return
                 users = load_users()
                 if username in users:
                     self.send_json(409, {'ok': False, 'error': 'Nazwa użytkownika już zajęta'}); return
@@ -418,8 +456,10 @@ class Handler(SimpleHTTPRequestHandler):
                 SESSIONS[token] = username
                 self.send_json(200, {'ok': True, 'token': token,
                                       'display_name': display_name or username})
-            except Exception as e:
+            except ValueError as e:
                 self.send_json(400, {'ok': False, 'error': str(e)})
+            except Exception as e:
+                self.send_json(400, {'ok': False, 'error': 'Bad request'})
 
         elif path == '/api/logout':
             SESSIONS.pop(self.headers.get('X-Auth-Token', ''), None)
@@ -430,9 +470,9 @@ class Handler(SimpleHTTPRequestHandler):
             if not username:
                 self.send_json(401, {'ok': False, 'error': 'unauthorized'}); return
             try:
-                body         = self.read_json()
-                current_pw   = str(body.get('current_password', ''))
-                new_pw       = str(body.get('new_password', ''))
+                body       = self.read_json(_MAX_BODY_AUTH)
+                current_pw = _str(body.get('current_password', ''), 1024, 'current_password')
+                new_pw     = _str(body.get('new_password', ''),     1024, 'new_password')
                 if len(new_pw) < 6:
                     self.send_json(400, {'ok': False, 'error': 'Nowe hasło musi mieć co najmniej 6 znaków'}); return
                 users = load_users()
@@ -440,8 +480,10 @@ class Handler(SimpleHTTPRequestHandler):
                     self.send_json(401, {'ok': False, 'error': 'Aktualne hasło jest nieprawidłowe'}); return
                 save_user(username, users[username]['display_name'], hash_password(new_pw))
                 self.send_json(200, {'ok': True})
-            except Exception as e:
+            except ValueError as e:
                 self.send_json(400, {'ok': False, 'error': str(e)})
+            except Exception as e:
+                self.send_json(400, {'ok': False, 'error': 'Bad request'})
 
         elif path == '/api/data':
             username = get_username(self)
@@ -449,12 +491,16 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             try:
                 length = int(self.headers.get('Content-Length', 0))
-                raw    = self.rfile.read(length)
-                json.loads(raw)
+                if length > _MAX_BODY_DATA:
+                    self.send_json(413, {'ok': False, 'error': 'Dane zbyt duże (max 512 KB)'}); return
+                raw    = self.rfile.read(max(0, length))
+                parsed = json.loads(raw)
+                if not isinstance(parsed, dict):
+                    self.send_json(400, {'ok': False, 'error': 'Oczekiwano obiektu JSON'}); return
                 save_data(username, raw)
                 self.send_json(200, {'ok': True})
             except json.JSONDecodeError:
-                self.send_json(400, {'ok': False, 'error': 'invalid JSON'})
+                self.send_json(400, {'ok': False, 'error': 'Nieprawidłowy JSON'})
 
         else:
             self.send_response(405); self.end_headers()
