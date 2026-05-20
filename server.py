@@ -555,15 +555,8 @@ async function doRecover() {
             self.end_headers()
             self.wfile.write(html)
 
-        # ── React SPA przeniesiony na Vercel — redirect 301 ──────────────────
         elif path in ('/app', '/app/') or path.startswith('/app/'):
-            qs        = self.path.split('?', 1)[1] if '?' in self.path else ''
-            sub       = path[4:] or '/'          # strip /app prefix → / or /portfolio etc.
-            target = 'https://stockstracker-mu.vercel.app' + sub + ('?' + qs if qs else '')
-            self.send_response(301)
-            self.send_header('Location', target)
-            self.send_header('Cache-Control', 'no-store')
-            self.end_headers()
+            self._serve_react()
 
         else:
             self.send_response(404)
