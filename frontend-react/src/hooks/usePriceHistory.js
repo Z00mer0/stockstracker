@@ -1,8 +1,11 @@
 // src/hooks/usePriceHistory.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from './useApi';
 
-const CACHE_TTL = 5 * 60 * 1000;
+// 1D/1W refresh frequently during session; longer periods can cache longer
+const CACHE_TTL_BY_PERIOD = { '1D': 60 * 1000, '1W': 2 * 60 * 1000 };
+const DEFAULT_CACHE_TTL    = 5 * 60 * 1000;
+const REFRESH_INTERVAL_BY_PERIOD = { '1D': 60 * 1000 }; // auto-refresh every 60s for 1D
 
 const PERIOD_MAP = {
   '1D':  { range: '1d',  interval: '5m'  },
@@ -14,12 +17,12 @@ const PERIOD_MAP = {
   'ALL': { range: 'max', interval: '1wk' },
 };
 
-function getCached(key) {
+function getCached(key, ttl) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(key); return null; }
+    if (Date.now() - ts > ttl) { localStorage.removeItem(key); return null; }
     return data;
   } catch { return null; }
 }
@@ -55,39 +58,56 @@ export function usePriceHistory(symbol, period) {
   const [candles, setCandles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (!symbol || !period) return;
-    let cancelled = false;
-
-    const key = `chart_${symbol}_${period}`;
-    const cached = getCached(key);
-    if (cached) { setCandles(cached); return; }
 
     const mapping = PERIOD_MAP[period];
     if (!mapping) { setError(`Nieznany okres: ${period}`); return; }
+
     const { range, interval } = mapping;
-    const chartUrl = `/api/chart?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`;
+    const cacheTtl  = CACHE_TTL_BY_PERIOD[period] ?? DEFAULT_CACHE_TTL;
+    const refreshMs = REFRESH_INTERVAL_BY_PERIOD[period] ?? null;
+    const key       = `chart_${symbol}_${period}`;
+    let cancelled   = false;
 
-    setLoading(true);
-    setError(null);
-    setCandles([]);
-    api.get(chartUrl)
-      .then(res => {
-        if (cancelled) return;
-        const data = parseYF(res.data, interval);
-        setCache(key, data);
-        setCandles(data);
-      })
-      .catch(err => {
-        if (cancelled) return;
-        setError(err.response?.data?.error ?? err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    function fetchData(silent = false) {
+      const cached = getCached(key, cacheTtl);
+      if (cached) { setCandles(cached); return; }
 
-    return () => { cancelled = true; };
+      if (!silent) { setLoading(true); setError(null); setCandles([]); }
+      const chartUrl = `/api/chart?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`;
+      api.get(chartUrl)
+        .then(res => {
+          if (cancelled) return;
+          const data = parseYF(res.data, interval);
+          setCache(key, data);
+          setCandles(data);
+        })
+        .catch(err => {
+          if (cancelled) return;
+          setError(err.response?.data?.error ?? err.message);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }
+
+    fetchData(false);
+
+    // Auto-refresh for intraday periods during market hours
+    if (refreshMs) {
+      timerRef.current = setInterval(() => {
+        localStorage.removeItem(key); // force fresh fetch
+        fetchData(true);
+      }, refreshMs);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    };
   }, [symbol, period]);
 
   return { candles, loading, error };
