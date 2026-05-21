@@ -556,7 +556,11 @@ async function doRecover() {
             self.wfile.write(html)
 
         elif path in ('/app', '/app/') or path.startswith('/app/'):
-            self._serve_react()
+            # React app has moved to Vercel — redirect permanently
+            self.send_response(301)
+            self.send_header('Location', 'https://stockstracker-ai.vercel.app')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
 
         elif path.startswith('/assets/') or path in ('/favicon.ico', '/favicon.png'):
             # Static assets built by Vite — serve from frontend-react/dist
