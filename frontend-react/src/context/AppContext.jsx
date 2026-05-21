@@ -129,6 +129,62 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
+  async function addPosition({ symbol, qty, price, currency, date, note, funding }) {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    const transactions = rawData?.transactions ?? [];
+    const cash = rawData?.cash ?? {};
+
+    // Update holding (weighted average if exists)
+    let newHoldings;
+    const existing = holdings.find(h => h.symbol === symbol);
+    if (existing) {
+      newHoldings = holdings.map(h => {
+        if (h.symbol !== symbol) return h;
+        const newQty = h.qty + qty;
+        const newAvg = (h.qty * h.avgPrice + qty * price) / newQty;
+        return { ...h, qty: newQty, avgPrice: newAvg };
+      });
+    } else {
+      newHoldings = [...holdings, {
+        id: Math.random().toString(36).slice(2, 10),
+        symbol,
+        qty,
+        avgPrice: price,
+        currency,
+        date,
+        name: '',
+      }];
+    }
+
+    // Add BUY transaction
+    const newTransaction = {
+      id: Math.random().toString(36).slice(2, 10),
+      type: 'BUY',
+      symbol,
+      qty,
+      price,
+      currency,
+      date,
+      note,
+    };
+
+    // Optionally subtract from cash
+    let newCash = cash;
+    if (funding === 'cash') {
+      const spent = qty * price;
+      newCash = { ...cash, [currency]: Math.max(0, (cash[currency] ?? 0) - spent) };
+    }
+
+    const updated = {
+      ...rawData,
+      portfolio: { ...rawData.portfolio, holdings: newHoldings },
+      transactions: [...transactions, newTransaction],
+      cash: newCash,
+    };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   async function saveSnapshot(totalValue, investedValue) {
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
@@ -158,6 +214,7 @@ export function AppProvider({ children }) {
     saveHoldings,
     saveTransactions,
     saveSnapshot,
+    addPosition,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

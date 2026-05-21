@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import CsvImportModal from '../components/CsvImportModal';
+import AddStockModal from '../components/AddStockModal';
 import { useChart } from '../context/ChartContext';
 import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
@@ -99,8 +100,9 @@ function renderCell(key, pos, fxRates) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, loading, fxRates, saveHoldings, refresh } = useApp();
+  const { portfolio, transactions, loading, fxRates, saveHoldings, addPosition, refresh } = useApp();
   const [showImport, setShowImport] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [cols, setCols] = useState(loadColumnConfig);
@@ -139,7 +141,20 @@ export default function Portfolio() {
       <div className="text-center py-16 text-slate-500">
         <div className="text-5xl mb-3">💼</div>
         <p className="text-slate-400 font-semibold">Brak pozycji w portfelu</p>
-        <p className="text-sm mt-1">Dodaj spółki w głównym portalu StocksTracker</p>
+        <p className="text-sm mt-1 mb-5">Dodaj pierwszą spółkę, aby zacząć śledzić portfel</p>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
+        >
+          + Dodaj spółkę
+        </button>
+        {showAdd && (
+          <AddStockModal
+            existingPortfolio={portfolio}
+            onSave={async (data) => { await addPosition(data); refresh(); }}
+            onClose={() => setShowAdd(false)}
+          />
+        )}
       </div>
     );
   }
@@ -184,6 +199,12 @@ export default function Portfolio() {
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
           >
             ⬆ Import CSV
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+          >
+            + Dodaj spółkę
           </button>
           <ColumnPicker cols={cols} onChange={handleColChange} />
         </div>
@@ -249,6 +270,13 @@ export default function Portfolio() {
           existingHoldings={portfolio}
           onSave={async (holdings) => { await saveHoldings(holdings); refresh(); }}
           onClose={() => setShowImport(false)}
+        />
+      )}
+      {showAdd && (
+        <AddStockModal
+          existingPortfolio={portfolio}
+          onSave={async (data) => { await addPosition(data); refresh(); }}
+          onClose={() => setShowAdd(false)}
         />
       )}
     </div>
