@@ -51,7 +51,7 @@ async function fetchStooqPrice(sym) {
     : sym.toLowerCase() + '.us';
   const url = `https://stooq.com/q/l/?s=${stooqSym}&f=sd2ohlcv&h&e=csv`;
   try {
-    const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000), headers: authHeader() });
+    const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(5000), headers: authHeader() });
     if (!res.ok) return null;
     const text = await res.text();
     const lines = text.trim().split('\n');
@@ -64,11 +64,9 @@ async function fetchStooqPrice(sym) {
 
 // ── Yahoo Finance via backend proxy (avoids CORS) ────────────────────────────
 async function fetchYahooQuote(sym) {
-  // v7/finance/quote returns price + fundamentals (P/E, P/B) for all markets
   try {
     const yfUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}&fields=regularMarketPrice,regularMarketChangePercent,trailingPE,forwardPE,priceToBook,sector,earningsTimestamp`;
-    const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
-    const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000), headers: authHeader() });
+    const res  = await fetch(`/api/proxy?url=${encodeURIComponent(yfUrl)}`, { signal: AbortSignal.timeout(5000), headers: authHeader() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const q = json?.quoteResponse?.result?.[0];
@@ -83,23 +81,9 @@ async function fetchYahooQuote(sym) {
       earningsTs: q.earningsTimestamp ?? q.earningsTimestampStart ?? null,
     };
   } catch {
-    // fallback: v8/finance/chart, then Stooq CSV
-    try {
-      const yfUrl  = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
-      const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
-      const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000), headers: authHeader() });
-      const json = await res.json();
-      const meta = json?.chart?.result?.[0]?.meta;
-      if (!meta?.regularMarketPrice) throw new Error('no price');
-      const price    = meta.regularMarketPrice;
-      const prev     = meta.chartPreviousClose ?? meta.previousClose ?? null;
-      const dailyChg = prev ? ((price - prev) / prev) * 100 : null;
-      return { price, dailyChg, pe: null, peFwd: null, pb: null };
-    } catch {
-      // final fallback: Stooq CSV (price only)
-      const price = await fetchStooqPrice(sym);
-      return price ? { price, dailyChg: null, pe: null, peFwd: null, pb: null } : null;
-    }
+    // fallback: Stooq CSV (price only, skipping v8 which also blocks)
+    const price = await fetchStooqPrice(sym);
+    return price ? { price, dailyChg: null, pe: null, peFwd: null, pb: null } : null;
   }
 }
 
@@ -217,9 +201,19 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
     const symbols = [...new Set(portfolio.map(p => p.symbol))];
     setMetricsLoading(true);
     fetchAllMetrics(symbols)
-      .then(data => {
+      .then(async data => {
         setMarketData(data);
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+        // Retry symbols that failed (e.g. Render was waking up)
+        const failed = symbols.filter(s => !data[s]?.price);
+        if (failed.length > 0) {
+          await new Promise(r => setTimeout(r, 15000));
+          const retry = await fetchAllMetrics(failed);
+          const merged = { ...data, ...retry };
+          setMarketData(merged);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: merged }));
+        } else {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+        }
       })
       .finally(() => setMetricsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
