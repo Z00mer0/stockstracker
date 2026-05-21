@@ -60,13 +60,12 @@ export function usePriceHistory(symbol, period) {
     const mapping = PERIOD_MAP[period];
     if (!mapping) { setError(`Nieznany okres: ${period}`); return; }
     const { range, interval } = mapping;
-    const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
-    const proxyUrl = `/api/proxy?url=${encodeURIComponent(yfUrl)}`;
+    const chartUrl = `/api/chart?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`;
 
     setLoading(true);
     setError(null);
     setCandles([]);
-    api.get(proxyUrl)
+    api.get(chartUrl)
       .then(res => {
         if (cancelled) return;
         const data = parseYF(res.data);
