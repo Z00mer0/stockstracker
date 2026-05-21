@@ -62,13 +62,15 @@ async function fetchStooqPrice(sym) {
   } catch { return null; }
 }
 
-// ── Yahoo Finance via backend proxy (avoids CORS) ────────────────────────────
+// ── Yahoo Finance — Vercel serverless function (different IP, no auth needed) ─
 async function fetchYahooQuote(sym) {
+  // Primary: Vercel /api/quotes (different IP from Render, avoids blocks)
   try {
-    const yfUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}&fields=regularMarketPrice,regularMarketChangePercent,trailingPE,forwardPE,priceToBook,sector,earningsTimestamp`;
-    const res  = await fetch(`/api/proxy?url=${encodeURIComponent(yfUrl)}`, { signal: AbortSignal.timeout(5000), headers: authHeader() });
+    const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(sym)}`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
+    // Stooq fallback response from Vercel function
+    if (json.stooq) return { price: json.price, dailyChg: null, pe: null, peFwd: null, pb: null };
     const q = json?.quoteResponse?.result?.[0];
     if (!q?.regularMarketPrice) throw new Error('no price');
     return {
@@ -81,7 +83,7 @@ async function fetchYahooQuote(sym) {
       earningsTs: q.earningsTimestamp ?? q.earningsTimestampStart ?? null,
     };
   } catch {
-    // fallback: Stooq CSV (price only, skipping v8 which also blocks)
+    // Fallback: Render proxy (if Vercel function fails)
     const price = await fetchStooqPrice(sym);
     return price ? { price, dailyChg: null, pe: null, peFwd: null, pb: null } : null;
   }
