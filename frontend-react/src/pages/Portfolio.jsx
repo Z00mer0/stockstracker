@@ -1,15 +1,30 @@
 // frontend-react/src/pages/Portfolio.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import CsvImportModal from '../components/CsvImportModal';
 import AddStockModal from '../components/AddStockModal';
+import SellStockModal from '../components/SellStockModal';
+import AddDividendModal from '../components/AddDividendModal';
 import { useChart } from '../context/ChartContext';
 import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
+import useDividendEvents from '../hooks/useDividendEvents';
 import {
   COLUMN_DEFS, loadColumnConfig, saveColumnConfig,
 } from '../utils/portfolioColumns';
+
+const WATCH_KEY = 'myfund_watchlist';
+function toggleWatchlist(symbol) {
+  const list = JSON.parse(localStorage.getItem(WATCH_KEY) || '[]');
+  const idx = list.indexOf(symbol);
+  if (idx === -1) list.push(symbol); else list.splice(idx, 1);
+  localStorage.setItem(WATCH_KEY, JSON.stringify(list));
+  return idx === -1;
+}
+function isWatched(symbol) {
+  return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]').includes(symbol);
+}
 
 function fmt(n, decimals = 2) {
   if (n == null || isNaN(n)) return '—';
@@ -100,9 +115,33 @@ function renderCell(key, pos, fxRates) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, loading, fxRates, saveHoldings, addPosition, refresh } = useApp();
-  const [showImport, setShowImport] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
+  const { portfolio, transactions, loading, fxRates, saveHoldings, addPosition, removePosition, sellPosition, refresh } = useApp();
+  const [showImport, setShowImport]   = useState(false);
+  const [showAdd, setShowAdd]         = useState(false);
+  const [addSymbol, setAddSymbol]     = useState('');
+  const [sellTarget, setSellTarget]   = useState(null);
+  const [divTarget, setDivTarget]     = useState(null);
+  const [menuSym, setMenuSym]         = useState(null);
+  const [confirmDel, setConfirmDel]   = useState(null);
+  const [toast, setToast]             = useState('');
+  const menuRef = useRef(null);
+
+  const { addDividend } = useDividendEvents(portfolio.map(p => p.symbol));
+
+  useEffect(() => {
+    if (!menuSym) return;
+    function onClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuSym(null);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [menuSym]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(''), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [cols, setCols] = useState(loadColumnConfig);
@@ -220,11 +259,13 @@ export default function Portfolio() {
                   </th>
                 ))}
                 <th className="text-right px-5 py-2.5">Udział %</th>
+                <th className="px-3 py-2.5" />
               </tr>
             </thead>
             <tbody>
               {sorted.map(pos => {
                 const share = totalCostPLN > 0 ? ((pos.costPLN ?? 0) / totalCostPLN) * 100 : 0;
+                const menuOpen = menuSym === pos.symbol;
                 return (
                   <tr
                     key={pos.id ?? pos.symbol}
@@ -258,6 +299,44 @@ export default function Portfolio() {
                         <span className="text-xs text-slate-400 w-10 text-right">{fmt(share, 1)}%</span>
                       </div>
                     </td>
+                    {/* ⋯ action menu */}
+                    <td className="px-3 py-3 relative" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setMenuSym(menuOpen ? null : pos.symbol)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors text-base"
+                      >
+                        ⋯
+                      </button>
+                      {menuOpen && (
+                        <div
+                          ref={menuRef}
+                          className="absolute right-0 top-9 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-44 py-1 text-sm"
+                        >
+                          {[
+                            { icon: '+', label: 'Kup więcej', action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
+                            { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
+                            { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
+                            { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
+                            { icon: '📊', label: 'Fundamenty', action: () => { openChart(pos.symbol); setMenuSym(null); } },
+                            null,
+                            { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
+                          ].map((item, i) =>
+                            item === null ? (
+                              <div key={i} className="border-t border-slate-700/60 my-1" />
+                            ) : (
+                              <button
+                                key={item.label}
+                                onClick={item.action}
+                                className={`w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-slate-800 transition-colors ${item.danger ? 'text-rose-400' : 'text-slate-300'}`}
+                              >
+                                <span className="w-4 text-center">{item.icon}</span>
+                                {item.label}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -275,9 +354,50 @@ export default function Portfolio() {
       {showAdd && (
         <AddStockModal
           existingPortfolio={portfolio}
+          initialSymbol={addSymbol}
           onSave={async (data) => { await addPosition(data); refresh(); }}
-          onClose={() => setShowAdd(false)}
+          onClose={() => { setShowAdd(false); setAddSymbol(''); }}
         />
+      )}
+      {sellTarget && (
+        <SellStockModal
+          holding={sellTarget}
+          onSave={async (data) => { await sellPosition(data); refresh(); }}
+          onClose={() => setSellTarget(null)}
+        />
+      )}
+      {divTarget && (
+        <AddDividendModal
+          isOpen={!!divTarget}
+          initialData={{ symbol: divTarget, exDate: '', payDate: '', amount: '' }}
+          onSave={(data) => { addDividend(data); setDivTarget(null); setToast(`Dywidenda ${divTarget} zapisana`); }}
+          onClose={() => setDivTarget(null)}
+        />
+      )}
+      {confirmDel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             onClick={() => setConfirmDel(null)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl text-center"
+               onClick={e => e.stopPropagation()}>
+            <p className="text-slate-100 font-semibold mb-1">Usuń {confirmDel}?</p>
+            <p className="text-xs text-slate-400 mb-5">Pozycja zostanie usunięta z portfela. Transakcji nie można cofnąć.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDel(null)}
+                className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors">
+                Anuluj
+              </button>
+              <button onClick={async () => { await removePosition(confirmDel); setConfirmDel(null); refresh(); }}
+                className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-500 transition-colors">
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-700 text-slate-100 text-sm px-5 py-2.5 rounded-xl shadow-xl z-50 pointer-events-none">
+          {toast}
+        </div>
       )}
     </div>
   );

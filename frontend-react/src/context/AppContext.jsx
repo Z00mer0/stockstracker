@@ -129,6 +129,37 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
+  async function removePosition(symbol) {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    const updated = {
+      ...rawData,
+      portfolio: { ...rawData.portfolio, holdings: holdings.filter(h => h.symbol !== symbol) },
+    };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
+  async function sellPosition({ symbol, qty, price, currency, date, note }) {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    const transactions = rawData?.transactions ?? [];
+    const existing = holdings.find(h => h.symbol === symbol);
+    if (!existing) throw new Error('Nie znaleziono pozycji');
+    const newQty = existing.qty - qty;
+    const newHoldings = newQty <= 0
+      ? holdings.filter(h => h.symbol !== symbol)
+      : holdings.map(h => h.symbol === symbol ? { ...h, qty: newQty } : h);
+    const updated = {
+      ...rawData,
+      portfolio: { ...rawData.portfolio, holdings: newHoldings },
+      transactions: [...transactions, {
+        id: Math.random().toString(36).slice(2, 10),
+        type: 'SELL', symbol, qty, price, currency, date, note,
+      }],
+    };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   async function addPosition({ symbol, qty, price, currency, date, note, funding }) {
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
@@ -215,6 +246,8 @@ export function AppProvider({ children }) {
     saveTransactions,
     saveSnapshot,
     addPosition,
+    removePosition,
+    sellPosition,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

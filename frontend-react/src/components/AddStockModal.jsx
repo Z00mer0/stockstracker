@@ -13,8 +13,8 @@ function Input({ label, children }) {
 
 const inputCls = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500';
 
-export default function AddStockModal({ existingPortfolio, onSave, onClose }) {
-  const [symbol, setSymbol]   = useState('');
+export default function AddStockModal({ existingPortfolio, onSave, onClose, initialSymbol = '' }) {
+  const [symbol, setSymbol]   = useState(initialSymbol);
   const [mode, setMode]       = useState('qty');   // 'qty' | 'value'
   const [qty, setQty]         = useState('');
   const [price, setPrice]     = useState('');
