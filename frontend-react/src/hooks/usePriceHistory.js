@@ -28,20 +28,27 @@ function setCache(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
-function parseYF(raw) {
+function parseYF(raw, interval) {
   const result = raw?.chart?.result?.[0];
   if (!result) return [];
   const timestamps = result.timestamp ?? [];
   const q = result.indicators?.quote?.[0] ?? {};
-  return timestamps.map((ts, i) => ({
-    date:      new Date(ts * 1000).toISOString().slice(0, 10),
-    timestamp: ts,
-    open:   q.open?.[i]   ?? null,
-    high:   q.high?.[i]   ?? null,
-    low:    q.low?.[i]    ?? null,
-    close:  q.close?.[i]  ?? null,
-    volume: q.volume?.[i] ?? null,
-  })).filter(c => c.timestamp != null && c.open != null && c.close != null && !isNaN(c.close));
+  const isIntraday = interval && /^\d+[mh]$/.test(interval);
+  return timestamps.map((ts, i) => {
+    const dt = new Date(ts * 1000);
+    return {
+      date:      dt.toISOString().slice(0, 10),
+      time:      isIntraday
+        ? dt.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Warsaw' })
+        : null,
+      timestamp: ts,
+      open:   q.open?.[i]   ?? null,
+      high:   q.high?.[i]   ?? null,
+      low:    q.low?.[i]    ?? null,
+      close:  q.close?.[i]  ?? null,
+      volume: q.volume?.[i] ?? null,
+    };
+  }).filter(c => c.timestamp != null && c.open != null && c.close != null && !isNaN(c.close));
 }
 
 export function usePriceHistory(symbol, period) {
@@ -68,7 +75,7 @@ export function usePriceHistory(symbol, period) {
     api.get(chartUrl)
       .then(res => {
         if (cancelled) return;
-        const data = parseYF(res.data);
+        const data = parseYF(res.data, interval);
         setCache(key, data);
         setCandles(data);
       })

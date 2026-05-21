@@ -155,9 +155,12 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
 
   const endDrag = () => { dragRef.current = null; };
 
-  // X-axis date labels (at most 7)
+  // X-axis labels (at most 7) — show time for intraday candles
+  const isIntraday = visible.length > 0 && visible[0].time != null;
   const labelStep  = Math.max(1, Math.floor(visible.length / 7));
-  const dateLabels = visible.map((c, i) => ({ i, date: c.date })).filter((_, i) => i % labelStep === 0);
+  const dateLabels = visible
+    .map((c, i) => ({ i, label: isIntraday ? c.time : c.date.slice(5) }))
+    .filter((_, i) => i % labelStep === 0);
 
   const chartRight = svgWidth - M.right;
 
@@ -237,9 +240,9 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
         {/* X-axis separator + date labels */}
         <line x1={M.left} x2={chartRight} y1={M.top + MAIN_H} y2={M.top + MAIN_H}
           stroke="#334155" strokeWidth={0.5} />
-        {dateLabels.map(({ i, date }) => (
+        {dateLabels.map(({ i, label }) => (
           <text key={i} x={xScale(i)} y={xAxisY - 8} fill="#64748b" fontSize={9} textAnchor="middle">
-            {date.slice(5)}
+            {label}
           </text>
         ))}
 
@@ -295,7 +298,9 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
             top:  Math.max(4, tooltip.y - 90),
           }}
         >
-          <p className="font-semibold text-slate-200 mb-1.5">{tooltip.candle.date}</p>
+          <p className="font-semibold text-slate-200 mb-1.5">
+            {tooltip.candle.date}{tooltip.candle.time ? ` ${tooltip.candle.time}` : ''}
+          </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
             <span>Otwarcie</span>
             <span className="text-slate-200 text-right">{tooltip.candle.open?.toFixed(2)}</span>
