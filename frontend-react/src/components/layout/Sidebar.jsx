@@ -1,52 +1,100 @@
+// src/components/layout/Sidebar.jsx
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { NAV_ITEMS } from './navItems';
+import { NAV_ITEMS, NAV_BOTTOM } from './navItems.jsx';
+
+const BrandIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+    <polyline points="17 6 23 6 23 12"/>
+  </svg>
+);
+
+function NavItem({ to, icon, label }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      style={({ isActive }) => ({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '9px 10px',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: 500,
+        color: isActive ? 'var(--text)' : 'var(--text-dim)',
+        background: isActive ? 'var(--panel)' : 'transparent',
+        boxShadow: isActive ? 'inset 3px 0 0 var(--accent)' : 'none',
+        textDecoration: 'none',
+        transition: 'background 0.1s, color 0.1s',
+      })}
+    >
+      <span style={{ opacity: 0.75, flexShrink: 0 }}>{icon}</span>
+      {label}
+    </NavLink>
+  );
+}
 
 export default function Sidebar() {
   const { displayName, logout } = useApp();
 
   return (
-    <aside className="w-56 flex-shrink-0 flex flex-col bg-slate-950 border-r border-slate-800 h-screen sticky top-0">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">📈</span>
-          <span className="font-bold text-sm text-slate-100 tracking-wide">StocksTracker</span>
+    <aside style={{
+      background: 'var(--bg-2)',
+      borderRight: '1px solid var(--border)',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    }}>
+      {/* Brand */}
+      <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+          background: 'linear-gradient(135deg, var(--accent), #00a863)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#051a10',
+        }}>
+          <BrandIcon />
         </div>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+          stockstracker<span style={{ color: 'var(--accent)' }}>.</span>
+        </span>
       </div>
 
-      {/* Nawigacja */}
-      <nav className="flex-1 py-3 overflow-y-auto">
-        {NAV_ITEMS.map(({ to, icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-indigo-600/20 text-indigo-400 border-r-2 border-indigo-500'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`
-            }
-          >
-            <span className="text-base leading-none">{icon}</span>
-            {label}
-          </NavLink>
-        ))}
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '4px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
+          Główne
+        </div>
+        {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} />)}
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '12px 10px 4px' }}>
+          Konto
+        </div>
+        {NAV_BOTTOM.map(item => <NavItem key={item.to} {...item} />)}
       </nav>
 
-      {/* User + wyloguj */}
-      <div className="px-5 py-4 border-t border-slate-800">
-        {displayName && (
-          <p className="text-xs text-slate-500 mb-2 truncate">{displayName}</p>
-        )}
+      {/* Footer */}
+      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+          background: 'var(--panel-2)', border: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace',
+        }}>
+          {(displayName || 'U').slice(0, 2).toUpperCase()}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName || 'Użytkownik'}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>GPW · PLN</div>
+        </div>
         <button
           onClick={logout}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
         >
-          Wyloguj →
+          ↪
         </button>
       </div>
     </aside>

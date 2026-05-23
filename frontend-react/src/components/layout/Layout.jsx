@@ -3,27 +3,27 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import MobileDrawer from './MobileDrawer';
+
+const THEME_KEY = 'myfund_theme';
 
 export default function Layout() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { pathname } = useLocation();
-  useEffect(() => { setIsMenuOpen(false); }, [pathname]);
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', localStorage.getItem(THEME_KEY) || 'dark');
+  }, []);
 
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden">
-      {/* Sidebar — widoczny tylko md+ */}
-      <div className="hidden md:flex">
-        <Sidebar />
-      </div>
-
-      {/* Drawer mobile */}
-      <MobileDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-
-      {/* Główny obszar */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header onMenuToggle={() => setIsMenuOpen(prev => !prev)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+    <div style={{ display: 'grid', gridTemplateColumns: '232px 1fr', height: '100vh', background: 'var(--bg)', color: 'var(--text)', overflow: 'hidden' }}>
+      <Sidebar />
+      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Header theme={theme} onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} />
+        <main style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 60px', maxWidth: '1640px', width: '100%' }}>
           <Outlet />
         </main>
       </div>

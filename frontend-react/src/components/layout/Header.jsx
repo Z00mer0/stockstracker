@@ -1,16 +1,8 @@
 // src/components/layout/Header.jsx
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
-
-const THEME_KEY = 'myfund_theme';
-function getTheme() { return localStorage.getItem(THEME_KEY) || 'dark'; }
-function applyTheme(t) {
-  document.documentElement.classList.toggle('light', t === 'light');
-  localStorage.setItem(THEME_KEY, t);
-}
-applyTheme(getTheme());
+import AddStockModal from '../AddStockModal';
 
 function isEuropeDST() {
   const now = new Date();
@@ -25,121 +17,160 @@ function isEuropeDST() {
 function getMarketStatuses() {
   const now = new Date();
   const day = now.getUTCDay();
-  const h = now.getUTCHours();
-  const m = now.getUTCMinutes();
-  const t = h * 60 + m;
-  const isWeekday = day >= 1 && day <= 5;
+  const t = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const isWd = day >= 1 && day <= 5;
   const dst = isEuropeDST();
-  const gpwOpen = dst ? 7 * 60 : 8 * 60;
-  const gpwClose = dst ? 15 * 60 + 5 : 16 * 60 + 5;
-  const lseOpen = dst ? 7 * 60 : 8 * 60;
-  const lseClose = dst ? 15 * 60 + 30 : 16 * 60 + 30;
   return [
-    { label: 'NYSE', open: isWeekday && t >= 870 && t < 1260 },
-    { label: 'GPW',  open: isWeekday && t >= gpwOpen && t < gpwClose },
-    { label: 'LSE',  open: isWeekday && t >= lseOpen && t < lseClose },
+    { label: 'GPW',  open: isWd && t >= (dst ? 420 : 480) && t < (dst ? 905 : 965) },
+    { label: 'NYSE', open: isWd && t >= 870 && t < 1260 },
+    { label: 'LSE',  open: isWd && t >= (dst ? 420 : 480) && t < (dst ? 930 : 990) },
   ];
 }
 
-function useMarketStatus() {
+const TICKERS = [
+  { sym: 'WIG20', val: '2 156', delta: +0.43 },
+  { sym: 'S&P500', val: '5 308', delta: -0.12 },
+  { sym: 'DAX', val: '18 921', delta: +0.67 },
+  { sym: 'EUR/PLN', val: '4.278', delta: -0.08 },
+  { sym: 'USD/PLN', val: '3.921', delta: +0.21 },
+];
+
+const SunIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+);
+
+const EyeIcon = ({ closed }) => closed ? (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+) : (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
+export default function Header({ theme, onThemeToggle }) {
+  const { refresh, loading, portfolio, addPosition } = useApp();
+  const { isPrivate, toggle } = usePrivacy();
   const [markets, setMarkets] = useState(getMarketStatuses);
+  const [showAdd, setShowAdd] = useState(false);
+
   useEffect(() => {
     const id = setInterval(() => setMarkets(getMarketStatuses()), 60000);
     return () => clearInterval(id);
   }, []);
-  return markets;
-}
 
-const PAGE_TITLES = {
-  '/':             'Dashboard',
-  '/portfolio':    'Portfel',
-  '/history':      'Historia wartości',
-  '/transactions': 'Transakcje',
-  '/dividends':    'Kalendarz Dywidend',
-  '/calendar':     'Kalendarz',
-  '/watchlist':    'Watchlist',
-  '/analysis':     'Analiza atrybuacji',
-  '/settings':     'Ustawienia',
-};
-
-export default function Header({ onMenuToggle }) {
-  const { pathname } = useLocation();
-  const { loading, refresh } = useApp();
-  const { isPrivate, toggle } = usePrivacy();
-  const title = PAGE_TITLES[pathname] ?? 'StocksTracker';
-  const markets = useMarketStatus();
-  const [theme, setTheme] = useState(getTheme);
-  function toggleTheme() {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
-    setTheme(next);
-  }
+  const iconBtn = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 8,
+    background: 'none', border: 'none',
+    color: 'var(--text-dim)', cursor: 'pointer',
+    transition: 'background 0.1s, color 0.1s',
+  };
 
   return (
-    <header className="h-14 flex-shrink-0 flex items-center gap-3 px-4 md:px-6 border-b border-slate-800 bg-slate-900/80 backdrop-blur">
-      {/* Hamburger — widoczny tylko na mobile */}
-      <button
-        onClick={onMenuToggle}
-        className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors flex-shrink-0"
-        aria-label="Otwórz menu"
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <rect x="2" y="4" width="16" height="2" rx="1"/>
-          <rect x="2" y="9" width="16" height="2" rx="1"/>
-          <rect x="2" y="14" width="16" height="2" rx="1"/>
+    <header style={{
+      height: 56, flexShrink: 0,
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '0 20px',
+      background: 'var(--bg-2)',
+      borderBottom: '1px solid var(--border)',
+      position: 'sticky', top: 0, zIndex: 10,
+    }}>
+      {/* Search */}
+      <div style={{ position: 'relative', maxWidth: 320, flex: '0 1 320px' }}>
+        <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-      </button>
+        <input
+          className="field-input"
+          style={{ paddingLeft: 32, paddingRight: 44, height: 34, fontSize: 12, color: 'var(--text-dim)' }}
+          placeholder="Szukaj…"
+          readOnly
+        />
+        <kbd style={{
+          position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+          fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
+          border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
+          fontFamily: 'JetBrains Mono, monospace',
+        }}>⌘K</kbd>
+      </div>
 
-      {/* Tytuł strony */}
-      <h1 className="flex-1 text-base font-semibold text-slate-100 truncate">{title}</h1>
+      {/* Ticker strip */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 18, overflow: 'hidden' }}>
+        {TICKERS.map(t => (
+          <div key={t.sym} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{t.sym}</span>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{t.val}</span>
+            <span className="mono" style={{ fontSize: 11, color: t.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
+              {t.delta >= 0 ? '+' : ''}{t.delta.toFixed(2)}%
+            </span>
+          </div>
+        ))}
+      </div>
 
-      <button
-        onClick={toggleTheme}
-        className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
-        title={theme === 'dark' ? 'Motyw jasny' : 'Motyw ciemny'}
-      >
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
-
-      {/* Privacy toggle */}
-      <button
-        onClick={toggle}
-        title={isPrivate ? 'Pokaż wartości' : 'Ukryj wartości'}
-        className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors flex-shrink-0"
-      >
-        {isPrivate ? (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-            <line x1="1" y1="1" x2="23" y2="23"/>
-          </svg>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        )}
-      </button>
-
-      <div className="hidden sm:flex items-center gap-2 text-xs">
+      {/* Market status dots */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {markets.map(m => (
-          <span key={m.label} className="flex items-center gap-1 text-slate-500">
-            <span className={`w-1.5 h-1.5 rounded-full ${m.open ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+          <span key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-faint)' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.open ? 'var(--up)' : 'var(--text-faint)', display: 'inline-block' }} />
             {m.label}
           </span>
         ))}
       </div>
 
-      {/* Odśwież */}
+      {/* Theme toggle */}
       <button
-        onClick={refresh}
-        disabled={loading}
-        title="Odśwież dane"
-        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 disabled:opacity-40 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0"
+        style={iconBtn}
+        onClick={onThemeToggle}
+        title={theme === 'dark' ? 'Motyw jasny' : 'Motyw ciemny'}
       >
-        <span className={loading ? 'animate-spin' : ''}>↻</span>
-        <span className="hidden sm:inline">{loading ? 'Ładowanie…' : 'Odśwież'}</span>
+        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
       </button>
+
+      {/* Privacy toggle */}
+      <button style={iconBtn} onClick={toggle} title={isPrivate ? 'Pokaż wartości' : 'Ukryj wartości'}>
+        <EyeIcon closed={isPrivate} />
+      </button>
+
+      {/* Bell */}
+      <div style={{ position: 'relative' }}>
+        <button style={iconBtn}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+        <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: 'var(--down)', border: '1.5px solid var(--bg-2)', pointerEvents: 'none' }} />
+      </div>
+
+      {/* Add transaction CTA */}
+      <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12 }}>
+        + Dodaj transakcję
+      </button>
+
+      {showAdd && (
+        <AddStockModal
+          existingPortfolio={portfolio}
+          onSave={async (data) => { await addPosition(data); refresh(); }}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
     </header>
   );
 }
