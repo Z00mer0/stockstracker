@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import Spinner from '../components/shared/Spinner';
+import Card from '../components/shared/Card';
 
 function calcDailyReturns(values) {
   const r = [];
@@ -121,28 +122,29 @@ function RiskSection({ snapshots }) {
 
   if (values.length < 10 || daySpan < 14) return null;
 
-  const metric = (label, value, tooltip) => (
-    <div className="rounded-lg bg-slate-900/60 px-4 py-3 flex flex-col gap-1">
-      <span className="text-xs text-slate-500 uppercase tracking-wide">{label}</span>
-      <span className="text-xl font-bold text-slate-100">{value ?? '—'}</span>
-      <span className="text-xs text-slate-600">{tooltip}</span>
-    </div>
-  );
-
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-300">Analiza ryzyka</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Na podstawie historii snapshotów portfela</p>
+    <Card title="Analiza ryzyka">
+      <div className="card-body">
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>Na podstawie historii snapshotów portfela</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+          {[
+            { label: 'Zmienność (rok.)', value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: 'Odch. std. × √252' },
+            { label: 'Max Drawdown', value: maxDD > 0 ? maxDD : null, fmt: v => `-${v.toFixed(1)}%`, color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: 'Największy spadek' },
+            { label: 'Sharpe Ratio', value: sharpe, fmt: v => v.toFixed(2), color: sharpe >= 1 ? 'var(--up)' : sharpe < 0 ? 'var(--down)' : 'var(--text)', sub: 'Zwrot/ryzyko (RF=4.5%)' },
+            { label: 'Sortino Ratio', value: sortino, fmt: v => v.toFixed(2), color: sortino >= 1 ? 'var(--up)' : sortino < 0 ? 'var(--down)' : 'var(--text)', sub: 'Jak Sharpe, tylko dół' },
+            { label: 'Beta (S&P 500)', value: betaLoading ? null : beta, fmt: v => v.toFixed(2), color: 'var(--text)', sub: 'Korelacja z rynkiem US' },
+          ].map(m => (
+            <div key={m.label} className="kpi-card">
+              <div className="kpi-label">{m.label}</div>
+              <div className="kpi-value" style={{ fontSize: 22, color: m.value != null ? m.color : 'var(--text-faint)' }}>
+                {betaLoading && m.label.includes('Beta') ? <span style={{ fontSize: 12 }}>ładowanie…</span> : m.value != null ? m.fmt(m.value) : '—'}
+              </div>
+              <div className="kpi-sub">{m.sub}</div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {metric('Zmienność (rok.)', vol != null ? <span className={vol < 15 ? 'text-emerald-400' : vol > 30 ? 'text-red-400' : 'text-amber-400'}>{vol.toFixed(1)}%</span> : '—', 'Odch. std. zwrotów × √252')}
-        {metric('Max Drawdown', maxDD > 0 ? <span className={maxDD < 10 ? 'text-emerald-400' : maxDD > 25 ? 'text-red-400' : 'text-amber-400'}>-{maxDD.toFixed(1)}%</span> : '—', 'Największy spadek od szczytu')}
-        {metric('Sharpe Ratio', sharpe != null ? <span className={sharpe >= 1 ? 'text-emerald-400' : sharpe < 0 ? 'text-red-400' : 'text-slate-300'}>{sharpe.toFixed(2)}</span> : '—', 'Zwrot / ryzyko (RF=4,5%)')}
-        {metric('Sortino Ratio', sortino != null ? <span className={sortino >= 1 ? 'text-emerald-400' : sortino < 0 ? 'text-red-400' : 'text-slate-300'}>{sortino.toFixed(2)}</span> : '—', 'Jak Sharpe, tylko dół')}
-        {metric('Beta (S&P 500)', betaLoading ? <span className="text-slate-500 text-sm">ładowanie…</span> : beta != null ? <span className="text-slate-100">{beta.toFixed(2)}</span> : '—', 'Korelacja z rynkiem US')}
-      </div>
-    </div>
+    </Card>
   );
 }
 
@@ -210,21 +212,15 @@ function RebalanceSection({ enriched, totalValue }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-300">Rebalansowanie portfela</h2>
-        <button
-          onClick={editMode ? saveEdit : openEdit}
-          className="text-xs px-2.5 py-1 rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 transition-colors"
-        >
-          {editMode ? '✓ Zapisz cele' : '✎ Ustaw cele'}
-        </button>
-      </div>
-
-      <div className="px-5 py-4 space-y-3">
+    <Card title="Rebalansowanie portfela" actions={
+      <button onClick={editMode ? saveEdit : openEdit} className="btn" style={{ fontSize: 11 }}>
+        {editMode ? '✓ Zapisz cele' : '✎ Ustaw cele'}
+      </button>
+    }>
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Total target % indicator */}
         {hasTargets && (
-          <p className={`text-xs ${Math.abs(totalTargetPct - 100) < 1 ? 'text-emerald-400' : 'text-amber-400'}`}>
+          <p style={{ fontSize: 12, color: Math.abs(totalTargetPct - 100) < 1 ? 'var(--up)' : 'var(--warn)' }}>
             Suma celów: {fmtLocal(totalTargetPct, 1)}%
             {Math.abs(totalTargetPct - 100) >= 1 && ' — powinna wynosić 100%'}
           </p>
@@ -236,29 +232,21 @@ function RebalanceSection({ enriched, totalValue }) {
           const tgtPct = targets[p.symbol] ?? null;
           const dev = tgtPct != null ? curPct - tgtPct : null;
           const absDev = dev != null ? Math.abs(dev) : 0;
-          const devColor = dev == null ? 'text-slate-500'
-            : absDev < 2 ? 'text-emerald-400'
-            : absDev < 8 ? 'text-amber-400'
-            : 'text-rose-400';
+          const devColor = dev == null ? 'var(--text-faint)'
+            : absDev < 2 ? 'var(--up)'
+            : absDev < 8 ? 'var(--warn)'
+            : 'var(--down)';
 
           return (
-            <div key={p.symbol} className="flex items-center gap-3">
-              <span className="w-20 font-bold text-indigo-400 text-sm truncate">{p.symbol}</span>
-              <div className="flex-1 relative h-2 bg-slate-700 rounded-full overflow-visible">
-                {/* Current allocation bar */}
-                <div
-                  className="absolute top-0 left-0 h-2 rounded-full bg-indigo-500 transition-all"
-                  style={{ width: `${Math.min(curPct, 100).toFixed(1)}%` }}
-                />
-                {/* Target tick */}
+            <div key={p.symbol} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 80, fontWeight: 700, color: 'var(--info)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.symbol}</span>
+              <div style={{ flex: 1, height: 16, borderRadius: 4, background: 'var(--panel-2)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(curPct, 100).toFixed(1)}%`, background: 'linear-gradient(90deg, var(--info), #a78bfa)', borderRadius: 4, transition: 'width 0.3s' }} />
                 {tgtPct != null && tgtPct > 0 && (
-                  <div
-                    className="absolute top-[-3px] w-0.5 h-4 bg-amber-400 rounded-full"
-                    style={{ left: `${Math.min(tgtPct, 100)}%` }}
-                  />
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${Math.min(tgtPct, 100)}%`, width: 2, background: 'var(--accent)' }} />
                 )}
               </div>
-              <span className="w-12 text-right text-xs text-slate-300">{fmtLocal(curPct, 1)}%</span>
+              <span style={{ width: 48, textAlign: 'right', fontSize: 12, color: 'var(--text)' }}>{fmtLocal(curPct, 1)}%</span>
               {editMode ? (
                 <input
                   type="number"
@@ -267,17 +255,17 @@ function RebalanceSection({ enriched, totalValue }) {
                   step="1"
                   value={draftTargets[p.symbol] ?? ''}
                   onChange={e => setDraftTargets(prev => ({ ...prev, [p.symbol]: e.target.value }))}
-                  className="w-16 bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-xs text-slate-100 outline-none focus:border-amber-500 text-right"
+                  style={{ width: 64, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', fontSize: 12, color: 'var(--text)', outline: 'none', textAlign: 'right' }}
                   placeholder="0"
                 />
               ) : (
-                <span className={`w-12 text-right text-xs ${devColor}`}>
+                <span style={{ width: 48, textAlign: 'right', fontSize: 12, color: devColor }}>
                   {tgtPct != null ? (
                     dev != null && absDev >= 0.05
                       ? `${dev > 0 ? '▲ +' : '▼ '}${fmtLocal(dev, 1)}%`
                       : '✓'
                   ) : (
-                    <span className="text-slate-600">{fmtLocal(tgtPct ?? 0, 0)}%</span>
+                    <span style={{ color: 'var(--text-faint)' }}>{fmtLocal(tgtPct ?? 0, 0)}%</span>
                   )}
                 </span>
               )}
@@ -287,13 +275,13 @@ function RebalanceSection({ enriched, totalValue }) {
 
         {/* Suggestions */}
         {suggestions.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-slate-700 space-y-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">💡 Sugestie rebalansowania</p>
+          <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Sugestie rebalansowania</p>
             {suggestions.map(s => (
-              <div key={s.symbol} className="text-xs text-slate-300">
+              <div key={s.symbol} style={{ fontSize: 12, color: 'var(--text)' }}>
                 {s.dev > 0
-                  ? <span>🔻 Ogranicz <strong className="text-rose-400">{s.symbol}</strong>: sprzedaj lub unikaj dokupowania ~{fmtLocal(s.amt)} zł</span>
-                  : <span>🟢 Dokup <strong className="text-emerald-400">{s.symbol}</strong>: ~{fmtLocal(s.amt)} zł</span>
+                  ? <span>🔻 Ogranicz <strong style={{ color: 'var(--down)' }}>{s.symbol}</strong>: sprzedaj lub unikaj dokupowania ~{fmtLocal(s.amt)} zł</span>
+                  : <span>🟢 Dokup <strong style={{ color: 'var(--up)' }}>{s.symbol}</strong>: ~{fmtLocal(s.amt)} zł</span>
                 }
               </div>
             ))}
@@ -301,16 +289,16 @@ function RebalanceSection({ enriched, totalValue }) {
         )}
 
         {hasTargets && suggestions.length === 0 && Math.abs(totalTargetPct - 100) < 1 && (
-          <p className="text-xs text-emerald-400 pt-2">✓ Portfel mieści się w 2% od wszystkich celów</p>
+          <p style={{ fontSize: 12, color: 'var(--up)', paddingTop: 8 }}>✓ Portfel mieści się w 2% od wszystkich celów</p>
         )}
 
         {!hasTargets && (
-          <p className="text-xs text-slate-500 pt-1">
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', paddingTop: 4 }}>
             Kliknij „Ustaw cele" aby zdefiniować docelową alokację i zobaczyć sugestie rebalansowania.
           </p>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -336,7 +324,7 @@ function SmartInsightsSection({ enrichedPositions }) {
     .sort((a, b) => b.pct - a.pct)[0];
   if (biggest?.pct > 25) {
     insights.push({
-      icon: '⚠️', bg: 'bg-amber-950/40 border-amber-800/40',
+      icon: '⚠️', cardStyle: { background: 'rgba(255,176,32,0.08)', borderColor: 'rgba(255,176,32,0.3)' },
       title: 'Ryzyko koncentracji pozycji',
       lines: [
         `${biggest.sym} stanowi ${biggest.pct.toFixed(0)}% portfela.`,
@@ -359,7 +347,7 @@ function SmartInsightsSection({ enrichedPositions }) {
   const topSec = Object.entries(secMap).sort((a, b) => b[1] - a[1])[0];
   if (topSec && topSec[1] / totalValue > 0.30 && topSec[0] !== 'Inne') {
     insights.push({
-      icon: '⚠️', bg: 'bg-amber-950/40 border-amber-800/40',
+      icon: '⚠️', cardStyle: { background: 'rgba(255,176,32,0.08)', borderColor: 'rgba(255,176,32,0.3)' },
       title: `Koncentracja sektora: ${topSec[0]}`,
       lines: [
         `Sektor ${topSec[0]} = ${(topSec[1] / totalValue * 100).toFixed(0)}% portfela (max: 30%).`,
@@ -377,7 +365,7 @@ function SmartInsightsSection({ enrichedPositions }) {
   if (bigWin) {
     const tax = bigWin.pnlPLN * 0.19;
     insights.push({
-      icon: '📈', bg: 'bg-blue-950/40 border-blue-800/40',
+      icon: '📈', cardStyle: { background: 'rgba(124,158,255,0.08)', borderColor: 'rgba(124,158,255,0.3)' },
       title: `Realizacja zysku: ${bigWin.symbol} +${bigWin.pnlPct.toFixed(0)}%`,
       lines: [
         `Niezrealizowany zysk: ${bigWin.pnlPLN.toFixed(0)} PLN.`,
@@ -400,7 +388,7 @@ function SmartInsightsSection({ enrichedPositions }) {
     const li = losers.slice(0, 3).map((p, i, a) =>
       `${i === a.length - 1 ? '└' : '├'}─ ${p.symbol}: ${p.pnlPLN.toFixed(0)} PLN`);
     insights.push({
-      icon: '💚', bg: 'bg-emerald-950/40 border-emerald-800/40',
+      icon: '💚', cardStyle: { background: 'var(--up-soft)', borderColor: 'var(--up)' },
       title: `Tax Loss Harvesting — oszczędność ~${saving.toFixed(0)} PLN`,
       lines: [
         'Realizując straty możesz obniżyć podatek od zysków.',
@@ -420,7 +408,7 @@ function SmartInsightsSection({ enrichedPositions }) {
     const diff = (p.pe - spe) / spe * 100;
     if (diff > 30) {
       insights.push({
-        icon: '🔴', bg: 'bg-red-950/40 border-red-800/40',
+        icon: '🔴', cardStyle: { background: 'var(--down-soft)', borderColor: 'var(--down)' },
         title: `Wycena: ${p.symbol} drogi vs sektor`,
         lines: [
           `P/E ${p.symbol}: ${p.pe.toFixed(1)}x, sektor ${p.sector}: ${spe}x`,
@@ -436,7 +424,7 @@ function SmartInsightsSection({ enrichedPositions }) {
     }
     if (diff < -15) {
       insights.push({
-        icon: '🟢', bg: 'bg-emerald-950/40 border-emerald-800/40',
+        icon: '🟢', cardStyle: { background: 'var(--up-soft)', borderColor: 'var(--up)' },
         title: `Okazja: ${p.symbol} tańszy od sektora`,
         lines: [
           `P/E ${p.symbol}: ${p.pe.toFixed(1)}x, sektor ${p.sector}: ${spe}x`,
@@ -463,7 +451,7 @@ function SmartInsightsSection({ enrichedPositions }) {
     const li = upcoming.slice(0, 4).map((p, i, a) =>
       `${i === a.length - 1 ? '└' : '├'}─ ${fmtD(p.earningsTs)}: ${p.symbol} ⭐`);
     insights.push({
-      icon: '📅', bg: 'bg-purple-950/40 border-purple-800/40',
+      icon: '📅', cardStyle: { background: 'rgba(124,158,255,0.08)', borderColor: 'rgba(167,139,250,0.3)' },
       title: 'Nadchodzące wyniki finansowe',
       lines: ['Za najbliższe 14 dni:', '', ...li, '', 'Uwaga: możliwa podwyższona zmienność ⚠️'],
     });
@@ -489,7 +477,7 @@ function SmartInsightsSection({ enrichedPositions }) {
   const total     = Math.round((divScore + valScore + perfScore + riskScore) / 4);
   const healthLabel = total >= 8 ? 'DOBRY ✅' : total >= 6 ? 'OK 🟡' : 'DO POPRAWY 🔴';
   insights.push({
-    icon: '🏥', bg: 'bg-slate-900/60 border-slate-700/60',
+    icon: '🏥', cardStyle: { background: 'var(--panel-2)', borderColor: 'var(--border)' },
     title: `Health Score: ${total}/10 — ${healthLabel}`,
     lines: [
       `├─ Dywersyfikacja: ${divScore}/10`,
@@ -504,22 +492,19 @@ function SmartInsightsSection({ enrichedPositions }) {
   });
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-300">Smart Insights</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Automatyczne rekomendacje na podstawie Twojego portfela</p>
-      </div>
-      <div className="p-4 space-y-3">
+    <Card title="Smart Insights">
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Automatyczne rekomendacje na podstawie Twojego portfela</p>
         {insights.map((ins, i) => (
-          <div key={i} className={`rounded-lg border px-4 py-3 ${ins.bg}`}>
-            <div className="text-sm font-semibold text-slate-200 mb-1.5">{ins.icon} {ins.title}</div>
-            <div className="font-mono text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">
+          <div key={i} style={{ borderRadius: 8, border: '1px solid', ...ins.cardStyle, padding: '12px 16px' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{ins.icon} {ins.title}</div>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
               {ins.lines.join('\n')}
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -567,9 +552,9 @@ export default function Analysis() {
 
   if (!portfolio.length) {
     return (
-      <div className="text-center py-16 text-slate-500">
+      <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
         <div className="text-5xl mb-3">📊</div>
-        <p className="text-slate-400 font-semibold">Brak danych portfela</p>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak danych portfela</p>
       </div>
     );
   }
@@ -580,25 +565,16 @@ export default function Analysis() {
       <RebalanceSection enriched={enriched} totalValue={totalValue} />
 
       {/* Statystyki */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {[
-          { label: 'Liczba pozycji', value: portfolio.length },
-          { label: 'Zyskowne', value: profitableCount, green: true },
-          { label: 'Stratne', value: lossCount, red: true },
-          { label: 'Śr. zwrot', value: avgReturn != null ? `${avgReturn >= 0 ? '+' : ''}${fmt(avgReturn, 1)}%` : '—', trend: avgReturn },
-        ].map(({ label, value, green, red, trend }) => (
-          <div key={label} className={`rounded-xl border px-5 py-4 ${
-            green ? 'border-emerald-800/60 bg-emerald-950/30' :
-            red ? 'border-rose-800/60 bg-rose-950/30' :
-            trend != null && trend >= 0 ? 'border-emerald-800/60 bg-emerald-950/30' :
-            trend != null && trend < 0 ? 'border-rose-800/60 bg-rose-950/30' :
-            'border-slate-700 bg-slate-800'
-          }`}>
-            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${
-              green ? 'text-emerald-400' : red ? 'text-rose-400' :
-              trend != null ? (trend >= 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-100'
-            }`}>{value}</p>
+          { label: 'Liczba pozycji', value: portfolio.length, color: null },
+          { label: 'Zyskowne', value: profitableCount, color: 'var(--up)' },
+          { label: 'Stratne', value: lossCount, color: 'var(--down)' },
+          { label: 'Śr. zwrot', value: avgReturn != null ? `${avgReturn >= 0 ? '+' : ''}${fmt(avgReturn, 1)}%` : '—', color: avgReturn != null ? (avgReturn >= 0 ? 'var(--up)' : 'var(--down)') : null },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="kpi-card">
+            <div className="kpi-label">{label}</div>
+            <div className="kpi-value" style={{ fontSize: 26, color: color ?? 'var(--text)' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -610,57 +586,53 @@ export default function Analysis() {
       </div>
 
       {/* Alokacja walutowa */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-300">Alokacja walutowa</h2>
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-              <th className="text-left px-5 py-2.5">Waluta</th>
-              <th className="text-right px-5 py-2.5">Wartość</th>
-              <th className="text-right px-5 py-2.5">Udział</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(byCurrency).sort((a, b) => b[1] - a[1]).map(([cur, val]) => (
-              <tr key={cur} className="border-t border-slate-700/60 hover:bg-slate-700/30">
-                <td className="px-5 py-2.5 font-semibold text-slate-300">{cur}</td>
-                <td className={`px-5 py-2.5 text-right text-slate-200${isPrivate ? ' privacy-blur' : ''}`}>{fmt(val)} zł</td>
-                <td className="px-5 py-2.5 text-right text-slate-400">
-                  {totalValue > 0 ? `${fmt((val / totalValue) * 100, 1)}%` : '—'}
-                </td>
+      <Card title="Alokacja walutowa">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Waluta</th>
+                <th className="right">Wartość</th>
+                <th className="right">Udział</th>
               </tr>
-            ))}
-            <tr className="border-t border-slate-600 bg-slate-900/30">
-              <td className="px-5 py-2.5 font-bold text-slate-300">Razem</td>
-              <td className={`px-5 py-2.5 text-right font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{fmt(totalValue)} zł</td>
-              <td className="px-5 py-2.5 text-right text-slate-400">100%</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {Object.entries(byCurrency).sort((a, b) => b[1] - a[1]).map(([cur, val]) => (
+                <tr key={cur}>
+                  <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cur}</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(val)} zł</td>
+                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>
+                    {totalValue > 0 ? `${fmt((val / totalValue) * 100, 1)}%` : '—'}
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+                <td style={{ fontWeight: 700, color: 'var(--text)' }}>Razem</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontWeight: 700 }}>{fmt(totalValue)} zł</td>
+                <td className="right mono" style={{ color: 'var(--text-dim)' }}>100%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Koncentracja pozycji */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-300">Koncentracja pozycji</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      <Card title="Koncentracja pozycji">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
             <thead>
-              <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                <th className="text-left px-5 py-2.5">Symbol</th>
-                <th className="text-right px-5 py-2.5">Wartość</th>
-                <th className="text-right px-5 py-2.5">Udział</th>
+              <tr>
+                <th>Symbol</th>
+                <th className="right">Wartość</th>
+                <th className="right">Udział</th>
               </tr>
             </thead>
             <tbody>
               {sortedByValue.map((pos) => (
-                <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30">
-                  <td className="px-5 py-2.5 font-bold text-indigo-400">{pos.symbol}</td>
-                  <td className={`px-5 py-2.5 text-right text-slate-200${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN)} zł</td>
-                  <td className="px-5 py-2.5 text-right text-slate-400">
+                <tr key={pos.id ?? pos.symbol}>
+                  <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN)} zł</td>
+                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>
                     {totalValue > 0 ? `${fmt((pos.valuePLN / totalValue) * 100, 1)}%` : '—'}
                   </td>
                 </tr>
@@ -668,7 +640,7 @@ export default function Analysis() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       <SmartInsightsSection
         enrichedPositions={enriched.map(p => ({
@@ -689,35 +661,34 @@ function PerformanceTable({ title, positions }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-300">{title}</h2>
+    <Card title={title}>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th className="right">P&amp;L</th>
+              <th className="right">Zwrot</th>
+            </tr>
+          </thead>
+          <tbody>
+            {positions.map(pos => {
+              const up = (pos.plPLN ?? 0) >= 0;
+              return (
+                <tr key={pos.id ?? pos.symbol}>
+                  <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
+                    {up ? '+' : ''}{fmt(pos.plPLN)} zł
+                  </td>
+                  <td className="right mono" style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
+                    {up ? '+' : ''}{fmt(pos.returnPct, 1)}%
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-            <th className="text-left px-5 py-2.5">Symbol</th>
-            <th className="text-right px-5 py-2.5">P&amp;L</th>
-            <th className="text-right px-5 py-2.5">Zwrot</th>
-          </tr>
-        </thead>
-        <tbody>
-          {positions.map((pos) => {
-            const up = (pos.plPLN ?? 0) >= 0;
-            return (
-              <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30">
-                <td className="px-5 py-2.5 font-bold text-indigo-400">{pos.symbol}</td>
-                <td className={`px-5 py-2.5 text-right font-medium ${up ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
-                  {up ? '+' : ''}{fmt(pos.plPLN)} zł
-                </td>
-                <td className={`px-5 py-2.5 text-right ${up ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {up ? '+' : ''}{fmt(pos.returnPct, 1)}%
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    </Card>
   );
 }
