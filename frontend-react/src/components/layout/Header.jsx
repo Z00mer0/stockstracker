@@ -27,13 +27,36 @@ function getMarketStatuses() {
   ];
 }
 
-// TODO: replace with live data from MarketDataService or tickerStrip context
-const TICKERS = [
-  { sym: 'WIG20', val: '2 156', delta: +0.43 },
-  { sym: 'S&P500', val: '5 308', delta: -0.12 },
-  { sym: 'DAX', val: '18 921', delta: +0.67 },
-  { sym: 'EUR/PLN', val: '4.278', delta: -0.08 },
-  { sym: 'USD/PLN', val: '3.921', delta: +0.21 },
+const FX_KEYS = new Set(['EUR/PLN', 'USD/PLN']);
+const CACHE_KEY = 'myfund_market_tickers';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function formatPrice(key, price) {
+  if (price == null) return '—';
+  if (FX_KEYS.has(key)) return price.toFixed(3);
+  return Math.round(price).toLocaleString('pl-PL').replace(/ /g, ' ');
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { tickers, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return tickers;
+  } catch { return null; }
+}
+
+function saveCache(tickers) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ tickers, ts: Date.now() })); } catch {}
+}
+
+const FALLBACK_TICKERS = [
+  { key: 'WIG20',   price: null, delta: null },
+  { key: 'S&P500',  price: null, delta: null },
+  { key: 'DAX',     price: null, delta: null },
+  { key: 'EUR/PLN', price: null, delta: null },
+  { key: 'USD/PLN', price: null, delta: null },
 ];
 
 const SunIcon = () => (
@@ -69,9 +92,28 @@ export default function Header({ theme, onThemeToggle }) {
   const { isPrivate, toggle } = usePrivacy();
   const [markets, setMarkets] = useState(getMarketStatuses);
   const [showAdd, setShowAdd] = useState(false);
+  const [tickers, setTickers] = useState(() => loadCache() ?? FALLBACK_TICKERS);
 
   useEffect(() => {
     const id = setInterval(() => setMarkets(getMarketStatuses()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    async function fetchTickers() {
+      try {
+        const res = await fetch('/api/market');
+        if (!res.ok) return;
+        const { tickers: fresh } = await res.json();
+        setTickers(fresh);
+        saveCache(fresh);
+      } catch {}
+    }
+    if (!loadCache()) fetchTickers();
+    // Refresh when cache expires
+    const id = setInterval(() => {
+      if (!loadCache()) fetchTickers();
+    }, 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -114,13 +156,15 @@ export default function Header({ theme, onThemeToggle }) {
 
       {/* Ticker strip */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 18, overflow: 'hidden' }}>
-        {TICKERS.map(t => (
-          <div key={t.sym} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{t.sym}</span>
-            <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{t.val}</span>
-            <span className="mono" style={{ fontSize: 11, color: t.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
-              {t.delta >= 0 ? '+' : ''}{t.delta.toFixed(2)}%
-            </span>
+        {tickers.map(t => (
+          <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{t.key}</span>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(t.key, t.price)}</span>
+            {t.delta != null && (
+              <span className="mono" style={{ fontSize: 11, color: t.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                {t.delta >= 0 ? '+' : ''}{t.delta.toFixed(2)}%
+              </span>
+            )}
           </div>
         ))}
       </div>
