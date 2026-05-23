@@ -1,110 +1,61 @@
+// src/pages/Watchlist.jsx
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
+import Card from '../components/shared/Card';
+import Chip from '../components/shared/Chip';
+import TickerLogo from '../components/shared/TickerLogo';
 
 const WATCH_KEY = 'myfund_watchlist';
-
-function authHeader() {
-  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
-}
+function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
 
 async function fetchLivePrice(sym) {
   try {
-    const q = await fetch(
-      `/api/finnhub/v1/quote?symbol=${sym}`,
-      { signal: AbortSignal.timeout(8000), headers: authHeader() }
-    ).then(r => r.json());
+    const q = await fetch(`/api/finnhub/v1/quote?symbol=${sym}`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json());
     if (q?.c > 0) return { price: q.c, dailyChg: q.dp ?? null };
   } catch {}
-  // Yahoo fallback for non-US exchanges
   try {
     const yfUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`;
     const json = await fetch(`/api/proxy?url=${encodeURIComponent(yfUrl)}`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json());
     const meta = json?.chart?.result?.[0]?.meta;
     if (meta?.regularMarketPrice) {
       const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;
-      return {
-        price: meta.regularMarketPrice,
-        dailyChg: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : null,
-      };
+      return { price: meta.regularMarketPrice, dailyChg: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : null };
     }
   } catch {}
   return null;
 }
 
-function loadWatchlist() {
-  try {
-    return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveWatchlist(items) {
-  localStorage.setItem(WATCH_KEY, JSON.stringify(items));
-}
-
-function genId() {
-  return Math.random().toString(36).slice(2, 10);
-}
+function loadWatchlist() { try { return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]'); } catch { return []; } }
+function saveWatchlist(items) { localStorage.setItem(WATCH_KEY, JSON.stringify(items)); }
+function genId() { return Math.random().toString(36).slice(2, 10); }
 
 function AlertModal({ item, onClose, onSave }) {
   const [type, setType] = useState('above');
   const [price, setPrice] = useState('');
-
   function handleAdd() {
     if (!price || isNaN(parseFloat(price))) return;
     const target = parseFloat(price);
-    const triggered =
-      (type === 'above' && (item.addedPrice ?? 0) >= target) ||
-      (type === 'below' && (item.addedPrice ?? 0) <= target);
+    const triggered = (type === 'above' && (item.addedPrice ?? 0) >= target) || (type === 'below' && (item.addedPrice ?? 0) <= target);
     onSave({ id: genId(), type, targetPrice: target, triggered });
   }
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-         onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
-           onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-slate-100 mb-1">Dodaj alert — {item.symbol}</h2>
-        {item.addedPrice != null && (
-          <p className="text-xs text-slate-500 mb-4">Cena przy dodaniu: {item.addedPrice.toFixed(2)} {item.currency}</p>
-        )}
-
-        <div className="flex gap-2 mb-4">
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div className="card" style={{ width: 340, padding: 24 }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Alert — {item.symbol}</h2>
+        {item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>Cena przy dodaniu: {item.addedPrice.toFixed(2)} {item.currency}</p>}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {['above', 'below'].map(t => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                type === t
-                  ? t === 'above' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
-            >
+            <button key={t} onClick={() => setType(t)} className={`btn ${type === t ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center' }}>
               {t === 'above' ? '↑ Powyżej' : '↓ Poniżej'}
             </button>
           ))}
         </div>
-
-        <input
-          type="number"
-          placeholder="Cena docelowa"
-          value={price}
-          onChange={e => setPrice(e.target.value)}
-          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 mb-5"
-          autoFocus
-        />
-
-        <div className="flex gap-3">
-          <button onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors">
-            Anuluj
-          </button>
-          <button onClick={handleAdd}
-            className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 transition-colors">
-            Dodaj
-          </button>
+        <input type="number" placeholder="Cena docelowa" value={price} onChange={e => setPrice(e.target.value)}
+          className="field-input" style={{ marginBottom: 20 }} autoFocus />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>Anuluj</button>
+          <button onClick={handleAdd} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>Dodaj</button>
         </div>
       </div>
     </div>
@@ -117,201 +68,135 @@ export default function Watchlist() {
   const [watchItems, setWatchItems] = useState([]);
   const [alertTarget, setAlertTarget] = useState(null);
   const [livePrices, setLivePrices] = useState({});
-  const [pricesLoading, setPricesLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setWatchItems(loadWatchlist());
-  }, []);
+  useEffect(() => { setWatchItems(loadWatchlist()); }, []);
 
   useEffect(() => {
     if (!watchItems.length) return;
-    setPricesLoading(true);
+    setLoading(true);
     const symbols = [...new Set(watchItems.map(w => w.symbol))];
-    Promise.allSettled(symbols.map(async sym => {
-      const data = await fetchLivePrice(sym);
-      return { sym, data };
-    })).then(results => {
+    Promise.allSettled(symbols.map(async sym => ({ sym, data: await fetchLivePrice(sym) }))).then(results => {
       const prices = {};
-      results.forEach(r => {
-        if (r.status === 'fulfilled' && r.value.data) {
-          prices[r.value.sym] = r.value.data;
-        }
-      });
+      results.forEach(r => { if (r.status === 'fulfilled' && r.value.data) prices[r.value.sym] = r.value.data; });
       setLivePrices(prices);
-    }).finally(() => setPricesLoading(false));
+    }).finally(() => setLoading(false));
   }, [watchItems.length]);
 
   function addAlert(itemId, alert) {
-    setWatchItems(prev => {
-      const updated = prev.map(w =>
-        w.id === itemId ? { ...w, alerts: [...(w.alerts ?? []), alert] } : w
-      );
-      saveWatchlist(updated);
-      return updated;
-    });
+    setWatchItems(prev => { const u = prev.map(w => w.id === itemId ? { ...w, alerts: [...(w.alerts ?? []), alert] } : w); saveWatchlist(u); return u; });
     setAlertTarget(null);
   }
-
   function removeAlert(itemId, alertId) {
-    setWatchItems(prev => {
-      const updated = prev.map(w =>
-        w.id === itemId
-          ? { ...w, alerts: (w.alerts ?? []).filter(a => a.id !== alertId) }
-          : w
-      );
-      saveWatchlist(updated);
-      return updated;
-    });
+    setWatchItems(prev => { const u = prev.map(w => w.id === itemId ? { ...w, alerts: (w.alerts ?? []).filter(a => a.id !== alertId) } : w); saveWatchlist(u); return u; });
   }
 
-  const hasWatch = watchItems.length > 0;
-
   return (
-    <div className="space-y-5">
-      {/* Watchlist z localStorage */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-300">👁 Obserwowane spółki</h2>
-          {hasWatch && (
-            <span className="text-xs text-slate-500">{watchItems.length} spółek</span>
-          )}
-        </div>
-
-        {!hasWatch ? (
-          <div className="px-5 py-8 text-center text-slate-500">
-            <p className="text-slate-400">Watchlist jest pusta lub niedostępna</p>
-            <p className="text-xs mt-1 text-slate-600">
-              Watchlist jest przechowywana lokalnie — otwórz główny portal, aby ją uzupełnić
-            </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card
+        title={`Obserwowane spółki${watchItems.length ? ` · ${watchItems.length}` : ''}`}
+        actions={loading && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Ładowanie kursów…</span>}
+      >
+        {!watchItems.length ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
+            <p>Watchlist jest pusta.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Spółki obserwowane przechowywane są lokalnie.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
               <thead>
-                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                  <th className="text-left px-5 py-2.5">Symbol</th>
-                  <th className="text-right px-5 py-2.5">Cena przy dodaniu</th>
-                  <th className="text-right px-5 py-2.5">Aktualna cena</th>
-                  <th className="text-right px-5 py-2.5">Zmiana dz.</th>
-                  <th className="text-left px-5 py-2.5">Notatka</th>
-                  <th className="text-right px-5 py-2.5">Alerty</th>
+                <tr>
+                  <th>Aktywo</th>
+                  <th className="right">Cena dodania</th>
+                  <th className="right">Kurs</th>
+                  <th className="right">Dzień</th>
+                  <th>Notatka</th>
+                  <th className="right">Alerty</th>
                 </tr>
               </thead>
               <tbody>
-                {watchItems.map(w => (
-                  <tr key={w.id ?? w.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                    <td
-                      className="px-5 py-3 font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors"
-                      onClick={() => openChart(w.symbol)}
-                      title={`Otwórz wykres ${w.symbol}`}
-                    >
-                      {w.symbol}
-                      {w.name && w.name !== w.symbol && (
-                        <span className="ml-2 text-xs text-slate-500 font-normal">{w.name}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right text-slate-400">
-                      {w.addedPrice != null ? `${w.addedPrice.toFixed(2)} ${w.currency ?? ''}` : '—'}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {pricesLoading && !livePrices[w.symbol]
-                        ? <span className="text-slate-600 text-xs">…</span>
-                        : livePrices[w.symbol]
-                        ? <span className="text-slate-200 font-semibold">{livePrices[w.symbol].price.toFixed(2)} {w.currency ?? ''}</span>
-                        : <span className="text-slate-600">—</span>
-                      }
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {livePrices[w.symbol]?.dailyChg != null ? (
-                        <span className={livePrices[w.symbol].dailyChg >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                          {livePrices[w.symbol].dailyChg >= 0 ? '+' : ''}{livePrices[w.symbol].dailyChg.toFixed(2)}%
-                        </span>
-                      ) : <span className="text-slate-600">—</span>}
-                    </td>
-                    <td className="px-5 py-3 text-slate-500 text-xs">{w.note || '—'}</td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end flex-wrap gap-1">
-                        {(w.alerts ?? []).map(a => (
-                          <button
-                            key={a.id}
-                            onClick={() => removeAlert(w.id, a.id)}
-                            title="Kliknij aby usunąć"
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold transition-opacity hover:opacity-60 ${
-                              a.triggered
-                                ? 'bg-yellow-900/40 text-yellow-400 line-through'
-                                : a.type === 'above'
-                                ? 'bg-emerald-900/40 text-emerald-400'
-                                : 'bg-rose-900/40 text-rose-400'
-                            }`}
-                          >
-                            {a.type === 'above' ? '↑' : '↓'} {a.targetPrice?.toFixed(2)}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setAlertTarget(w)}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-indigo-900/40 text-indigo-400 hover:bg-indigo-900/60 transition-colors"
-                        >
-                          + Alert
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {watchItems.map(w => {
+                  const live = livePrices[w.symbol];
+                  return (
+                    <tr key={w.id ?? w.symbol} onClick={() => openChart(w.symbol)}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <TickerLogo symbol={w.symbol} />
+                          <div>
+                            <div className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{w.symbol}</div>
+                            {w.name && w.name !== w.symbol && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{w.name}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="right mono" style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+                        {w.addedPrice != null ? `${w.addedPrice.toFixed(2)} ${w.currency ?? ''}` : '—'}
+                      </td>
+                      <td className="right mono" style={{ fontWeight: 600, fontSize: 13 }}>
+                        {loading && !live ? <span style={{ color: 'var(--text-faint)' }}>…</span>
+                          : live ? `${live.price.toFixed(2)} ${w.currency ?? ''}` : <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                      </td>
+                      <td className="right">
+                        {live?.dailyChg != null ? <Chip value={live.dailyChg} /> : <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--text-faint)' }}>{w.note || '—'}</td>
+                      <td className="right" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, flexWrap: 'wrap' }}>
+                          {(w.alerts ?? []).map(a => (
+                            <button key={a.id} onClick={() => removeAlert(w.id, a.id)}
+                              className={`chip ${a.triggered ? 'chip-warn' : a.type === 'above' ? 'chip-up' : 'chip-down'}`}
+                              style={{ cursor: 'pointer', textDecoration: a.triggered ? 'line-through' : 'none', border: 'none' }}
+                              title="Kliknij aby usunąć">
+                              {a.type === 'above' ? '↑' : '↓'} {a.targetPrice?.toFixed(2)}
+                            </button>
+                          ))}
+                          <button onClick={() => setAlertTarget(w)} className="chip chip-info" style={{ cursor: 'pointer', border: 'none' }}>+ Alert</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
-      {alertTarget && (
-        <AlertModal
-          item={alertTarget}
-          onClose={() => setAlertTarget(null)}
-          onSave={(alert) => addAlert(alertTarget.id, alert)}
-        />
-      )}
-
-      {/* Pozycje portfela jako lista do obserwacji */}
       {portfolio.length > 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700">
-            <h2 className="text-sm font-semibold text-slate-300">💼 Posiadane spółki</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Twoje aktualne pozycje z portfela</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <Card title="Posiadane spółki">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
               <thead>
-                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                  <th className="text-left px-5 py-2.5">Symbol</th>
-                  <th className="text-right px-5 py-2.5">Ilość</th>
-                  <th className="text-right px-5 py-2.5">Śr. cena</th>
+                <tr>
+                  <th>Symbol</th>
+                  <th className="right">Ilość</th>
+                  <th className="right">Śr. cena</th>
                 </tr>
               </thead>
               <tbody>
                 {portfolio.map(pos => (
-                  <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                    <td
-                      className="px-5 py-3 font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors"
-                      onClick={() => openChart(pos.symbol)}
-                      title={`Otwórz wykres ${pos.symbol}`}
-                    >
-                      {pos.symbol}
-                      {pos.name && pos.name !== pos.symbol && (
-                        <span className="ml-2 text-xs text-slate-500 font-normal">{pos.name}</span>
-                      )}
+                  <tr key={pos.id ?? pos.symbol} onClick={() => openChart(pos.symbol)}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <TickerLogo symbol={pos.symbol} />
+                        <div>
+                          <div className="mono" style={{ fontWeight: 700, fontSize: 13 }}>{pos.symbol}</div>
+                          {pos.name && pos.name !== pos.symbol && <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{pos.name}</div>}
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-300">
-                      {pos.qty?.toLocaleString('pl-PL') ?? '—'}
-                    </td>
-                    <td className="px-5 py-3 text-right text-slate-400">
-                      {pos.avgPrice?.toFixed(2)} {pos.currency}
-                    </td>
+                    <td className="right mono" style={{ fontSize: 13 }}>{pos.qty?.toLocaleString('pl-PL') ?? '—'}</td>
+                    <td className="right mono" style={{ fontSize: 13, color: 'var(--text-dim)' }}>{pos.avgPrice?.toFixed(2)} {pos.currency}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
+      )}
+
+      {alertTarget && (
+        <AlertModal item={alertTarget} onClose={() => setAlertTarget(null)} onSave={alert => addAlert(alertTarget.id, alert)} />
       )}
     </div>
   );
