@@ -1,176 +1,118 @@
-// frontend-react/src/pages/Settings.jsx
+// src/pages/Settings.jsx
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../hooks/useApi';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
 import { US_TAX_KEY } from '../services/dividendService';
 import BrokerImportModal from '../components/BrokerImportModal';
+import Card from '../components/shared/Card';
 
-function ApiKeySection() {
-  const [key,   setKey]   = useState(getMdApiKey);
-  const [saved, setSaved] = useState(false);
-
-  function save() {
-    setMdApiKey(key);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
-
-  const isSet = !!getMdApiKey();
-
+function SettingsRow({ label, value, children }) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-300">Klucze API</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Wymagane do pobierania łańcucha opcji w Scenario Lab
-        </p>
-      </div>
-      <div className="px-5 py-4 space-y-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide flex items-center gap-2">
-            MarketData.app
-            {isSet
-              ? <span className="text-emerald-400 normal-case font-normal">✓ ustawiony</span>
-              : <span className="text-amber-400 normal-case font-normal">nie ustawiony</span>
-            }
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value={key}
-              onChange={e => setKey(e.target.value)}
-              placeholder="Wklej klucz API…"
-              className="flex-1 bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 text-sm outline-none focus:border-indigo-500 font-mono"
-            />
-            <button
-              onClick={save}
-              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors min-w-[80px] ${
-                saved
-                  ? 'bg-emerald-700 text-emerald-100'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-              }`}
-            >
-              {saved ? '✓ Zapisano' : 'Zapisz'}
-            </button>
-          </div>
-          <p className="text-xs text-slate-600">
-            Klucz przechowywany tylko lokalnie (localStorage). Zdobądź darmowy klucz na{' '}
-            <span className="text-slate-400">marketdata.app</span>.
-          </p>
-        </div>
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{label}</span>
+      {children || <span className="mono" style={{ fontSize: 13, color: 'var(--text)' }}>{value}</span>}
     </div>
   );
 }
 
+function ApiKeySection() {
+  const [key, setKey] = useState(getMdApiKey);
+  const [saved, setSaved] = useState(false);
+  const isSet = !!getMdApiKey();
+
+  function save() { setMdApiKey(key); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+
+  return (
+    <Card title="Klucze API">
+      <div className="card-body">
+        <SettingsRow label={<span>MarketData.app <span style={{ fontWeight: 400, fontSize: 11, color: isSet ? 'var(--up)' : 'var(--warn)', marginLeft: 6 }}>{isSet ? '✓ ustawiony' : 'nie ustawiony'}</span></span>}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="password" value={key} onChange={e => setKey(e.target.value)}
+              className="field-input mono" style={{ width: 200, fontSize: 12 }} placeholder="Wklej klucz…" />
+            <button onClick={save} className={`btn ${saved ? '' : 'btn-primary'}`} style={{ fontSize: 12 }}>
+              {saved ? '✓ Zapisano' : 'Zapisz'}
+            </button>
+          </div>
+        </SettingsRow>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 8 }}>
+          Klucz przechowywany tylko lokalnie. Darmowy klucz: marketdata.app
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 function ChangePasswordSection() {
-  const [current,  setCurrent]  = useState('');
-  const [next,     setNext]     = useState('');
-  const [next2,    setNext2]    = useState('');
-  const [error,    setError]    = useState(null);
-  const [success,  setSuccess]  = useState(false);
-  const [loading,  setLoading]  = useState(false);
+  const [form, setForm] = useState({ current: '', next: '', next2: '' });
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
-    if (next !== next2) { setError('Nowe hasła nie są identyczne'); return; }
+    if (form.next !== form.next2) { setError('Nowe hasła nie są identyczne'); return; }
     setLoading(true);
     try {
-      await api.post('/api/change-password', { current_password: current, new_password: next });
+      await api.post('/api/change-password', { current_password: form.current, new_password: form.next });
       setSuccess(true);
-      setCurrent(''); setNext(''); setNext2('');
+      setForm({ current: '', next: '', next2: '' });
     } catch (err) {
       setError(err.response?.data?.error ?? 'Błąd zmiany hasła');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-300">Zmiana hasła</h2>
-      </div>
-      <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
-        {[
-          { label: 'Aktualne hasło',   value: current, set: setCurrent, ac: 'current-password' },
-          { label: 'Nowe hasło',        value: next,    set: setNext,    ac: 'new-password' },
-          { label: 'Powtórz nowe hasło',value: next2,   set: setNext2,   ac: 'new-password' },
-        ].map(({ label, value, set, ac }) => (
-          <div key={label}>
-            <label className="text-xs text-slate-400 block mb-1">{label}</label>
-            <input
-              type="password"
-              value={value}
-              onChange={e => set(e.target.value)}
-              autoComplete={ac}
-              className="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
-            />
+    <Card title="Zmiana hasła">
+      <form onSubmit={handleSubmit} className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {[['Aktualne hasło', 'current', 'current-password'], ['Nowe hasło', 'next', 'new-password'], ['Powtórz nowe', 'next2', 'new-password']].map(([label, field, ac]) => (
+          <div key={field}>
+            <label className="field-label">{label}</label>
+            <input type="password" value={form[field]} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+              autoComplete={ac} className="field-input" />
           </div>
         ))}
-        <p className="text-xs text-slate-600">Minimum 6 znaków</p>
-
-        {error   && <p className="text-red-400 text-sm">{error}</p>}
-        {success && <p className="text-emerald-400 text-sm">Hasło zostało zmienione</p>}
-
-        <button
-          type="submit"
-          disabled={loading || !current || !next || !next2}
-          className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-sm font-semibold transition-colors min-h-[40px]"
-        >
+        {error && <p style={{ color: 'var(--down)', fontSize: 12 }}>{error}</p>}
+        {success && <p style={{ color: 'var(--up)', fontSize: 12 }}>Hasło zostało zmienione ✓</p>}
+        <button type="submit" className="btn btn-primary"
+          disabled={loading || !form.current || !form.next || !form.next2}
+          style={{ alignSelf: 'flex-start', opacity: (loading || !form.current || !form.next || !form.next2) ? 0.4 : 1 }}>
           {loading ? 'Zapisywanie…' : 'Zmień hasło'}
         </button>
       </form>
-    </div>
+    </Card>
   );
 }
 
 function DividendTaxSection() {
   const [usTax, setUsTax] = useState(() => localStorage.getItem(US_TAX_KEY) || '15');
-
-  function save(val) {
-    setUsTax(val);
-    localStorage.setItem(US_TAX_KEY, val);
-  }
+  function save(val) { setUsTax(val); localStorage.setItem(US_TAX_KEY, val); }
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700">
-        <h2 className="text-sm font-semibold text-slate-300">Podatek od dywidend</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Stawka stosowana w widoku netto na stronie Dywidendy</p>
-      </div>
-      <div className="px-5 py-4 space-y-3">
-        <div className="flex items-center justify-between py-1">
-          <span className="text-sm text-slate-400">GPW (.WA)</span>
-          <span className="text-sm font-semibold text-slate-300">19% ryczałt (stała)</span>
-        </div>
+    <Card title="Podatek od dywidend">
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <SettingsRow label="GPW (.WA)" value="19% ryczałt (stała)" />
         <div>
-          <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Akcje US (USD)</p>
-          <div className="flex gap-2">
-            {[
-              { val: '15', label: '15%', desc: 'Umowa PL-US (standardowo)' },
-              { val: '30', label: '30%', desc: 'Pełny withholding' },
-            ].map(opt => (
-              <button
-                key={opt.val}
-                onClick={() => save(opt.val)}
-                className={`flex-1 px-4 py-3 rounded-lg text-left border transition-colors ${
-                  usTax === opt.val
-                    ? 'border-indigo-500 bg-indigo-950/50 text-indigo-300'
-                    : 'border-slate-600 bg-slate-700 text-slate-400 hover:bg-slate-600'
-                }`}
+          <label className="field-label">Akcje US</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[{ val: '15', label: '15%', desc: 'Umowa PL-US' }, { val: '30', label: '30%', desc: 'Pełny withholding' }].map(opt => (
+              <button key={opt.val} onClick={() => save(opt.val)}
+                style={{
+                  flex: 1, padding: '10px 12px', borderRadius: 8, textAlign: 'left',
+                  border: `1px solid ${usTax === opt.val ? 'var(--accent)' : 'var(--border)'}`,
+                  background: usTax === opt.val ? 'var(--up-soft)' : 'var(--panel-2)',
+                  cursor: 'pointer',
+                }}
               >
-                <div className="font-bold text-base mb-0.5">{opt.label}</div>
-                <div className="text-xs opacity-70">{opt.desc}</div>
+                <div className="mono" style={{ fontSize: 16, fontWeight: 700, color: usTax === opt.val ? 'var(--up)' : 'var(--text)', marginBottom: 2 }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{opt.desc}</div>
               </button>
             ))}
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -180,93 +122,50 @@ export default function Settings() {
   const [showBrokerImport, setShowBrokerImport] = useState(false);
 
   return (
-    <div className="space-y-5 max-w-xl">
-      {/* Konto */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-300">Konto</h2>
-        </div>
-        <div className="px-5 py-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-400">Zalogowany jako</span>
-            <span className="text-sm font-semibold text-slate-200">{displayName || '—'}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-400">API URL</span>
-            <span className="text-xs text-slate-500 font-mono truncate max-w-xs">{apiUrl}</span>
-          </div>
-          <div className="pt-2 border-t border-slate-700 flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={refresh}
-              className="text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors font-medium min-h-[44px]"
-            >
-              Odśwież dane
-            </button>
-            <button
-              onClick={logout}
-              className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors text-slate-300 min-h-[44px]"
-            >
-              Wyloguj
-            </button>
+    <div style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card title="Konto">
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <SettingsRow label="Zalogowany jako" value={displayName || '—'} />
+          <SettingsRow label="API URL">
+            <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apiUrl}</span>
+          </SettingsRow>
+          <div style={{ paddingTop: 14, display: 'flex', gap: 8 }}>
+            <button onClick={refresh} className="btn btn-primary" style={{ fontSize: 12 }}>Odśwież dane</button>
+            <button onClick={logout} className="btn" style={{ fontSize: 12 }}>Wyloguj →</button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Zmiana hasła */}
       <ChangePasswordSection />
-
-      {/* Klucze API */}
       <ApiKeySection />
-
-      {/* Podatek od dywidend */}
       <DividendTaxSection />
 
-      {/* Import danych brokera */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-300">Import danych brokera</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Importuj historię z pliku CSV eksportowanego z brokera (eToro, itp.)
+      <Card title="Import danych brokera">
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            Importuj historię z pliku CSV (eToro itp.). Obsługiwane: Closed Positions, Cash Operations.
           </p>
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-xs text-slate-400 mb-3">
-            Obsługiwane pliki: <span className="text-slate-300">Closed Positions</span> i <span className="text-slate-300">Cash Operations</span>.
-            Format wykrywany automatycznie. Duplikaty są pomijane.
-          </p>
-          <button
-            onClick={() => setShowBrokerImport(true)}
-            className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors text-white font-medium"
-          >
-            ⬆ Importuj CSV brokera
+          <button onClick={() => setShowBrokerImport(true)} className="btn" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
+            ↑ Importuj CSV brokera
           </button>
         </div>
-      </div>
+      </Card>
 
-      {/* Kursy walut */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-300">Kursy walut</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Aktualizowane co 30 min (frankfurter.app)</p>
-        </div>
-        <div className="px-5 py-4 space-y-2">
+      <Card title="Kursy walut">
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {['USD', 'EUR', 'GBP'].map(cur => (
-            <div key={cur} className="flex justify-between items-center py-1">
-              <span className="text-sm font-medium text-slate-300">{cur} / PLN</span>
-              <span className="text-sm text-slate-400 font-mono">
+            <SettingsRow key={cur} label={`${cur} / PLN`}>
+              <span className="mono" style={{ fontSize: 13, color: 'var(--text)' }}>
                 {fxRates[cur] != null ? fxRates[cur].toFixed(4) : '—'} zł
               </span>
-            </div>
+            </SettingsRow>
           ))}
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>Aktualizowane co 30 min (frankfurter.app)</p>
         </div>
-      </div>
+      </Card>
 
-      {/* O aplikacji */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-        <p className="text-xs text-slate-600">
-          StocksTracker React — migracja z Vanilla JS.
-          Dane przechowywane na Render (PostgreSQL).
-        </p>
+      <div style={{ fontSize: 11, color: 'var(--text-faint)', padding: '4px 0' }}>
+        StocksTracker — Vite + React. Dane: Render (PostgreSQL).
       </div>
 
       {showBrokerImport && (
