@@ -7,6 +7,7 @@ import { fetchOptionChain, getMdApiKey } from '../services/MarketDataService';
 import {
   calcSigma, makePrices, calcPayoff, calcKPIs, calcGreeks,
 } from '../utils/scenarioLab';
+import Card from '../components/shared/Card';
 
 function dteToDateStr(days) {
   const d = new Date();
@@ -67,28 +68,27 @@ function fmtDollar(n) {
   return (n < 0 ? '-$' : '$') + abs;
 }
 
+const colorVarMap = {
+  blue:   'var(--info)',
+  green:  'var(--up)',
+  red:    'var(--down)',
+  yellow: 'var(--warn)',
+  muted:  'var(--text-dim)',
+};
+
 function StatCard({ label, value, color = 'muted' }) {
-  const colorMap = {
-    blue:   'text-blue-400',
-    green:  'text-emerald-400',
-    red:    'text-rose-400',
-    yellow: 'text-amber-400',
-    muted:  'text-slate-400',
-  };
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
-      <div className="text-xs text-slate-400 font-semibold mb-1 uppercase tracking-wide">{label}</div>
-      <div className={`text-base font-bold ${colorMap[color] || 'text-slate-100'}`}>{value}</div>
+    <div className="kpi-card">
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value" style={{ fontSize: 16, color: colorVarMap[color] || 'var(--text)' }}>{value}</div>
     </div>
   );
 }
 
-const inputCls = "bg-slate-700 border border-slate-600 rounded-md px-3 py-2 text-slate-100 text-sm w-full outline-none focus:border-indigo-500";
-
 function Field({ label, children }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide">{label}</label>
+      <label className="field-label">{label}</label>
       {children}
     </div>
   );
@@ -359,19 +359,19 @@ export default function ScenarioLab() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <h2 className="text-lg font-bold text-slate-100">🧪 Scenario Lab — Akcje vs Opcje</h2>
+      <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>🧪 Scenario Lab — Akcje vs Opcje</h2>
 
       {/* Stock picker + chain fetch */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 space-y-3">
+      <Card title="Spółka i łańcuch opcji">
         {/* Row 1: portfolio selector */}
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
+          <label className="field-label whitespace-nowrap">
             Spółka z portfela
           </label>
           <select
             value={selectedSymbol}
             onChange={e => { setSelectedSymbol(e.target.value); if (e.target.value) setChainTicker(e.target.value); }}
-            className={inputCls + ' max-w-xs'}
+            className="field-input max-w-xs"
           >
             <option value="">— własne wartości —</option>
             {portfolio.map(pos => (
@@ -380,22 +380,22 @@ export default function ScenarioLab() {
               </option>
             ))}
           </select>
-          {fetchingPrice && <span className="text-xs text-slate-400 animate-pulse">Pobieranie kursu…</span>}
+          {fetchingPrice && <span className="text-xs animate-pulse" style={{ color: 'var(--text-dim)' }}>Pobieranie kursu…</span>}
           {livePrice != null && !fetchingPrice && (
-            <span className="text-xs bg-indigo-900/60 border border-indigo-700 text-indigo-300 rounded-md px-2 py-1 font-mono">
+            <span className="text-xs rounded-md px-2 py-1 font-mono" style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--info)' }}>
               {livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           )}
           {selectedSymbol && !fetchingPrice && (
-            <button onClick={() => setSelectedSymbol('')} className="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-auto">
+            <button onClick={() => setSelectedSymbol('')} className="btn text-xs ml-auto">
               ✕ wyczyść
             </button>
           )}
         </div>
 
         {/* Row 2: ticker input + fetch button */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
+        <div className="flex items-center gap-2 flex-wrap mt-3">
+          <label className="field-label whitespace-nowrap">
             Ticker opcji
           </label>
           <input
@@ -404,12 +404,13 @@ export default function ScenarioLab() {
             onChange={e => setChainTicker(e.target.value.toUpperCase())}
             onKeyDown={e => e.key === 'Enter' && handleFetchChain()}
             placeholder="np. AAPL"
-            className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm w-28 outline-none focus:border-indigo-500 font-mono uppercase"
+            className="field-input w-28 font-mono"
+            style={{ textTransform: 'uppercase' }}
           />
           <button
             onClick={handleFetchChain}
             disabled={chainLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-wait text-sm font-semibold transition-colors"
+            className="btn btn-primary"
           >
             {chainLoading
               ? <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -417,24 +418,24 @@ export default function ScenarioLab() {
             Pobierz łańcuch
           </button>
           {chain && !chainLoading && (
-            <span className="text-xs text-emerald-400">
+            <span className="text-xs" style={{ color: 'var(--up)' }}>
               ✓ {chain.contracts.length} kontraktów ({chain.expirations.length} dat)
             </span>
           )}
-          {chainError && <span className="text-xs text-rose-400">{chainError}</span>}
+          {chainError && <span className="text-xs" style={{ color: 'var(--down)' }}>{chainError}</span>}
         </div>
 
         {/* Row 3: chain dropdowns */}
         {chain && (
-          <div className="border-t border-slate-700 pt-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
             <div className="flex items-center gap-2 flex-wrap">
-              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+              <label className="field-label whitespace-nowrap w-24">
                 Wygaśnięcie
               </label>
               <select
                 value={selectedExpiry}
                 onChange={e => { setSelectedExpiry(e.target.value); setSelectedSym1(''); setSelectedSym2(''); }}
-                className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500"
+                className="field-input"
               >
                 {chain.expirations.map(exp => {
                   const c = chain.contracts.find(x => x.expiry === exp);
@@ -449,13 +450,13 @@ export default function ScenarioLab() {
 
             {!SPREAD_STRATEGIES.has(strategy) && (
               <div className="flex items-center gap-2 flex-wrap">
-                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                <label className="field-label whitespace-nowrap w-24">
                   Kontrakt
                 </label>
                 <select
                   value={selectedSym1}
                   onChange={e => applyContract(e.target.value, false)}
-                  className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500 flex-1 min-w-[200px]"
+                  className="field-input flex-1 min-w-[200px]"
                 >
                   <option value="">— wybierz strike —</option>
                   {leg1Contracts.map(c => (
@@ -470,13 +471,13 @@ export default function ScenarioLab() {
             {SPREAD_STRATEGIES.has(strategy) && (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                  <label className="field-label whitespace-nowrap w-24">
                     {strategy === 'iron-condor' ? 'Short Put' : 'Noga długa'}
                   </label>
                   <select
                     value={selectedSym1}
                     onChange={e => applyContract(e.target.value, false)}
-                    className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500 flex-1 min-w-[200px]"
+                    className="field-input flex-1 min-w-[200px]"
                   >
                     <option value="">— wybierz strike —</option>
                     {leg1Contracts.map(c => (
@@ -487,13 +488,13 @@ export default function ScenarioLab() {
                   </select>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap w-24">
+                  <label className="field-label whitespace-nowrap w-24">
                     {strategy === 'iron-condor' ? 'Short Call' : 'Noga krótka'}
                   </label>
                   <select
                     value={selectedSym2}
                     onChange={e => applyContract(e.target.value, true)}
-                    className="bg-slate-700 border border-slate-600 rounded-md px-3 py-1.5 text-slate-100 text-sm outline-none focus:border-indigo-500 flex-1 min-w-[200px]"
+                    className="field-input flex-1 min-w-[200px]"
                   >
                     <option value="">— wybierz strike —</option>
                     {leg2Contracts.map(c => (
@@ -507,82 +508,83 @@ export default function ScenarioLab() {
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Toolbar */}
       <div className="flex justify-end">
-        <button
-          onClick={resetParams}
-          className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors border border-slate-600"
-        >
+        <button onClick={resetParams} className="btn">
           ↺ Reset parametrów
         </button>
       </div>
 
       {/* Form grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         {/* Left panel */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col gap-3">
-          <Field label="Strategia">
-            <select value={strategy} onChange={e => setStrategy(e.target.value)} className={inputCls}>
-              {STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Cena wejścia ($)">
-            <input type="number" value={entry} min="0.01" step="0.01"
-              onChange={e => setEntry(parseFloat(e.target.value) || 100)} className={inputCls} />
-            {strategy === 'covered-call' && livePrice != null && Math.abs((entry - livePrice) / livePrice) > 0.15 && (
-              <span className="text-xs text-amber-400">⚠ Cena akcji znacznie odbiega od rynkowej ({livePrice.toFixed(2)})</span>
-            )}
-          </Field>
-          {!isSpread && (
-            <Field label="Ilość akcji / kontraktów">
-              <input type="number" value={qty} min="1" step="1"
-                onChange={e => setQty(parseInt(e.target.value) || 1)} className={inputCls} />
+        <Card title="Parametry podstawowe">
+          <div className="flex flex-col gap-3">
+            <Field label="Strategia">
+              <select value={strategy} onChange={e => setStrategy(e.target.value)} className="field-input">
+                {STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
             </Field>
-          )}
-        </div>
+            <Field label="Cena wejścia ($)">
+              <input type="number" value={entry} min="0.01" step="0.01"
+                onChange={e => setEntry(parseFloat(e.target.value) || 100)} className="field-input" />
+              {strategy === 'covered-call' && livePrice != null && Math.abs((entry - livePrice) / livePrice) > 0.15 && (
+                <span className="text-xs" style={{ color: 'var(--warn)' }}>⚠ Cena akcji znacznie odbiega od rynkowej ({livePrice.toFixed(2)})</span>
+              )}
+            </Field>
+            {!isSpread && (
+              <Field label="Ilość akcji / kontraktów">
+                <input type="number" value={qty} min="1" step="1"
+                  onChange={e => setQty(parseInt(e.target.value) || 1)} className="field-input" />
+              </Field>
+            )}
+          </div>
+        </Card>
 
         {/* Right panel */}
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col gap-3">
-          <Field label={STRIKE_LABELS[strategy] || 'Strike ($)'}>
-            <input type="number" value={strike} min="0.01" step="0.01"
-              onChange={e => setStrike(parseFloat(e.target.value) || 100)} className={inputCls} />
-          </Field>
-          {isSpread && (
-            <Field label={STRIKE2_LABELS[strategy] || 'Strike 2 ($)'}>
-              <input type="number" value={strike2} min="0.01" step="0.01"
-                onChange={e => setStrike2(parseFloat(e.target.value) || 110)} className={inputCls} />
+        <Card title="Parametry opcji">
+          <div className="flex flex-col gap-3">
+            <Field label={STRIKE_LABELS[strategy] || 'Strike ($)'}>
+              <input type="number" value={strike} min="0.01" step="0.01"
+                onChange={e => setStrike(parseFloat(e.target.value) || 100)} className="field-input" />
             </Field>
-          )}
-          {isWing && (
-            <Field label="Wing Width ($)">
-              <input type="number" value={wing} min="0.5" step="0.5"
-                onChange={e => setWing(parseFloat(e.target.value) || 5)} className={inputCls} />
+            {isSpread && (
+              <Field label={STRIKE2_LABELS[strategy] || 'Strike 2 ($)'}>
+                <input type="number" value={strike2} min="0.01" step="0.01"
+                  onChange={e => setStrike2(parseFloat(e.target.value) || 110)} className="field-input" />
+              </Field>
+            )}
+            {isWing && (
+              <Field label="Wing Width ($)">
+                <input type="number" value={wing} min="0.5" step="0.5"
+                  onChange={e => setWing(parseFloat(e.target.value) || 5)} className="field-input" />
+              </Field>
+            )}
+            <Field label={PREMIUM_LABELS[strategy] || 'Premia ($ / opcja)'}>
+              <input type="number" value={premium} min="0" step="0.01"
+                onChange={e => setPremium(parseFloat(e.target.value) || 0)} className="field-input" />
             </Field>
-          )}
-          <Field label={PREMIUM_LABELS[strategy] || 'Premia ($ / opcja)'}>
-            <input type="number" value={premium} min="0" step="0.01"
-              onChange={e => setPremium(parseFloat(e.target.value) || 0)} className={inputCls} />
-          </Field>
-          <Field label={`Data wygaśnięcia (DTE: ${dte})`}>
-            <input
-              type="date"
-              value={expiryDate}
-              min={new Date().toISOString().slice(0, 10)}
-              onChange={e => { setExpiryDate(e.target.value); setDte(dateStrToDte(e.target.value)); }}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="IV — Implied Volatility (%)">
-            <input type="number" value={iv} min="1" max="500" step="1"
-              onChange={e => setIv(parseFloat(e.target.value) || 30)} className={inputCls} />
-          </Field>
-        </div>
+            <Field label={`Data wygaśnięcia (DTE: ${dte})`}>
+              <input
+                type="date"
+                value={expiryDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={e => { setExpiryDate(e.target.value); setDte(dateStrToDte(e.target.value)); }}
+                className="field-input"
+              />
+            </Field>
+            <Field label="IV — Implied Volatility (%)">
+              <input type="number" value={iv} min="1" max="500" step="1"
+                onChange={e => setIv(parseFloat(e.target.value) || 30)} className="field-input" />
+            </Field>
+          </div>
+        </Card>
       </div>
 
       {/* Hide stock checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400 select-none">
+      <label className="flex items-center gap-2 cursor-pointer text-sm select-none" style={{ color: 'var(--text-dim)' }}>
         <input type="checkbox" checked={hideStock} onChange={e => setHideStock(e.target.checked)}
           className="w-4 h-4 accent-indigo-500 cursor-pointer" />
         Ukryj linię bazową akcji
@@ -590,7 +592,7 @@ export default function ScenarioLab() {
 
       {/* KPI cards */}
       {kpis && (
-        <div className="grid grid-cols-4 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {kpis.breakevens.length === 1 ? (
             <StatCard label="Break-even" value={fmtDollar(kpis.breakevens[0])} color="blue" />
           ) : (
@@ -629,27 +631,29 @@ export default function ScenarioLab() {
       )}
 
       {/* Chart */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4" style={{height: '360px'}}>
-        <canvas ref={canvasRef} />
-      </div>
+      <Card>
+        <div style={{ height: 360 }}>
+          <canvas ref={canvasRef} />
+        </div>
+      </Card>
 
       {/* Greeks */}
       {greeks && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Δ Delta (pozycja)</div>
-            <div className={`text-xl font-bold ${greeks.posDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Card>
+            <div className="kpi-label">Δ Delta (pozycja)</div>
+            <div className="kpi-value" style={{ fontSize: 20, color: greeks.posDelta >= 0 ? 'var(--up)' : 'var(--down)' }}>
               {greeks.posDelta.toFixed(3)}
             </div>
-            <div className="text-xs text-slate-500 mt-1">zmiana P&L na $1 ruchu akcji</div>
-          </div>
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-            <div className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Θ Theta (dzienny, na opcję)</div>
-            <div className={`text-xl font-bold ${greeks.posTheta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>zmiana P&amp;L na $1 ruchu akcji</div>
+          </Card>
+          <Card>
+            <div className="kpi-label">Θ Theta (dzienny, na opcję)</div>
+            <div className="kpi-value" style={{ fontSize: 20, color: greeks.posTheta >= 0 ? 'var(--up)' : 'var(--down)' }}>
               {greeks.posTheta.toFixed(4)}
             </div>
-            <div className="text-xs text-slate-500 mt-1">dzienny upływ wartości czasowej</div>
-          </div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>dzienny upływ wartości czasowej</div>
+          </Card>
         </div>
       )}
     </div>
