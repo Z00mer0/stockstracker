@@ -13,6 +13,9 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import {
   COLUMN_DEFS, loadColumnConfig, saveColumnConfig,
 } from '../utils/portfolioColumns';
+import TickerLogo from '../components/shared/TickerLogo';
+import Chip from '../components/shared/Chip';
+import Card from '../components/shared/Card';
 
 const WATCH_KEY = 'myfund_watchlist';
 function toggleWatchlist(symbol) {
@@ -42,75 +45,69 @@ function renderCell(key, pos, fxRates) {
   switch (key) {
     case 'qty':
       return (
-        <span className="text-slate-300">
+        <span style={{ color: 'var(--text)' }}>
           {fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}
         </span>
       );
     case 'avgPrice':
       return (
-        <span className="text-slate-400">
+        <span style={{ color: 'var(--text-dim)' }}>
           {fmt(pos.avgPrice)} <span className="text-xs">{flag}</span>
         </span>
       );
     case 'price':
       return pos.price != null ? (
-        <span className="text-slate-300">
+        <span style={{ color: 'var(--text)' }}>
           {fmt(pos.price)} <span className="text-xs">{flag}</span>
         </span>
-      ) : <span className="text-slate-600">—</span>;
-    case 'dailyChg': {
-      if (pos.dailyChg == null) return <span className="text-slate-600">—</span>;
-      const up = pos.dailyChg >= 0;
-      return (
-        <span className={up ? 'text-emerald-400' : 'text-rose-400'}>
-          {up ? '+' : ''}{fmt(pos.dailyChg, 2)}%
-        </span>
-      );
-    }
+      ) : <span style={{ color: 'var(--text-faint)' }}>—</span>;
+    case 'dailyChg':
+      if (pos.dailyChg == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
+      return <Chip value={pos.dailyChg} />;
     case 'costPLN':
-      return <span className="text-slate-200 font-semibold">{fmt(pos.costPLN)} zł</span>;
+      return <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.costPLN)} zł</span>;
     case 'valuePLN':
       return pos.valuePLN != null
-        ? <span className="text-slate-200 font-semibold">{fmt(pos.valuePLN)} zł</span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.valuePLN)} zł</span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'plPLN': {
-      if (pos.plPLN == null) return <span className="text-slate-600">—</span>;
+      if (pos.plPLN == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.plPLN >= 0;
       return (
-        <span className={up ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+        <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
           {up ? '+' : ''}{fmt(pos.plPLN)} zł
         </span>
       );
     }
     case 'period':
-      return <span className="text-slate-400">{fmtPeriod(pos.periodDays)}</span>;
+      return <span style={{ color: 'var(--text-dim)' }}>{fmtPeriod(pos.periodDays)}</span>;
     case 'moic':
       return pos.moic != null
-        ? <span className="text-slate-300">{fmt(pos.moic, 2)}x</span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text)' }}>{fmt(pos.moic, 2)}x</span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'irr': {
-      if (pos.irr == null) return <span className="text-slate-600">—</span>;
+      if (pos.irr == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.irr >= 0;
       return (
-        <span className={up ? 'text-emerald-400' : 'text-rose-400'}>
+        <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
           {up ? '+' : ''}{fmt(pos.irr, 1)}%
         </span>
       );
     }
     case 'pe':
       return pos.pe != null
-        ? <span className="text-slate-400">{fmt(pos.pe, 1)}</span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pe, 1)}</span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'peFwd':
       return pos.peFwd != null
-        ? <span className="text-slate-400">{fmt(pos.peFwd, 1)}</span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.peFwd, 1)}</span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'pb':
       return pos.pb != null
-        ? <span className="text-slate-400">{fmt(pos.pb, 2)}</span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pb, 2)}</span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     default:
-      return <span className="text-slate-600">—</span>;
+      return <span style={{ color: 'var(--text-faint)' }}>—</span>;
   }
 }
 
@@ -177,13 +174,13 @@ export default function Portfolio() {
 
   if (!portfolio.length) {
     return (
-      <div className="text-center py-16 text-slate-500">
+      <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
         <div className="text-5xl mb-3">💼</div>
-        <p className="text-slate-400 font-semibold">Brak pozycji w portfelu</p>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak pozycji w portfelu</p>
         <p className="text-sm mt-1 mb-5">Dodaj pierwszą spółkę, aby zacząć śledzić portfel</p>
         <button
           onClick={() => setShowAdd(true)}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
+          className="btn btn-primary"
         >
           + Dodaj spółkę
         </button>
@@ -201,18 +198,18 @@ export default function Portfolio() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 flex items-center justify-between">
+      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
         <div>
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Łączny koszt portfela</p>
-          <p className="text-2xl font-bold text-slate-100">{fmt(totalCostPLN)} zł</p>
+          <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-dim)' }}>Łączny koszt portfela</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{fmt(totalCostPLN)} zł</p>
         </div>
-        <div className="text-right text-sm text-slate-400">{portfolio.length} pozycji</div>
+        <div className="text-sm" style={{ color: 'var(--text-dim)', textAlign: 'right' }}>{portfolio.length} pozycji</div>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
+      <div className="card" style={{ overflow: 'hidden' }}>
         {/* Toolbar */}
-        <div className="px-5 py-3 border-b border-slate-700 flex items-center gap-2">
+        <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {[
             ['cost',   'Wg kosztu'],
             ['symbol', 'A–Z'],
@@ -222,11 +219,8 @@ export default function Portfolio() {
             <button
               key={key}
               onClick={() => setSortBy(key)}
-              className={`text-xs px-3 py-1 rounded-lg transition-colors ${
-                sortBy === key
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
+              className={sortBy === key ? 'btn btn-primary' : 'btn'}
+              style={{ fontSize: 12, padding: '4px 12px' }}
             >
               {label}
             </button>
@@ -235,13 +229,15 @@ export default function Portfolio() {
           {metricsLoading && <Spinner size="sm" />}
           <button
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+            className="btn"
+            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
           >
             ⬆ Import CSV
           </button>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+            className="btn btn-primary"
+            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
           >
             + Dodaj spółkę
           </button>
@@ -249,17 +245,17 @@ export default function Portfolio() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table">
             <thead>
-              <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                <th className="text-left px-5 py-2.5 sticky left-0 bg-slate-900/90">Symbol</th>
+              <tr>
+                <th style={{ textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)' }}>Symbol</th>
                 {cols.map(key => (
-                  <th key={key} className="text-right px-4 py-2.5 whitespace-nowrap">
+                  <th key={key} className="right">
                     {COL_LABEL[key] ?? key}
                   </th>
                 ))}
-                <th className="text-right px-5 py-2.5">Udział %</th>
-                <th className="px-3 py-2.5" />
+                <th className="right">Udział %</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -267,50 +263,60 @@ export default function Portfolio() {
                 const share = totalCostPLN > 0 ? ((pos.costPLN ?? 0) / totalCostPLN) * 100 : 0;
                 const menuOpen = menuSym === pos.symbol;
                 return (
-                  <tr
-                    key={pos.id ?? pos.symbol}
-                    className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors"
-                  >
+                  <tr key={pos.id ?? pos.symbol}>
                     <td
-                      className="px-5 py-3 cursor-pointer sticky left-0 bg-slate-800 hover:bg-slate-700/30"
+                      style={{ cursor: 'pointer', position: 'sticky', left: 0, background: 'var(--panel)' }}
                       onClick={() => openChart(pos.symbol)}
                       title={`Otwórz wykres ${pos.symbol}`}
                     >
-                      <div className="font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
-                        {pos.symbol}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <TickerLogo symbol={pos.symbol} />
+                        <div>
+                          <div className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</div>
+                          {pos.name && pos.name !== pos.symbol && (
+                            <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{pos.name}</div>
+                          )}
+                        </div>
                       </div>
-                      {pos.name && pos.name !== pos.symbol && (
-                        <div className="text-xs text-slate-500 truncate max-w-[120px]">{pos.name}</div>
-                      )}
                     </td>
                     {cols.map(key => (
-                      <td key={key} className="px-4 py-3 text-right whitespace-nowrap">
+                      <td key={key} className="right mono">
                         {renderCell(key, pos, fxRates)}
                       </td>
                     ))}
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <td className="right mono">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                        <div style={{ width: 64, height: 6, background: 'var(--panel-2)', borderRadius: 9999, overflow: 'hidden' }}>
                           <div
-                            className="h-full bg-indigo-500 rounded-full"
-                            style={{ width: `${Math.min(share, 100)}%` }}
+                            style={{ height: '100%', background: 'var(--info)', borderRadius: 9999, width: `${Math.min(share, 100)}%` }}
                           />
                         </div>
-                        <span className="text-xs text-slate-400 w-10 text-right">{fmt(share, 1)}%</span>
+                        <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 40, textAlign: 'right' }}>{fmt(share, 1)}%</span>
                       </div>
                     </td>
                     {/* ⋯ action menu */}
-                    <td className="px-3 py-3 relative" onClick={e => e.stopPropagation()}>
+                    <td style={{ padding: '12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => setMenuSym(menuOpen ? null : pos.symbol)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors text-base"
+                        style={{
+                          width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: 8, color: 'var(--text-faint)', background: 'transparent',
+                          border: 'none', cursor: 'pointer', fontSize: 16, transition: 'color 0.15s, background 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--panel-2)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'transparent'; }}
                       >
                         ⋯
                       </button>
                       {menuOpen && (
                         <div
                           ref={menuRef}
-                          className="absolute right-0 top-9 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-44 py-1 text-sm"
+                          style={{
+                            position: 'absolute', right: 0, top: 36, zIndex: 30,
+                            background: 'var(--panel)', border: '1px solid var(--border)',
+                            borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                            width: 176, padding: '4px 0', fontSize: 14,
+                          }}
                         >
                           {[
                             { icon: '+', label: 'Kup więcej', action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
@@ -322,14 +328,22 @@ export default function Portfolio() {
                             { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
                           ].map((item, i) =>
                             item === null ? (
-                              <div key={i} className="border-t border-slate-700/60 my-1" />
+                              <div key={i} style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
                             ) : (
                               <button
                                 key={item.label}
                                 onClick={item.action}
-                                className={`w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-slate-800 transition-colors ${item.danger ? 'text-rose-400' : 'text-slate-300'}`}
+                                style={{
+                                  width: '100%', textAlign: 'left', padding: '8px 16px',
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  background: 'transparent', border: 'none', cursor: 'pointer',
+                                  color: item.danger ? 'var(--down)' : 'var(--text)',
+                                  transition: 'background 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-2)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                               >
-                                <span className="w-4 text-center">{item.icon}</span>
+                                <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
                                 {item.label}
                               </button>
                             )
@@ -375,19 +389,29 @@ export default function Portfolio() {
         />
       )}
       {confirmDel && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-             onClick={() => setConfirmDel(null)}>
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl text-center"
-               onClick={e => e.stopPropagation()}>
-            <p className="text-slate-100 font-semibold mb-1">Usuń {confirmDel}?</p>
-            <p className="text-xs text-slate-400 mb-5">Pozycja zostanie usunięta z portfela. Transakcji nie można cofnąć.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmDel(null)}
-                className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors">
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setConfirmDel(null)}
+        >
+          <div
+            style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', textAlign: 'center' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p style={{ color: 'var(--text)', fontWeight: 600, marginBottom: 4 }}>Usuń {confirmDel}?</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 20 }}>Pozycja zostanie usunięta z portfela. Transakcji nie można cofnąć.</p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setConfirmDel(null)}
+                className="btn"
+                style={{ flex: 1, padding: '8px 0' }}
+              >
                 Anuluj
               </button>
-              <button onClick={async () => { await removePosition(confirmDel); setConfirmDel(null); refresh(); }}
-                className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-500 transition-colors">
+              <button
+                onClick={async () => { await removePosition(confirmDel); setConfirmDel(null); refresh(); }}
+                className="btn btn-danger"
+                style={{ flex: 1, padding: '8px 0' }}
+              >
                 Usuń
               </button>
             </div>
@@ -395,7 +419,12 @@ export default function Portfolio() {
         </div>
       )}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-700 text-slate-100 text-sm px-5 py-2.5 rounded-xl shadow-xl z-50 pointer-events-none">
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--panel-2)', color: 'var(--text)', fontSize: 14,
+          padding: '10px 20px', borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          zIndex: 50, pointerEvents: 'none',
+        }}>
           {toast}
         </div>
       )}
