@@ -2,6 +2,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import Spinner from '../components/shared/Spinner';
+import Card from '../components/shared/Card';
+import Chip from '../components/shared/Chip';
+import SegmentedControl from '../components/shared/SegmentedControl';
 import AddDividendModal from '../components/AddDividendModal';
 import useDividendEvents from '../hooks/useDividendEvents';
 import {
@@ -67,12 +70,6 @@ export default function Dividends() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbols.join(',')]);
-
-  function toggleNetMode() {
-    const next = !isNet;
-    setIsNet(next);
-    localStorage.setItem(DIV_MODE_KEY, next ? 'net' : 'gross');
-  }
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -171,35 +168,35 @@ export default function Dividends() {
 
       {/* ── Stats panel ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-yellow-800/50 bg-yellow-950/30 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
             Dywidendy (12 mies.) · {modeLabel}
           </p>
-          <p className={`text-2xl font-bold text-yellow-400${isPrivate ? ' privacy-blur' : ''}`}>
+          <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
             {fmt(annualDivPLN)} zł
           </p>
-          <p className="text-xs text-slate-600 mt-0.5">ostatnie 12 miesięcy</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>ostatnie 12 miesięcy</p>
         </div>
 
-        <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-2">
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }} className="flex items-center gap-2">
             Yield portfela (proj.)
             {yocLoading && <Spinner size="sm" />}
           </p>
           {portfolioYield != null ? (
-            <p className={`text-2xl font-bold text-emerald-400${isPrivate ? ' privacy-blur' : ''}`}>
+            <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--up)' }}>
               {fmt(portfolioYield, 2)}%
             </p>
           ) : (
-            <p className="text-2xl font-bold text-slate-600">—</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-faint)' }}>—</p>
           )}
-          <p className="text-xs text-slate-600 mt-0.5">roczne dywidendy / wartość portfela</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>roczne dywidendy / wartość portfela</p>
         </div>
 
-        <div className="rounded-xl border border-indigo-800/50 bg-indigo-950/30 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Nadchodzące (30 dni)</p>
-          <p className="text-2xl font-bold text-indigo-400">{upcoming30d.length}</p>
-          <p className="text-xs text-slate-500 mt-0.5">
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Nadchodzące (30 dni)</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--info)' }}>{upcoming30d.length}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
             {upcoming30d.length > 0
               ? upcoming30d.map(e => e.symbol).join(', ')
               : 'brak zaplanowanych'}
@@ -208,30 +205,25 @@ export default function Dividends() {
       </div>
 
       {/* ── Netto / Brutto toggle ── */}
-      <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800 px-5 py-3">
+      <div className="card flex items-center justify-between" style={{ padding: '12px 20px' }}>
         <div>
-          <p className="text-sm font-medium text-slate-300">Tryb wyświetlania kwot</p>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Tryb wyświetlania kwot</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
             {isNet
               ? `Po podatku: GPW 19%, US ${getUsTaxRate() === 0.30 ? '30' : '15'}% (zmień w Ustawienia)`
               : 'Kwoty brutto — przed potrąceniem podatku'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-sm ${!isNet ? 'text-slate-200 font-medium' : 'text-slate-500'}`}>Brutto</span>
-          <button
-            onClick={toggleNetMode}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isNet ? 'bg-indigo-600' : 'bg-slate-600'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isNet ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
-          <span className={`text-sm ${isNet ? 'text-indigo-400 font-medium' : 'text-slate-500'}`}>Netto</span>
-        </div>
+        <SegmentedControl
+          options={['BRUTTO', 'NETTO']}
+          value={isNet ? 'NETTO' : 'BRUTTO'}
+          onChange={v => { setIsNet(v === 'NETTO'); localStorage.setItem(DIV_MODE_KEY, v === 'NETTO' ? 'net' : 'gross'); }}
+        />
       </div>
 
       {/* ── Banner + dodaj GPW ── */}
-      <div className="rounded-xl border border-blue-800/50 bg-blue-950/30 px-5 py-4 flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm text-blue-300 leading-relaxed max-w-lg">
+      <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <p style={{ fontSize: 13, color: 'var(--info)', lineHeight: 1.5, maxWidth: 520 }}>
           <span className="font-semibold">ℹ️ Daty dywidend GPW</span> (XTB.WA, VOT.WA itp.) są dodawane ręcznie.
           Daty US (NVDA, HOOD itp.) pobierane automatycznie z Finnhub.
         </p>
@@ -244,38 +236,38 @@ export default function Dividends() {
       </div>
 
       {/* ── Nadchodzące dywidendy ── */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-300">Nadchodzące dywidendy</h2>
-          <div className="flex items-center gap-3">
+      <Card
+        title="Nadchodzące dywidendy"
+        actions={
+          <>
             {divLoading && <Spinner size="sm" />}
             <button
               onClick={() => { setEditTarget(null); setModalOpen(true); }}
               className="text-xs px-2.5 py-1 rounded-md bg-indigo-700 hover:bg-indigo-600 text-white transition-colors"
             >+ Dodaj ręcznie</button>
-          </div>
-        </div>
-
+          </>
+        }
+      >
         {divLoading && !upcoming.length ? (
           <div className="flex justify-center py-8"><Spinner size="md" /></div>
         ) : upcoming.length === 0 ? (
-          <div className="px-5 py-8 text-center text-slate-500 text-sm">
+          <div className="card-body text-center" style={{ color: 'var(--text-faint)', fontSize: 13 }}>
             Brak nadchodzących dywidend.
             {symbols.some(s => !s.includes('.')) && (
-              <span className="block mt-1 text-xs">US stocks: Finnhub może nie mieć danych dla tej spółki.</span>
+              <span className="block mt-1" style={{ fontSize: 11 }}>US stocks: Finnhub może nie mieć danych dla tej spółki.</span>
             )}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                  <th className="text-left px-5 py-2.5">Spółka</th>
-                  <th className="text-left px-5 py-2.5">Ex-date</th>
-                  <th className="text-left px-5 py-2.5">Pay-date</th>
-                  <th className="text-right px-5 py-2.5">Kwota/ak. ({modeLabel})</th>
-                  <th className="text-left px-5 py-2.5">Źródło</th>
-                  <th className="px-5 py-2.5" />
+                <tr>
+                  <th>Spółka</th>
+                  <th>Ex-date</th>
+                  <th>Pay-date</th>
+                  <th className="right">Kwota/ak. ({modeLabel})</th>
+                  <th>Źródło</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -286,26 +278,26 @@ export default function Dividends() {
                     ? (isNet ? ev.amount * (1 - taxRate) : ev.amount)
                     : null;
                   return (
-                    <tr key={ev.id ?? i} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                      <td className="px-5 py-3 font-bold text-slate-100">💰 {ev.symbol}</td>
-                      <td className="px-5 py-3 text-slate-300">{ev.date}</td>
-                      <td className="px-5 py-3 text-slate-400">{ev.payDate ?? '—'}</td>
-                      <td className={`px-5 py-3 text-right text-yellow-400 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>
+                    <tr key={ev.id ?? i}>
+                      <td className="font-bold" style={{ color: 'var(--text)' }}>💰 {ev.symbol}</td>
+                      <td style={{ color: 'var(--text)' }}>{ev.date}</td>
+                      <td style={{ color: 'var(--text-dim)' }}>{ev.payDate ?? '—'}</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)', fontWeight: 600 }}>
                         {dispAmount != null ? `${fmt(dispAmount)} ${cur}` : '—'}
                       </td>
-                      <td className="px-5 py-3 text-xs text-slate-500">
+                      <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>
                         {ev.isManual ? '✍️ ręczne' : '🤖 auto'}
                       </td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="right">
                         {ev.isManual && (
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => { const src = manualDividends.find(d => d.id === ev.id); if (src) openEdit(src); }}
-                              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                              style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer' }}
                             >Edytuj</button>
                             <button
                               onClick={() => deleteDividend(ev.id)}
-                              className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
+                              style={{ fontSize: 11, color: 'var(--down)', background: 'none', border: 'none', cursor: 'pointer' }}
                             >Usuń</button>
                           </div>
                         )}
@@ -317,35 +309,32 @@ export default function Dividends() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── Timeline wypłat ── */}
       {timeline.length > 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700">
-            <h2 className="text-sm font-semibold text-slate-300">Timeline wypłat</h2>
-          </div>
-          <div className="divide-y divide-slate-700/60">
+        <Card title="Timeline wypłat">
+          <div style={{ borderTop: '1px solid var(--border)' }}>
             {timeline.map(({ ym, items, totalPLN: monthTotal }) => (
-              <div key={ym}>
-                <div className="px-5 py-2.5 bg-slate-900/40 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              <div key={ym} style={{ borderBottom: '1px solid var(--border)' }}>
+                <div style={{ padding: '8px 20px', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {fmtMonthYear(ym)}
                   </span>
-                  <span className={`text-xs font-semibold text-yellow-500${isPrivate ? ' privacy-blur' : ''}`}>
+                  <span className={`mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--warn)' }}>
                     {fmt(monthTotal)} zł {modeLabel}
                   </span>
                 </div>
                 {items.map(d => (
-                  <div key={d.id ?? d.date + d.symbol} className="px-5 py-2.5 flex items-center justify-between hover:bg-slate-700/20 transition-colors">
+                  <div key={d.id ?? d.date + d.symbol} style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-sm font-bold text-slate-200 shrink-0">{d.symbol}</span>
+                      <span className="font-bold shrink-0" style={{ fontSize: 13, color: 'var(--text)' }}>{d.symbol}</span>
                       {d.name && d.name !== d.symbol && (
-                        <span className="text-xs text-slate-500 truncate">{d.name}</span>
+                        <span className="truncate" style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.name}</span>
                       )}
-                      <span className="text-xs text-slate-600 shrink-0">{d.date}</span>
+                      <span className="shrink-0" style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.date}</span>
                     </div>
-                    <span className={`text-sm font-semibold text-yellow-400 shrink-0 ml-4${isPrivate ? ' privacy-blur' : ''}`}>
+                    <span className={`mono shrink-0 ml-4${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--warn)' }}>
                       {fmt(d.dispPLN)} zł
                     </span>
                   </div>
@@ -353,68 +342,66 @@ export default function Dividends() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* ── KPI summary ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-yellow-800/50 bg-yellow-950/30 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Łącznie dywidendy ({modeLabel})</p>
-          <p className={`text-2xl font-bold text-yellow-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(totalPLN)} zł</p>
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Łącznie dywidendy ({modeLabel})</p>
+          <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>{fmt(totalPLN)} zł</p>
         </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Liczba wypłat</p>
-          <p className="text-2xl font-bold text-slate-100">{dividends.length}</p>
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Liczba wypłat</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{dividends.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Spółki dywidendowe</p>
-          <p className="text-2xl font-bold text-slate-100">{bySymbol.length}</p>
+        <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Spółki dywidendowe</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{bySymbol.length}</p>
         </div>
       </div>
 
       {/* ── Per spółka + YoC ── */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-300">Dywidendy per spółka · Yield on Cost</h2>
-          {yocLoading && <Spinner size="sm" />}
-        </div>
-
+      <Card
+        title="Dywidendy per spółka · Yield on Cost"
+        actions={yocLoading && <Spinner size="sm" />}
+      >
         {bySymbol.length === 0 ? (
-          <div className="px-5 py-10 text-center text-slate-500 text-sm">
+          <div className="card-body text-center">
             <div className="text-4xl mb-3">🌱</div>
-            <p className="text-slate-400 font-semibold">Brak spółek dywidendowych w portfelu</p>
-            <p className="mt-1 text-xs">Dodaj wypłatę dywidendy w sekcji Transakcje (typ: DIV) lub ręcznie powyżej.</p>
+            <p className="font-semibold" style={{ color: 'var(--text-dim)' }}>Brak spółek dywidendowych w portfelu</p>
+            <p style={{ marginTop: 4, fontSize: 11, color: 'var(--text-faint)' }}>Dodaj wypłatę dywidendy w sekcji Transakcje (typ: DIV) lub ręcznie powyżej.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                  <th className="text-left px-5 py-2.5">Spółka</th>
-                  <th className="text-right px-5 py-2.5">Wypłaty</th>
-                  <th className="text-right px-5 py-2.5">Łącznie PLN ({modeLabel})</th>
-                  <th className="text-right px-5 py-2.5">YoC (prognoza)</th>
+                <tr>
+                  <th>Spółka</th>
+                  <th className="right">Wypłaty</th>
+                  <th className="right">Łącznie PLN ({modeLabel})</th>
+                  <th className="right">YoC (prognoza)</th>
                 </tr>
               </thead>
               <tbody>
                 {bySymbol.map(row => {
                   const yoc = yocMap[row.symbol]?.yoc;
                   return (
-                    <tr key={row.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                      <td className="px-5 py-2.5 font-bold text-slate-100">
+                    <tr key={row.symbol}>
+                      <td className="font-bold" style={{ color: 'var(--text)' }}>
                         {row.symbol}
                         {row.name && row.name !== row.symbol && (
-                          <span className="ml-2 text-xs text-slate-500 font-normal">{row.name}</span>
+                          <span className="ml-2 font-normal" style={{ fontSize: 11, color: 'var(--text-faint)' }}>{row.name}</span>
                         )}
                       </td>
-                      <td className="px-5 py-2.5 text-right text-slate-400">{row.count}×</td>
-                      <td className={`px-5 py-2.5 text-right font-semibold text-yellow-400${isPrivate ? ' privacy-blur' : ''}`}>
+                      <td className="right" style={{ color: 'var(--text-dim)' }}>{row.count}×</td>
+                      <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
                         {fmt(row.totalPLN)} zł
                       </td>
-                      <td className="px-5 py-2.5 text-right">
+                      <td className="right">
                         {yoc != null
-                          ? <span className="text-emerald-400 font-medium">{fmt(yoc, 2)}%</span>
-                          : <span className="text-slate-600 text-xs">{yocLoading ? '…' : '—'}</span>
+                          ? <Chip value={yoc} />
+                          : <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>{yocLoading ? '…' : '—'}</span>
                         }
                       </td>
                     </tr>
@@ -424,25 +411,24 @@ export default function Dividends() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── Historia wypłat ── */}
       {dividends.length > 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-300">Historia wypłat</h2>
-            <span className="text-xs text-slate-500">{dividends.length} wpisów</span>
-          </div>
+        <Card
+          title="Historia wypłat"
+          actions={<span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{dividends.length} wpisów</span>}
+        >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                  <th className="text-left px-5 py-2.5">Data</th>
-                  <th className="text-left px-5 py-2.5">Spółka</th>
-                  <th className="text-right px-5 py-2.5">Kwota/ak. ({modeLabel})</th>
-                  <th className="text-right px-5 py-2.5">Ilość</th>
-                  <th className="text-right px-5 py-2.5">≈ PLN</th>
-                  <th className="text-left px-5 py-2.5">Notatka</th>
+                <tr>
+                  <th>Data</th>
+                  <th>Spółka</th>
+                  <th className="right">Kwota/ak. ({modeLabel})</th>
+                  <th className="right">Ilość</th>
+                  <th className="right">≈ PLN</th>
+                  <th>Notatka</th>
                 </tr>
               </thead>
               <tbody>
@@ -451,29 +437,29 @@ export default function Dividends() {
                   const dispPricePerShare = isNet ? d.price * (1 - taxRate) : d.price;
                   const approxPLN = dispPLN(d);
                   return (
-                    <tr key={d.id ?? d.date + d.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                      <td className="px-5 py-3 text-slate-400">{d.date}</td>
-                      <td className="px-5 py-3 font-bold text-slate-100">
+                    <tr key={d.id ?? d.date + d.symbol}>
+                      <td style={{ color: 'var(--text-dim)' }}>{d.date}</td>
+                      <td className="font-bold" style={{ color: 'var(--text)' }}>
                         {d.symbol}
                         {d.name && d.name !== d.symbol && (
-                          <span className="ml-2 text-xs text-slate-500 font-normal">{d.name}</span>
+                          <span className="ml-2 font-normal" style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.name}</span>
                         )}
                       </td>
-                      <td className={`px-5 py-3 text-right text-yellow-400 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>
+                      <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
                         {fmt(dispPricePerShare)} {CUR_SYMBOLS[d.currency] ?? d.currency}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-400">{d.qty ?? '—'}</td>
-                      <td className={`px-5 py-3 text-right font-semibold text-slate-200${isPrivate ? ' privacy-blur' : ''}`}>
+                      <td className="right mono" style={{ color: 'var(--text-dim)' }}>{d.qty ?? '—'}</td>
+                      <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text)' }}>
                         {fmt(approxPLN)} zł
                       </td>
-                      <td className="px-5 py-3 text-slate-500 text-xs">{d.note || '—'}</td>
+                      <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.note || '—'}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       <AddDividendModal
