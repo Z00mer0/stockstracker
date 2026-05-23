@@ -1,17 +1,34 @@
+// src/pages/Transactions.jsx
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
+import Card from '../components/shared/Card';
+import Chip from '../components/shared/Chip';
+import TickerLogo from '../components/shared/TickerLogo';
+import SegmentedControl from '../components/shared/SegmentedControl';
 import Spinner from '../components/shared/Spinner';
 
-const TYPE_CONFIG = {
-  BUY:  { label: 'Kupno',     color: 'bg-emerald-900/40 text-emerald-400' },
-  SELL: { label: 'Sprzedaż',  color: 'bg-rose-900/40    text-rose-400'    },
-  DIV:  { label: 'Dywidenda', color: 'bg-yellow-900/40  text-yellow-400'  },
-  CASH: { label: 'Gotówka',   color: 'bg-sky-900/40     text-sky-400'     },
-};
+const FILTERS = [
+  { value: 'all',      label: 'Wszystkie' },
+  { value: 'BUY',      label: 'Kupno' },
+  { value: 'SELL',     label: 'Sprzedaż' },
+  { value: 'DIV',      label: 'Dywidendy' },
+  { value: 'CASH',     label: 'Gotówka' },
+];
 
+const TAG_CLASS  = { BUY: 'tag-buy', SELL: 'tag-sell', DIV: 'tag-div', DIVIDEND: 'tag-div', CASH: 'tag-fee' };
+const TAG_LABEL  = { BUY: 'Kupno', SELL: 'Sprzedaż', DIV: 'Dywidenda', DIVIDEND: 'Dywidenda', CASH: 'Gotówka' };
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt) ? d : dt.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+function fmtMoney(v, cur = 'PLN') {
+  if (v == null) return '—';
+  return Number(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur;
+}
 function fmt(n, decimals = 2) {
   if (n == null || isNaN(n)) return '—';
   return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -62,97 +79,96 @@ function AddTransactionModal({ onSave, onClose }) {
   const showQty = form.type !== 'CASH';
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
          onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360, boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}
            onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-slate-100 mb-4">Dodaj transakcję</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>Dodaj transakcję</h2>
 
         {/* Typ */}
-        <div className="flex gap-1 mb-4">
-          {['BUY','SELL','DIV','CASH'].map(t => (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+          {['BUY', 'SELL', 'DIV', 'CASH'].map(t => (
             <button key={t} onClick={() => set('type', t)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                form.type === t
-                  ? t === 'BUY'  ? 'bg-emerald-600 text-white'
-                  : t === 'SELL' ? 'bg-rose-600 text-white'
-                  : t === 'DIV'  ? 'bg-yellow-600 text-white'
-                  : 'bg-sky-600 text-white'
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}>
+              style={{
+                flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+                background: form.type === t
+                  ? t === 'BUY' ? 'var(--up)' : t === 'SELL' ? 'var(--down)' : t === 'DIV' ? 'var(--warn)' : 'var(--info)'
+                  : 'var(--border)',
+                color: form.type === t ? '#fff' : 'var(--text-dim)',
+              }}>
               {t === 'BUY' ? 'Kupno' : t === 'SELL' ? 'Sprzedaż' : t === 'DIV' ? 'Dywidenda' : 'Gotówka'}
             </button>
           ))}
         </div>
 
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Symbol */}
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">Symbol</label>
+            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Symbol</label>
             <input type="text" placeholder="np. AAPL, CDR.WA"
               value={form.symbol} onChange={e => set('symbol', e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 uppercase"
+              style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box', textTransform: 'uppercase' }}
             />
           </div>
 
           {/* Qty + Price */}
-          <div className={`grid gap-3 ${showQty ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div style={{ display: 'grid', gridTemplateColumns: showQty ? '1fr 1fr' : '1fr', gap: 12 }}>
             {showQty && (
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Ilość</label>
+                <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Ilość</label>
                 <input type="number" min="0" step="any" placeholder="0"
                   value={form.qty} onChange={e => set('qty', e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                  style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
             )}
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>
                 {form.type === 'CASH' ? 'Kwota' : 'Cena'}
               </label>
               <input type="number" min="0" step="any" placeholder="0.00"
                 value={form.price} onChange={e => set('price', e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
           {/* Currency + Date */}
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Waluta</label>
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Waluta</label>
               <select value={form.currency} onChange={e => set('currency', e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500">
-                {['PLN','USD','EUR','GBP'].map(c => <option key={c}>{c}</option>)}
+                style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}>
+                {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Data</label>
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Data</label>
               <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
           {/* Note */}
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">Notatka (opcjonalna)</label>
+            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Notatka (opcjonalna)</label>
             <input type="text" placeholder=""
               value={form.note} onChange={e => set('note', e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+              style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-400 mt-3">{error}</p>}
+        {error && <p style={{ fontSize: 11, color: 'var(--down)', marginTop: 12 }}>{error}</p>}
 
-        <div className="flex gap-3 mt-5">
+        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
           <button onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors">
+            style={{ flex: 1, padding: '8px 16px', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>
             Anuluj
           </button>
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50 transition-colors">
+            style={{ flex: 1, padding: '8px 16px', borderRadius: 8, background: 'var(--info)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
             {saving ? 'Zapisywanie…' : 'Zapisz'}
           </button>
         </div>
@@ -162,119 +178,114 @@ function AddTransactionModal({ onSave, onClose }) {
 }
 
 export default function Transactions() {
-  const { transactions, loading, saveTransactions } = useApp();
+  const { transactions = [], loading, saveTransactions } = useApp();
   const { isPrivate } = usePrivacy();
-  const [filter, setFilter]       = useState('ALL');
-  const [showAdd, setShowAdd]     = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [showAdd, setShowAdd] = useState(false);
 
-  const sorted = useMemo(() => {
-    const base = filter === 'ALL'
-      ? transactions
-      : transactions.filter(t => t.type === filter);
-    return [...base].sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactions, filter]);
+  const now = new Date();
+  const d30ago = new Date(now - 30 * 24 * 3600 * 1000);
+
+  const stats = useMemo(() => {
+    const recent = transactions.filter(t => new Date(t.date) >= d30ago);
+    const sum = (type) => recent.filter(t => t.type === type).reduce((a, t) => a + ((t.qty ?? 1) * (t.price ?? 0)), 0);
+    return {
+      buy: sum('BUY'), sell: sum('SELL'), div: sum('DIV'), cash: sum('CASH'),
+    };
+  }, [transactions]);
+
+  const filtered = useMemo(() =>
+    filter === 'all' ? transactions : transactions.filter(t => t.type === filter),
+    [transactions, filter]
+  );
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => b.date.localeCompare(a.date)), [filtered]);
 
   if (loading && !transactions.length) {
-    return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+    return <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}><Spinner size="lg" /></div>;
   }
-
-  if (!transactions.length) {
-    return (
-      <div className="text-center py-16 text-slate-500">
-        <div className="text-5xl mb-3">📋</div>
-        <p className="text-slate-400 font-semibold">Brak transakcji</p>
-        <button onClick={() => setShowAdd(true)}
-          className="mt-4 text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
-          + Dodaj pierwszą transakcję
-        </button>
-        {showAdd && (
-          <AddTransactionModal
-            onSave={async (tx) => { await saveTransactions([...transactions, tx]); }}
-            onClose={() => setShowAdd(false)}
-          />
-        )}
-      </div>
-    );
-  }
-
-  const FILTERS = ['ALL', 'BUY', 'SELL', 'DIV', 'CASH'];
 
   return (
-    <div className="space-y-4">
-      {/* Filtry */}
-      <div className="flex gap-2 flex-wrap">
-        {FILTERS.map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`text-xs px-3 py-2 min-h-[36px] rounded-lg font-medium transition-colors ${
-              filter === f
-                ? 'bg-indigo-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            {f === 'ALL' ? 'Wszystkie' : (TYPE_CONFIG[f]?.label ?? f)}
-            {f !== 'ALL' && (
-              <span className="ml-1 opacity-60">
-                ({transactions.filter(t => t.type === f).length})
-              </span>
-            )}
-          </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* KPI strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {[
+          { label: 'Kupna 30d',      value: stats.buy,  cur: 'PLN' },
+          { label: 'Sprzedaże 30d',  value: stats.sell, cur: 'PLN' },
+          { label: 'Dywidendy 30d',  value: stats.div,  cur: 'PLN' },
+          { label: 'Gotówka 30d',    value: stats.cash, cur: 'PLN' },
+        ].map(({ label, value, cur }) => (
+          <div key={label} className="kpi-card">
+            <div className="kpi-label">{label}</div>
+            <div className="kpi-value" style={{ fontSize: 20 }}>{fmtMoney(value, cur)}</div>
+          </div>
         ))}
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-xs text-slate-500">{sorted.length} wyników</span>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
-          >
-            + Dodaj
-          </button>
-        </div>
       </div>
 
-      {/* Tabela */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-              <th className="text-left px-5 py-2.5">Data</th>
-              <th className="text-left px-5 py-2.5">Typ</th>
-              <th className="text-left px-5 py-2.5">Symbol</th>
-              <th className="text-right px-5 py-2.5">Ilość</th>
-              <th className="text-right px-5 py-2.5">Cena</th>
-              <th className="text-right px-5 py-2.5">Wartość</th>
-              <th className="text-left px-5 py-2.5">Notatka</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((tx) => {
-              const cfg   = TYPE_CONFIG[tx.type] ?? { label: tx.type, color: 'bg-slate-700 text-slate-300' };
-              const total = (tx.qty ?? 1) * (tx.price ?? 0);
-              const cur   = CUR_SYMBOLS[tx.currency] ?? tx.currency ?? '';
-              return (
-                <tr key={tx.id ?? tx.date + tx.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                  <td className="px-5 py-3 text-slate-400">{tx.date}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${cfg.color}`}>{cfg.label}</span>
-                  </td>
-                  <td className="px-5 py-3 font-bold text-slate-100">
-                    {tx.symbol ?? '—'}
-                    {tx.name && tx.name !== tx.symbol && (
-                      <span className="ml-2 text-xs text-slate-500 font-normal">{tx.name}</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right text-slate-300">{tx.qty != null ? fmt(tx.qty, tx.qty % 1 === 0 ? 0 : 4) : '—'}</td>
-                  <td className={`px-5 py-3 text-right text-slate-400${isPrivate ? ' privacy-blur' : ''}`}>{tx.price != null ? `${fmt(tx.price)} ${cur}` : '—'}</td>
-                  <td className={`px-5 py-3 text-right font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmt(total)} {cur}</td>
-                  <td className="px-5 py-3 text-slate-500 text-xs">{tx.note || '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Table */}
+      <Card
+        title={`Transakcje · ${sorted.length}`}
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} />
+            <button
+              onClick={() => setShowAdd(true)}
+              style={{ padding: '5px 12px', borderRadius: 6, background: 'var(--info)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              + Dodaj
+            </button>
+          </div>
+        }
+      >
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Typ</th>
+                <th>Aktywo</th>
+                <th className="right">Ilość</th>
+                <th className="right">Cena</th>
+                <th className="right">Wartość</th>
+                <th>Notatka</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 && (
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-faint)', padding: '32px 14px' }}>Brak transakcji</td></tr>
+              )}
+              {sorted.map((tx, i) => {
+                const typeKey = tx.type?.toUpperCase();
+                const cur = CUR_SYMBOLS[tx.currency] ?? tx.currency ?? '';
+                const total = (tx.qty ?? 1) * (tx.price ?? 0);
+                return (
+                  <tr key={tx.id ?? i}>
+                    <td className="mono" style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtDate(tx.date)}</td>
+                    <td><span className={`tag ${TAG_CLASS[typeKey] ?? ''}`}>{TAG_LABEL[typeKey] ?? typeKey}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TickerLogo symbol={tx.symbol ?? ''} />
+                        <span className="mono" style={{ fontWeight: 600, fontSize: 13 }}>{tx.symbol ?? '—'}</span>
+                        {tx.name && tx.name !== tx.symbol && (
+                          <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 400 }}>{tx.name}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="right mono" style={{ fontSize: 13 }}>{tx.qty != null ? fmt(tx.qty, tx.qty % 1 === 0 ? 0 : 4) : '—'}</td>
+                    <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+                      {tx.price != null ? `${fmt(tx.price)} ${cur}` : '—'}
+                    </td>
+                    <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, fontWeight: 600 }}>
+                      {fmt(total)} {cur}
+                    </td>
+                    <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{tx.note || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </Card>
+
       {showAdd && (
         <AddTransactionModal
           onSave={async (tx) => { await saveTransactions([...transactions, tx]); }}
