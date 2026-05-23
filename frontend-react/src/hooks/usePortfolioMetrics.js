@@ -63,13 +63,13 @@ async function fetchStooqPrice(sym) {
 }
 
 // ── Yahoo Finance — Vercel serverless function (different IP, no auth needed) ─
+// Returns null on temporary failure, { notFound: true } when symbol doesn't exist anywhere
 async function fetchYahooQuote(sym) {
-  // Primary: Vercel /api/quotes (different IP from Render, avoids blocks)
   try {
     const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(sym)}`, { signal: AbortSignal.timeout(8000) });
+    if (res.status === 404) return { notFound: true }; // Vercel already tried Stooq, still nothing
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
-    // Stooq fallback response from Vercel function
     if (json.stooq) return { price: json.price, dailyChg: null, pe: null, peFwd: null, pb: null };
     const q = json?.quoteResponse?.result?.[0];
     if (!q?.regularMarketPrice) throw new Error('no price');
@@ -130,6 +130,7 @@ async function fetchFinnhubEarningsTs(sym) {
 }
 
 // ── Finnhub fetch (with Yahoo Finance fallback for missing prices) ────────────
+// Returns results map; symbols with notFound:true are definitely unavailable (skip retry)
 async function fetchAllMetrics(symbols) {
   const results = {};
   await Promise.allSettled(
@@ -140,9 +141,8 @@ async function fetchAllMetrics(symbols) {
         if (sym.includes('.')) {
           // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance for price/fundamentals
           const yq = await fetchYahooQuote(sym);
+          if (yq?.notFound) { results[sym] = { price: null, notFound: true }; return; }
           if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; sector = yq.sector; earningsTs = yq.earningsTs; }
-          // .WA: Yahoo returns 401 for sector — use hardcoded sector map
-          // Finnhub earnings calendar returns 403 for .WA on free tier, so skip it
           if (sym.endsWith('.WA')) {
             sector = sector ?? WA_SECTOR_MAP[sym] ?? null;
           }
@@ -161,7 +161,7 @@ async function fetchAllMetrics(symbols) {
           pb    = m?.pbAnnual            ?? null;
           if (price == null || pe == null || sector == null) {
             const yq = await fetchYahooQuote(sym);
-            if (yq) {
+            if (yq && !yq.notFound) {
               price      = price      ?? yq.price;
               dailyChg   = dailyChg   ?? yq.dailyChg;
               pe         = pe         ?? yq.pe;
@@ -205,10 +205,10 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
     fetchAllMetrics(symbols)
       .then(async data => {
         setMarketData(data);
-        // Retry symbols that failed (e.g. Render was waking up)
-        const failed = symbols.filter(s => !data[s]?.price);
+        // Retry only symbols with temporary failures (skip notFound — they don't exist)
+        const failed = symbols.filter(s => !data[s]?.price && !data[s]?.notFound);
         if (failed.length > 0) {
-          await new Promise(r => setTimeout(r, 15000));
+          await new Promise(r => setTimeout(r, 5000)); // 5s — enough for Render to wake
           const retry = await fetchAllMetrics(failed);
           const merged = { ...data, ...retry };
           setMarketData(merged);

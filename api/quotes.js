@@ -15,12 +15,14 @@ export default async function handler(req, res) {
   const sym = symbols.trim();
 
   // Try Yahoo Finance v8 chart (no auth required)
+  let yahooStatus = null;
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
     const r = await fetch(url, {
       headers: { 'User-Agent': ua, 'Accept': 'application/json' },
       signal: AbortSignal.timeout(8000),
     });
+    yahooStatus = r.status;
     if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
     const data = await r.json();
     const meta = data?.chart?.result?.[0]?.meta;
@@ -47,4 +49,11 @@ export default async function handler(req, res) {
       if (lines.length >= 2) {
         const cols = lines[1].split(',');
         const price = parseFloat(cols[5]);
-        if (price > 0) r
+        if (price > 0) return res.status(200).json({ stooq: true, symbol: sym, price });
+      }
+    } catch {}
+    // Return 404 when Yahoo said symbol doesn't exist — tells client not to retry
+    const finalStatus = yahooStatus === 404 ? 404 : 502;
+    return res.status(finalStatus).json({ error: e1.message });
+  }
+}
