@@ -4,6 +4,9 @@ import { useChart } from '../context/ChartContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import Sparkline from '../components/shared/Sparkline';
 import Spinner from '../components/shared/Spinner';
+import Card from '../components/shared/Card';
+import TickerLogo from '../components/shared/TickerLogo';
+import Chip from '../components/shared/Chip';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
@@ -51,46 +54,46 @@ function renderCellDash(key, pos, isPrivate) {
   const flag = CUR_FLAG_DASH[pos.currency] ?? pos.currency;
   switch (key) {
     case 'qty':
-      return <span className="text-slate-300">{fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}</span>;
+      return <span style={{ color: 'var(--text)' }}>{fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}</span>;
     case 'avgPrice':
-      return <span className="text-slate-400">{fmt(pos.avgPrice)} <span className="text-xs">{flag}</span></span>;
+      return <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.avgPrice)} <span className="text-xs">{flag}</span></span>;
     case 'price':
       return pos.price != null
-        ? <span className="text-slate-300">{fmt(pos.price)} <span className="text-xs">{flag}</span></span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text)' }}>{fmt(pos.price)} <span className="text-xs">{flag}</span></span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'dailyChg': {
-      if (pos.dailyChg == null) return <span className="text-slate-600">—</span>;
+      if (pos.dailyChg == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.dailyChg >= 0;
-      return <span className={up ? 'text-emerald-400' : 'text-rose-400'}>{up ? '+' : ''}{fmt(pos.dailyChg, 2)}%</span>;
+      return <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>{up ? '+' : ''}{fmt(pos.dailyChg, 2)}%</span>;
     }
     case 'costPLN':
-      return <span className={`text-slate-200 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.costPLN)} zł</span>;
+      return <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(pos.costPLN)} zł</span>;
     case 'valuePLN':
       return pos.valuePLN != null
-        ? <span className={`text-slate-200 font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN)} zł</span>
-        : <span className="text-slate-600">—</span>;
+        ? <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(pos.valuePLN)} zł</span>
+        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'plPLN': {
-      if (pos.plPLN == null) return <span className="text-slate-600">—</span>;
+      if (pos.plPLN == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.plPLN >= 0;
-      return <span className={`${up ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}${isPrivate ? ' privacy-blur' : ''}`}>{up ? '+' : ''}{fmt(pos.plPLN)} zł</span>;
+      return <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{up ? '+' : ''}{fmt(pos.plPLN)} zł</span>;
     }
     case 'period':
-      return <span className="text-slate-400">{fmtPeriod(pos.periodDays)}</span>;
+      return <span style={{ color: 'var(--text-dim)' }}>{fmtPeriod(pos.periodDays)}</span>;
     case 'moic':
-      return pos.moic != null ? <span className="text-slate-300">{fmt(pos.moic, 2)}x</span> : <span className="text-slate-600">—</span>;
+      return pos.moic != null ? <span style={{ color: 'var(--text)' }}>{fmt(pos.moic, 2)}x</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'irr': {
-      if (pos.irr == null) return <span className="text-slate-600">—</span>;
+      if (pos.irr == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.irr >= 0;
-      return <span className={up ? 'text-emerald-400' : 'text-rose-400'}>{up ? '+' : ''}{fmt(pos.irr, 1)}%</span>;
+      return <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>{up ? '+' : ''}{fmt(pos.irr, 1)}%</span>;
     }
     case 'pe':
-      return pos.pe != null ? <span className="text-slate-400">{fmt(pos.pe, 1)}</span> : <span className="text-slate-600">—</span>;
+      return pos.pe != null ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pe, 1)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'peFwd':
-      return pos.peFwd != null ? <span className="text-slate-400">{fmt(pos.peFwd, 1)}</span> : <span className="text-slate-600">—</span>;
+      return pos.peFwd != null ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.peFwd, 1)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'pb':
-      return pos.pb != null ? <span className="text-slate-400">{fmt(pos.pb, 2)}</span> : <span className="text-slate-600">—</span>;
+      return pos.pb != null ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pb, 2)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     default:
-      return <span className="text-slate-600">—</span>;
+      return <span style={{ color: 'var(--text-faint)' }}>—</span>;
   }
 }
 
@@ -119,15 +122,14 @@ function AllocationChart({ positions }) {
     }, {});
   })();
 
-  const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
   const labels = Object.keys(grouped);
   const data = {
     labels,
     datasets: [{
       data: labels.map(k => grouped[k]),
-      backgroundColor: COLORS.slice(0, labels.length),
-      borderColor: '#1e293b',
-      borderWidth: 2,
+      backgroundColor: ['#00d97e', '#7c9eff', '#ffb020', '#ff4d6d', '#a78bfa', '#34d399', '#60a5fa', '#f59e0b'].slice(0, labels.length),
+      borderColor: 'transparent',
+      borderWidth: 0,
     }],
   };
 
@@ -137,7 +139,7 @@ function AllocationChart({ positions }) {
     plugins: {
       legend: {
         position: 'right',
-        labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12, padding: 10 },
+        labels: { color: '#8a929d', font: { size: 11 }, boxWidth: 12, padding: 10 },
       },
       tooltip: {
         callbacks: {
@@ -154,47 +156,39 @@ function AllocationChart({ positions }) {
   if (!positions.length) return null;
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold text-slate-300">Alokacja portfela</p>
-        <div className="flex gap-1">
-          {[['stocks', 'Spółki'], ['currencies', 'Waluty'], ['sectors', 'Sektory']].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-                tab === key ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+    <Card title="Alokacja portfela" actions={
+      <div className="flex gap-1">
+        {[['stocks', 'Spółki'], ['currencies', 'Waluty'], ['sectors', 'Sektory']].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={tab === key ? 'btn btn-primary' : 'btn btn-ghost'}
+            style={{ fontSize: 12, padding: '2px 10px' }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      <div className="max-w-sm mx-auto">
+    }>
+      <div style={{ padding: '0 20px 16px', maxWidth: 360, margin: '0 auto' }}>
         <Doughnut data={data} options={options} />
       </div>
-    </div>
+    </Card>
   );
 }
 
-function KpiCard({ label, value, sub, trend, color = 'slate' }) {
-  const { isPrivate } = usePrivacy();
-  const colors = {
-    slate:   'border-slate-700 bg-slate-800',
-    indigo:  'border-indigo-800/60 bg-indigo-950/40',
-    green:   'border-emerald-800/60 bg-emerald-950/40',
-    red:     'border-rose-800/60 bg-rose-950/40',
-    yellow:  'border-yellow-800/60 bg-yellow-950/40',
-  };
-  const trendColor = trend > 0 ? 'text-emerald-400' : trend < 0 ? 'text-rose-400' : 'text-slate-400';
-
+function KpiCard({ label, value, sub, trend, isPrivate }) {
   return (
-    <div className={`rounded-xl border px-5 py-4 ${colors[color]}`}>
-      <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-2xl font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{value}</p>
+    <div className="kpi-card">
+      <div className="kpi-label">{label}</div>
+      <div className={`kpi-value${isPrivate ? ' privacy-blur' : ''}`}>{value}</div>
       {sub != null && (
-        <p className={`text-sm mt-1 font-medium ${trendColor}${isPrivate ? ' privacy-blur' : ''}`}>{sub}</p>
+        <div style={{
+          fontSize: 12,
+          marginTop: 4,
+          fontWeight: 500,
+          color: trend > 0 ? 'var(--up)' : trend < 0 ? 'var(--down)' : 'var(--text-dim)',
+        }} className={isPrivate ? 'privacy-blur' : ''}>{sub}</div>
       )}
     </div>
   );
@@ -227,69 +221,69 @@ function CashSection({ cash, fxRates, saveCash }) {
 
   return (
     <>
-      <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-slate-300">Gotówka</p>
-          <button
-            onClick={openModal}
-            className="text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700 px-2.5 py-1 rounded-lg transition-colors"
-          >
-            ✎ Zarządzaj
-          </button>
+      <Card title="Gotówka" actions={
+        <button onClick={openModal} className="btn btn-ghost" style={{ fontSize: 12 }}>
+          ✎ Zarządzaj
+        </button>
+      }>
+        <div style={{ padding: '0 20px 16px' }}>
+          {!hasCash ? (
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', paddingTop: 8, paddingBottom: 8 }}>
+              Brak gotówki — kliknij „Zarządzaj" aby dodać.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {CURRENCIES.filter(c => (cash[c] ?? 0) > 0).map(cur => {
+                const amt = cash[cur] ?? 0;
+                const pln = amt * (fxRates[cur] ?? 1);
+                return (
+                  <div key={cur} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 16px', minWidth: 110 }}>
+                    <p style={{ fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                      {CUR_FLAGS[cur]} {cur}
+                    </p>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                      {amt.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    {cur !== 'PLN' && (
+                      <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                        ≈ {Math.round(pln).toLocaleString('pl-PL')} zł
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-        {!hasCash ? (
-          <p className="text-xs text-slate-500 py-2">Brak gotówki — kliknij „Zarządzaj" aby dodać.</p>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            {CURRENCIES.filter(c => (cash[c] ?? 0) > 0).map(cur => {
-              const amt = cash[cur] ?? 0;
-              const pln = amt * (fxRates[cur] ?? 1);
-              return (
-                <div key={cur} className="bg-slate-900/50 rounded-lg px-4 py-2.5 min-w-[110px]">
-                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">{CUR_FLAGS[cur]} {cur}</p>
-                  <p className="text-base font-bold text-slate-100">{amt.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                  {cur !== 'PLN' && <p className="text-xs text-slate-500 mt-0.5">≈ {Math.round(pln).toLocaleString('pl-PL')} zł</p>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      </Card>
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
              onClick={() => setIsOpen(false)}>
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 384 }}
                onClick={e => e.stopPropagation()}>
-            <h2 className="text-base font-bold text-slate-100 mb-4">Zarządzaj gotówką</h2>
-            <p className="text-xs text-slate-500 mb-4">Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.</p>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>Zarządzaj gotówką</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.</p>
             <div className="space-y-3">
               {CURRENCIES.map(cur => (
                 <div key={cur} className="flex items-center gap-3">
-                  <label className="text-sm text-slate-300 w-16">{CUR_FLAGS[cur]} {cur}</label>
+                  <label style={{ fontSize: 14, color: 'var(--text)', width: 64 }}>{CUR_FLAGS[cur]} {cur}</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={form[cur] ?? 0}
                     onChange={e => setForm(prev => ({ ...prev, [cur]: e.target.value }))}
-                    className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                    style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 14, color: 'var(--text)', outline: 'none' }}
                   />
                 </div>
               ))}
             </div>
             <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors"
-              >
+              <button onClick={() => setIsOpen(false)} className="btn btn-ghost" style={{ flex: 1 }}>
                 Anuluj
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-              >
+              <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>
                 {saving ? 'Zapisywanie…' : 'Zapisz'}
               </button>
             </div>
@@ -301,7 +295,7 @@ function CashSection({ cash, fxRates, saveCash }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested, saveSnapshot } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested, saveSnapshot, displayName } = useApp();
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const [cols] = useState(loadColumnConfig);
@@ -457,39 +451,47 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Witaj, {displayName ?? 'Inwestorze'}</h1>
+          <p className="page-sub">{new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        </div>
+      </div>
+
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
         <KpiCard
           label="Wartość portfela"
           value={`${fmt(kpi.totalValue)} zł`}
-          color="indigo"
+          isPrivate={isPrivate}
         />
         <KpiCard
           label="Unrealized P&L"
           value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmt(kpi.unrealPLN)} zł`}
           sub={`${kpi.unrealPct >= 0 ? '+' : ''}${fmt(kpi.unrealPct)}%${!kpi.pricesLoaded ? ' (ceny ładuję…)' : ''}`}
           trend={kpi.unrealPLN}
-          color={kpi.unrealPLN >= 0 ? 'green' : 'red'}
+          isPrivate={isPrivate}
         />
         <KpiCard
           label="Realized P&L"
           value={`${kpi.realizedPLN >= 0 ? '+' : ''}${fmt(kpi.realizedPLN)} zł`}
           sub={kpi.totalROI != null ? `Total ROI: ${kpi.totalROI >= 0 ? '+' : ''}${fmt(kpi.totalROI, 1)}%` : undefined}
           trend={kpi.realizedPLN}
-          color={kpi.realizedPLN >= 0 ? 'green' : 'red'}
+          isPrivate={isPrivate}
         />
         <KpiCard
           label="Roczna Dywidenda"
           value={`${fmt(kpi.annualDivPLN)} zł`}
           sub="ostatnie 12 miesięcy"
-          color="yellow"
+          isPrivate={isPrivate}
         />
         <KpiCard
           label="Zmiana dzienna"
           value={`${dailyChange.pln >= 0 ? '+' : ''}${fmt(dailyChange.pln)} zł`}
           sub={dailyChange.pct != null ? `${dailyChange.pct >= 0 ? '+' : ''}${fmt(dailyChange.pct, 2)}%` : undefined}
           trend={dailyChange.pln}
-          color={dailyChange.pln >= 0 ? 'green' : 'red'}
+          isPrivate={isPrivate}
         />
         <KpiCard
           label="IRR portfela"
@@ -501,7 +503,8 @@ export default function Dashboard() {
                 : 'ważona roczna stopa zwrotu'
               : '< 30 dni historii'
           }
-          color={portfolioIrr != null ? (portfolioIrr > 0 ? 'green' : 'red') : 'slate'}
+          trend={portfolioIrr}
+          isPrivate={false}
         />
       </div>
 
@@ -515,41 +518,38 @@ export default function Dashboard() {
 
       {/* Sparkline historii */}
       {kpi.sparkValues.length > 1 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-slate-300">Historia wartości portfela</p>
-            <span className="text-xs text-slate-500">{kpi.sparkValues.length} punktów</span>
+        <Card title="Historia wartości portfela" actions={
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{kpi.sparkValues.length} punktów</span>
+        }>
+          <div style={{ padding: '0 20px 16px' }}>
+            <Sparkline data={kpi.sparkValues} width={800} height={80} />
+            {nextDividend && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
+                <span style={{ color: 'var(--text-faint)' }}>Najbliższa dywidenda:</span>
+                <span style={{ fontWeight: 700, color: 'var(--warn)' }}>{nextDividend.symbol}</span>
+                <span style={{ color: 'var(--text-dim)' }}>{nextDividend.date}</span>
+                {nextDividend.amount != null && (
+                  <span style={{ color: 'var(--text-faint)' }}>
+                    {nextDividend.amount.toFixed(4)} {nextDividend.currency ?? ''}
+                  </span>
+                )}
+                <span style={{ color: 'var(--text-faint)', marginLeft: 'auto' }}>{nextDividend.isManual ? '✍️ ręczne' : '🤖 auto'}</span>
+              </div>
+            )}
           </div>
-          <Sparkline data={kpi.sparkValues} width={800} height={80} />
-          {nextDividend && (
-            <div className="mt-3 pt-3 border-t border-slate-700/60 flex items-center gap-3 text-xs">
-              <span className="text-slate-500">Najbliższa dywidenda:</span>
-              <span className="font-bold text-yellow-400">{nextDividend.symbol}</span>
-              <span className="text-slate-400">{nextDividend.date}</span>
-              {nextDividend.amount != null && (
-                <span className="text-slate-500">
-                  {nextDividend.amount.toFixed(4)} {nextDividend.currency ?? ''}
-                </span>
-              )}
-              <span className="text-slate-600 ml-auto">{nextDividend.isManual ? '✍️ ręczne' : '🤖 auto'}</span>
-            </div>
-          )}
-        </div>
+        </Card>
       )}
 
       {/* Top pozycje */}
       {topPositions.length > 0 && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700">
-            <h2 className="text-sm font-semibold text-slate-300">Największe pozycje (wg kosztu)</h2>
-          </div>
+        <Card title="Największe pozycje (wg kosztu)">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <thead>
-                <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                  <th className="text-left px-5 py-2.5">Symbol</th>
+                <tr>
+                  <th className="text-left">Symbol</th>
                   {cols.map(key => (
-                    <th key={key} className="text-right px-4 py-2.5 whitespace-nowrap">
+                    <th key={key} className="text-right whitespace-nowrap">
                       {COL_LABEL_DASH[key] ?? key}
                     </th>
                   ))}
@@ -557,19 +557,23 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {topPositions.map((pos) => (
-                  <tr key={pos.id ?? pos.symbol} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
+                  <tr key={pos.id ?? pos.symbol}>
                     <td
-                      className="px-5 py-3 font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors"
+                      className="cursor-pointer"
                       onClick={() => openChart(pos.symbol)}
                       title={`Otwórz wykres ${pos.symbol}`}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                     >
-                      {pos.symbol}
+                      <TickerLogo symbol={pos.symbol} />
+                      <span style={{ color: 'var(--info)', fontWeight: 700 }} className="hover:underline">
+                        {pos.symbol}
+                      </span>
                       {pos.name && pos.name !== pos.symbol && (
-                        <span className="ml-2 text-xs text-slate-500 font-normal">{pos.name}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 400 }}>{pos.name}</span>
                       )}
                     </td>
                     {cols.map(key => (
-                      <td key={key} className="px-4 py-3 text-right whitespace-nowrap">
+                      <td key={key} className="text-right whitespace-nowrap">
                         {renderCellDash(key, pos, isPrivate)}
                       </td>
                     ))}
@@ -578,14 +582,14 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {!portfolio.length && !loading && (
-        <div className="text-center py-16 text-slate-500">
-          <div className="text-5xl mb-3">📊</div>
-          <p className="text-slate-400 font-semibold">Brak danych portfela</p>
-          <p className="text-sm mt-1">Dodaj pozycje w głównym portalu StocksTracker</p>
+        <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-faint)' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+          <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak danych portfela</p>
+          <p style={{ fontSize: 14, marginTop: 4 }}>Dodaj pozycje w głównym portalu StocksTracker</p>
         </div>
       )}
     </div>
