@@ -27,6 +27,7 @@ function getMarketStatuses() {
   ];
 }
 
+// TODO: replace with live data from MarketDataService or tickerStrip context
 const TICKERS = [
   { sym: 'WIG20', val: '2 156', delta: +0.43 },
   { sym: 'S&P500', val: '5 308', delta: -0.12 },
@@ -148,9 +149,9 @@ export default function Header({ theme, onThemeToggle }) {
         <EyeIcon closed={isPrivate} />
       </button>
 
-      {/* Bell */}
+      {/* Bell — notifications stub, no functionality yet */}
       <div style={{ position: 'relative' }}>
-        <button style={iconBtn}>
+        <button style={iconBtn} title="Powiadomienia" aria-label="Powiadomienia">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
