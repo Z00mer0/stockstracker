@@ -3,10 +3,17 @@ import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import HistoryChart from '../components/HistoryChart';
 import Spinner from '../components/shared/Spinner';
+import SegmentedControl from '../components/shared/SegmentedControl';
+import Card from '../components/shared/Card';
 
 function fmt(n, decimals = 0) {
   if (n == null || isNaN(n)) return '—';
   return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function fmtMoney(v) {
+  if (v == null) return '—';
+  return Number(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł';
 }
 
 function fmtDate(iso) {
@@ -127,9 +134,9 @@ export default function History() {
 
   if (!snapshots.length) {
     return (
-      <div className="text-center py-16 text-slate-500">
+      <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
         <div className="text-5xl mb-3">📈</div>
-        <p className="text-slate-400 font-semibold">Brak historii</p>
+        <p style={{ color: 'var(--text-dim)' }} className="font-semibold">Brak historii</p>
         <p className="text-sm mt-1">Historia pojawi się po pierwszym odświeżeniu portfela</p>
       </div>
     );
@@ -137,105 +144,57 @@ export default function History() {
 
   return (
     <div className="space-y-5">
-      {/* KPI */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Aktualna wartość</p>
-          <p className={`text-xl font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{fmt(latest?.total)} zł</p>
-        </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Zainwestowano</p>
-          <p className={`text-xl font-bold text-slate-100${isPrivate ? ' privacy-blur' : ''}`}>{fmt(invested)} zł</p>
-        </div>
-        <div className={`rounded-xl border px-5 py-4 ${gainPLN >= 0 ? 'border-emerald-800/60 bg-emerald-950/30' : 'border-rose-800/60 bg-rose-950/30'}`}>
-          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Zmiana od początku</p>
-          <p className={`text-xl font-bold ${gainPLN >= 0 ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
-            {gainPLN >= 0 ? '+' : ''}{fmt(gainPLN)} zł
-          </p>
-          {gainPct != null && (
-            <p className={`text-xs mt-0.5 ${gainPLN >= 0 ? 'text-emerald-500' : 'text-rose-500'}${isPrivate ? ' privacy-blur' : ''}`}>
-              {gainPct >= 0 ? '+' : ''}{fmt(gainPct, 1)}%
-            </p>
-          )}
-        </div>
-        {cagr != null && (
-          <div className="rounded-xl border border-indigo-800/60 bg-indigo-950/30 px-5 py-4">
-            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">CAGR (annualizowany)</p>
-            <p className={`text-xl font-bold ${cagr >= 0 ? 'text-indigo-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
-              {cagr >= 0 ? '+' : ''}{fmt(cagr, 1)}%
-            </p>
-            <p className="text-xs text-slate-500 mt-0.5">{days}d historii</p>
+      {/* KPI grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        {[
+          { label: 'Wartość (filtr)', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(filteredLast?.total)}</span>, sub: null },
+          { label: 'Zysk/strata', value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
+          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: null },
+          { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(ath?.total)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
+        ].map(({ label, value, sub }) => (
+          <div key={label} className="kpi-card">
+            <div className="kpi-label">{label}</div>
+            <div className="kpi-value" style={{ fontSize: 22 }}>{value}</div>
+            {sub && <div className="kpi-sub">{sub}</div>}
           </div>
-        )}
-        {ath && (
-          <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4">
-            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">ATH (szczyt)</p>
-            <p className={`text-xl font-bold text-amber-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(ath.total)} zł</p>
-            <p className="text-xs text-slate-500 mt-0.5">{fmtDate(ath.date)}</p>
-          </div>
-        )}
+        ))}
       </div>
 
       {/* Wykres historii portfela */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-slate-300">Historia wartości portfela</p>
-          <div className="flex gap-1">
-            {PERIODS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => setPeriod(p.key)}
-                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-                  period === p.key
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+      <Card title="Historia wartości portfela">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <SegmentedControl
+            options={PERIODS.map(p => ({ value: p.key, label: p.label }))}
+            value={period}
+            onChange={setPeriod}
+          />
         </div>
         {/* Benchmark */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-xs text-slate-500">Benchmark:</span>
-          <div className="flex gap-1">
-            {BENCHMARKS.map(b => (
-              <button
-                key={String(b.key)}
-                onClick={() => setBenchmark(b.key)}
-                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-                  benchmark === b.key
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                }`}
-              >
-                {b.label}
-                {benchLoading && benchmark === b.key && ' …'}
-              </button>
-            ))}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Benchmark:</span>
+          <SegmentedControl
+            options={BENCHMARKS.map(b => ({ value: b.key ?? 'none', label: b.label + (benchLoading && benchmark === b.key ? ' …' : '') }))}
+            value={benchmark ?? 'none'}
+            onChange={v => setBenchmark(v === 'none' ? null : v)}
+          />
         </div>
         <HistoryChart data={filteredWithInvested} benchData={benchNormalized} benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label} />
-      </div>
+      </Card>
 
       {/* Tabela */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-300">
-            {period === 'MAX' ? 'Wszystkie snapshots' : `Snapshots — ostatnie ${PERIODS.find(p => p.key === period)?.label}`}
-          </h2>
-          <span className="text-xs text-slate-500">{filtered.length} wpisów</span>
+      <Card title={period === 'MAX' ? 'Wszystkie snapshots' : `Snapshots — ostatnie ${PERIODS.find(p => p.key === period)?.label}`}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{filtered.length} wpisów</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table">
             <thead>
-              <tr className="text-slate-500 text-xs uppercase tracking-wide bg-slate-900/50">
-                <th className="text-left px-5 py-2.5">Data</th>
-                <th className="text-right px-5 py-2.5">Wartość</th>
-                <th className="text-right px-5 py-2.5">Zainwestowano</th>
-                <th className="text-right px-5 py-2.5">P&L</th>
-                <th className="text-right px-5 py-2.5">Δ dnia</th>
+              <tr>
+                <th>Data</th>
+                <th className="right">Wartość</th>
+                <th className="right">Zainwestowano</th>
+                <th className="right">P&L</th>
+                <th className="right">Δ dnia</th>
               </tr>
             </thead>
             <tbody>
@@ -249,17 +208,18 @@ export default function History() {
                   const deltaUp = delta != null && delta >= 0;
                   const valueUp = prev != null ? (s.total ?? 0) >= (prev.total ?? 0) : null;
                   return (
-                    <tr key={s.date + i} className="border-t border-slate-700/60 hover:bg-slate-700/30 transition-colors">
-                      <td className="px-5 py-2.5 text-slate-400">{fmtDate(s.date)}</td>
-                      <td className={`px-5 py-2.5 text-right font-semibold ${
-                        valueUp === true ? 'text-emerald-300' : valueUp === false ? 'text-rose-300' : 'text-slate-100'
-                      }${isPrivate ? ' privacy-blur' : ''}`}>{fmt(s.total)} zł</td>
-                      <td className={`px-5 py-2.5 text-right text-slate-400${isPrivate ? ' privacy-blur' : ''}`}>{fmt(s.invested)} zł</td>
-                      <td className={`px-5 py-2.5 text-right font-medium ${pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
+                    <tr key={s.date + i}>
+                      <td style={{ color: 'var(--text-dim)' }}>{fmtDate(s.date)}</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{
+                        color: valueUp === true ? 'var(--up)' : valueUp === false ? 'var(--down)' : 'var(--text)',
+                        fontWeight: 600,
+                      }}>{fmt(s.total)} zł</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(s.invested)} zł</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
                         {pl >= 0 ? '+' : ''}{fmt(pl)} zł
-                        <span className="text-xs ml-1 opacity-70">({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span>
+                        <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span>
                       </td>
-                      <td className={`px-5 py-2.5 text-right text-xs ${delta == null ? 'text-slate-600' : deltaUp ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
                         {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta)} zł`}
                       </td>
                     </tr>
@@ -269,7 +229,7 @@ export default function History() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
