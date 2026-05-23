@@ -3,11 +3,25 @@ import { useApp } from '../context/AppContext';
 
 const EMPTY = { symbol: '', exDate: '', payDate: '', amount: '', currency: 'PLN', note: '' };
 
+const overlay = {
+  position: 'fixed', inset: 0,
+  background: 'rgba(0,0,0,0.72)',
+  backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+  zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+};
+
+const card = {
+  background: 'var(--bg-2)', border: '1px solid var(--border)',
+  borderRadius: 12,
+  width: '100%', maxWidth: 400,
+  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+  overflow: 'hidden',
+};
+
 export default function AddDividendModal({ isOpen, onClose, onSave, initialData = null }) {
   const { portfolio } = useApp();
   const [form, setForm] = useState(EMPTY);
 
-  // Wypełnij formularz przy edycji
   useEffect(() => {
     if (isOpen) {
       setForm(initialData
@@ -22,99 +36,94 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
 
   const symbols = [...new Set(portfolio.map(p => p.symbol))].sort();
 
-  function set(field, value) {
-    setForm(prev => ({ ...prev, [field]: value }));
-  }
+  function set(field, value) { setForm(prev => ({ ...prev, [field]: value })); }
 
   function handleSave() {
     if (!form.symbol || !form.exDate || !form.amount) return;
     onSave({
-      symbol:   form.symbol,
-      exDate:   form.exDate,
-      payDate:  form.payDate || null,
-      amount:   parseFloat(form.amount),
-      currency: form.currency,
-      note:     form.note.trim(),
+      symbol: form.symbol, exDate: form.exDate,
+      payDate: form.payDate || null,
+      amount: parseFloat(form.amount),
+      currency: form.currency, note: form.note.trim(),
     });
     onClose();
   }
 
-  const labelCls = 'block text-xs text-slate-400 mb-1';
-  const inputCls = 'w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-sm mx-4 shadow-2xl">
-        {/* Nagłówek */}
-        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-100">
-            {initialData ? 'Edytuj dywidendę' : '➕ Dodaj dywidendę'}
+    <div style={overlay} onClick={onClose}>
+      <div style={card} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+            {initialData ? 'Edytuj dywidendę' : 'Dodaj dywidendę'}
           </h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg leading-none">×</button>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+          >×</button>
         </div>
 
-        {/* Formularz */}
-        <div className="px-5 py-4 space-y-3">
-          {/* Spółka */}
+        {/* Form */}
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label className={labelCls}>Spółka</label>
-            <select value={form.symbol} onChange={e => set('symbol', e.target.value)} className={inputCls}>
+            <label className="field-label">Spółka</label>
+            <select className="field-input" value={form.symbol} onChange={e => set('symbol', e.target.value)}>
               <option value="">— wybierz —</option>
               {symbols.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
-          {/* Ex-date */}
           <div>
-            <label className={labelCls}>Ex-date *</label>
-            <input type="date" value={form.exDate} onChange={e => set('exDate', e.target.value)} className={inputCls} />
+            <label className="field-label">Ex-date *</label>
+            <input type="date" className="field-input" value={form.exDate} onChange={e => set('exDate', e.target.value)} />
           </div>
 
-          {/* Pay-date */}
           <div>
-            <label className={labelCls}>Pay-date (opcjonalnie)</label>
-            <input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} className={inputCls} />
+            <label className="field-label">Pay-date (opcjonalnie)</label>
+            <input type="date" className="field-input" value={form.payDate} onChange={e => set('payDate', e.target.value)} />
           </div>
 
-          {/* Kwota + waluta */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className={labelCls}>Kwota / akcję *</label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label className="field-label">Kwota / akcję *</label>
               <input
                 type="number" min="0" step="0.01"
-                value={form.amount} onChange={e => set('amount', e.target.value)}
-                placeholder="0.00" className={inputCls}
+                className="field-input"
+                placeholder="0.00"
+                value={form.amount}
+                onChange={e => set('amount', e.target.value)}
               />
             </div>
-            <div className="w-24">
-              <label className={labelCls}>Waluta</label>
-              <select value={form.currency} onChange={e => set('currency', e.target.value)} className={inputCls}>
+            <div style={{ width: 90 }}>
+              <label className="field-label">Waluta</label>
+              <select className="field-input" value={form.currency} onChange={e => set('currency', e.target.value)}>
                 {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Notatka */}
           <div>
-            <label className={labelCls}>Notatka (opcjonalnie)</label>
+            <label className="field-label">Notatka (opcjonalnie)</label>
             <input
-              type="text" value={form.note} onChange={e => set('note', e.target.value)}
-              placeholder="np. wypłata za 2025" maxLength={120} className={inputCls}
+              type="text" className="field-input"
+              placeholder="np. wypłata za 2025"
+              maxLength={120}
+              value={form.note}
+              onChange={e => set('note', e.target.value)}
             />
           </div>
         </div>
 
-        {/* Akcje */}
-        <div className="px-5 py-4 border-t border-slate-700 flex justify-end gap-2">
+        {/* Footer */}
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn" onClick={onClose}>Anuluj</button>
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-          >Anuluj</button>
-          <button
+            className="btn btn-primary"
             onClick={handleSave}
             disabled={!form.symbol || !form.exDate || !form.amount}
-            className="px-4 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors"
-          >Zapisz ✓</button>
+          >
+            Zapisz
+          </button>
         </div>
       </div>
     </div>

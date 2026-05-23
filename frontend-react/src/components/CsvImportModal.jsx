@@ -20,9 +20,7 @@ function parseCsv(text) {
     if (isNaN(qty) || isNaN(avgPrice)) continue;
     results.push({
       id: Math.random().toString(36).slice(2, 10),
-      symbol: symbol.toUpperCase().trim(),
-      qty,
-      avgPrice,
+      symbol: symbol.toUpperCase().trim(), qty, avgPrice,
       currency: (currency || 'USD').toUpperCase().trim(),
       date: date?.trim() || new Date().toISOString().slice(0, 10),
       name: '',
@@ -31,24 +29,37 @@ function parseCsv(text) {
   return results;
 }
 
+const overlay = {
+  position: 'fixed', inset: 0,
+  background: 'rgba(0,0,0,0.72)',
+  backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+  zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+};
+
+const card = {
+  background: 'var(--bg-2)', border: '1px solid var(--border)',
+  borderRadius: 12, padding: 24,
+  width: '100%', maxWidth: 520,
+  maxHeight: '90vh', overflowY: 'auto',
+  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+};
+
 export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
-  const [text, setText] = useState('');
-  const [mode, setMode] = useState('replace'); // 'replace' | 'merge'
+  const [text, setText]   = useState('');
+  const [mode, setMode]   = useState('replace');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]   = useState('');
 
   const preview = text.trim() ? parseCsv(text) : [];
 
   async function handleImport() {
     if (!preview.length) { setError('Brak poprawnych danych do importu.'); return; }
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
     try {
       let newHoldings;
       if (mode === 'replace') {
         newHoldings = preview;
       } else {
-        // Merge: add new symbols, update existing by symbol
         const map = Object.fromEntries(existingHoldings.map(h => [h.symbol, h]));
         preview.forEach(p => { map[p.symbol] = p; });
         newHoldings = Object.values(map);
@@ -63,61 +74,81 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-         onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
-           onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-slate-100 mb-1">Import CSV</h2>
-        <p className="text-xs text-slate-500 mb-4">
+    <div style={overlay} onClick={onClose}>
+      <div style={card} onClick={e => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Import CSV</h2>
+        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>
           Format: Symbol, Ilość, Cena, Waluta, Data (pierwszy wiersz może być nagłówkiem)
         </p>
 
-        <div className="bg-slate-900/60 rounded-lg px-3 py-2 mb-4 font-mono text-xs text-slate-500 whitespace-pre">
-          {CSV_EXAMPLE}
-        </div>
+        {/* Example */}
+        <pre style={{
+          background: 'var(--panel-2)', borderRadius: 8,
+          padding: '8px 12px', marginBottom: 14,
+          fontSize: 11, color: 'var(--text-faint)',
+          fontFamily: 'JetBrains Mono, monospace',
+          whiteSpace: 'pre', overflowX: 'auto',
+        }}>{CSV_EXAMPLE}</pre>
 
         <textarea
-          className="w-full h-32 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono outline-none focus:border-indigo-500 resize-none mb-3"
+          style={{
+            width: '100%', height: 112,
+            background: 'var(--panel-2)', border: '1px solid var(--border)',
+            borderRadius: 8, padding: '8px 12px',
+            fontSize: 12, color: 'var(--text)',
+            fontFamily: 'JetBrains Mono, monospace',
+            outline: 'none', resize: 'none',
+            boxSizing: 'border-box', marginBottom: 12,
+          }}
           placeholder="Wklej dane CSV tutaj…"
           value={text}
           onChange={e => { setText(e.target.value); setError(''); }}
+          onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+          onBlur={e => e.target.style.borderColor = 'var(--border)'}
         />
 
         {/* Mode selector */}
-        <div className="flex gap-2 mb-4">
+        <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--panel-2)', borderRadius: 8, marginBottom: 16 }}>
           {[['replace', 'Zastąp portfel'], ['merge', 'Dodaj / aktualizuj']].map(([k, lbl]) => (
-            <button key={k} onClick={() => setMode(k)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                mode === k ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}>
+            <button
+              key={k}
+              type="button"
+              onClick={() => setMode(k)}
+              style={{
+                flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600,
+                border: 'none', borderRadius: 6, cursor: 'pointer',
+                background: mode === k ? 'var(--bg-2)' : 'transparent',
+                color: mode === k ? 'var(--text)' : 'var(--text-dim)',
+                boxShadow: mode === k ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                transition: 'background 0.15s',
+              }}
+            >
               {lbl}
             </button>
           ))}
         </div>
 
-        {/* Preview */}
+        {/* Preview table */}
         {preview.length > 0 && (
-          <div className="mb-4">
-            <p className="text-xs text-slate-400 mb-2">Podgląd ({preview.length} pozycji):</p>
-            <div className="bg-slate-900/50 rounded-lg overflow-hidden">
-              <table className="w-full text-xs">
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 8 }}>Podgląd ({preview.length} pozycji):</p>
+            <div style={{ background: 'var(--panel-2)', borderRadius: 8, overflow: 'hidden' }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr className="text-slate-500 bg-slate-900/80">
-                    <th className="text-left px-3 py-1.5">Symbol</th>
-                    <th className="text-right px-3 py-1.5">Ilość</th>
-                    <th className="text-right px-3 py-1.5">Cena</th>
-                    <th className="text-right px-3 py-1.5">Waluta</th>
-                    <th className="text-right px-3 py-1.5">Data</th>
+                  <tr style={{ color: 'var(--text-faint)' }}>
+                    {['Symbol', 'Ilość', 'Cena', 'Waluta', 'Data'].map(h => (
+                      <th key={h} style={{ textAlign: h === 'Symbol' ? 'left' : 'right', padding: '6px 10px', fontWeight: 500 }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {preview.map((p, i) => (
-                    <tr key={i} className="border-t border-slate-700/60">
-                      <td className="px-3 py-1 font-bold text-indigo-400">{p.symbol}</td>
-                      <td className="px-3 py-1 text-right text-slate-300">{p.qty}</td>
-                      <td className="px-3 py-1 text-right text-slate-300">{p.avgPrice.toFixed(2)}</td>
-                      <td className="px-3 py-1 text-right text-slate-400">{p.currency}</td>
-                      <td className="px-3 py-1 text-right text-slate-500">{p.date}</td>
+                    <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: '5px 10px', fontWeight: 700, color: 'var(--accent)' }}>{p.symbol}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.qty}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.avgPrice.toFixed(2)}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-faint)' }}>{p.currency}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-faint)' }}>{p.date}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -126,16 +157,12 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
           </div>
         )}
 
-        {error && <p className="text-xs text-rose-400 mb-3">{error}</p>}
+        {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 
-        <div className="flex gap-3">
-          <button onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-colors">
-            Anuluj
-          </button>
-          <button onClick={handleImport} disabled={saving || !preview.length}
-            className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-500 disabled:opacity-50 transition-colors">
-            {saving ? 'Importowanie…' : `Importuj ${preview.length > 0 ? `(${preview.length})` : ''}`}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleImport} disabled={saving || !preview.length}>
+            {saving ? 'Importowanie…' : `Importuj${preview.length > 0 ? ` (${preview.length})` : ''}`}
           </button>
         </div>
       </div>
