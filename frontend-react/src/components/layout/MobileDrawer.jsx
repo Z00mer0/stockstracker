@@ -2,7 +2,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { NAV_ITEMS } from './navItems';
+import { NAV_ITEMS } from './navItems.jsx';
 
 export default function MobileDrawer({ isOpen, onClose }) {
   const { displayName, logout } = useApp();
