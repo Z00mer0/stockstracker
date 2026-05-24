@@ -15,25 +15,10 @@ async function loadFxRates() {
     const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || 'null');
     if (cached?.ts && Date.now() - cached.ts < FX_CACHE_TTL) return cached.rates;
   } catch {}
-  const fxUrl = 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP';
-  async function tryFetch(url, opts) {
-    const res = await fetch(url, opts);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }
   try {
-    // Try direct first (works on Vercel/browser); fall back to proxy if CORS blocks it
-    let data;
-    try {
-      data = await tryFetch(fxUrl, { signal: AbortSignal.timeout(8000) });
-    } catch {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (!token) throw new Error('no token for proxy');
-      data = await tryFetch(
-        `/api/proxy?url=${encodeURIComponent(fxUrl)}`,
-        { signal: AbortSignal.timeout(8000), headers: { 'X-Auth-Token': token } }
-      );
-    }
+    const res = await fetch('/api/fx', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
     const r = data.rates;
     if (!r?.PLN) throw new Error('no PLN in response');
     const rates = { PLN: 1, USD: r.PLN, EUR: r.PLN / r.EUR, GBP: r.PLN / r.GBP };

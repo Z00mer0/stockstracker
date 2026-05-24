@@ -239,9 +239,9 @@ function RebalanceSection({ enriched, totalValue }) {
 
           return (
             <div key={p.symbol} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 80, fontWeight: 700, color: 'var(--info)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.symbol}</span>
+              <span style={{ width: 80, fontWeight: 700, color: 'var(--accent)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.symbol}</span>
               <div style={{ flex: 1, height: 16, borderRadius: 4, background: 'var(--panel-2)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(curPct, 100).toFixed(1)}%`, background: 'linear-gradient(90deg, var(--info), #a78bfa)', borderRadius: 4, transition: 'width 0.3s' }} />
+                <div style={{ height: '100%', width: `${Math.min(curPct, 100).toFixed(1)}%`, background: 'var(--accent)', borderRadius: 4, transition: 'width 0.3s', opacity: 0.7 }} />
                 {tgtPct != null && tgtPct > 0 && (
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${Math.min(tgtPct, 100)}%`, width: 2, background: 'var(--accent)' }} />
                 )}
@@ -365,7 +365,7 @@ function SmartInsightsSection({ enrichedPositions }) {
   if (bigWin) {
     const tax = bigWin.pnlPLN * 0.19;
     insights.push({
-      icon: '📈', cardStyle: { background: 'rgba(124,158,255,0.08)', borderColor: 'rgba(124,158,255,0.3)' },
+      icon: '📈', cardStyle: { background: 'var(--up-soft)', borderColor: 'var(--up)' },
       title: `Realizacja zysku: ${bigWin.symbol} +${bigWin.pnlPct.toFixed(0)}%`,
       lines: [
         `Niezrealizowany zysk: ${bigWin.pnlPLN.toFixed(0)} PLN.`,
@@ -451,7 +451,7 @@ function SmartInsightsSection({ enrichedPositions }) {
     const li = upcoming.slice(0, 4).map((p, i, a) =>
       `${i === a.length - 1 ? '└' : '├'}─ ${fmtD(p.earningsTs)}: ${p.symbol} ⭐`);
     insights.push({
-      icon: '📅', cardStyle: { background: 'rgba(124,158,255,0.08)', borderColor: 'rgba(167,139,250,0.3)' },
+      icon: '📅', cardStyle: { background: 'var(--panel-2)', borderColor: 'var(--border)' },
       title: 'Nadchodzące wyniki finansowe',
       lines: ['Za najbliższe 14 dni:', '', ...li, '', 'Uwaga: możliwa podwyższona zmienność ⚠️'],
     });

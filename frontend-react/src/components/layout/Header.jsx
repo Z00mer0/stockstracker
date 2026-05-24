@@ -1,5 +1,6 @@
 // src/components/layout/Header.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import AddStockModal from '../AddStockModal';
@@ -90,9 +91,14 @@ const EyeIcon = ({ closed }) => closed ? (
 export default function Header({ theme, onThemeToggle }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
   const { isPrivate, toggle } = usePrivacy();
+  const navigate = useNavigate();
   const [markets, setMarkets] = useState(getMarketStatuses);
   const [showAdd, setShowAdd] = useState(false);
   const [tickers, setTickers] = useState(() => loadCache() ?? FALLBACK_TICKERS);
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const id = setInterval(() => setMarkets(getMarketStatuses()), 60000);
@@ -117,6 +123,37 @@ export default function Header({ theme, onThemeToggle }) {
     return () => clearInterval(id);
   }, []);
 
+  // ⌘K opens search
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setSearchOpen(true);
+      }
+      if (e.key === 'Escape') { setSearchOpen(false); setQuery(''); inputRef.current?.blur(); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    function onDown(e) { if (searchRef.current && !searchRef.current.contains(e.target)) { setSearchOpen(false); setQuery(''); } }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const searchResults = q.length < 1 ? (portfolio ?? []).slice(0, 6) : (portfolio ?? []).filter(p =>
+    p.symbol?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  function handleSearchSelect(item) {
+    setSearchOpen(false); setQuery('');
+    navigate('/portfolio');
+  }
+
   const iconBtn = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     width: 32, height: 32, borderRadius: 8,
@@ -135,23 +172,60 @@ export default function Header({ theme, onThemeToggle }) {
       position: 'sticky', top: 0, zIndex: 10,
     }}>
       {/* Search */}
-      <div style={{ position: 'relative', maxWidth: 320, flex: '0 1 320px' }}>
-        <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}
+      <div ref={searchRef} style={{ position: 'relative', maxWidth: 320, flex: '0 1 320px' }}>
+        <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none', zIndex: 1 }}
           width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
+          ref={inputRef}
           className="field-input"
           style={{ paddingLeft: 32, paddingRight: 44, height: 34, fontSize: 12, color: 'var(--text-dim)' }}
-          placeholder="Szukaj…"
-          readOnly
+          placeholder="Szukaj spółki…"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
+          onFocus={() => setSearchOpen(true)}
         />
-        <kbd style={{
-          position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-          fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
-          border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
-          fontFamily: 'JetBrains Mono, monospace',
-        }}>⌘K</kbd>
+        {!query && (
+          <kbd style={{
+            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
+            border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
+            fontFamily: 'JetBrains Mono, monospace', pointerEvents: 'none',
+          }}>⌘K</kbd>
+        )}
+        {searchOpen && searchResults.length > 0 && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+            background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 100, overflow: 'hidden',
+          }}>
+            {!query && <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Twój portfel</div>}
+            {searchResults.map(item => (
+              <div key={item.symbol}
+                onMouseDown={() => handleSearchSelect(item)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px', cursor: 'pointer',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{
+                  width: 28, height: 28, borderRadius: 6, background: 'var(--panel-2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+                }}>{item.symbol?.slice(0, 2)}</span>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.symbol}</div>
+                  {item.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>}
+                </div>
+                <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{item.qty} szt.</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Ticker strip */}
