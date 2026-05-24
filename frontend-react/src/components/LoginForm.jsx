@@ -4,29 +4,20 @@ import { api } from '../hooks/useApi';
 const TOKEN_KEY = 'myfund_auth_token';
 
 export default function LoginForm({ onLogin }) {
-  const [mode, setMode]             = useState('login'); // 'login' | 'register'
-  const [username, setUsername]     = useState('');
+  const [mode, setMode]               = useState('login');
+  const [username, setUsername]       = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [password, setPassword]     = useState('');
-  const [password2, setPassword2]   = useState('');
-  const [error, setError]           = useState(null);
-  const [loading, setLoading]       = useState(false);
+  const [password, setPassword]       = useState('');
+  const [password2, setPassword2]     = useState('');
+  const [error, setError]             = useState(null);
+  const [loading, setLoading]         = useState(false);
 
-  function switchMode(m) {
-    setMode(m);
-    setError(null);
-    setPassword('');
-    setPassword2('');
-  }
+  function switchMode(m) { setMode(m); setError(null); setPassword(''); setPassword2(''); }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-
-    if (mode === 'register' && password !== password2) {
-      setError('Hasła nie są identyczne'); return;
-    }
-
+    if (mode === 'register' && password !== password2) { setError('Hasła nie są identyczne'); return; }
     setLoading(true);
     try {
       const endpoint = mode === 'login' ? '/api/login' : '/api/register';
@@ -46,32 +37,49 @@ export default function LoginForm({ onLogin }) {
   const isLogin = mode === 'login';
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 w-full max-w-sm space-y-5">
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+      <div style={{
+        background: 'var(--bg-2)', border: '1px solid var(--border)',
+        borderRadius: 12, padding: 32,
+        width: '100%', maxWidth: 360,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <div style={{ width: 32, height: 32, background: 'var(--accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>stockstracker.</span>
+        </div>
 
-        {/* tab switcher */}
-        <div className="flex rounded-lg overflow-hidden border border-slate-700">
-          {['login', 'register'].map(m => (
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--panel-2)', borderRadius: 8, marginBottom: 20 }}>
+          {[['login', 'Logowanie'], ['register', 'Rejestracja']].map(([m, label]) => (
             <button
               key={m}
               type="button"
               onClick={() => switchMode(m)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                mode === m
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
+              style={{
+                flex: 1, padding: '6px 0', fontSize: 13, fontWeight: 600,
+                border: 'none', borderRadius: 6, cursor: 'pointer',
+                background: mode === m ? 'var(--bg-2)' : 'transparent',
+                color: mode === m ? 'var(--text)' : 'var(--text-dim)',
+                boxShadow: mode === m ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                transition: 'background 0.15s',
+              }}
             >
-              {m === 'login' ? 'Logowanie' : 'Rejestracja'}
+              {label}
             </button>
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label className="text-sm text-slate-400 block mb-1">Nazwa użytkownika</label>
+            <label className="field-label">Nazwa użytkownika</label>
             <input
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-indigo-500"
+              className="field-input"
               value={username}
               onChange={e => setUsername(e.target.value)}
               autoComplete="username"
@@ -81,11 +89,11 @@ export default function LoginForm({ onLogin }) {
 
           {!isLogin && (
             <div>
-              <label className="text-sm text-slate-400 block mb-1">
-                Imię / nazwa wyświetlana <span className="text-slate-500">(opcjonalnie)</span>
+              <label className="field-label">
+                Imię / nazwa wyświetlana <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>(opcjonalnie)</span>
               </label>
               <input
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-indigo-500"
+                className="field-input"
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 autoComplete="name"
@@ -94,10 +102,10 @@ export default function LoginForm({ onLogin }) {
           )}
 
           <div>
-            <label className="text-sm text-slate-400 block mb-1">Hasło</label>
+            <label className="field-label">Hasło</label>
             <input
               type="password"
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-indigo-500"
+              className="field-input"
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoComplete={isLogin ? 'current-password' : 'new-password'}
@@ -106,24 +114,25 @@ export default function LoginForm({ onLogin }) {
 
           {!isLogin && (
             <div>
-              <label className="text-sm text-slate-400 block mb-1">Powtórz hasło</label>
+              <label className="field-label">Powtórz hasło</label>
               <input
                 type="password"
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:border-indigo-500"
+                className="field-input"
                 value={password2}
                 onChange={e => setPassword2(e.target.value)}
                 autoComplete="new-password"
               />
-              <p className="text-xs text-slate-500 mt-1">Minimum 6 znaków</p>
+              <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>Minimum 6 znaków</p>
             </div>
           )}
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p style={{ fontSize: 13, color: 'var(--down)' }}>{error}</p>}
 
           <button
             type="submit"
+            className="btn btn-primary"
             disabled={loading || !username || !password || (!isLogin && !password2)}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded-lg py-3 text-base font-semibold transition-colors"
+            style={{ width: '100%', padding: '10px 0', fontSize: 14, fontWeight: 600, opacity: (loading || !username || !password || (!isLogin && !password2)) ? 0.4 : 1 }}
           >
             {loading
               ? (isLogin ? 'Logowanie…' : 'Rejestracja…')
