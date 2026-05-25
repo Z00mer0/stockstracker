@@ -88,7 +88,7 @@ const EyeIcon = ({ closed }) => closed ? (
   </svg>
 );
 
-export default function Header({ theme, onThemeToggle }) {
+export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
   const { isPrivate, toggle } = usePrivacy();
   const navigate = useNavigate();
@@ -165,12 +165,26 @@ export default function Header({ theme, onThemeToggle }) {
   return (
     <header style={{
       height: 56, flexShrink: 0,
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '0 20px',
+      display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12,
+      padding: isMobile ? '0 12px' : '0 20px',
       background: 'var(--bg-2)',
       borderBottom: '1px solid var(--border)',
       position: 'sticky', top: 0, zIndex: 10,
     }}>
+      {/* Hamburger — mobile only */}
+      {isMobile && (
+        <button
+          onClick={onMenuToggle}
+          style={{ ...iconBtn, flexShrink: 0 }}
+          aria-label="Menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      )}
       {/* Search */}
       <div ref={searchRef} style={{ position: 'relative', maxWidth: 320, flex: '0 1 320px' }}>
         <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none', zIndex: 1 }}
@@ -228,30 +242,37 @@ export default function Header({ theme, onThemeToggle }) {
         )}
       </div>
 
-      {/* Ticker strip */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 18, overflow: 'hidden' }}>
-        {tickers.map(t => (
-          <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{t.key}</span>
-            <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(t.key, t.price)}</span>
-            {t.delta != null && (
-              <span className="mono" style={{ fontSize: 11, color: t.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                {t.delta >= 0 ? '+' : ''}{t.delta.toFixed(2)}%
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
+      {/* Ticker strip — hidden on mobile */}
+      {!isMobile && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 18, overflow: 'hidden' }}>
+          {tickers.map(t => (
+            <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{t.key}</span>
+              <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(t.key, t.price)}</span>
+              {t.delta != null && (
+                <span className="mono" style={{ fontSize: 11, color: t.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                  {t.delta >= 0 ? '+' : ''}{t.delta.toFixed(2)}%
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Market status dots */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {markets.map(m => (
-          <span key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-faint)' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.open ? 'var(--up)' : 'var(--text-faint)', display: 'inline-block' }} />
-            {m.label}
-          </span>
-        ))}
-      </div>
+      {/* Spacer on mobile */}
+      {isMobile && <div style={{ flex: 1 }} />}
+
+      {/* Market status dots — hidden on mobile */}
+      {!isMobile && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {markets.map(m => (
+            <span key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-faint)' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.open ? 'var(--up)' : 'var(--text-faint)', display: 'inline-block' }} />
+              {m.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Theme toggle */}
       <button
@@ -267,20 +288,22 @@ export default function Header({ theme, onThemeToggle }) {
         <EyeIcon closed={isPrivate} />
       </button>
 
-      {/* Bell — notifications stub, no functionality yet */}
-      <div style={{ position: 'relative' }}>
-        <button style={iconBtn} title="Powiadomienia" aria-label="Powiadomienia">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-        </button>
-        <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: 'var(--down)', border: '1.5px solid var(--bg-2)', pointerEvents: 'none' }} />
-      </div>
+      {/* Bell — hidden on mobile to save space */}
+      {!isMobile && (
+        <div style={{ position: 'relative' }}>
+          <button style={iconBtn} title="Powiadomienia" aria-label="Powiadomienia">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+          </button>
+          <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: 'var(--down)', border: '1.5px solid var(--bg-2)', pointerEvents: 'none' }} />
+        </div>
+      )}
 
       {/* Add transaction CTA */}
-      <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12 }}>
-        + Dodaj transakcję
+      <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+        {isMobile ? '+' : '+ Dodaj transakcję'}
       </button>
 
       {showAdd && (

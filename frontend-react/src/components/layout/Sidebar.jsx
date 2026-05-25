@@ -11,11 +11,12 @@ const BrandIcon = () => (
   </svg>
 );
 
-function NavItem({ to, icon, label }) {
+function NavItem({ to, icon, label, onClick }) {
   return (
     <NavLink
       to={to}
       end={to === '/'}
+      onClick={onClick}
       style={({ isActive }) => ({
         display: 'flex',
         alignItems: 'center',
@@ -37,10 +38,10 @@ function NavItem({ to, icon, label }) {
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isMobile, isOpen, onClose }) {
   const { displayName, logout } = useApp();
 
-  return (
+  const sidebarContent = (
     <aside style={{
       background: 'var(--bg-2)',
       borderRight: '1px solid var(--border)',
@@ -48,6 +49,7 @@ export default function Sidebar() {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
+      width: 232,
     }}>
       {/* Brand */}
       <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -62,6 +64,15 @@ export default function Sidebar() {
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
           stockstracker<span style={{ color: 'var(--accent)' }}>.</span>
         </span>
+        {isMobile && (
+          <button
+            onClick={onClose}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: 4, lineHeight: 1, fontSize: 20 }}
+            aria-label="Zamknij menu"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -69,11 +80,11 @@ export default function Sidebar() {
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
           Główne
         </div>
-        {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} />)}
+        {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '12px 10px 4px' }}>
           Konto
         </div>
-        {NAV_BOTTOM.map(item => <NavItem key={item.to} {...item} />)}
+        {NAV_BOTTOM.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
       </nav>
 
       {/* Footer */}
@@ -98,5 +109,34 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+  );
+
+  // Desktop: static sidebar in grid
+  if (!isMobile) return sidebarContent;
+
+  // Mobile: fixed overlay drawer
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 199,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+      {/* Drawer */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, bottom: 0,
+        zIndex: 200,
+        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+      }}>
+        {sidebarContent}
+      </div>
+    </>
   );
 }
