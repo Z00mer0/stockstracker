@@ -9,7 +9,7 @@ import Card from '../components/shared/Card';
 
 function SettingsRow({ label, value, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{label}</span>
       {children || <span className="mono" style={{ fontSize: 13, color: 'var(--text)' }}>{value}</span>}
     </div>
@@ -27,9 +27,9 @@ function ApiKeySection() {
     <Card title="Klucze API">
       <div className="card-body">
         <SettingsRow label={<span>MarketData.app <span style={{ fontWeight: 400, fontSize: 11, color: isSet ? 'var(--up)' : 'var(--warn)', marginLeft: 6 }}>{isSet ? '✓ ustawiony' : 'nie ustawiony'}</span></span>}>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flex: 1, maxWidth: 360 }}>
             <input type="password" value={key} onChange={e => setKey(e.target.value)}
-              className="field-input mono" style={{ width: 200, fontSize: 12 }} placeholder="Wklej klucz…" />
+              className="field-input mono" style={{ flex: 1, minWidth: 0, fontSize: 12 }} placeholder="Wklej klucz…" />
             <button onClick={save} className={`btn ${saved ? '' : 'btn-primary'}`} style={{ fontSize: 12 }}>
               {saved ? '✓ Zapisano' : 'Zapisz'}
             </button>

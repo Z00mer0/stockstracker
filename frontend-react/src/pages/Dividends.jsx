@@ -229,7 +229,7 @@ export default function Dividends() {
         </p>
         <button
           onClick={() => { setEditTarget(null); setModalOpen(true); }}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+          className="btn btn-primary" style={{ fontSize: 13 }}
         >
           + Dodaj dywidendę GPW
         </button>
@@ -243,7 +243,7 @@ export default function Dividends() {
             {divLoading && <Spinner size="sm" />}
             <button
               onClick={() => { setEditTarget(null); setModalOpen(true); }}
-              className="text-xs px-2.5 py-1 rounded-md bg-indigo-700 hover:bg-indigo-600 text-white transition-colors"
+              className="btn btn-primary" style={{ fontSize: 12 }}
             >+ Dodaj ręcznie</button>
           </>
         }

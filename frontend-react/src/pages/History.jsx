@@ -145,7 +145,7 @@ export default function History() {
   return (
     <div className="space-y-5">
       {/* KPI grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Wartość (filtr)', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(filteredLast?.total)}</span>, sub: null },
           { label: 'Zysk/strata', value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },

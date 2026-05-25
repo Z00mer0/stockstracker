@@ -207,7 +207,7 @@ export default function Portfolio() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div className="card" style={{ overflow: 'visible' }}>
         {/* Toolbar */}
         <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {[
