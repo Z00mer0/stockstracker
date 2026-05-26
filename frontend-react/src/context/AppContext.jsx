@@ -201,6 +201,49 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
+  async function importBrokerTransactions(newTxs) {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    const allTransactions = [...(rawData?.transactions ?? []), ...newTxs];
+
+    // Apply BUY/SELL chronologically to update holdings
+    let newHoldings = [...holdings];
+    const sorted = [...newTxs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    for (const tx of sorted) {
+      if (!tx.qty || tx.qty <= 0) continue;
+      if (tx.type === 'BUY') {
+        const idx = newHoldings.findIndex(h => h.symbol === tx.symbol);
+        if (idx >= 0) {
+          const h = newHoldings[idx];
+          const newQty = h.qty + tx.qty;
+          const newAvg = (h.qty * h.avgPrice + tx.qty * tx.price) / newQty;
+          newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty, avgPrice: newAvg } : h2);
+        } else {
+          newHoldings = [...newHoldings, {
+            id: Math.random().toString(36).slice(2, 10),
+            symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price,
+            currency: tx.currency, date: tx.date, name: '',
+          }];
+        }
+      } else if (tx.type === 'SELL') {
+        const idx = newHoldings.findIndex(h => h.symbol === tx.symbol);
+        if (idx >= 0) {
+          const newQty = newHoldings[idx].qty - tx.qty;
+          newHoldings = newQty <= 0
+            ? newHoldings.filter((_, i) => i !== idx)
+            : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
+        }
+      }
+    }
+
+    const updated = {
+      ...rawData,
+      portfolio: { ...rawData.portfolio, holdings: newHoldings },
+      transactions: allTransactions,
+    };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   async function saveSnapshot(totalValue, investedValue) {
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
@@ -233,6 +276,7 @@ export function AppProvider({ children }) {
     addPosition,
     removePosition,
     sellPosition,
+    importBrokerTransactions,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

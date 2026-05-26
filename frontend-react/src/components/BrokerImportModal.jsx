@@ -196,7 +196,7 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
     if (!deduped.length) return;
     setSaving(true); setError('');
     try {
-      await onSave([...existingTransactions, ...deduped]);
+      await onSave(deduped);
       setSaved(true);
     } catch (e) {
       setError(e.message || 'Błąd zapisu');
