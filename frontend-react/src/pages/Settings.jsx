@@ -219,7 +219,7 @@ export default function Settings() {
           existingTransactions={transactions}
           existingPortfolio={portfolio}
           existingCash={cash}
-          onSave={async (newTxs) => { await importBrokerTransactions(newTxs); refresh(); }}
+          onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
           onClose={() => setShowBrokerImport(false)}
         />
       )}
