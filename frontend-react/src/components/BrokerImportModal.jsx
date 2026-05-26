@@ -79,10 +79,10 @@ function parseBrokerRows(rows) {
 
       const currency = /\.(WA|PL)$/i.test(ticker) ? 'PLN' : 'USD';
 
-      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: ticker.toUpperCase(), qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId });
+      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: ticker.toUpperCase(), qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId, fromClosedPosition: true });
 
       if (!isNaN(closePrice) && closeDate) {
-        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: ticker.toUpperCase(), qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, brokerPositionId: positionId + '_close' });
+        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: ticker.toUpperCase(), qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, brokerPositionId: positionId + '_close', fromClosedPosition: true });
       }
 
     } else if (isCashOperations) {
@@ -150,11 +150,11 @@ function computePortfolioPreview(txs, holdings, cash) {
     const base = baseSymbol(tx.symbol);
     const idx = h.findIndex(x => x.symbol === tx.symbol || baseSymbol(x.symbol) === base);
     if (tx.type === 'BUY') {
-      if (idx >= 0) {
+      if (idx >= 0 && !tx.fromClosedPosition) {
         const old = h[idx];
         const qty = old.qty + tx.qty;
         h[idx] = { ...old, qty, avgPrice: (old.qty * old.avgPrice + tx.qty * tx.price) / qty };
-      } else {
+      } else if (idx < 0) {
         h.push({ symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur });
       }
     } else if (tx.type === 'SELL') {

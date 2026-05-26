@@ -225,18 +225,19 @@ export function AppProvider({ children }) {
 
       if (tx.type === 'BUY') {
         const idx = findHolding(newHoldings, tx.symbol);
-        if (idx >= 0) {
+        if (idx >= 0 && !tx.fromClosedPosition) {
           const h = newHoldings[idx];
           const newQty = h.qty + tx.qty;
           const newAvg = (h.qty * h.avgPrice + tx.qty * tx.price) / newQty;
           newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty, avgPrice: newAvg } : h2);
-        } else {
+        } else if (idx < 0) {
           newHoldings = [...newHoldings, {
             id: Math.random().toString(36).slice(2, 10),
             symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price,
             currency: cur, date: tx.date, name: '',
           }];
         }
+        // fromClosedPosition BUY for existing position: skip (SELL will reduce it)
       } else if (tx.type === 'SELL') {
         const idx = findHolding(newHoldings, tx.symbol);
         if (idx >= 0) {
