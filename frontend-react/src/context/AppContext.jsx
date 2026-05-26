@@ -203,11 +203,13 @@ export function AppProvider({ children }) {
 
   async function importBrokerTransactions(newTxs) {
     const holdings = rawData?.portfolio?.holdings ?? [];
-    const allTransactions = [...(rawData?.transactions ?? []), ...newTxs];
+    const importId = `imp_${Date.now()}`;
+    const tagged = newTxs.map(t => ({ ...t, importId }));
+    const allTransactions = [...(rawData?.transactions ?? []), ...tagged];
 
     // Apply BUY/SELL chronologically to update holdings
     let newHoldings = [...holdings];
-    const sorted = [...newTxs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const sorted = [...tagged].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     for (const tx of sorted) {
       if (!tx.qty || tx.qty <= 0) continue;
       if (tx.type === 'BUY') {
@@ -244,8 +246,10 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
-  async function clearBrokerImport() {
-    const filtered = (rawData?.transactions ?? []).filter(t => !String(t.note ?? '').startsWith('Import brokera'));
+  async function clearBrokerImport(importId) {
+    const filtered = (rawData?.transactions ?? []).filter(t =>
+      importId ? t.importId !== importId : !String(t.note ?? '').startsWith('Import brokera')
+    );
     const updated = { ...rawData, transactions: filtered };
     setRawData(updated);
     await api.post('/api/data', updated);

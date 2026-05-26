@@ -120,14 +120,30 @@ export default function Settings() {
   const { displayName, logout, refresh, fxRates, transactions, importBrokerTransactions, clearBrokerImport } = useApp();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
   const [showBrokerImport, setShowBrokerImport] = useState(false);
-  const [clearing, setClearing] = useState(false);
+  const [clearingId, setClearingId] = useState(null);
 
-  const importedCount = transactions.filter(t => String(t.note ?? '').startsWith('Import brokera')).length;
+  // Group imported transactions by importId (or legacy "no importId" group)
+  const importBatches = (() => {
+    const byId = {};
+    for (const t of transactions) {
+      if (!String(t.note ?? '').startsWith('Import brokera')) continue;
+      const key = t.importId || 'legacy';
+      if (!byId[key]) byId[key] = { importId: t.importId || null, count: 0, dates: [] };
+      byId[key].count++;
+      if (t.date) byId[key].dates.push(t.date);
+    }
+    return Object.values(byId).map(b => ({
+      ...b,
+      label: b.importId
+        ? new Date(parseInt(b.importId.replace('imp_', ''))).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : 'Poprzedni import (bez daty)',
+    }));
+  })();
 
-  async function handleClearImport() {
-    if (!window.confirm(`Usuń ${importedCount} transakcji importu brokera? Portfel pozostaje bez zmian.`)) return;
-    setClearing(true);
-    try { await clearBrokerImport(); refresh(); } finally { setClearing(false); }
+  async function handleClearImport(importId, count) {
+    if (!window.confirm(`Usuń ${count} transakcji z tego importu?`)) return;
+    setClearingId(importId || 'legacy');
+    try { await clearBrokerImport(importId); refresh(); } finally { setClearingId(null); }
   }
 
   return (
@@ -150,24 +166,33 @@ export default function Settings() {
       <DividendTaxSection />
 
       <Card title="Import danych brokera">
-        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             Importuj historię z pliku CSV (eToro itp.). Obsługiwane: Closed Positions, Cash Operations.
           </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setShowBrokerImport(true)} className="btn btn-primary" style={{ fontSize: 12 }}>
-              ↑ Importuj CSV brokera
-            </button>
-            {importedCount > 0 && (
-              <button onClick={handleClearImport} disabled={clearing} className="btn" style={{ fontSize: 12, color: 'var(--down)' }}>
-                {clearing ? 'Usuwanie…' : `✕ Cofnij import (${importedCount} transakcji)`}
-              </button>
-            )}
-          </div>
-          {importedCount > 0 && (
-            <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-              {importedCount} transakcji z importu brokera · cofnięcie usuwa je i pozwala zaimportować ponownie
-            </p>
+          <button onClick={() => setShowBrokerImport(true)} className="btn btn-primary" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
+            ↑ Importuj CSV brokera
+          </button>
+          {importBatches.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Historia importów</p>
+              {importBatches.map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', background: 'var(--panel-2)', borderRadius: 8 }}>
+                  <div>
+                    <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-faint)', marginLeft: 8 }}>{b.count} transakcji</span>
+                  </div>
+                  <button
+                    onClick={() => handleClearImport(b.importId, b.count)}
+                    disabled={clearingId === (b.importId || 'legacy')}
+                    className="btn"
+                    style={{ fontSize: 11, color: 'var(--down)', padding: '3px 10px' }}
+                  >
+                    {clearingId === (b.importId || 'legacy') ? 'Usuwanie…' : '✕ Cofnij'}
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </Card>
