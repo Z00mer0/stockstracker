@@ -116,6 +116,19 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
+  async function editPosition({ symbol, qty, avgPrice }) {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    const updated = {
+      ...rawData,
+      portfolio: {
+        ...rawData.portfolio,
+        holdings: holdings.map(h => h.symbol === symbol ? { ...h, qty, avgPrice } : h),
+      },
+    };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   async function removePosition(symbol) {
     const holdings = rawData?.portfolio?.holdings ?? [];
     const updated = {
@@ -338,6 +351,7 @@ export function AppProvider({ children }) {
     saveTransactions,
     saveSnapshot,
     addPosition,
+    editPosition,
     removePosition,
     sellPosition,
     importBrokerTransactions,

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import CsvImportModal from '../components/CsvImportModal';
 import AddStockModal from '../components/AddStockModal';
 import SellStockModal from '../components/SellStockModal';
+import EditPositionModal from '../components/EditPositionModal';
 import AddDividendModal from '../components/AddDividendModal';
 import { useChart } from '../context/ChartContext';
 import Spinner from '../components/shared/Spinner';
@@ -112,13 +113,14 @@ function renderCell(key, pos, fxRates) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, loading, fxRates, saveHoldings, addPosition, removePosition, sellPosition, refresh } = useApp();
+  const { portfolio, transactions, loading, fxRates, saveHoldings, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
   const [showImport, setShowImport]   = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
   const [addSymbol, setAddSymbol]     = useState('');
   const [sellTarget, setSellTarget]   = useState(null);
   const [divTarget, setDivTarget]     = useState(null);
   const [menuSym, setMenuSym]         = useState(null);
+  const [editTarget, setEditTarget]   = useState(null);
   const [confirmDel, setConfirmDel]   = useState(null);
   const [toast, setToast]             = useState('');
   const menuRef = useRef(null);
@@ -321,6 +323,7 @@ export default function Portfolio() {
                           {[
                             { icon: '+', label: 'Kup więcej', action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
                             { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
+                            { icon: '✏', label: 'Edytuj pozycję', action: () => { setEditTarget(pos); setMenuSym(null); } },
                             { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
                             { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
                             { icon: '📊', label: 'Fundamenty', action: () => { openChart(pos.symbol); setMenuSym(null); } },
@@ -378,6 +381,13 @@ export default function Portfolio() {
           holding={sellTarget}
           onSave={async (data) => { await sellPosition(data); refresh(); }}
           onClose={() => setSellTarget(null)}
+        />
+      )}
+      {editTarget && (
+        <EditPositionModal
+          holding={editTarget}
+          onSave={async (data) => { await editPosition(data); setEditTarget(null); }}
+          onClose={() => setEditTarget(null)}
         />
       )}
       {divTarget && (
