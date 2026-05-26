@@ -207,13 +207,24 @@ export function AppProvider({ children }) {
     const tagged = newTxs.map(t => ({ ...t, importId }));
     const allTransactions = [...(rawData?.transactions ?? []), ...tagged];
 
-    // Apply BUY/SELL chronologically to update holdings
+    // Normalize symbol for matching: strip exchange suffixes so XTB.PL matches XTB.WA
+    function baseSymbol(sym) {
+      return String(sym).replace(/\.(WA|PL|US|UK|DE|FR|NL|IT|ES|SE|DK|NO|FI|BE|AT|CH)$/i, '').toUpperCase();
+    }
+    function findHolding(arr, symbol) {
+      return arr.findIndex(h => h.symbol === symbol || baseSymbol(h.symbol) === baseSymbol(symbol));
+    }
+
     let newHoldings = [...holdings];
+    let newCash = { ...(rawData?.cash ?? {}) };
     const sorted = [...tagged].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
     for (const tx of sorted) {
       if (!tx.qty || tx.qty <= 0) continue;
+      const cur = tx.currency || 'PLN';
+
       if (tx.type === 'BUY') {
-        const idx = newHoldings.findIndex(h => h.symbol === tx.symbol);
+        const idx = findHolding(newHoldings, tx.symbol);
         if (idx >= 0) {
           const h = newHoldings[idx];
           const newQty = h.qty + tx.qty;
@@ -223,17 +234,19 @@ export function AppProvider({ children }) {
           newHoldings = [...newHoldings, {
             id: Math.random().toString(36).slice(2, 10),
             symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price,
-            currency: tx.currency, date: tx.date, name: '',
+            currency: cur, date: tx.date, name: '',
           }];
         }
       } else if (tx.type === 'SELL') {
-        const idx = newHoldings.findIndex(h => h.symbol === tx.symbol);
+        const idx = findHolding(newHoldings, tx.symbol);
         if (idx >= 0) {
           const newQty = newHoldings[idx].qty - tx.qty;
           newHoldings = newQty <= 0
             ? newHoldings.filter((_, i) => i !== idx)
             : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
         }
+        // Add sale proceeds to cash
+        newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
       }
     }
 
@@ -241,6 +254,7 @@ export function AppProvider({ children }) {
       ...rawData,
       portfolio: { ...rawData.portfolio, holdings: newHoldings },
       transactions: allTransactions,
+      cash: newCash,
     };
     setRawData(updated);
     await api.post('/api/data', updated);
