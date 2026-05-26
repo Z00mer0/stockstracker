@@ -4,6 +4,7 @@
 const SYMBOLS = [
   { key: 'WIG20',   sym: 'WIG20.WA' }, // Yahoo uses WIG20.WA for Warsaw index
   { key: 'S&P500',  sym: '^GSPC'    },
+  { key: 'NASDAQ',  sym: '^IXIC'    },
   { key: 'DAX',     sym: '^GDAXI'   },
   { key: 'EUR/PLN', sym: 'EURPLN=X' },
   { key: 'USD/PLN', sym: 'USDPLN=X' },
