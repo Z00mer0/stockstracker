@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import HistoryChart from '../components/HistoryChart';
+import ReturnRateChart from '../components/ReturnRateChart';
 import Spinner from '../components/shared/Spinner';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Card from '../components/shared/Card';
@@ -109,25 +110,6 @@ export default function History() {
       .finally(() => setBenchLoading(false));
   }, [benchmark]);
 
-  const benchNormalized = useMemo(() => {
-    if (!benchData.length || !filtered.length) return [];
-    const priceAtDate = (date) => {
-      let last = null;
-      for (const pt of benchData) {
-        if (pt.date <= date) last = pt.price;
-        else break;
-      }
-      return last;
-    };
-    const firstBenchPrice = priceAtDate(filtered[0].date);
-    if (!firstBenchPrice) return [];
-    const firstPortValue = filtered[0].total ?? 0;
-    return filtered.map(s => ({
-      date: s.date,
-      value: ((priceAtDate(s.date) ?? firstBenchPrice) / firstBenchPrice) * firstPortValue,
-    }));
-  }, [benchData, filtered]);
-
   if (loading && !snapshots.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
@@ -160,16 +142,20 @@ export default function History() {
         ))}
       </div>
 
-      {/* Wykres historii portfela */}
-      <Card title="Historia wartości portfela">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      {/* Wykres kapitału */}
+      <Card title="Wartość portfela">
+        <div style={{ marginBottom: 16 }}>
           <SegmentedControl
             options={PERIODS.map(p => ({ value: p.key, label: p.label }))}
             value={period}
             onChange={setPeriod}
           />
         </div>
-        {/* Benchmark */}
+        <HistoryChart data={filteredWithInvested} />
+      </Card>
+
+      {/* Wykres stopy zwrotu z benchmarkiem */}
+      <Card title="Stopa zwrotu">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Benchmark:</span>
           <SegmentedControl
@@ -178,7 +164,11 @@ export default function History() {
             onChange={v => setBenchmark(v === 'none' ? null : v)}
           />
         </div>
-        <HistoryChart data={filteredWithInvested} benchData={benchNormalized} benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label} />
+        <ReturnRateChart
+          data={filteredWithInvested}
+          benchData={benchData}
+          benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
+        />
       </Card>
 
       {/* Tabela */}
