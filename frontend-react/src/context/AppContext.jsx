@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../hooks/useApi';
 
 const AppContext = createContext(null);
@@ -42,6 +42,7 @@ export function AppProvider({ children }) {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
+  const writeInProgressRef          = useRef(false);
 
   useEffect(() => {
     loadFxRates().then(setFxRates);
@@ -64,6 +65,7 @@ export function AppProvider({ children }) {
 
   const fetchData = useCallback(async () => {
     if (!token) return;
+    if (writeInProgressRef.current) return;
     setLoading(true);
     setError(null);
     try {
@@ -264,13 +266,13 @@ export function AppProvider({ children }) {
       cash: newCash,
       importSnapshots: { ...(rawData.importSnapshots ?? {}), [importId]: preSnapshot },
     };
-    const prevRawData = rawData;
-    setRawData(updated);
+
+    writeInProgressRef.current = true;
     try {
-      await api.post('/api/data', updated);
-    } catch (err) {
-      setRawData(prevRawData); // revert optimistic update if save failed
-      throw err;
+      await api.post('/api/data', updated); // save first — state only updates after confirmed save
+      setRawData(updated);
+    } finally {
+      writeInProgressRef.current = false;
     }
   }
 
@@ -296,8 +298,14 @@ export function AppProvider({ children }) {
       cash: restoredCash,
       importSnapshots: snapshots,
     };
-    setRawData(updated);
-    await api.post('/api/data', updated);
+
+    writeInProgressRef.current = true;
+    try {
+      await api.post('/api/data', updated); // save first
+      setRawData(updated);
+    } finally {
+      writeInProgressRef.current = false;
+    }
   }
 
   async function saveSnapshot(totalValue, investedValue) {
