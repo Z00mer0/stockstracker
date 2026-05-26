@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import AddStockModal from '../AddStockModal';
+import StockDetailModal from '../StockDetailModal';
 
 function isEuropeDST() {
   const now = new Date();
@@ -95,6 +96,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
   const navigate = useNavigate();
   const [markets, setMarkets] = useState(getMarketStatuses);
   const [showAdd, setShowAdd] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
   const [tickers, setTickers] = useState(() => loadCache() ?? FALLBACK_TICKERS);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -152,7 +154,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
 
   function handleSearchSelect(item) {
     setSearchOpen(false); setQuery('');
-    navigate('/portfolio');
+    setSelectedStock(item);
   }
 
   const iconBtn = {
@@ -312,6 +314,15 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
           existingPortfolio={portfolio}
           onSave={async (data) => { await addPosition(data); refresh(); }}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+
+      {selectedStock && (
+        <StockDetailModal
+          item={selectedStock}
+          existingPortfolio={portfolio}
+          onSave={async (data) => { await addPosition(data); refresh(); }}
+          onClose={() => setSelectedStock(null)}
         />
       )}
     </header>
