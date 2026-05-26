@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
@@ -52,6 +52,37 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
   const [funding, setFunding]  = useState('topup');
   const [saving, setSaving]    = useState(false);
   const [error, setError]      = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug, setShowSug]  = useState(false);
+  const sugRef = useRef(null);
+
+  useEffect(() => {
+    if (symbol.length < 2) { setSuggestions([]); setShowSug(false); return; }
+    const id = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(symbol)}`);
+        if (!res.ok) return;
+        const { results } = await res.json();
+        setSuggestions(results ?? []);
+        setShowSug((results ?? []).length > 0);
+      } catch {}
+    }, 300);
+    return () => clearTimeout(id);
+  }, [symbol]);
+
+  useEffect(() => {
+    function onDown(e) { if (sugRef.current && !sugRef.current.contains(e.target)) setShowSug(false); }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  function pickSuggestion(s) {
+    setSymbol(s.symbol);
+    setShowSug(false);
+    // Auto-set currency based on exchange
+    if (s.exchange && (s.exchange.includes('Warsaw') || s.symbol.endsWith('.WA'))) setCurrency('PLN');
+    else if (s.exchange && (s.exchange.includes('NYSE') || s.exchange.includes('NASDAQ') || s.exchange.includes('NasdaqGS') || s.exchange.includes('NasdaqCM'))) setCurrency('USD');
+  }
 
   const resolvedQty   = mode === 'qty' ? parseFloat(qty) : parseFloat(totalValue) / parseFloat(price);
   const resolvedPrice = parseFloat(price);
@@ -82,15 +113,38 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         </h2>
 
         {/* Symbol */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, position: 'relative' }} ref={sugRef}>
           <label className="field-label">Symbol tickera *</label>
           <input
             className="field-input"
             placeholder="np. AAPL, PKN.WA, MSFT"
             value={symbol}
-            onChange={e => setSymbol(e.target.value)}
+            onChange={e => { setSymbol(e.target.value); setShowSug(true); }}
+            onFocus={() => suggestions.length > 0 && setShowSug(true)}
             autoFocus
+            autoComplete="off"
           />
+          {showSug && suggestions.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+              background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)', overflow: 'hidden', marginTop: 2,
+            }}>
+              {suggestions.map(s => (
+                <div
+                  key={s.symbol}
+                  onMouseDown={() => pickSuggestion(s)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', transition: 'background 0.1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', minWidth: 72, fontFamily: 'JetBrains Mono, monospace' }}>{s.symbol}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  {s.exchange && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{s.exchange}</span>}
+                </div>
+              ))}
+            </div>
+          )}
           <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>
             🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA) · 🇺🇸 US: bez sufiksu (np. AAPL)
           </p>
