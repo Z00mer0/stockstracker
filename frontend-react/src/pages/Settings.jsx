@@ -1,5 +1,5 @@
 // src/pages/Settings.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../hooks/useApi';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
@@ -116,6 +116,161 @@ function DividendTaxSection() {
   );
 }
 
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function SnapshotManagerSection() {
+  const { snapshots, setSnapshot, deleteSnapshot } = useApp();
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({ date: today, total: '', invested: '' });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [editingDate, setEditingDate] = useState(null);
+
+  const sorted = useMemo(
+    () => [...snapshots].sort((a, b) => b.date.localeCompare(a.date)),
+    [snapshots]
+  );
+
+  function startEdit(s) {
+    setEditingDate(s.date);
+    setForm({ date: s.date, total: String(s.total ?? ''), invested: String(s.invested ?? '') });
+  }
+
+  function cancelEdit() {
+    setEditingDate(null);
+    setForm({ date: today, total: '', invested: '' });
+  }
+
+  async function handleSave() {
+    const total = parseFloat(form.total);
+    const inv   = parseFloat(form.invested);
+    if (!form.date || isNaN(total) || total < 0) return;
+    setSaving(true);
+    try {
+      await setSnapshot(form.date, total, isNaN(inv) ? undefined : inv);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      setEditingDate(null);
+      setForm({ date: today, total: '', invested: '' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isEditing = editingDate !== null;
+
+  return (
+    <Card title="Snapshots portfela">
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Form */}
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
+            {isEditing ? `Edytujesz snapshot: ${fmtDate(editingDate)}` : 'Dodaj nowy snapshot'}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+            <div>
+              <label className="field-label">Data</label>
+              <input
+                type="date"
+                className="field-input"
+                value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                disabled={isEditing}
+                style={{ fontSize: 12 }}
+              />
+            </div>
+            <div>
+              <label className="field-label">Wartość portfela (zł)</label>
+              <input
+                type="number" min="0" step="any"
+                className="field-input mono"
+                style={{ fontSize: 12 }}
+                placeholder="np. 35000"
+                value={form.total}
+                onChange={e => setForm(f => ({ ...f, total: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="field-label">Zainwestowano (zł)</label>
+              <input
+                type="number" min="0" step="any"
+                className="field-input mono"
+                style={{ fontSize: 12 }}
+                placeholder="np. 20000"
+                value={form.invested}
+                onChange={e => setForm(f => ({ ...f, invested: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.date || form.total === ''}
+              className={`btn ${saved ? '' : 'btn-primary'}`}
+              style={{ fontSize: 12, opacity: (!form.date || form.total === '') ? 0.4 : 1 }}
+            >
+              {saved ? '✓ Zapisano' : saving ? 'Zapisuję…' : isEditing ? 'Zapisz zmiany' : 'Dodaj snapshot'}
+            </button>
+            {isEditing && (
+              <button onClick={cancelEdit} className="btn" style={{ fontSize: 12 }}>Anuluj</button>
+            )}
+          </div>
+        </div>
+
+        {/* List */}
+        {sorted.length > 0 && (
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              Istniejące snapshots ({sorted.length})
+            </p>
+            <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {sorted.map(s => (
+                <div
+                  key={s.date}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '7px 12px', borderRadius: 8,
+                    background: editingDate === s.date ? 'var(--up-soft)' : 'var(--panel-2)',
+                    border: editingDate === s.date ? '1px solid var(--up)' : '1px solid transparent',
+                  }}
+                >
+                  <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 72, flexShrink: 0 }}>{fmtDate(s.date)}</span>
+                  <span className="mono" style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>
+                    {s.total != null ? s.total.toLocaleString('pl-PL', { maximumFractionDigits: 0 }) + ' zł' : '—'}
+                  </span>
+                  {s.invested != null && (
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                      inw. {s.invested.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} zł
+                    </span>
+                  )}
+                  <button
+                    onClick={() => startEdit(s)}
+                    title="Edytuj"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-faint)', padding: '2px 5px' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; }}
+                  >✏</button>
+                  <button
+                    onClick={() => { if (window.confirm(`Usunąć snapshot z ${fmtDate(s.date)}?`)) deleteSnapshot(s.date); }}
+                    title="Usuń"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-faint)', padding: '2px 5px' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--down)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; }}
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { displayName, logout, refresh, fxRates, transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport } = useApp();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
@@ -196,6 +351,8 @@ export default function Settings() {
           )}
         </div>
       </Card>
+
+      <SnapshotManagerSection />
 
       <Card title="Kursy walut">
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
