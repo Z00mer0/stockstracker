@@ -135,6 +135,52 @@ function parseBrokerXlsx(buffer) {
   return allResults;
 }
 
+// ── Portfolio preview ─────────────────────────────────────────────────────────
+
+function computePortfolioPreview(txs, holdings, cash) {
+  function baseSymbol(sym) {
+    return String(sym).replace(/\.(WA|PL|US|UK|DE|FR|NL|IT|ES|SE|DK|NO|FI|BE|AT|CH)$/i, '').toUpperCase();
+  }
+  let h = holdings.map(x => ({ ...x }));
+  let c = { ...cash };
+  const sorted = [...txs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  for (const tx of sorted) {
+    if (!tx.qty || tx.qty <= 0) continue;
+    const cur = tx.currency || 'PLN';
+    const base = baseSymbol(tx.symbol);
+    const idx = h.findIndex(x => x.symbol === tx.symbol || baseSymbol(x.symbol) === base);
+    if (tx.type === 'BUY') {
+      if (idx >= 0) {
+        const old = h[idx];
+        const qty = old.qty + tx.qty;
+        h[idx] = { ...old, qty, avgPrice: (old.qty * old.avgPrice + tx.qty * tx.price) / qty };
+      } else {
+        h.push({ symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur });
+      }
+    } else if (tx.type === 'SELL') {
+      if (idx >= 0) {
+        const qty = h[idx].qty - tx.qty;
+        if (qty <= 0) h.splice(idx, 1); else h[idx] = { ...h[idx], qty };
+      }
+      c[cur] = (c[cur] ?? 0) + tx.qty * tx.price;
+    }
+  }
+  const oldMap = Object.fromEntries(holdings.map(x => [x.symbol, x]));
+  const newMap = Object.fromEntries(h.map(x => [x.symbol, x]));
+  const cashAdded = {};
+  for (const [cur, val] of Object.entries(c)) {
+    const diff = val - (cash[cur] ?? 0);
+    if (diff > 0.01) cashAdded[cur] = diff;
+  }
+  return {
+    added:    h.filter(x => !oldMap[x.symbol]),
+    removed:  holdings.filter(x => !newMap[x.symbol]),
+    modified: h.filter(x => oldMap[x.symbol] && Math.abs(x.qty - oldMap[x.symbol].qty) > 0.001)
+               .map(x => ({ ...x, oldQty: oldMap[x.symbol].qty })),
+    cashAdded,
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const overlay = {
@@ -152,7 +198,7 @@ const card = {
   boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
 };
 
-export default function BrokerImportModal({ existingTransactions, onSave, onClose }) {
+export default function BrokerImportModal({ existingTransactions, existingPortfolio = [], existingCash = {}, onSave, onClose }) {
   const [results, setResults] = useState([]);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
@@ -184,6 +230,7 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
   function handleDrop(e) { e.preventDefault(); handleFiles(e.dataTransfer.files); }
 
   const allNewTxs = results.flatMap(r => r.transactions);
+  const preview = allNewTxs.length > 0 ? computePortfolioPreview(allNewTxs, existingPortfolio, existingCash) : null;
   const existingBrokerIds = new Set(existingTransactions.map(t => t.brokerPositionId).filter(Boolean));
   const existingKeys = new Set(existingTransactions.map(t => `${t.symbol}_${t.date}_${t.type}_${t.price}`));
   const deduped = allNewTxs.filter(tx => {
@@ -269,6 +316,44 @@ export default function BrokerImportModal({ existingTransactions, onSave, onClos
             )}
           </div>
         )}
+
+        {/* Portfolio preview */}
+        {preview && (() => {
+          const { added, removed, modified, cashAdded } = preview;
+          const hasChanges = added.length + removed.length + modified.length + Object.keys(cashAdded).length > 0;
+          return (
+            <div style={{ borderRadius: 8, padding: '10px 14px', marginBottom: 16, background: 'var(--panel-2)', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: hasChanges ? 6 : 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Podgląd zmian w portfelu
+              </p>
+              {!hasChanges && (
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
+                  Pozycje już zamknięte — transakcje trafią tylko do historii (brak zmian w portfelu i gotówce).
+                </p>
+              )}
+              {added.map(x => (
+                <p key={x.symbol} style={{ fontSize: 11, color: 'var(--up)', margin: '2px 0' }}>
+                  + {x.symbol} {x.qty % 1 === 0 ? x.qty : x.qty.toFixed(4)} szt. po {x.avgPrice?.toFixed(2)} {x.currency}
+                </p>
+              ))}
+              {modified.map(x => (
+                <p key={x.symbol} style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0' }}>
+                  ~ {x.symbol}: {x.oldQty?.toFixed(4)} → {x.qty?.toFixed(4)} szt.
+                </p>
+              ))}
+              {removed.map(x => (
+                <p key={x.symbol} style={{ fontSize: 11, color: 'var(--down)', margin: '2px 0' }}>
+                  − {x.symbol} (pozycja zamknięta)
+                </p>
+              ))}
+              {Object.entries(cashAdded).map(([cur, v]) => (
+                <p key={cur} style={{ fontSize: 11, color: 'var(--up)', margin: '2px 0' }}>
+                  💵 Gotówka +{v.toFixed(2)} {cur} (wpływy ze sprzedaży)
+                </p>
+              ))}
+            </div>
+          );
+        })()}
 
         {saved && <p style={{ fontSize: 13, color: 'var(--up)', marginBottom: 12 }}>✓ Zaimportowano pomyślnie!</p>}
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}

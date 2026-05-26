@@ -117,7 +117,7 @@ function DividendTaxSection() {
 }
 
 export default function Settings() {
-  const { displayName, logout, refresh, fxRates, transactions, importBrokerTransactions, clearBrokerImport } = useApp();
+  const { displayName, logout, refresh, fxRates, transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport } = useApp();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
   const [showBrokerImport, setShowBrokerImport] = useState(false);
   const [clearingId, setClearingId] = useState(null);
@@ -217,6 +217,8 @@ export default function Settings() {
       {showBrokerImport && (
         <BrokerImportModal
           existingTransactions={transactions}
+          existingPortfolio={portfolio}
+          existingCash={cash}
           onSave={async (newTxs) => { await importBrokerTransactions(newTxs); refresh(); }}
           onClose={() => setShowBrokerImport(false)}
         />
