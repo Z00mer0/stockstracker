@@ -244,6 +244,13 @@ export function AppProvider({ children }) {
     await api.post('/api/data', updated);
   }
 
+  async function clearBrokerImport() {
+    const filtered = (rawData?.transactions ?? []).filter(t => !String(t.note ?? '').startsWith('Import brokera'));
+    const updated = { ...rawData, transactions: filtered };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   async function saveSnapshot(totalValue, investedValue) {
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
@@ -277,6 +284,7 @@ export function AppProvider({ children }) {
     removePosition,
     sellPosition,
     importBrokerTransactions,
+    clearBrokerImport,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

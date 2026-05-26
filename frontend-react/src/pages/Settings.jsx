@@ -117,9 +117,18 @@ function DividendTaxSection() {
 }
 
 export default function Settings() {
-  const { displayName, logout, refresh, fxRates, transactions, importBrokerTransactions } = useApp();
+  const { displayName, logout, refresh, fxRates, transactions, importBrokerTransactions, clearBrokerImport } = useApp();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
   const [showBrokerImport, setShowBrokerImport] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  const importedCount = transactions.filter(t => String(t.note ?? '').startsWith('Import brokera')).length;
+
+  async function handleClearImport() {
+    if (!window.confirm(`Usuń ${importedCount} transakcji importu brokera? Portfel pozostaje bez zmian.`)) return;
+    setClearing(true);
+    try { await clearBrokerImport(); refresh(); } finally { setClearing(false); }
+  }
 
   return (
     <div style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -145,9 +154,21 @@ export default function Settings() {
           <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             Importuj historię z pliku CSV (eToro itp.). Obsługiwane: Closed Positions, Cash Operations.
           </p>
-          <button onClick={() => setShowBrokerImport(true)} className="btn" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
-            ↑ Importuj CSV brokera
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => setShowBrokerImport(true)} className="btn btn-primary" style={{ fontSize: 12 }}>
+              ↑ Importuj CSV brokera
+            </button>
+            {importedCount > 0 && (
+              <button onClick={handleClearImport} disabled={clearing} className="btn" style={{ fontSize: 12, color: 'var(--down)' }}>
+                {clearing ? 'Usuwanie…' : `✕ Cofnij import (${importedCount} transakcji)`}
+              </button>
+            )}
+          </div>
+          {importedCount > 0 && (
+            <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+              {importedCount} transakcji z importu brokera · cofnięcie usuwa je i pozwala zaimportować ponownie
+            </p>
+          )}
         </div>
       </Card>
 
