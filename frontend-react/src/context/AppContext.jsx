@@ -251,21 +251,51 @@ export function AppProvider({ children }) {
       }
     }
 
+    // Snapshot pre-import state so undo can fully revert
+    const preSnapshot = {
+      holdings: JSON.parse(JSON.stringify(rawData?.portfolio?.holdings ?? [])),
+      cash: JSON.parse(JSON.stringify(rawData?.cash ?? {})),
+    };
+
     const updated = {
       ...rawData,
       portfolio: { ...rawData.portfolio, holdings: newHoldings },
       transactions: allTransactions,
       cash: newCash,
+      importSnapshots: { ...(rawData.importSnapshots ?? {}), [importId]: preSnapshot },
     };
+    const prevRawData = rawData;
     setRawData(updated);
-    await api.post('/api/data', updated);
+    try {
+      await api.post('/api/data', updated);
+    } catch (err) {
+      setRawData(prevRawData); // revert optimistic update if save failed
+      throw err;
+    }
   }
 
   async function clearBrokerImport(importId) {
     const filtered = (rawData?.transactions ?? []).filter(t =>
       importId ? t.importId !== importId : !String(t.note ?? '').startsWith('Import brokera')
     );
-    const updated = { ...rawData, transactions: filtered };
+
+    // Restore pre-import snapshot if available (fully reverts portfolio + cash)
+    const snapshots = { ...(rawData.importSnapshots ?? {}) };
+    let restoredHoldings = rawData?.portfolio?.holdings;
+    let restoredCash = rawData?.cash;
+    if (importId && snapshots[importId]) {
+      restoredHoldings = snapshots[importId].holdings;
+      restoredCash = snapshots[importId].cash;
+      delete snapshots[importId];
+    }
+
+    const updated = {
+      ...rawData,
+      portfolio: { ...rawData.portfolio, holdings: restoredHoldings },
+      transactions: filtered,
+      cash: restoredCash,
+      importSnapshots: snapshots,
+    };
     setRawData(updated);
     await api.post('/api/data', updated);
   }

@@ -143,7 +143,7 @@ export default function Settings() {
   async function handleClearImport(importId, count) {
     if (!window.confirm(`Usuń ${count} transakcji z tego importu?`)) return;
     setClearingId(importId || 'legacy');
-    try { await clearBrokerImport(importId); refresh(); } finally { setClearingId(null); }
+    try { await clearBrokerImport(importId); } finally { setClearingId(null); }
   }
 
   return (
