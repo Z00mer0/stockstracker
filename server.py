@@ -65,6 +65,67 @@ def _str(val, max_len: int, field: str) -> str:
 _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
 _CAL_TTL   = 4 * 3600  # 4 hours
 
+# ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
+_BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
+_BENCH_PL_TTL   = 6 * 3600   # 6 hours
+
+_STOOQ_SYMBOLS = {
+    'WIG20':  'wig20',
+    'MWIG40': 'mwig40',
+    'SWIG80': 'swig80',
+}
+
+def _fetch_bench_pl(index_name):
+    upper = index_name.upper()
+    if upper not in _STOOQ_SYMBOLS:
+        return None
+    entry = _BENCH_PL_CACHE.get(upper)
+    if entry and time.time() - entry['ts'] < _BENCH_PL_TTL:
+        return entry['data']
+    stooq_sym = _STOOQ_SYMBOLS[upper]
+    today = __import__('datetime').date.today()
+    five_years_ago = today.replace(year=today.year - 5)
+    d1 = five_years_ago.strftime('%Y%m%d')
+    d2 = today.strftime('%Y%m%d')
+    url = f'https://stooq.com/q/d/l/?s={stooq_sym}&d1={d1}&d2={d2}&i=d'
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Accept': 'text/csv,text/plain,*/*',
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode('utf-8', errors='replace')
+        lines = raw.strip().splitlines()
+        if len(lines) < 2:
+            return None
+        header = lines[0].lower().split(',')
+        try:
+            date_idx  = header.index('date')
+            close_idx = header.index('close')
+        except ValueError:
+            return None
+        points = []
+        for line in lines[1:]:
+            parts = line.split(',')
+            if len(parts) <= max(date_idx, close_idx):
+                continue
+            date_str = parts[date_idx].strip()
+            try:
+                price = float(parts[close_idx].strip())
+            except ValueError:
+                continue
+            if date_str and price > 0:
+                points.append({'date': date_str, 'price': price})
+        if not points:
+            return None
+        _BENCH_PL_CACHE[upper] = {'data': points, 'ts': time.time()}
+        print(f'[bench-pl] {upper}: fetched {len(points)} points')
+        return points
+    except Exception as e:
+        print(f'[bench-pl] {upper} ERROR: {e}')
+        stale = _BENCH_PL_CACHE.get(upper, {}).get('data')
+        return stale if stale is not None else None
+
 _CAL_HEADERS = {
     'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept':          'application/json, text/plain, */*',
@@ -382,6 +443,19 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 print(f'[proxy] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
+
+        elif path == '/api/bench-pl':
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs  = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            sym = qs.get('s', '').upper()
+            if sym not in ('WIG20', 'MWIG40', 'SWIG80'):
+                self.send_json(400, {'error': 'invalid symbol'}); return
+            data = _fetch_bench_pl(sym)
+            if data is None:
+                self.send_json(502, {'error': 'upstream request failed'})
+            else:
+                self.send_json(200, data)
 
         elif path.startswith('/api/dividends/upcoming'):
             if not get_username(self):

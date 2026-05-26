@@ -32,10 +32,13 @@ const PERIODS = [
 ];
 
 const BENCHMARKS = [
-  { key: null,       label: 'Brak' },
-  { key: '^GSPC',    label: 'S&P 500' },
-  { key: 'WIG20.WA', label: 'WIG20' },
-  { key: 'URTH',     label: 'MSCI World' },
+  { key: null,        label: 'Brak' },
+  { key: '^GSPC',     label: 'S&P 500' },
+  { key: '^IXIC',     label: 'NASDAQ' },
+  { key: 'URTH',      label: 'MSCI World' },
+  { key: 'PL:WIG20',  label: 'WIG20' },
+  { key: 'PL:MWIG40', label: 'mWIG40' },
+  { key: 'PL:SWIG80', label: 'sWIG80' },
 ];
 
 export default function History() {
@@ -90,24 +93,35 @@ export default function History() {
   useEffect(() => {
     if (!benchmark) { setBenchData([]); return; }
     setBenchLoading(true);
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(benchmark)}?interval=1d&range=5y`;
-    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } })
-      .then(r => r.json())
-      .then(json => {
-        const result = json?.chart?.result?.[0];
-        if (!result) return;
-        const timestamps = result.timestamp ?? [];
-        const closes = result.indicators?.quote?.[0]?.close ?? [];
-        const pts = timestamps
-          .map((ts, i) => ({
-            date: new Date(ts * 1000).toISOString().slice(0, 10),
-            price: closes[i],
-          }))
-          .filter(p => p.price != null);
-        setBenchData(pts);
-      })
-      .catch(() => setBenchData([]))
-      .finally(() => setBenchLoading(false));
+    const authHeader = { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+
+    if (benchmark.startsWith('PL:')) {
+      const sym = benchmark.slice(3);
+      fetch(`/api/bench-pl?s=${sym}`, { signal: AbortSignal.timeout(15000), headers: authHeader })
+        .then(r => r.json())
+        .then(json => { if (Array.isArray(json)) setBenchData(json); else setBenchData([]); })
+        .catch(() => setBenchData([]))
+        .finally(() => setBenchLoading(false));
+    } else {
+      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(benchmark)}?interval=1d&range=5y`;
+      fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000), headers: authHeader })
+        .then(r => r.json())
+        .then(json => {
+          const result = json?.chart?.result?.[0];
+          if (!result) return;
+          const timestamps = result.timestamp ?? [];
+          const closes = result.indicators?.quote?.[0]?.close ?? [];
+          const pts = timestamps
+            .map((ts, i) => ({
+              date: new Date(ts * 1000).toISOString().slice(0, 10),
+              price: closes[i],
+            }))
+            .filter(p => p.price != null);
+          setBenchData(pts);
+        })
+        .catch(() => setBenchData([]))
+        .finally(() => setBenchLoading(false));
+    }
   }, [benchmark]);
 
   if (loading && !snapshots.length) {

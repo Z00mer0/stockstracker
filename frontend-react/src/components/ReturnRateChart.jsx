@@ -208,6 +208,11 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
           </div>
         )}
       </div>
+      {benchLabel && !hasBench && (
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>
+          Brak danych dla {benchLabel} w wybranym okresie
+        </p>
+      )}
     </div>
   );
 }
