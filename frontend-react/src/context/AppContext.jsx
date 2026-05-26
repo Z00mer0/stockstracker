@@ -321,6 +321,16 @@ export function AppProvider({ children }) {
     }
   }
 
+  async function deleteSnapshot(date) {
+    const newSnapshots = { ...(rawData?.snapshots ?? {}) };
+    const newSnapshotsInv = { ...(rawData?.snapshotsInvested ?? {}) };
+    delete newSnapshots[date];
+    delete newSnapshotsInv[date];
+    const updated = { ...rawData, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv };
+    setRawData(updated);
+    await api.post('/api/data', updated);
+  }
+
   async function saveSnapshot(totalValue, investedValue) {
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
@@ -350,6 +360,7 @@ export function AppProvider({ children }) {
     saveHoldings,
     saveTransactions,
     saveSnapshot,
+    deleteSnapshot,
     addPosition,
     editPosition,
     removePosition,
