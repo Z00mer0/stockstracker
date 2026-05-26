@@ -42,7 +42,7 @@ const BENCHMARKS = [
 ];
 
 export default function History() {
-  const { snapshots, loading, invested, deleteSnapshot } = useApp();
+  const { snapshots, loading, invested } = useApp();
   const { isPrivate } = usePrivacy();
   const [period, setPeriod] = useState('MAX');
   const [benchmark, setBenchmark] = useState(null);
@@ -199,7 +199,6 @@ export default function History() {
                 <th className="right">Zainwestowano</th>
                 <th className="right">P&L</th>
                 <th className="right">Δ dnia</th>
-                <th />
               </tr>
             </thead>
             <tbody>
@@ -226,15 +225,6 @@ export default function History() {
                       </td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
                         {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta)} zł`}
-                      </td>
-                      <td style={{ padding: '0 8px' }}>
-                        <button
-                          onClick={() => { if (window.confirm(`Usunąć snapshot z ${fmtDate(s.date)}?`)) deleteSnapshot(s.date); }}
-                          title="Usuń snapshot"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 13, padding: '2px 4px', lineHeight: 1 }}
-                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--down)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; }}
-                        >✕</button>
                       </td>
                     </tr>
                   );
