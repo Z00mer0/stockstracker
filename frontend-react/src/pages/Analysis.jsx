@@ -126,7 +126,7 @@ function RiskSection({ snapshots }) {
     <Card title="Analiza ryzyka">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>Na podstawie historii snapshotów portfela</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
           {[
             { label: 'Zmienność (rok.)', value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: 'Odch. std. × √252' },
             { label: 'Max Drawdown', value: maxDD > 0 ? maxDD : null, fmt: v => `-${v.toFixed(1)}%`, color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: 'Największy spadek' },
@@ -565,7 +565,7 @@ export default function Analysis() {
       <RebalanceSection enriched={enriched} totalValue={totalValue} />
 
       {/* Statystyki */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
         {[
           { label: 'Liczba pozycji', value: portfolio.length, color: null },
           { label: 'Zyskowne', value: profitableCount, color: 'var(--up)' },
