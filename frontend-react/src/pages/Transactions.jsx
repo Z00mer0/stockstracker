@@ -208,7 +208,7 @@ export default function Transactions() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         {[
           { label: 'Kupna 30d',      value: stats.buy,  cur: 'PLN' },
           { label: 'Sprzedaże 30d',  value: stats.sell, cur: 'PLN' },
@@ -234,7 +234,7 @@ export default function Transactions() {
         }
       >
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 0 }}>
-          <div style={{ padding: '8px 16px 0' }}>
+          <div style={{ padding: '8px 16px' }}>
             <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} />
           </div>
         </div>
