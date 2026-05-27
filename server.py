@@ -87,7 +87,10 @@ def _fetch_bench_pl(index_name):
     five_years_ago = today.replace(year=today.year - 5)
     d1 = five_years_ago.strftime('%Y%m%d')
     d2 = today.strftime('%Y%m%d')
+    apikey = os.environ.get('STOOQ_APIKEY', '')
     url = f'https://stooq.com/q/d/l/?s={stooq_sym}&d1={d1}&d2={d2}&i=d'
+    if apikey:
+        url += f'&apikey={apikey}'
     try:
         req = urllib.request.Request(url, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
