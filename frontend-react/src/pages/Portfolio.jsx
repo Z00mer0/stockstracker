@@ -211,7 +211,7 @@ export default function Portfolio() {
       {/* Table */}
       <div className="card" style={{ overflow: 'visible' }}>
         {/* Toolbar */}
-        <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {[
             ['cost',   'Wg kosztu'],
             ['symbol', 'A–Z'],
@@ -222,24 +222,24 @@ export default function Portfolio() {
               key={key}
               onClick={() => setSortBy(key)}
               className={sortBy === key ? 'btn btn-primary' : 'btn'}
-              style={{ fontSize: 12, padding: '4px 12px' }}
+              style={{ fontSize: 12, padding: '4px 12px', flexShrink: 0 }}
             >
               {label}
             </button>
           ))}
-          <div className="flex-1" />
+          <div style={{ flex: '0 0 8px' }} />
           {metricsLoading && <Spinner size="sm" />}
           <button
             onClick={() => setShowImport(true)}
             className="btn"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
           >
             ⬆ Import CSV
           </button>
           <button
             onClick={() => setShowAdd(true)}
             className="btn btn-primary"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
           >
             + Dodaj spółkę
           </button>
@@ -250,7 +250,7 @@ export default function Portfolio() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)' }}>Symbol</th>
+                <th style={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 2, background: 'var(--panel)' }}>Symbol</th>
                 {cols.map(key => (
                   <th key={key} className="right">
                     {COL_LABEL[key] ?? key}
@@ -267,7 +267,7 @@ export default function Portfolio() {
                 return (
                   <tr key={pos.id ?? pos.symbol}>
                     <td
-                      style={{ cursor: 'pointer', position: 'sticky', left: 0, background: 'var(--panel)' }}
+                      style={{ cursor: 'pointer', position: 'sticky', left: 0, zIndex: 1, background: 'var(--panel)' }}
                       onClick={() => openChart(pos.symbol)}
                       title={`Otwórz wykres ${pos.symbol}`}
                     >

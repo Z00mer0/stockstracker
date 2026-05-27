@@ -48,7 +48,7 @@ export default function Layout() {
           isMobile={isMobile}
           onMenuToggle={() => setSidebarOpen(o => !o)}
         />
-        <main style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto' }}>
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto' }}>
           <Outlet />
         </main>
       </div>
