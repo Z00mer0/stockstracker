@@ -208,7 +208,7 @@ export default function Transactions() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
         {[
           { label: 'Kupna 30d',      value: stats.buy,  cur: 'PLN' },
           { label: 'Sprzedaże 30d',  value: stats.sell, cur: 'PLN' },
@@ -226,16 +226,18 @@ export default function Transactions() {
       <Card
         title={`Transakcje · ${sorted.length}`}
         actions={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} />
-            <button
-              onClick={() => setShowAdd(true)}
-              style={{ padding: '5px 12px', borderRadius: 6, background: 'var(--info)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              + Dodaj
-            </button>
-          </div>
+          <button
+            onClick={() => setShowAdd(true)}
+            style={{ padding: '5px 12px', borderRadius: 6, background: 'var(--info)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            + Dodaj
+          </button>
         }
       >
+        <div style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 0 }}>
+          <div style={{ padding: '8px 16px 0' }}>
+            <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} />
+          </div>
+        </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
