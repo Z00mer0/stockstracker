@@ -255,8 +255,8 @@ body.privacy-mode .privacy-blur { filter: blur(6px); user-select: none; }
   color: var(--text);
   font-size: 13.5px;
 }
-.data-table tbody td.right { text-align: right; }
-.data-table tbody td.mono  { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+.data-table tbody td.right { text-align: right; white-space: nowrap; }
+.data-table tbody td.mono  { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover  { background: var(--panel-hover); cursor: pointer; }
 
