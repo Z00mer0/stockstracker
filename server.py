@@ -69,60 +69,43 @@ _CAL_TTL   = 4 * 3600  # 4 hours
 _BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
 _BENCH_PL_TTL   = 6 * 3600   # 6 hours
 
-_STOOQ_SYMBOLS = {
-    'WIG20':  'wig20',
-    'MWIG40': 'mwig40',
-    'SWIG80': 'swig80',
+_BANKIER_SYMBOLS = {
+    'WIG20': 'WIG20',
 }
 
 def _fetch_bench_pl(index_name):
+    import datetime
     upper = index_name.upper()
-    if upper not in _STOOQ_SYMBOLS:
+    if upper not in _BANKIER_SYMBOLS:
         return None
     entry = _BENCH_PL_CACHE.get(upper)
     if entry and time.time() - entry['ts'] < _BENCH_PL_TTL:
         return entry['data']
-    stooq_sym = _STOOQ_SYMBOLS[upper]
-    today = __import__('datetime').date.today()
-    five_years_ago = today.replace(year=today.year - 5)
-    d1 = five_years_ago.strftime('%Y%m%d')
-    d2 = today.strftime('%Y%m%d')
-    apikey = os.environ.get('STOOQ_APIKEY', '')
-    url = f'https://stooq.com/q/d/l/?s={stooq_sym}&d1={d1}&d2={d2}&i=d'
-    if apikey:
-        url += f'&apikey={apikey}'
+    sym = _BANKIER_SYMBOLS[upper]
+    url = f'https://www.bankier.pl/new-charts/get-data?symbol={sym}&intraday=false&type=area&max_data_count=2000'
     try:
         req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Accept': 'text/csv,text/plain,*/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': f'https://www.bankier.pl/inwestowanie/profile/quote.html?symbol={sym}',
+            'Accept': 'application/json, */*',
         })
         with urllib.request.urlopen(req, timeout=15) as resp:
-            raw = resp.read().decode('utf-8', errors='replace')
-        lines = raw.strip().splitlines()
-        if len(lines) < 2:
-            return None
-        header = lines[0].lower().split(',')
-        try:
-            date_idx  = header.index('date')
-            close_idx = header.index('close')
-        except ValueError:
+            data = json.loads(resp.read().decode('utf-8', errors='replace'))
+        raw_points = data.get('main', [])
+        if not raw_points:
             return None
         points = []
-        for line in lines[1:]:
-            parts = line.split(',')
-            if len(parts) <= max(date_idx, close_idx):
-                continue
-            date_str = parts[date_idx].strip()
+        for ts_ms, price in raw_points:
             try:
-                price = float(parts[close_idx].strip())
-            except ValueError:
+                date_str = datetime.datetime.utcfromtimestamp(ts_ms / 1000).strftime('%Y-%m-%d')
+                if price and float(price) > 0:
+                    points.append({'date': date_str, 'price': float(price)})
+            except Exception:
                 continue
-            if date_str and price > 0:
-                points.append({'date': date_str, 'price': price})
         if not points:
             return None
         _BENCH_PL_CACHE[upper] = {'data': points, 'ts': time.time()}
-        print(f'[bench-pl] {upper}: fetched {len(points)} points')
+        print(f'[bench-pl] {upper}: fetched {len(points)} points from bankier.pl')
         return points
     except Exception as e:
         print(f'[bench-pl] {upper} ERROR: {e}')
