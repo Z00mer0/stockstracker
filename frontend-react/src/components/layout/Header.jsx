@@ -203,7 +203,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
           onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
           onFocus={() => setSearchOpen(true)}
         />
-        {!query && (
+        {!query && window.innerWidth > 768 && (
           <kbd style={{
             position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
             fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
