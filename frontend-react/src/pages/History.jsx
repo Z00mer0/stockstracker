@@ -37,8 +37,6 @@ const BENCHMARKS = [
   { key: '^IXIC',     label: 'NASDAQ' },
   { key: 'URTH',      label: 'MSCI World' },
   { key: 'PL:WIG20',  label: 'WIG20' },
-  { key: 'PL:MWIG40', label: 'mWIG40' },
-  { key: 'PL:SWIG80', label: 'sWIG80' },
 ];
 
 export default function History() {
