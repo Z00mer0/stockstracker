@@ -170,7 +170,7 @@ export default function History() {
 
       {/* Wykres stopy zwrotu z benchmarkiem */}
       <Card title="Stopa zwrotu">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Benchmark:</span>
           <SegmentedControl
             options={BENCHMARKS.map(b => ({ value: b.key ?? 'none', label: b.label + (benchLoading && benchmark === b.key ? ' …' : '') }))}
