@@ -44,6 +44,13 @@ export function AppProvider({ children }) {
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
   const writeInProgressRef          = useRef(false);
 
+  const ACTIVE_PORTFOLIO_KEY = 'myfund_active_portfolio';
+
+  const [portfolios, setPortfolios] = useState([]);
+  const [activePortfolioId, setActivePortfolioId] = useState(
+    () => localStorage.getItem(ACTIVE_PORTFOLIO_KEY) || 'all'
+  );
+
   useEffect(() => {
     loadFxRates().then(setFxRates);
   }, []);
@@ -69,8 +76,14 @@ export function AppProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/api/data');
-      setRawData(res.data);
+      const [portfoliosRes, dataRes] = await Promise.all([
+        api.get('/api/portfolios'),
+        api.get(activePortfolioId === 'all'
+          ? '/api/portfolios/all/data'
+          : `/api/portfolios/${activePortfolioId}/data`),
+      ]);
+      setPortfolios(portfoliosRes.data);
+      setRawData(dataRes.data);
     } catch (err) {
       if (err.response?.status === 401) {
         logout();
@@ -80,11 +93,41 @@ export function AppProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, activePortfolioId]);
 
   useEffect(() => {
     if (token) fetchData();
-  }, [token]);
+  }, [token, activePortfolioId, fetchData]);
+
+  function switchPortfolio(id) {
+    localStorage.setItem(ACTIVE_PORTFOLIO_KEY, id);
+    setActivePortfolioId(id);
+  }
+
+  async function createPortfolio(name, currency) {
+    const res = await api.post('/api/portfolios', { name, currency });
+    const newP = res.data;
+    setPortfolios(prev => [...prev, newP]);
+    switchPortfolio(newP.id);
+  }
+
+  async function updatePortfolio(id, name, currency) {
+    const res = await api.post(`/api/portfolios/${id}`, { name, currency, _method: 'PUT' });
+    setPortfolios(prev => prev.map(p => p.id === id ? res.data : p));
+  }
+
+  async function deletePortfolio(id) {
+    await api.post(`/api/portfolios/${id}`, { _method: 'DELETE' });
+    setPortfolios(prev => {
+      const next = prev.filter(p => p.id !== id);
+      if (activePortfolioId === id) switchPortfolio(next[0]?.id || 'all');
+      return next;
+    });
+  }
+
+  const dataUrl = activePortfolioId === 'all'
+    ? '/api/portfolios/all/data'
+    : `/api/portfolios/${activePortfolioId}/data`;
 
   const snapshotsInv = rawData?.snapshotsInvested ?? {};
   const snapshots = rawData?.snapshots
@@ -101,19 +144,19 @@ export function AppProvider({ children }) {
 
   async function saveCash(newCash) {
     setRawData(prev => ({ ...prev, cash: newCash }));
-    await api.post('/api/data', { ...rawData, cash: newCash });
+    await api.post(dataUrl,{ ...rawData, cash: newCash });
   }
 
   async function saveHoldings(newHoldings) {
     const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings } };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function saveTransactions(newTransactions) {
     const updated = { ...rawData, transactions: newTransactions };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function editPosition({ symbol, qty, avgPrice }) {
@@ -126,7 +169,7 @@ export function AppProvider({ children }) {
       },
     };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function removePosition(symbol) {
@@ -136,7 +179,7 @@ export function AppProvider({ children }) {
       portfolio: { ...rawData.portfolio, holdings: holdings.filter(h => h.symbol !== symbol) },
     };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function sellPosition({ symbol, qty, price, currency, date, note }) {
@@ -157,7 +200,7 @@ export function AppProvider({ children }) {
       }],
     };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding }) {
@@ -213,7 +256,7 @@ export function AppProvider({ children }) {
       cash: newCash,
     };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function importBrokerTransactions(newTxs) {
@@ -282,7 +325,7 @@ export function AppProvider({ children }) {
 
     writeInProgressRef.current = true;
     try {
-      await api.post('/api/data', updated); // save first — state only updates after confirmed save
+      await api.post(dataUrl,updated); // save first — state only updates after confirmed save
       setRawData(updated);
     } finally {
       writeInProgressRef.current = false;
@@ -314,7 +357,7 @@ export function AppProvider({ children }) {
 
     writeInProgressRef.current = true;
     try {
-      await api.post('/api/data', updated); // save first
+      await api.post(dataUrl,updated); // save first
       setRawData(updated);
     } finally {
       writeInProgressRef.current = false;
@@ -328,7 +371,7 @@ export function AppProvider({ children }) {
     delete newSnapshotsInv[date];
     const updated = { ...rawData, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function setSnapshot(date, totalValue, investedValue) {
@@ -338,7 +381,7 @@ export function AppProvider({ children }) {
       snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [date]: investedValue },
     };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   async function saveSnapshot(totalValue, investedValue) {
@@ -349,7 +392,7 @@ export function AppProvider({ children }) {
       snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [today]: investedValue },
     };
     setRawData(updated);
-    await api.post('/api/data', updated);
+    await api.post(dataUrl,updated);
   }
 
   const value = {
@@ -378,6 +421,14 @@ export function AppProvider({ children }) {
     sellPosition,
     importBrokerTransactions,
     clearBrokerImport,
+    portfolios,
+    activePortfolioId,
+    activePortfolio: portfolios.find(p => p.id === activePortfolioId) || null,
+    displayCurrency: portfolios.find(p => p.id === activePortfolioId)?.currency || 'PLN',
+    switchPortfolio,
+    createPortfolio,
+    updatePortfolio,
+    deletePortfolio,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
