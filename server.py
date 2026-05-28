@@ -184,6 +184,53 @@ if DATABASE_URL:
                     username TEXT PRIMARY KEY,
                     data     TEXT NOT NULL DEFAULT '{}'
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_list (
+                    id         TEXT PRIMARY KEY,
+                    user_id    TEXT NOT NULL,
+                    name       TEXT NOT NULL,
+                    currency   TEXT NOT NULL DEFAULT 'PLN',
+                    created_at TIMESTAMP DEFAULT NOW()
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_holdings (
+                    id           TEXT PRIMARY KEY,
+                    portfolio_id TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
+                    symbol       TEXT NOT NULL,
+                    qty          NUMERIC NOT NULL,
+                    avg_price    NUMERIC NOT NULL,
+                    currency     TEXT NOT NULL DEFAULT 'PLN',
+                    UNIQUE(portfolio_id, symbol)
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_transactions (
+                    id                 TEXT PRIMARY KEY,
+                    portfolio_id       TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
+                    type               TEXT NOT NULL,
+                    symbol             TEXT,
+                    qty                NUMERIC,
+                    price              NUMERIC,
+                    currency           TEXT,
+                    date               DATE,
+                    note               TEXT,
+                    broker_position_id TEXT,
+                    extra_json         TEXT DEFAULT '{}'
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+                    portfolio_id TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
+                    date         DATE NOT NULL,
+                    total        NUMERIC,
+                    invested     NUMERIC,
+                    PRIMARY KEY (portfolio_id, date)
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_cash (
+                    portfolio_id TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
+                    currency     TEXT NOT NULL,
+                    amount       NUMERIC NOT NULL DEFAULT 0,
+                    PRIMARY KEY (portfolio_id, currency)
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -214,6 +261,97 @@ if DATABASE_URL:
                 ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data
             """, (username, raw.decode('utf-8')))
 
+    def list_portfolios(username):
+        with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, name, currency FROM portfolio_list WHERE user_id=%s ORDER BY created_at", (username,))
+            return [dict(r) for r in cur.fetchall()]
+
+    def create_portfolio(username, portfolio_id, name, currency):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO portfolio_list (id, user_id, name, currency) VALUES (%s, %s, %s, %s)",
+                (portfolio_id, username, name, currency)
+            )
+
+    def update_portfolio(portfolio_id, username, name, currency):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute(
+                "UPDATE portfolio_list SET name=%s, currency=%s WHERE id=%s AND user_id=%s",
+                (name, currency, portfolio_id, username)
+            )
+
+    def delete_portfolio(portfolio_id, username):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("DELETE FROM portfolio_list WHERE id=%s AND user_id=%s", (portfolio_id, username))
+
+    def load_portfolio_data(portfolio_id):
+        with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, symbol, qty, avg_price, currency FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
+            holdings = [{'id': r['id'], 'symbol': r['symbol'], 'qty': float(r['qty']),
+                         'avgPrice': float(r['avg_price']), 'currency': r['currency'], 'name': ''} for r in cur.fetchall()]
+            cur.execute("""SELECT id, type, symbol, qty, price, currency, date::text, note, broker_position_id, extra_json
+                           FROM portfolio_transactions WHERE portfolio_id=%s ORDER BY date""", (portfolio_id,))
+            transactions = []
+            for r in cur.fetchall():
+                tx = {'id': r['id'], 'type': r['type'], 'symbol': r['symbol'],
+                      'qty': float(r['qty']) if r['qty'] is not None else None,
+                      'price': float(r['price']) if r['price'] is not None else None,
+                      'currency': r['currency'], 'date': r['date'], 'note': r['note'],
+                      'brokerPositionId': r['broker_position_id']}
+                try:
+                    extra = json.loads(r['extra_json'] or '{}')
+                    tx.update(extra)
+                except Exception:
+                    pass
+                transactions.append(tx)
+            cur.execute("SELECT date::text, total, invested FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
+            snaps_rows = cur.fetchall()
+            snapshots = {r['date']: float(r['total']) for r in snaps_rows if r['total'] is not None}
+            snapshots_inv = {r['date']: float(r['invested']) for r in snaps_rows if r['invested'] is not None}
+            cur.execute("SELECT currency, amount FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
+            cash = {r['currency']: float(r['amount']) for r in cur.fetchall()}
+        return {'portfolio': {'holdings': holdings}, 'transactions': transactions,
+                'snapshots': snapshots, 'snapshotsInvested': snapshots_inv, 'cash': cash}
+
+    def save_portfolio_data(portfolio_id, data):
+        holdings = data.get('portfolio', {}).get('holdings', [])
+        transactions = data.get('transactions', [])
+        snapshots = data.get('snapshots', {})
+        snapshots_inv = data.get('snapshotsInvested', {})
+        cash = data.get('cash', {})
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("DELETE FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
+            for h in holdings:
+                hid = h.get('id') or secrets.token_hex(8)
+                cur.execute("""INSERT INTO portfolio_holdings (id, portfolio_id, symbol, qty, avg_price, currency)
+                               VALUES (%s, %s, %s, %s, %s, %s)
+                               ON CONFLICT (portfolio_id, symbol) DO UPDATE
+                               SET qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price, currency=EXCLUDED.currency""",
+                            (hid, portfolio_id, h['symbol'], h.get('qty', 0), h.get('avgPrice', 0), h.get('currency', 'PLN')))
+            cur.execute("DELETE FROM portfolio_transactions WHERE portfolio_id=%s", (portfolio_id,))
+            for tx in transactions:
+                extra = {k: v for k, v in tx.items()
+                         if k not in ('id','type','symbol','qty','price','currency','date','note','brokerPositionId')}
+                cur.execute("""INSERT INTO portfolio_transactions
+                               (id, portfolio_id, type, symbol, qty, price, currency, date, note, broker_position_id, extra_json)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                               ON CONFLICT (id) DO UPDATE SET
+                               type=EXCLUDED.type, symbol=EXCLUDED.symbol, qty=EXCLUDED.qty, price=EXCLUDED.price,
+                               currency=EXCLUDED.currency, date=EXCLUDED.date, note=EXCLUDED.note,
+                               broker_position_id=EXCLUDED.broker_position_id, extra_json=EXCLUDED.extra_json""",
+                            (tx['id'], portfolio_id, tx.get('type'), tx.get('symbol'), tx.get('qty'),
+                             tx.get('price'), tx.get('currency'), tx.get('date'), tx.get('note'),
+                             tx.get('brokerPositionId'), json.dumps(extra)))
+            cur.execute("DELETE FROM portfolio_snapshots WHERE portfolio_id=%s", (portfolio_id,))
+            for date, total in snapshots.items():
+                inv = snapshots_inv.get(date)
+                cur.execute("INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested) VALUES (%s,%s,%s,%s)",
+                            (portfolio_id, date, total, inv))
+            cur.execute("DELETE FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
+            for cur_code, amount in cash.items():
+                cur.execute("INSERT INTO portfolio_cash (portfolio_id, currency, amount) VALUES (%s,%s,%s)",
+                            (portfolio_id, cur_code, amount))
+
     _init_db()
 
 else:
@@ -238,6 +376,52 @@ else:
 
     def save_data(username, raw):
         (BASE / f'portfolio_{username}.json').write_bytes(raw)
+
+    def _read_pfile(username):
+        f = BASE / f'multiportfolio_{username}.json'
+        if f.exists():
+            return json.loads(f.read_text(encoding='utf-8'))
+        return {'portfolio_list': [], 'portfolio_data': {}}
+
+    def _write_pfile(username, pdata):
+        f = BASE / f'multiportfolio_{username}.json'
+        f.write_text(json.dumps(pdata, ensure_ascii=False), encoding='utf-8')
+
+    def list_portfolios(username):
+        return _read_pfile(username)['portfolio_list']
+
+    def create_portfolio(username, portfolio_id, name, currency):
+        pdata = _read_pfile(username)
+        pdata['portfolio_list'].append({'id': portfolio_id, 'name': name, 'currency': currency})
+        pdata['portfolio_data'][portfolio_id] = {'portfolio': {'holdings': []}, 'transactions': [], 'snapshots': {}, 'snapshotsInvested': {}, 'cash': {}}
+        _write_pfile(username, pdata)
+
+    def update_portfolio(portfolio_id, username, name, currency):
+        pdata = _read_pfile(username)
+        for p in pdata['portfolio_list']:
+            if p['id'] == portfolio_id:
+                p['name'] = name
+                p['currency'] = currency
+        _write_pfile(username, pdata)
+
+    def delete_portfolio(portfolio_id, username):
+        pdata = _read_pfile(username)
+        pdata['portfolio_list'] = [p for p in pdata['portfolio_list'] if p['id'] != portfolio_id]
+        pdata['portfolio_data'].pop(portfolio_id, None)
+        _write_pfile(username, pdata)
+
+    def load_portfolio_data(portfolio_id):
+        # In local mode, portfolio_id is the short UUID (no username prefix)
+        # We need username — it's stored as part of the portfolio list lookup
+        # Since we can't look it up here easily, local mode uses a flat file per portfolio_id
+        f = BASE / f'pdata_{portfolio_id}.json'
+        if f.exists():
+            return json.loads(f.read_text(encoding='utf-8'))
+        return {'portfolio': {'holdings': []}, 'transactions': [], 'snapshots': {}, 'snapshotsInvested': {}, 'cash': {}}
+
+    def save_portfolio_data(portfolio_id, data):
+        f = BASE / f'pdata_{portfolio_id}.json'
+        f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
 
 
 def hash_password(password: str) -> str:
