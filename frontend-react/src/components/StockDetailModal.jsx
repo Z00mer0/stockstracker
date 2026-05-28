@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import FinancialsTab from './FinancialsTab';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 const PERIODS = [
@@ -88,6 +89,13 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
   const [funding, setFunding] = useState('topup');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('wykres');
+  const [financialsMounted, setFinancialsMounted] = useState(false);
+
+  function switchTab(tab) {
+    setActiveTab(tab);
+    if (tab === 'finanse') setFinancialsMounted(true);
+  }
 
   useEffect(() => {
     setChartLoading(true);
@@ -185,7 +193,30 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Tab bar */}
+        <div style={{ display: 'flex', gap: 0, margin: '12px 20px 0', borderBottom: '1px solid var(--border)' }}>
+          {[['wykres', 'Wykres'], ['pozycja', 'Pozycja'], ['finanse', 'Finanse']].map(([k, l]) => (
+            <button
+              key={k}
+              onClick={() => switchTab(k)}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === k ? '2px solid var(--accent)' : '2px solid transparent',
+                padding: '8px 14px',
+                fontSize: 12,
+                fontWeight: activeTab === k ? 600 : 400,
+                color: activeTab === k ? 'var(--text)' : 'var(--text-dim)',
+                cursor: 'pointer',
+                marginBottom: -1,
+                transition: 'color 0.15s',
+              }}
+            >{l}</button>
+          ))}
+        </div>
+
+        {/* Wykres tab */}
+        {activeTab === 'wykres' && (
         <div style={{ padding: '8px 20px 0' }}>
           {chartLoading ? (
             <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -216,10 +247,10 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
             </div>
           )}
         </div>
+        )}
 
-        <div style={{ height: 1, background: 'var(--border)', margin: '16px 0 0' }} />
-
-        {/* Buy form */}
+        {/* Pozycja tab */}
+        {activeTab === 'pozycja' && (
         <div style={{ padding: '16px 20px 20px' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Dodaj do portfela</div>
 
@@ -298,6 +329,14 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
             </button>
           </div>
         </div>
+        )}
+
+        {/* Finanse tab — lazy mount */}
+        {financialsMounted && (
+          <div style={{ display: activeTab === 'finanse' ? 'block' : 'none' }}>
+            <FinancialsTab symbol={item.symbol} />
+          </div>
+        )}
       </div>
     </div>
   );
