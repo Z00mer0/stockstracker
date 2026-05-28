@@ -135,7 +135,7 @@ function Accordion({ title, unit, defaultOpen, children }) {
 function ValuationCard({ label, value, sub }) {
   return (
     <div style={{
-      background: 'var(--panel)',
+      background: 'var(--panel-2)',
       borderRadius: 8,
       padding: '10px 12px',
     }}>
@@ -148,7 +148,7 @@ function ValuationCard({ label, value, sub }) {
   );
 }
 
-export default function FinancialsTab({ symbol, currentPrice }) {
+export default function FinancialsTab({ symbol }) {
   const [period, setPeriod]         = useState('quarterly');
   const [data, setData]             = useState(null);
   const [loading, setLoading]       = useState(false);
@@ -210,6 +210,7 @@ export default function FinancialsTab({ symbol, currentPrice }) {
   }
 
   function handlePaste(e) {
+    if (!uploadOpen) return;
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
@@ -317,7 +318,7 @@ export default function FinancialsTab({ symbol, currentPrice }) {
             type="file"
             accept="image/*"
             style={{ display: 'none' }}
-            onChange={e => handleUpload(e.target.files?.[0])}
+            onChange={e => { handleUpload(e.target.files?.[0]); e.target.value = ''; }}
           />
         </div>
       )}
@@ -340,6 +341,12 @@ export default function FinancialsTab({ symbol, currentPrice }) {
       {error === 'fetch_error' && (
         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
           Błąd pobierania danych. Spróbuj ponownie później.
+        </div>
+      )}
+
+      {data && periods.length === 0 && (
+        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
+          Brak danych za wybrany okres
         </div>
       )}
 
