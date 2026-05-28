@@ -242,20 +242,25 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       ? Math.max(0, Math.round((Date.now() - new Date(firstDate).getTime()) / 86400000))
       : null;
 
-    // IRR via XIRR
+    // IRR via XIRR — only meaningful when holding period >= 30 days
     let irr = null;
-    if (txs.length > 0 && currentPrice != null) {
-      const flows = txs.map(t => ({
-        date:   t.date,
-        amount: t.type === 'BUY'
-          ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
-          : +(t.qty * t.price * (fxRates[t.currency] ?? 1)),
-      }));
-      flows.push({
-        date:   new Date().toISOString().slice(0, 10),
-        amount: +(pos.qty * currentPrice * fx),
-      });
-      irr = calcXIRR(flows);
+    if (txs.length > 0 && currentPrice != null && periodDays != null && periodDays >= 30) {
+      const flows = txs
+        .filter(t => t.qty != null && t.price != null && t.qty > 0 && t.price > 0)
+        .map(t => ({
+          date:   t.date,
+          amount: t.type === 'BUY'
+            ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
+            : +(t.qty * t.price * (fxRates[t.currency] ?? 1)),
+        }));
+      if (flows.length > 0) {
+        flows.push({
+          date:   new Date().toISOString().slice(0, 10),
+          amount: +(pos.qty * currentPrice * fx),
+        });
+        const raw = calcXIRR(flows);
+        irr = raw != null && Math.abs(raw) <= 10000 ? raw : null;
+      }
     }
 
     return {
