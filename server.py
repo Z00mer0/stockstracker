@@ -146,6 +146,155 @@ def _fetch_calendar(week):
         stale = _CAL_CACHE.get(week, {}).get('data')
         return stale if stale is not None else []
 
+def _raw(obj, key):
+    """Extract raw numeric value from a Yahoo Finance field dict like {'raw': 1.18e9, 'fmt': '1.18B'}."""
+    v = obj.get(key) if isinstance(obj, dict) else None
+    if isinstance(v, dict):
+        return v.get('raw')
+    return None
+
+
+def _quarter_label(ts):
+    """Convert Unix timestamp to 'Q1 2025' label."""
+    dt = datetime.datetime.utcfromtimestamp(ts)
+    q  = (dt.month - 1) // 3 + 1
+    return f'Q{q} {dt.year}'
+
+
+def _normalize_financials(result, period):
+    """Normalise raw Yahoo Finance quoteSummary result into the app's financials schema."""
+    suffix      = 'Quarterly' if period == 'quarterly' else ''
+    income_list = result.get(f'incomeStatementHistory{suffix}', {}).get('incomeStatementHistory', [])
+    bs_list     = result.get(f'balanceSheetHistory{suffix}',    {}).get('balanceSheetStatements', [])
+    cf_list     = result.get(f'cashflowStatementHistory{suffix}', {}).get('cashflowStatements', [])
+    key_stats   = result.get('defaultKeyStatistics', {})
+    summary     = result.get('summaryDetail', {})
+    currency    = summary.get('currency', 'USD') if isinstance(summary.get('currency'), str) else 'USD'
+
+    # Index balance sheet and cash flow by period end timestamp for O(1) join
+    bs_by_ts = {_raw(r, 'endDate'): r for r in bs_list if _raw(r, 'endDate')}
+    cf_by_ts = {_raw(r, 'endDate'): r for r in cf_list if _raw(r, 'endDate')}
+
+    periods = []
+    for i, row in enumerate(income_list):
+        ts = _raw(row, 'endDate')
+        if not ts:
+            continue
+
+        rev = _raw(row, 'totalRevenue')
+        # YoY: Yahoo returns newest-first; index i+4 is the same quarter one year ago
+        rev_yoy = None
+        if i + 4 < len(income_list) and rev is not None:
+            prev_rev = _raw(income_list[i + 4], 'totalRevenue')
+            if prev_rev:
+                rev_yoy = (rev - prev_rev) / abs(prev_rev)
+
+        gp           = _raw(row, 'grossProfit')
+        gross_margin = (gp / rev) if gp is not None and rev else None
+        op_income    = _raw(row, 'operatingIncome')
+        ebitda       = _raw(row, 'ebitda')
+        ebitda_margin = (ebitda / rev) if ebitda is not None and rev else None
+        net_income   = _raw(row, 'netIncome')
+        op_cost      = _raw(row, 'totalOperatingExpenses')
+
+        bs         = bs_by_ts.get(ts, {})
+        total_assets = _raw(bs, 'totalAssets')
+        total_liab   = _raw(bs, 'totalLiab')
+        equity       = _raw(bs, 'totalStockholderEquity')
+        cash         = _raw(bs, 'cash') or 0
+        long_debt    = _raw(bs, 'longTermDebt') or 0
+        short_debt   = _raw(bs, 'shortLongTermDebt') or 0
+        total_debt   = long_debt + short_debt
+        net_debt     = total_debt - cash
+
+        cf    = cf_by_ts.get(ts, {})
+        cfo   = _raw(cf, 'totalCashFromOperatingActivities')
+        capex = _raw(cf, 'capitalExpenditures')
+        fcf   = (cfo + capex) if cfo is not None and capex is not None else None
+        repurchase = _raw(cf, 'repurchaseOfStock')
+
+        periods.append({
+            'label':            _quarter_label(ts),
+            'date':             datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d'),
+            'revenue':          rev,
+            'revenueGrowthYoY': rev_yoy,
+            'grossProfit':      gp,
+            'grossMargin':      gross_margin,
+            'operatingCost':    op_cost,
+            'operatingIncome':  op_income,
+            'ebitda':           ebitda,
+            'ebitdaMargin':     ebitda_margin,
+            'netIncome':        net_income,
+            'netDebt':          net_debt,
+            'totalAssets':      total_assets,
+            'totalLiabilities': total_liab,
+            'equity':           equity,
+            'cashAndEquivalents': cash or None,
+            'totalDebt':        total_debt,
+            'operatingCashFlow': cfo,
+            'capex':            capex,
+            'fcf':              fcf,
+            'shareRepurchases': repurchase,
+        })
+
+    # TTM FCF = sum of latest 4 quarterly FCFs (for P/FCF valuation)
+    ttm_fcf = None
+    if period == 'quarterly':
+        q_fcfs = [p['fcf'] for p in periods[:4] if p['fcf'] is not None]
+        if len(q_fcfs) >= 3:
+            ttm_fcf = sum(q_fcfs)
+
+    market_cap = _raw(summary, 'marketCap')
+    ev         = _raw(key_stats, 'enterpriseValue')
+    pfcf       = (market_cap / ttm_fcf) if market_cap and ttm_fcf and ttm_fcf > 0 else None
+
+    valuation = {
+        'peRatio':           _raw(key_stats, 'trailingPE'),
+        'forwardPE':         _raw(key_stats, 'forwardPE'),
+        'evEbitda':          _raw(key_stats, 'enterpriseToEbitda'),
+        'ps':                _raw(summary,   'priceToSalesTrailing12Months'),
+        'marketCap':         market_cap,
+        'sharesOutstanding': _raw(key_stats, 'sharesOutstanding'),
+        'ev':                ev,
+        'pfcf':              pfcf,
+        'netDebtLatest':     periods[0]['netDebt'] if periods else None,
+    }
+
+    return {
+        'periods':   periods,
+        'valuation': valuation,
+        'currency':  currency,
+        'period':    period,
+    }
+
+
+def _fetch_yahoo_financials(symbol, period):
+    """Fetch and normalise financial data from Yahoo Finance quoteSummary."""
+    modules = (
+        f'incomeStatementHistory{"Quarterly" if period == "quarterly" else ""},'
+        f'incomeStatementHistory{"" if period == "quarterly" else ""},'
+        f'balanceSheetHistory{"Quarterly" if period == "quarterly" else ""},'
+        f'balanceSheetHistory{"" if period == "quarterly" else ""},'
+        f'cashflowStatementHistory{"Quarterly" if period == "quarterly" else ""},'
+        f'cashflowStatementHistory{"" if period == "quarterly" else ""},'
+        'defaultKeyStatistics,summaryDetail'
+    )
+    url = (
+        f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+        f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
+    )
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+    })
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        data = json.loads(resp.read())
+    result_list = data.get('quoteSummary', {}).get('result') or []
+    if not result_list:
+        return None
+    return _normalize_financials(result_list[0], period)
+
+
 # Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
 _env = BASE / '.env'
 if _env.exists():
