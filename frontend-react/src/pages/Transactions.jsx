@@ -178,7 +178,7 @@ function AddTransactionModal({ onSave, onClose }) {
 }
 
 export default function Transactions() {
-  const { transactions = [], loading, saveTransactions } = useApp();
+  const { transactions = [], loading, saveTransactions, activePortfolioId } = useApp();
   const { isPrivate } = usePrivacy();
   const [filter, setFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
@@ -269,6 +269,11 @@ export default function Transactions() {
                         <span className="mono" style={{ fontWeight: 600, fontSize: 13 }}>{tx.symbol ?? '—'}</span>
                         {tx.name && tx.name !== tx.symbol && (
                           <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 400 }}>{tx.name}</span>
+                        )}
+                        {activePortfolioId === 'all' && tx._portfolioName && (
+                          <span style={{ fontSize: 10, color: 'var(--text-faint)', padding: '1px 5px', background: 'var(--panel-2)', borderRadius: 4, marginLeft: 4 }}>
+                            {tx._portfolioName}
+                          </span>
                         )}
                       </div>
                     </td>

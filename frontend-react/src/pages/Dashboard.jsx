@@ -295,7 +295,8 @@ function CashSection({ cash, fxRates, saveCash }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested, saveSnapshot, displayName } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested, saveSnapshot, displayName, displayCurrency } = useApp();
+  const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const [cols] = useState(loadColumnConfig);
@@ -463,32 +464,32 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
         <KpiCard
           label="Wartość portfela"
-          value={`${fmt(kpi.totalValue)} zł`}
+          value={`${fmt(kpi.totalValue)} ${currLabel}`}
           isPrivate={isPrivate}
         />
         <KpiCard
           label="Unrealized P&L"
-          value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmt(kpi.unrealPLN)} zł`}
+          value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmt(kpi.unrealPLN)} ${currLabel}`}
           sub={`${kpi.unrealPct >= 0 ? '+' : ''}${fmt(kpi.unrealPct)}%${!kpi.pricesLoaded ? ' (ceny ładuję…)' : ''}`}
           trend={kpi.unrealPLN}
           isPrivate={isPrivate}
         />
         <KpiCard
           label="Realized P&L"
-          value={`${kpi.realizedPLN >= 0 ? '+' : ''}${fmt(kpi.realizedPLN)} zł`}
+          value={`${kpi.realizedPLN >= 0 ? '+' : ''}${fmt(kpi.realizedPLN)} ${currLabel}`}
           sub={kpi.totalROI != null ? `Total ROI: ${kpi.totalROI >= 0 ? '+' : ''}${fmt(kpi.totalROI, 1)}%` : undefined}
           trend={kpi.realizedPLN}
           isPrivate={isPrivate}
         />
         <KpiCard
           label="Roczna Dywidenda"
-          value={`${fmt(kpi.annualDivPLN)} zł`}
+          value={`${fmt(kpi.annualDivPLN)} ${currLabel}`}
           sub="ostatnie 12 miesięcy"
           isPrivate={isPrivate}
         />
         <KpiCard
           label="Zmiana dzienna"
-          value={`${dailyChange.pln >= 0 ? '+' : ''}${fmt(dailyChange.pln)} zł`}
+          value={`${dailyChange.pln >= 0 ? '+' : ''}${fmt(dailyChange.pln)} ${currLabel}`}
           sub={dailyChange.pct != null ? `${dailyChange.pct >= 0 ? '+' : ''}${fmt(dailyChange.pct, 2)}%` : undefined}
           trend={dailyChange.pln}
           isPrivate={isPrivate}
