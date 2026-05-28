@@ -98,6 +98,11 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
   }
 
   useEffect(() => {
+    setActiveTab('wykres');
+    setFinancialsMounted(false);
+  }, [item.symbol]);
+
+  useEffect(() => {
     setChartLoading(true);
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d&range=1y`;
     fetch(`/api/proxy?url=${encodeURIComponent(url)}`, {
