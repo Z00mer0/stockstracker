@@ -102,6 +102,24 @@ function parseXtbExcel(buffer) {
   return results;
 }
 
+function mergeBySymbol(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (!map.has(r.symbol)) {
+      map.set(r.symbol, { ...r });
+    } else {
+      const e = map.get(r.symbol);
+      const totalQty = e.qty + r.qty;
+      const avgPrice = (e.qty * e.avgPrice + r.qty * r.avgPrice) / totalQty;
+      const ts1 = new Date(e.date).getTime();
+      const ts2 = new Date(r.date).getTime();
+      const avgDate = new Date((e.qty * ts1 + r.qty * ts2) / totalQty).toISOString().slice(0, 10);
+      map.set(r.symbol, { ...e, qty: totalQty, avgPrice, date: avgDate });
+    }
+  }
+  return Array.from(map.values());
+}
+
 const overlay = {
   position: 'fixed', inset: 0,
   background: 'rgba(0,0,0,0.72)',
@@ -143,7 +161,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   function handleDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
 
   // Active preview: file takes priority over textarea
-  const preview = filePreview ?? (text.trim() ? parseCsv(text) : []);
+  const preview = mergeBySymbol(filePreview ?? (text.trim() ? parseCsv(text) : []));
 
   async function handleImport() {
     if (!preview.length) { setError('Brak poprawnych danych do importu.'); return; }
