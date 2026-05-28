@@ -38,8 +38,30 @@ function NavItem({ to, icon, label, onClick }) {
   );
 }
 
-export default function Sidebar({ isMobile, isOpen, onClose }) {
-  const { displayName, logout } = useApp();
+function PortfolioItem({ id, name, currency, isActive, onClick }) {
+  return (
+    <button
+      onClick={() => onClick(id)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        width: '100%', padding: '7px 10px', borderRadius: 7,
+        background: isActive ? 'var(--panel)' : 'transparent',
+        boxShadow: isActive ? 'inset 3px 0 0 var(--accent)' : 'none',
+        border: 'none', cursor: 'pointer', textAlign: 'left',
+        color: isActive ? 'var(--text)' : 'var(--text-dim)',
+        fontSize: 13, fontWeight: 500,
+        transition: 'background 0.1s, color 0.1s',
+      }}
+    >
+      <span style={{ opacity: 0.6, fontSize: 10 }}>◆</span>
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+      {currency && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{currency}</span>}
+    </button>
+  );
+}
+
+export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
+  const { displayName, logout, portfolios, activePortfolioId, switchPortfolio } = useApp();
 
   const sidebarContent = (
     <aside style={{
@@ -77,6 +99,33 @@ export default function Sidebar({ isMobile, isOpen, onClose }) {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '4px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {/* Portfolio switcher */}
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Portfele</span>
+          <button
+            onClick={onNewPortfolio}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
+            title="Nowy portfel"
+          >+</button>
+        </div>
+        <PortfolioItem
+          id="all"
+          name="Wszystkie"
+          currency=""
+          isActive={activePortfolioId === 'all'}
+          onClick={id => { switchPortfolio(id); if (isMobile) onClose?.(); }}
+        />
+        {portfolios.map(p => (
+          <PortfolioItem
+            key={p.id}
+            id={p.id}
+            name={p.name}
+            currency={p.currency}
+            isActive={activePortfolioId === p.id}
+            onClick={id => { switchPortfolio(id); if (isMobile) onClose?.(); }}
+          />
+        ))}
+        <div style={{ height: 8 }} />
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
           Główne
         </div>

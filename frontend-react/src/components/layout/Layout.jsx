@@ -11,6 +11,7 @@ export default function Layout() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'dark');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BP);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showNewPortfolio, setShowNewPortfolio] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -40,6 +41,7 @@ export default function Layout() {
         isMobile={isMobile}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        onNewPortfolio={() => setShowNewPortfolio(true)}
       />
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header
@@ -52,6 +54,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      {/* TODO: NewPortfolioModal goes here (Task 7) */}
     </div>
   );
 }
