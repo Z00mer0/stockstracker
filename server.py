@@ -151,6 +151,8 @@ def _raw(obj, key):
     v = obj.get(key) if isinstance(obj, dict) else None
     if isinstance(v, dict):
         return v.get('raw')
+    if isinstance(v, (int, float)):
+        return v
     return None
 
 
@@ -182,32 +184,38 @@ def _normalize_financials(result, period):
             continue
 
         rev = _raw(row, 'totalRevenue')
-        # YoY: Yahoo returns newest-first; index i+4 is the same quarter one year ago
+        # YoY: Yahoo returns newest-first; quarterly: i+4 is same quarter one year ago; annual: i+1
         rev_yoy = None
-        if i + 4 < len(income_list) and rev is not None:
-            prev_rev = _raw(income_list[i + 4], 'totalRevenue')
+        yoy_step = 4 if period == 'quarterly' else 1
+        if i + yoy_step < len(income_list) and rev is not None:
+            prev_rev = _raw(income_list[i + yoy_step], 'totalRevenue')
             if prev_rev:
                 rev_yoy = (rev - prev_rev) / abs(prev_rev)
 
         gp           = _raw(row, 'grossProfit')
         gross_margin = (gp / rev) if gp is not None and rev else None
         op_income    = _raw(row, 'operatingIncome')
-        ebitda       = _raw(row, 'ebitda')
+        cf           = cf_by_ts.get(ts, {})
+        depreciation  = _raw(cf, 'depreciation')
+        ebitda        = (op_income + depreciation) if op_income is not None and depreciation is not None else None
         ebitda_margin = (ebitda / rev) if ebitda is not None and rev else None
         net_income   = _raw(row, 'netIncome')
         op_cost      = _raw(row, 'totalOperatingExpenses')
 
-        bs         = bs_by_ts.get(ts, {})
-        total_assets = _raw(bs, 'totalAssets')
-        total_liab   = _raw(bs, 'totalLiab')
-        equity       = _raw(bs, 'totalStockholderEquity')
-        cash         = _raw(bs, 'cash') or 0
-        long_debt    = _raw(bs, 'longTermDebt') or 0
-        short_debt   = _raw(bs, 'shortLongTermDebt') or 0
-        total_debt   = long_debt + short_debt
-        net_debt     = total_debt - cash
+        bs = bs_by_ts.get(ts)
+        if bs is not None:
+            total_assets = _raw(bs, 'totalAssets')
+            total_liab   = _raw(bs, 'totalLiab')
+            equity       = _raw(bs, 'totalStockholderEquity')
+            cash         = _raw(bs, 'cash') or 0
+            long_debt    = _raw(bs, 'longTermDebt') or 0
+            short_debt   = _raw(bs, 'shortLongTermDebt') or 0
+            total_debt   = long_debt + short_debt
+            net_debt     = total_debt - cash
+        else:
+            total_assets = total_liab = equity = total_debt = net_debt = None
+            cash = 0
 
-        cf    = cf_by_ts.get(ts, {})
         cfo   = _raw(cf, 'totalCashFromOperatingActivities')
         capex = _raw(cf, 'capitalExpenditures')
         fcf   = (cfo + capex) if cfo is not None and capex is not None else None
@@ -229,7 +237,7 @@ def _normalize_financials(result, period):
             'totalAssets':      total_assets,
             'totalLiabilities': total_liab,
             'equity':           equity,
-            'cashAndEquivalents': cash or None,
+            'cashAndEquivalents': cash if bs is not None else None,
             'totalDebt':        total_debt,
             'operatingCashFlow': cfo,
             'capex':            capex,
@@ -241,7 +249,7 @@ def _normalize_financials(result, period):
     ttm_fcf = None
     if period == 'quarterly':
         q_fcfs = [p['fcf'] for p in periods[:4] if p['fcf'] is not None]
-        if len(q_fcfs) >= 3:
+        if len(q_fcfs) == 4:
             ttm_fcf = sum(q_fcfs)
 
     market_cap = _raw(summary, 'marketCap')
@@ -270,13 +278,11 @@ def _normalize_financials(result, period):
 
 def _fetch_yahoo_financials(symbol, period):
     """Fetch and normalise financial data from Yahoo Finance quoteSummary."""
+    suffix  = 'Quarterly' if period == 'quarterly' else ''
     modules = (
-        f'incomeStatementHistory{"Quarterly" if period == "quarterly" else ""},'
-        f'incomeStatementHistory{"" if period == "quarterly" else ""},'
-        f'balanceSheetHistory{"Quarterly" if period == "quarterly" else ""},'
-        f'balanceSheetHistory{"" if period == "quarterly" else ""},'
-        f'cashflowStatementHistory{"Quarterly" if period == "quarterly" else ""},'
-        f'cashflowStatementHistory{"" if period == "quarterly" else ""},'
+        f'incomeStatementHistory{suffix},'
+        f'balanceSheetHistory{suffix},'
+        f'cashflowStatementHistory{suffix},'
         'defaultKeyStatistics,summaryDetail'
     )
     url = (
