@@ -15,14 +15,14 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewPortfolio, setShowNewPortfolio] = useState(false);
 
-  const { portfolios, isAuthenticated } = useApp();
+  const { portfolios, isAuthenticated, loading } = useApp();
 
-  // Auto-open new portfolio modal for new users with no portfolios
+  // Auto-open new portfolio modal only for genuinely new users (after data loads)
   useEffect(() => {
-    if (isAuthenticated && portfolios.length === 0) {
+    if (isAuthenticated && !loading && portfolios.length === 0) {
       setShowNewPortfolio(true);
     }
-  }, [isAuthenticated, portfolios.length]);
+  }, [isAuthenticated, loading, portfolios.length]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
