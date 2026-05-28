@@ -7,6 +7,7 @@ W chmurze: przechowuje dane w PostgreSQL (zmienna DATABASE_URL).
 import json
 import hashlib
 import bcrypt
+import datetime
 import mimetypes
 import re
 import secrets
@@ -230,6 +231,15 @@ if DATABASE_URL:
                     currency     TEXT NOT NULL,
                     amount       NUMERIC NOT NULL DEFAULT 0,
                     PRIMARY KEY (portfolio_id, currency)
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS financials (
+                    symbol     TEXT NOT NULL,
+                    period     TEXT NOT NULL,
+                    data_json  TEXT NOT NULL,
+                    source     TEXT NOT NULL,
+                    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (symbol, period)
                 )""")
 
     def load_users():
