@@ -422,6 +422,74 @@ else:
         f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
 
 
+def migrate_user_to_portfolios(username):
+    """If user has old blob data but no portfolios, create a default portfolio and migrate."""
+    existing = list_portfolios(username)
+    if existing:
+        return existing  # already migrated
+    # load old blob
+    try:
+        raw = load_data(username)
+        old = json.loads(raw)
+    except Exception:
+        old = {}
+    if not old:
+        return []
+    # create default portfolio
+    pid = secrets.token_hex(12)
+    create_portfolio(username, pid, 'Portfel domyślny', 'PLN')
+    save_portfolio_data(pid, old)
+    print(f'[migration] {username}: migrated old blob to "Portfel domyślny" (id={pid})')
+    return list_portfolios(username)
+
+
+def load_aggregate_data(username):
+    """Merge all portfolios into a single data blob for dashboard 'Wszystkie' view."""
+    portfolios = list_portfolios(username)
+    merged_holdings = []
+    merged_txs = []
+    merged_snaps = {}
+    merged_snaps_inv = {}
+    merged_cash = {}
+    symbol_set = {}
+
+    for p in portfolios:
+        pid = p['id']
+        data = load_portfolio_data(pid)
+        for h in data.get('portfolio', {}).get('holdings', []):
+            key = h['symbol']
+            if key in symbol_set:
+                idx = symbol_set[key]
+                old = merged_holdings[idx]
+                total_qty = old['qty'] + h['qty']
+                if total_qty > 0:
+                    merged_holdings[idx] = {
+                        **old,
+                        'qty': total_qty,
+                        'avgPrice': (old['qty'] * old['avgPrice'] + h['qty'] * h['avgPrice']) / total_qty,
+                    }
+            else:
+                symbol_set[key] = len(merged_holdings)
+                merged_holdings.append({**h, '_portfolioId': p['id'], '_portfolioName': p['name']})
+        for tx in data.get('transactions', []):
+            merged_txs.append({**tx, '_portfolioId': p['id'], '_portfolioName': p['name']})
+        for date, val in data.get('snapshots', {}).items():
+            merged_snaps[date] = merged_snaps.get(date, 0) + val
+        for date, val in data.get('snapshotsInvested', {}).items():
+            merged_snaps_inv[date] = merged_snaps_inv.get(date, 0) + val
+        for cur, amt in data.get('cash', {}).items():
+            merged_cash[cur] = merged_cash.get(cur, 0) + amt
+
+    merged_txs.sort(key=lambda t: t.get('date', ''))
+    return {
+        'portfolio': {'holdings': merged_holdings},
+        'transactions': merged_txs,
+        'snapshots': merged_snaps,
+        'snapshotsInvested': merged_snaps_inv,
+        'cash': merged_cash,
+    }
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
