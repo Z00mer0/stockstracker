@@ -4,15 +4,28 @@ import { COLUMN_DEFS } from '../../utils/portfolioColumns';
 
 export default function ColumnPicker({ cols, onChange }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef(null);
+  const panelRef = useRef(null);
 
   useEffect(() => {
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (
+        btnRef.current && !btnRef.current.contains(e.target) &&
+        panelRef.current && !panelRef.current.contains(e.target)
+      ) setOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  function handleToggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    }
+    setOpen(o => !o);
+  }
 
   function toggle(key) {
     const def = COLUMN_DEFS.find(c => c.key === key);
@@ -36,9 +49,10 @@ export default function ColumnPicker({ cols, onChange }) {
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div style={{ position: 'relative' }}>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleToggle}
         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors text-base"
         title="Konfiguruj kolumny"
       >
@@ -46,7 +60,11 @@ export default function ColumnPicker({ cols, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-50 w-60 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-3">
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999 }}
+          className="w-60 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-3"
+        >
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 px-1">
             Widoczne kolumny
           </div>
