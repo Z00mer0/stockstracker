@@ -875,6 +875,58 @@ class Handler(SimpleHTTPRequestHandler):
                 print(f'[proxy] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
 
+        elif path == '/api/financials':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbol = qs.get('symbol', '').upper()
+            period = qs.get('period', 'quarterly')
+            if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
+                self.send_json(400, {'error': 'invalid symbol'}); return
+            if period not in ('quarterly', 'annual'):
+                self.send_json(400, {'error': 'invalid period'}); return
+            # Cache check
+            try:
+                with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT data_json, source, fetched_at FROM financials WHERE symbol=%s AND period=%s",
+                        (symbol, period)
+                    )
+                    row = cur.fetchone()
+                if row:
+                    age_days = (datetime.datetime.utcnow() - row['fetched_at'].replace(tzinfo=None)).days
+                    if age_days < 90:
+                        cached = json.loads(row['data_json'])
+                        cached['source']    = row['source']
+                        cached['fetchedAt'] = row['fetched_at'].isoformat()
+                        self.send_json(200, cached); return
+            except Exception as e:
+                print(f'[financials] db read error: {e}')
+            # Cache miss → Yahoo Finance
+            try:
+                data = _fetch_yahoo_financials(symbol, period)
+            except Exception as e:
+                print(f'[financials] yahoo fetch error for {symbol}: {e}')
+                self.send_json(404, {'error': 'no_data'}); return
+            if not data or not data.get('periods'):
+                self.send_json(404, {'error': 'no_data'}); return
+            try:
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO financials (symbol, period, data_json, source, fetched_at)
+                        VALUES (%s, %s, %s, 'yahoo', NOW())
+                        ON CONFLICT (symbol, period) DO UPDATE
+                            SET data_json  = EXCLUDED.data_json,
+                                source     = 'yahoo',
+                                fetched_at = NOW()
+                    """, (symbol, period, json.dumps(data)))
+            except Exception as e:
+                print(f'[financials] db write error: {e}')
+            data['source']    = 'yahoo'
+            data['fetchedAt'] = datetime.datetime.utcnow().isoformat()
+            self.send_json(200, data)
+
         elif path == '/api/bench-pl':
             if not get_username(self):
                 self.send_json(401, {'error': 'unauthorized'}); return
