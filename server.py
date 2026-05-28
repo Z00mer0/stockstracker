@@ -163,6 +163,12 @@ def _quarter_label(ts):
     return f'Q{q} {dt.year}'
 
 
+def _annual_label(ts):
+    """Convert Unix timestamp to fiscal year label like '2024'."""
+    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+    return str(dt.year)
+
+
 def _normalize_financials(result, period):
     """Normalise raw Yahoo Finance quoteSummary result into the app's financials schema."""
     suffix      = 'Quarterly' if period == 'quarterly' else ''
@@ -218,11 +224,11 @@ def _normalize_financials(result, period):
 
         cfo   = _raw(cf, 'totalCashFromOperatingActivities')
         capex = _raw(cf, 'capitalExpenditures')
-        fcf   = (cfo + capex) if cfo is not None and capex is not None else None
+        fcf   = (cfo - abs(capex)) if cfo is not None and capex is not None else None
         repurchase = _raw(cf, 'repurchaseOfStock')
 
         periods.append({
-            'label':            _quarter_label(ts),
+            'label':            _quarter_label(ts) if period == 'quarterly' else _annual_label(ts),
             'date':             datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime('%Y-%m-%d'),
             'revenue':          rev,
             'revenueGrowthYoY': rev_yoy,
