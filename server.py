@@ -1318,6 +1318,82 @@ async function doRecover() {
             except json.JSONDecodeError:
                 self.send_json(400, {'ok': False, 'error': 'Nieprawidłowy JSON'})
 
+        elif path == '/api/financials/upload':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body      = self.read_json(max_size=5 * 1024 * 1024)
+                symbol    = str(body.get('symbol', '')).upper()
+                period    = str(body.get('period', 'quarterly'))
+                image_b64 = str(body.get('image_b64', ''))
+                if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
+                    self.send_json(400, {'error': 'invalid symbol'}); return
+                if period not in ('quarterly', 'annual'):
+                    self.send_json(400, {'error': 'invalid period'}); return
+                if not image_b64:
+                    self.send_json(400, {'error': 'missing image_b64'}); return
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)}); return
+            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            if not api_key:
+                self.send_json(503, {'error': 'ANTHROPIC_API_KEY not configured'}); return
+            try:
+                import anthropic as _anthropic
+                client = _anthropic.Anthropic(api_key=api_key)
+                prompt = (
+                    f'Parse the financial table in this screenshot for stock {symbol}. '
+                    f'Extract {period} financial data. Return ONLY a JSON object with this exact schema '
+                    f'(use null for missing values, raw numbers not millions):\n'
+                    '{"periods":[{"label":"Q1 2025","date":"2025-03-31","revenue":1181000000,'
+                    '"revenueGrowthYoY":0.63,"grossProfit":973000000,"grossMargin":0.824,'
+                    '"operatingCost":null,"operatingIncome":420000000,"ebitda":500000000,'
+                    '"ebitdaMargin":0.423,"netIncome":370000000,"netDebt":-5400000000,'
+                    '"totalAssets":null,"totalLiabilities":null,"equity":null,'
+                    '"cashAndEquivalents":5400000000,"totalDebt":0,'
+                    '"operatingCashFlow":450000000,"capex":-80000000,"fcf":370000000,'
+                    '"shareRepurchases":null}],'
+                    '"valuation":{"peRatio":null,"forwardPE":null,"evEbitda":null,"ps":null,'
+                    '"marketCap":null,"sharesOutstanding":null,"ev":null,"pfcf":null,"netDebtLatest":null},'
+                    f'"currency":"USD","period":"{period}"'
+                    '}'
+                )
+                msg = client.messages.create(
+                    model='claude-opus-4-7',
+                    max_tokens=4096,
+                    messages=[{
+                        'role': 'user',
+                        'content': [
+                            {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/png', 'data': image_b64}},
+                            {'type': 'text', 'text': prompt},
+                        ],
+                    }],
+                )
+                text = msg.content[0].text.strip()
+                if text.startswith('```'):
+                    text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                self.send_json(422, {'error': 'parse_failed'}); return
+            except Exception as e:
+                print(f'[financials/upload] vision error: {e}')
+                self.send_json(502, {'error': str(e)}); return
+            try:
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO financials (symbol, period, data_json, source, fetched_at)
+                        VALUES (%s, %s, %s, 'screenshot', NOW())
+                        ON CONFLICT (symbol, period) DO UPDATE
+                            SET data_json  = EXCLUDED.data_json,
+                                source     = 'screenshot',
+                                fetched_at = NOW()
+                    """, (symbol, period, json.dumps(data)))
+            except Exception as e:
+                print(f'[financials/upload] db write error: {e}')
+            data['source']    = 'screenshot'
+            data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            self.send_json(200, data)
+
         else:
             self.send_response(405); self.end_headers()
 
