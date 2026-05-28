@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
+import { useApp } from '../../context/AppContext';
 
 const THEME_KEY = 'myfund_theme';
 const MOBILE_BP = 768;
@@ -13,6 +14,15 @@ export default function Layout() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BP);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewPortfolio, setShowNewPortfolio] = useState(false);
+
+  const { portfolios, isAuthenticated } = useApp();
+
+  // Auto-open new portfolio modal for new users with no portfolios
+  useEffect(() => {
+    if (isAuthenticated && portfolios.length === 0) {
+      setShowNewPortfolio(true);
+    }
+  }, [isAuthenticated, portfolios.length]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

@@ -87,6 +87,9 @@ export function AppProvider({ children }) {
     } catch (err) {
       if (err.response?.status === 401) {
         logout();
+      } else if (err.response?.status === 403 && activePortfolioId !== 'all') {
+        // stale portfolio id in localStorage — fall back to aggregate view
+        switchPortfolio('all');
       } else {
         setError(err.response?.data?.error ?? err.message);
       }
@@ -128,6 +131,7 @@ export function AppProvider({ children }) {
   const dataUrl = activePortfolioId === 'all'
     ? '/api/portfolios/all/data'
     : `/api/portfolios/${activePortfolioId}/data`;
+  const canWrite = activePortfolioId !== 'all';
 
   const snapshotsInv = rawData?.snapshotsInvested ?? {};
   const snapshots = rawData?.snapshots
@@ -429,6 +433,7 @@ export function AppProvider({ children }) {
     createPortfolio,
     updatePortfolio,
     deletePortfolio,
+    canWrite,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

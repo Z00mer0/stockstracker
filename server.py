@@ -596,6 +596,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(400, {'error': 'invalid portfolio id'}); return
             try:
                 if pid == 'all':
+                    migrate_user_to_portfolios(username)
                     data = load_aggregate_data(username)
                 else:
                     portfolios = list_portfolios(username)
