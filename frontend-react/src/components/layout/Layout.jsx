@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import NewPortfolioModal from '../NewPortfolioModal.jsx';
 
 const THEME_KEY = 'myfund_theme';
 const MOBILE_BP = 768;
@@ -54,7 +55,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      {/* TODO: NewPortfolioModal goes here (Task 7) */}
+      {showNewPortfolio && <NewPortfolioModal onClose={() => setShowNewPortfolio(false)} />}
     </div>
   );
 }
