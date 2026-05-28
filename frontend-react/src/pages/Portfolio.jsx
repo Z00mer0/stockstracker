@@ -123,6 +123,23 @@ export default function Portfolio() {
   const [editTarget, setEditTarget]   = useState(null);
   const [confirmDel, setConfirmDel]   = useState(null);
   const [toast, setToast]             = useState('');
+  const [editTicker, setEditTicker]   = useState(null); // { oldSymbol, value }
+
+  async function handleTickerRename(oldSymbol, newSymbol) {
+    const sym = newSymbol.trim().toUpperCase();
+    if (!sym || sym === oldSymbol) { setEditTicker(null); return; }
+    const newHoldings = (rawData?.portfolio?.holdings ?? []).map(h =>
+      h.symbol === oldSymbol ? { ...h, symbol: sym } : h
+    );
+    const newTxs = (rawData?.transactions ?? []).map(t =>
+      t.symbol === oldSymbol ? { ...t, symbol: sym } : t
+    );
+    await saveHoldings(newHoldings);
+    await saveTransactions(newTxs);
+    setEditTicker(null);
+    setToast(`${oldSymbol} → ${sym}`);
+    refresh();
+  }
   const menuRef = useRef(null);
 
   const { addDividend } = useDividendEvents(portfolio.map(p => p.symbol));
@@ -277,7 +294,34 @@ export default function Portfolio() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</span>
                             {pos.notFound && (
-                              <span title="Nie znaleziono notowań — sprawdź czy ticker jest aktualny" style={{ fontSize: 12, color: 'var(--down)', cursor: 'help' }}>⚠</span>
+                              editTicker?.oldSymbol === pos.symbol ? (
+                                <form
+                                  onSubmit={e => { e.preventDefault(); e.stopPropagation(); handleTickerRename(pos.symbol, editTicker.value); }}
+                                  onClick={e => e.stopPropagation()}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                >
+                                  <input
+                                    autoFocus
+                                    value={editTicker.value}
+                                    onChange={e => setEditTicker(t => ({ ...t, value: e.target.value.toUpperCase() }))}
+                                    onKeyDown={e => e.key === 'Escape' && setEditTicker(null)}
+                                    style={{
+                                      width: 90, padding: '2px 6px', fontSize: 12,
+                                      background: 'var(--panel-2)', border: '1px solid var(--accent)',
+                                      borderRadius: 5, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                  <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 14, padding: '0 2px' }}>✓</button>
+                                  <button type="button" onClick={() => setEditTicker(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 14, padding: '0 2px' }}>✕</button>
+                                </form>
+                              ) : (
+                                <span
+                                  title="Nie znaleziono notowań — kliknij aby zmienić ticker"
+                                  onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: pos.symbol }); }}
+                                  style={{ fontSize: 12, color: 'var(--down)', cursor: 'pointer' }}
+                                >⚠</span>
+                              )
                             )}
                           </div>
                           {pos.name && pos.name !== pos.symbol && (
