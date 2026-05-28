@@ -158,7 +158,7 @@ def _raw(obj, key):
 
 def _quarter_label(ts):
     """Convert Unix timestamp to 'Q1 2025' label."""
-    dt = datetime.datetime.utcfromtimestamp(ts)
+    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
     q  = (dt.month - 1) // 3 + 1
     return f'Q{q} {dt.year}'
 
@@ -208,10 +208,10 @@ def _normalize_financials(result, period):
             total_liab   = _raw(bs, 'totalLiab')
             equity       = _raw(bs, 'totalStockholderEquity')
             cash         = _raw(bs, 'cash') or 0
-            long_debt    = _raw(bs, 'longTermDebt') or 0
-            short_debt   = _raw(bs, 'shortLongTermDebt') or 0
-            total_debt   = long_debt + short_debt
-            net_debt     = total_debt - cash
+            long_debt    = _raw(bs, 'longTermDebt')
+            short_debt   = _raw(bs, 'shortLongTermDebt')
+            total_debt   = (long_debt or 0) + (short_debt or 0) if (long_debt is not None or short_debt is not None) else None
+            net_debt     = (total_debt - cash) if total_debt is not None else None
         else:
             total_assets = total_liab = equity = total_debt = net_debt = None
             cash = 0
@@ -223,7 +223,7 @@ def _normalize_financials(result, period):
 
         periods.append({
             'label':            _quarter_label(ts),
-            'date':             datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d'),
+            'date':             datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime('%Y-%m-%d'),
             'revenue':          rev,
             'revenueGrowthYoY': rev_yoy,
             'grossProfit':      gp,
