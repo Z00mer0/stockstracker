@@ -39,7 +39,7 @@ export function AppProvider({ children }) {
   const [token, setToken]           = useState(() => localStorage.getItem(TOKEN_KEY));
   const [displayName, setDisplayName] = useState(() => localStorage.getItem(DISPLAY_NAME_KEY) || '');
   const [rawData, setRawData]       = useState(null);
-  const [loading, setLoading]       = useState(false);
+  const [loading, setLoading]       = useState(() => !!localStorage.getItem(TOKEN_KEY));
   const [error, setError]           = useState(null);
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
   const writeInProgressRef          = useRef(false);
