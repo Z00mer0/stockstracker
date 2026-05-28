@@ -144,19 +144,19 @@ export function AppProvider({ children }) {
 
   async function saveCash(newCash) {
     setRawData(prev => ({ ...prev, cash: newCash }));
-    await api.post(dataUrl,{ ...rawData, cash: newCash });
+    await api.post(dataUrl, { ...rawData, cash: newCash });
   }
 
   async function saveHoldings(newHoldings) {
     const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings } };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function saveTransactions(newTransactions) {
     const updated = { ...rawData, transactions: newTransactions };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function editPosition({ symbol, qty, avgPrice }) {
@@ -169,7 +169,7 @@ export function AppProvider({ children }) {
       },
     };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function removePosition(symbol) {
@@ -179,7 +179,7 @@ export function AppProvider({ children }) {
       portfolio: { ...rawData.portfolio, holdings: holdings.filter(h => h.symbol !== symbol) },
     };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function sellPosition({ symbol, qty, price, currency, date, note }) {
@@ -200,7 +200,7 @@ export function AppProvider({ children }) {
       }],
     };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding }) {
@@ -256,7 +256,7 @@ export function AppProvider({ children }) {
       cash: newCash,
     };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function importBrokerTransactions(newTxs) {
@@ -325,7 +325,7 @@ export function AppProvider({ children }) {
 
     writeInProgressRef.current = true;
     try {
-      await api.post(dataUrl,updated); // save first — state only updates after confirmed save
+      await api.post(dataUrl, updated); // save first — state only updates after confirmed save
       setRawData(updated);
     } finally {
       writeInProgressRef.current = false;
@@ -357,7 +357,7 @@ export function AppProvider({ children }) {
 
     writeInProgressRef.current = true;
     try {
-      await api.post(dataUrl,updated); // save first
+      await api.post(dataUrl, updated); // save first
       setRawData(updated);
     } finally {
       writeInProgressRef.current = false;
@@ -371,7 +371,7 @@ export function AppProvider({ children }) {
     delete newSnapshotsInv[date];
     const updated = { ...rawData, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function setSnapshot(date, totalValue, investedValue) {
@@ -381,7 +381,7 @@ export function AppProvider({ children }) {
       snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [date]: investedValue },
     };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   async function saveSnapshot(totalValue, investedValue) {
@@ -392,7 +392,7 @@ export function AppProvider({ children }) {
       snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [today]: investedValue },
     };
     setRawData(updated);
-    await api.post(dataUrl,updated);
+    await api.post(dataUrl, updated);
   }
 
   const value = {
