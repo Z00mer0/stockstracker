@@ -1,5 +1,5 @@
 // src/components/layout/Sidebar.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { NAV_ITEMS, NAV_BOTTOM } from './navItems.jsx';
@@ -62,6 +62,13 @@ function PortfolioItem({ id, name, currency, isActive, onClick }) {
 
 export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
   const { displayName, logout, portfolios, activePortfolioId, switchPortfolio } = useApp();
+  const [portfolioOpen, setPortfolioOpen] = useState(false);
+
+  const activePortfolio = activePortfolioId === 'all'
+    ? { name: 'Wszystkie', currency: '' }
+    : portfolios.find(p => p.id === activePortfolioId) || { name: 'Wszystkie', currency: '' };
+
+  const allItems = [{ id: 'all', name: 'Wszystkie', currency: '' }, ...portfolios];
 
   const sidebarContent = (
     <aside style={{
@@ -100,31 +107,52 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
       {/* Nav */}
       <nav style={{ flex: 1, padding: '4px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
         {/* Portfolio switcher */}
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>Portfele</span>
-          <button
-            onClick={onNewPortfolio}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
-            title="Nowy portfel"
-          >+</button>
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
+          Portfele
         </div>
-        <PortfolioItem
-          id="all"
-          name="Wszystkie"
-          currency=""
-          isActive={activePortfolioId === 'all'}
-          onClick={id => { switchPortfolio(id); if (isMobile) onClose?.(); }}
-        />
-        {portfolios.map(p => (
-          <PortfolioItem
-            key={p.id}
-            id={p.id}
-            name={p.name}
-            currency={p.currency}
-            isActive={activePortfolioId === p.id}
-            onClick={id => { switchPortfolio(id); if (isMobile) onClose?.(); }}
-          />
-        ))}
+        {/* Active portfolio row — click to expand */}
+        <button
+          onClick={() => setPortfolioOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', padding: '7px 10px', borderRadius: 7,
+            background: 'var(--panel)', boxShadow: 'inset 3px 0 0 var(--accent)',
+            border: 'none', cursor: 'pointer', textAlign: 'left',
+            color: 'var(--text)', fontSize: 13, fontWeight: 500,
+          }}
+        >
+          <span style={{ opacity: 0.6, fontSize: 10 }}>◆</span>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePortfolio.name}</span>
+          {activePortfolio.currency && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{activePortfolio.currency}</span>}
+          <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0, marginLeft: 2, transition: 'transform 0.15s', display: 'inline-block', transform: portfolioOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+        </button>
+        {/* Dropdown list */}
+        {portfolioOpen && (
+          <div style={{ paddingLeft: 8 }}>
+            {allItems.map(p => (
+              <PortfolioItem
+                key={p.id}
+                id={p.id}
+                name={p.name}
+                currency={p.currency}
+                isActive={activePortfolioId === p.id}
+                onClick={id => { switchPortfolio(id); setPortfolioOpen(false); if (isMobile) onClose?.(); }}
+              />
+            ))}
+            <button
+              onClick={() => { setPortfolioOpen(false); onNewPortfolio?.(); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '6px 10px', borderRadius: 7,
+                background: 'none', border: '1px dashed var(--border)',
+                cursor: 'pointer', color: 'var(--text-faint)', fontSize: 12,
+                marginTop: 4,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Nowy portfel
+            </button>
+          </div>
+        )}
         <div style={{ height: 8 }} />
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
           Główne
