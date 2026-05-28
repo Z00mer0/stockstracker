@@ -113,7 +113,7 @@ function renderCell(key, pos, fxRates) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, loading, fxRates, saveHoldings, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
+  const { portfolio, transactions, rawData, loading, fxRates, saveHoldings, saveTransactions, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
   const [showImport, setShowImport]   = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
   const [addSymbol, setAddSymbol]     = useState('');
@@ -364,7 +364,23 @@ export default function Portfolio() {
       {showImport && (
         <CsvImportModal
           existingHoldings={portfolio}
-          onSave={async (holdings) => { await saveHoldings(holdings); refresh(); }}
+          onSave={async (holdings, rawRows) => {
+            await saveHoldings(holdings);
+            if (rawRows?.length) {
+              const newTxs = rawRows.map(r => ({
+                id: Math.random().toString(36).slice(2, 10),
+                type: 'BUY',
+                symbol: r.symbol,
+                qty: r.qty,
+                price: r.avgPrice,
+                currency: r.currency,
+                date: r.date,
+                note: 'Import CSV',
+              }));
+              await saveTransactions([...(rawData?.transactions ?? []), ...newTxs]);
+            }
+            refresh();
+          }}
           onClose={() => setShowImport(false)}
         />
       )}

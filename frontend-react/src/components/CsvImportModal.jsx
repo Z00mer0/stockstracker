@@ -162,7 +162,8 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   function handleDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
 
   // Active preview: file takes priority over textarea
-  const preview = mergeBySymbol(filePreview ?? (text.trim() ? parseCsv(text) : []));
+  const rawRows = filePreview ?? (text.trim() ? parseCsv(text) : []);
+  const preview = mergeBySymbol(rawRows);
 
   async function handleImport() {
     if (!preview.length) { setError('Brak poprawnych danych do importu.'); return; }
@@ -176,7 +177,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
         preview.forEach(p => { map[p.symbol] = p; });
         newHoldings = Object.values(map);
       }
-      await onSave(newHoldings);
+      await onSave(newHoldings, rawRows);
       onClose();
     } catch (e) {
       setError(e.message || 'Błąd zapisu');
