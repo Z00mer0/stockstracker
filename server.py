@@ -381,7 +381,7 @@ else:
         f = BASE / f'multiportfolio_{username}.json'
         if f.exists():
             return json.loads(f.read_text(encoding='utf-8'))
-        return {'portfolio_list': [], 'portfolio_data': {}}
+        return {'portfolio_list': []}
 
     def _write_pfile(username, pdata):
         f = BASE / f'multiportfolio_{username}.json'
@@ -393,7 +393,6 @@ else:
     def create_portfolio(username, portfolio_id, name, currency):
         pdata = _read_pfile(username)
         pdata['portfolio_list'].append({'id': portfolio_id, 'name': name, 'currency': currency})
-        pdata['portfolio_data'][portfolio_id] = {'portfolio': {'holdings': []}, 'transactions': [], 'snapshots': {}, 'snapshotsInvested': {}, 'cash': {}}
         _write_pfile(username, pdata)
 
     def update_portfolio(portfolio_id, username, name, currency):
@@ -407,13 +406,12 @@ else:
     def delete_portfolio(portfolio_id, username):
         pdata = _read_pfile(username)
         pdata['portfolio_list'] = [p for p in pdata['portfolio_list'] if p['id'] != portfolio_id]
-        pdata['portfolio_data'].pop(portfolio_id, None)
         _write_pfile(username, pdata)
+        f = BASE / f'pdata_{portfolio_id}.json'
+        if f.exists():
+            f.unlink()
 
     def load_portfolio_data(portfolio_id):
-        # In local mode, portfolio_id is the short UUID (no username prefix)
-        # We need username — it's stored as part of the portfolio list lookup
-        # Since we can't look it up here easily, local mode uses a flat file per portfolio_id
         f = BASE / f'pdata_{portfolio_id}.json'
         if f.exists():
             return json.loads(f.read_text(encoding='utf-8'))
