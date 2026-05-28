@@ -581,24 +581,30 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            portfolios = migrate_user_to_portfolios(username)
-            self.send_json(200, portfolios)
+            try:
+                portfolios = migrate_user_to_portfolios(username)
+                self.send_json(200, portfolios)
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
 
         elif path.startswith('/api/portfolios/') and path.endswith('/data'):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
             pid = path[len('/api/portfolios/'):-len('/data')]
-            if not pid:
+            if not pid or (pid != 'all' and not re.fullmatch(r'[a-f0-9]{24}', pid)):
                 self.send_json(400, {'error': 'invalid portfolio id'}); return
-            if pid == 'all':
-                data = load_aggregate_data(username)
-            else:
-                portfolios = list_portfolios(username)
-                if not any(p['id'] == pid for p in portfolios):
-                    self.send_json(403, {'error': 'forbidden'}); return
-                data = load_portfolio_data(pid)
-            self.send_json(200, data)
+            try:
+                if pid == 'all':
+                    data = load_aggregate_data(username)
+                else:
+                    portfolios = list_portfolios(username)
+                    if not any(p['id'] == pid for p in portfolios):
+                        self.send_json(403, {'error': 'forbidden'}); return
+                    data = load_portfolio_data(pid)
+                self.send_json(200, data)
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
 
         elif path == '/api/data':
             username = get_username(self)
