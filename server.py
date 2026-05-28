@@ -1003,6 +1003,86 @@ async function doRecover() {
             except Exception as e:
                 self.send_json(400, {'ok': False, 'error': 'Bad request'})
 
+        elif path == '/api/portfolios':
+            # POST /api/portfolios — create new portfolio
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=1024)
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            name = str(body.get('name', '')).strip()[:64]
+            currency = str(body.get('currency', 'PLN')).upper()[:4]
+            if not name:
+                self.send_json(400, {'error': 'name required'}); return
+            if currency not in ('PLN', 'USD', 'EUR', 'GBP'):
+                self.send_json(400, {'error': 'unsupported currency'}); return
+            pid = secrets.token_hex(12)
+            try:
+                create_portfolio(username, pid, name, currency)
+                self.send_json(201, {'id': pid, 'name': name, 'currency': currency})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path.startswith('/api/portfolios/') and path.endswith('/data'):
+            # POST /api/portfolios/:id/data — save portfolio data
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            pid = path[len('/api/portfolios/'):-len('/data')]
+            if not pid or pid == 'all' or not re.fullmatch(r'[a-f0-9]{24}', pid):
+                self.send_json(400, {'error': 'invalid portfolio id'}); return
+            try:
+                portfolios = list_portfolios(username)
+                if not any(p['id'] == pid for p in portfolios):
+                    self.send_json(403, {'error': 'forbidden'}); return
+                length = int(self.headers.get('Content-Length', 0))
+                if length > _MAX_BODY_DATA:
+                    self.send_json(413, {'error': 'too large'}); return
+                raw = self.rfile.read(max(0, length))
+                data = json.loads(raw)
+                save_portfolio_data(pid, data)
+                self.send_json(200, {'ok': True})
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path.startswith('/api/portfolios/') and not path.endswith('/data'):
+            # PUT/DELETE /api/portfolios/:id — update or delete a portfolio
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            pid = path[len('/api/portfolios/'):]
+            if not pid or not re.fullmatch(r'[a-f0-9]{24}', pid):
+                self.send_json(400, {'error': 'invalid portfolio id'}); return
+            try:
+                body = self.read_json(max_size=1024)
+            except (ValueError, json.JSONDecodeError):
+                body = {}
+            method = str(body.get('_method', 'PUT')).upper()
+            try:
+                portfolios = list_portfolios(username)
+                if not any(p['id'] == pid for p in portfolios):
+                    self.send_json(403, {'error': 'forbidden'}); return
+                if method == 'DELETE':
+                    if len(portfolios) <= 1:
+                        self.send_json(400, {'error': 'Nie można usunąć ostatniego portfela'}); return
+                    delete_portfolio(pid, username)
+                    self.send_json(200, {'ok': True})
+                else:
+                    name = str(body.get('name', '')).strip()[:64]
+                    currency = str(body.get('currency', 'PLN')).upper()[:4]
+                    if not name:
+                        self.send_json(400, {'error': 'name required'}); return
+                    if currency not in ('PLN', 'USD', 'EUR', 'GBP'):
+                        self.send_json(400, {'error': 'unsupported currency'}); return
+                    update_portfolio(pid, username, name, currency)
+                    self.send_json(200, {'id': pid, 'name': name, 'currency': currency})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
         elif path == '/api/data':
             username = get_username(self)
             if not username:
