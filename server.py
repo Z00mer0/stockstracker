@@ -577,6 +577,29 @@ class Handler(SimpleHTTPRequestHandler):
                 for u, v in users.items()
             ])
 
+        elif path == '/api/portfolios':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            portfolios = migrate_user_to_portfolios(username)
+            self.send_json(200, portfolios)
+
+        elif path.startswith('/api/portfolios/') and path.endswith('/data'):
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            pid = path[len('/api/portfolios/'):-len('/data')]
+            if not pid:
+                self.send_json(400, {'error': 'invalid portfolio id'}); return
+            if pid == 'all':
+                data = load_aggregate_data(username)
+            else:
+                portfolios = list_portfolios(username)
+                if not any(p['id'] == pid for p in portfolios):
+                    self.send_json(403, {'error': 'forbidden'}); return
+                data = load_portfolio_data(pid)
+            self.send_json(200, data)
+
         elif path == '/api/data':
             username = get_username(self)
             if not username:
