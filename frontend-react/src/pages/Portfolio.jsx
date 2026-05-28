@@ -274,7 +274,12 @@ export default function Portfolio() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <TickerLogo symbol={pos.symbol} />
                         <div>
-                          <div className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</span>
+                            {pos.notFound && (
+                              <span title="Nie znaleziono notowań — sprawdź czy ticker jest aktualny" style={{ fontSize: 12, color: 'var(--down)', cursor: 'help' }}>⚠</span>
+                            )}
+                          </div>
                           {pos.name && pos.name !== pos.symbol && (
                             <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{pos.name}</div>
                           )}

@@ -226,6 +226,7 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
     const m  = marketData[pos.symbol] ?? {};
 
     const currentPrice = m.price ?? null;
+    const notFound = m.notFound ?? false;
     const costPLN  = pos.qty * pos.avgPrice * fx;
     const valuePLN = currentPrice != null ? pos.qty * currentPrice * fx : null;
     const plPLN    = valuePLN != null ? valuePLN - costPLN : null;
@@ -272,6 +273,7 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       pb:          m.pb          ?? null,
       sector:      m.sector      ?? null,
       earningsTs:  m.earningsTs  ?? null,
+      notFound,
       costPLN,
       valuePLN,
       plPLN,
