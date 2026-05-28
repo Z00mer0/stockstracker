@@ -1333,6 +1333,11 @@ async function doRecover() {
                     self.send_json(400, {'error': 'invalid period'}); return
                 if not image_b64:
                     self.send_json(400, {'error': 'missing image_b64'}); return
+                try:
+                    import base64 as _base64
+                    _base64.b64decode(image_b64[:64], validate=True)
+                except Exception:
+                    self.send_json(400, {'error': 'invalid image_b64'}); return
             except ValueError as e:
                 self.send_json(400, {'error': str(e)}); return
             api_key = os.environ.get('ANTHROPIC_API_KEY', '')
@@ -1358,26 +1363,41 @@ async function doRecover() {
                     f'"currency":"USD","period":"{period}"'
                     '}'
                 )
+                # Detect image type from base64 header bytes
+                _sig = image_b64[:12]
+                if _sig.startswith('/9j/'):
+                    _media_type = 'image/jpeg'
+                elif _sig.startswith('R0lGOD'):
+                    _media_type = 'image/gif'
+                elif _sig.startswith('UklGR'):
+                    _media_type = 'image/webp'
+                else:
+                    _media_type = 'image/png'
                 msg = client.messages.create(
                     model='claude-opus-4-7',
                     max_tokens=4096,
                     messages=[{
                         'role': 'user',
                         'content': [
-                            {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/png', 'data': image_b64}},
+                            {'type': 'image', 'source': {'type': 'base64', 'media_type': _media_type, 'data': image_b64}},
                             {'type': 'text', 'text': prompt},
                         ],
                     }],
                 )
                 text = msg.content[0].text.strip()
                 if text.startswith('```'):
-                    text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+                    parts = text.split('\n', 1)
+                    if len(parts) < 2:
+                        raise json.JSONDecodeError('empty fence', text, 0)
+                    text = parts[1].rsplit('```', 1)[0].strip()
                 data = json.loads(text)
+                if not isinstance(data, dict):
+                    raise json.JSONDecodeError('expected dict', text, 0)
             except json.JSONDecodeError:
                 self.send_json(422, {'error': 'parse_failed'}); return
             except Exception as e:
                 print(f'[financials/upload] vision error: {e}')
-                self.send_json(502, {'error': str(e)}); return
+                self.send_json(502, {'error': 'vision_error'}); return
             try:
                 with _conn() as conn, conn.cursor() as cur:
                     cur.execute("""
