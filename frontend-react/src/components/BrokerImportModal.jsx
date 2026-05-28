@@ -86,25 +86,51 @@ function parseBrokerRows(rows) {
       }
 
     } else if (isCashOperations) {
-      const dateStr    = col(row, 'date');
+      // Support both column name variants from different broker exports
+      const timeStr    = col(row, 'time') || col(row, 'date');
       const opType     = col(row, 'type').toLowerCase();
       const amount     = parseFloat(col(row, 'amount'));
-      const details    = col(row, 'details');
-      const positionId = col(row, 'position id');
+      const comment    = col(row, 'comment') || col(row, 'details');
+      const ticker     = col(row, 'ticker');
+      const instrument = col(row, 'instrument');
+      const positionId = col(row, 'id') || col(row, 'position id');
 
-      if (!dateStr || isNaN(amount)) continue;
+      if (!timeStr || isNaN(amount)) continue;
 
       let txType = null;
-      if (opType.includes('dividend'))                                   txType = 'DIV';
-      else if (opType.includes('buy')  || opType.includes('stock buy'))  txType = 'BUY';
-      else if (opType.includes('sell') || opType.includes('stock sell')) txType = 'SELL';
-      else if (opType.includes('deposit') || opType.includes('withdrawal')) txType = 'CASH';
+      if (opType.includes('dividend'))                                     txType = 'DIV';
+      else if (opType.includes('buy')  || opType.includes('stock purchase')) txType = 'BUY';
+      else if (opType.includes('sell') || opType.includes('stock sale'))     txType = 'SELL';
+      else if (opType.includes('deposit') || opType.includes('withdrawal'))  txType = 'CASH';
       else continue;
 
-      const symbolMatch = details.match(/\b([A-Z0-9]{1,6}(\.[A-Z]{2})?)\b/);
-      const symbol = symbolMatch?.[1] || 'UNKNOWN';
+      // Symbol: prefer Ticker column, fall back to Instrument, then parse from comment
+      let symbol = ticker || instrument || '';
+      if (!symbol) {
+        const m = comment.match(/\b([A-Z0-9]{1,6}(\.[A-Z]{2})?)\b/);
+        symbol = m?.[1] || 'UNKNOWN';
+      }
 
-      transactions.push({ id: genId(), type: txType, symbol, qty: txType === 'CASH' ? null : 1, price: Math.abs(amount), currency: 'PLN', date: parseDate(dateStr) || new Date().toISOString().slice(0, 10), note: details || opType, brokerPositionId: positionId || undefined });
+      // Extract qty and price from comment: "OPEN BUY 3 @ 102.20" or "OPEN SELL 5 @ 99.50"
+      let qty = null;
+      let price = Math.abs(amount);
+      const commentMatch = comment.match(/(?:BUY|SELL)\s+([\d.]+)\s*@\s*([\d.]+)/i);
+      if (commentMatch) {
+        qty   = parseFloat(commentMatch[1]);
+        price = parseFloat(commentMatch[2]);
+      }
+
+      transactions.push({
+        id: genId(),
+        type: txType,
+        symbol: symbol.toUpperCase(),
+        qty: txType === 'CASH' ? null : (qty ?? Math.abs(amount)),
+        price,
+        currency: 'PLN',
+        date: parseDate(timeStr) || new Date().toISOString().slice(0, 10),
+        note: comment || opType,
+        brokerPositionId: positionId || undefined,
+      });
     }
   }
 
