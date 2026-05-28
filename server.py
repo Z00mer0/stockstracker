@@ -895,7 +895,7 @@ class Handler(SimpleHTTPRequestHandler):
                     )
                     row = cur.fetchone()
                 if row:
-                    age_days = (datetime.datetime.utcnow() - row['fetched_at'].replace(tzinfo=None)).days
+                    age_days = (datetime.datetime.now(datetime.timezone.utc) - row['fetched_at']).days
                     if age_days < 90:
                         cached = json.loads(row['data_json'])
                         cached['source']    = row['source']
@@ -924,7 +924,7 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 print(f'[financials] db write error: {e}')
             data['source']    = 'yahoo'
-            data['fetchedAt'] = datetime.datetime.utcnow().isoformat()
+            data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
 
         elif path == '/api/bench-pl':
