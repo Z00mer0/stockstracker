@@ -16,7 +16,6 @@ import os
 import time
 import urllib.parse
 import urllib.request
-import http.cookiejar
 import requests as _requests
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
