@@ -376,18 +376,33 @@ export default function FinancialsTab({ symbol, livePrice }) {
 
   // auto-compute valuation from live price + stored shares; fall back to stored values
   const storedVal = data?.valuation ?? {};
-  const ltmOrLast = periods.length > 0 ? periods[periods.length - 1] : null;
+  const lastPeriod = periods.length > 0 ? periods[periods.length - 1] : null;
   const shares = storedVal.sharesOutstanding ?? null; // raw units
   const liveMarketCap = (livePrice && shares) ? livePrice * shares : null;
-  const liveNetDebt = (ltmOrLast?.totalDebt != null && ltmOrLast?.cashAndEquivalents != null)
-    ? ltmOrLast.totalDebt - ltmOrLast.cashAndEquivalents : null;
+
+  // For income statement items use TTM (sum of last 4 quarters) when in quarterly mode
+  const isQuarterly = period === 'quarterly';
+  const last4 = isQuarterly ? periods.slice(-4) : null;
+  function ttmSum(field) {
+    if (!last4) return lastPeriod?.[field] ?? null;
+    const vals = last4.map(p => p[field]).filter(v => v != null);
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) : null;
+  }
+  const ttmNetIncome = ttmSum('netIncome');
+  const ttmRevenue   = ttmSum('revenue');
+  const ttmEbitda    = ttmSum('ebitda');
+  const ttmFcf       = ttmSum('fcf');
+
+  // Balance sheet → most recent period
+  const liveNetDebt = (lastPeriod?.totalDebt != null && lastPeriod?.cashAndEquivalents != null)
+    ? lastPeriod.totalDebt - lastPeriod.cashAndEquivalents : null;
   const liveEV = (liveMarketCap != null && liveNetDebt != null) ? liveMarketCap + liveNetDebt : null;
   const val = {
-    peRatio:         liveMarketCap && ltmOrLast?.netIncome   ? liveMarketCap / ltmOrLast.netIncome   : storedVal.peRatio,
+    peRatio:         liveMarketCap && ttmNetIncome ? liveMarketCap / ttmNetIncome : storedVal.peRatio,
     forwardPE:       storedVal.forwardPE,
-    evEbitda:        liveEV        && ltmOrLast?.ebitda       ? liveEV        / ltmOrLast.ebitda       : storedVal.evEbitda,
-    ps:              liveMarketCap && ltmOrLast?.revenue      ? liveMarketCap / ltmOrLast.revenue      : storedVal.ps,
-    pfcf:            liveMarketCap && ltmOrLast?.fcf          ? liveMarketCap / ltmOrLast.fcf          : storedVal.pfcf,
+    evEbitda:        liveEV        && ttmEbitda    ? liveEV        / ttmEbitda    : storedVal.evEbitda,
+    ps:              liveMarketCap && ttmRevenue   ? liveMarketCap / ttmRevenue   : storedVal.ps,
+    pfcf:            liveMarketCap && ttmFcf       ? liveMarketCap / ttmFcf       : storedVal.pfcf,
     marketCap:       liveMarketCap ?? storedVal.marketCap,
     sharesOutstanding: shares,
     ev:              liveEV        ?? storedVal.ev,
