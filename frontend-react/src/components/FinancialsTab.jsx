@@ -206,22 +206,26 @@ export default function FinancialsTab({ symbol }) {
   function matchCsvField(name) {
     const l = name.toLowerCase().trim();
     const MAP = [
-      ['revenue',            ['revenue','przychody','revenues','total revenue','net revenue','sales']],
-      ['grossProfit',        ['gross profit','zysk brutto']],
-      ['operatingCost',      ['operating expense','operating cost','koszty oper','opex']],
-      ['operatingIncome',    ['operating income','operating profit','ebit','zysk oper']],
-      ['ebitda',             ['ebitda']],
-      ['netIncome',          ['net income','zysk netto','net income to stockholders','net profit','net earnings']],
-      ['totalAssets',        ['total assets','aktywa ogółem','total asset']],
-      ['totalLiabilities',   ['total liabilities','zobowiązania']],
-      ['equity',             ['total equity','stockholders equity','shareholders equity','kapitał własny']],
-      ['totalDebt',          ['total debt','dług całkowity']],
-      ['cashAndEquivalents', ['cash and equiv','cash & equiv','cash and cash equiv','gotówka']],
-      ['netDebt',            ['net debt','dług netto']],
-      ['operatingCashFlow',  ['cash from operations','operating cash flow','cfo','cash flows from operating']],
-      ['capex',              ['capex','capital expenditure','capital expenditures','cash from investing']],
-      ['fcf',                ['levered free cash flow','free cash flow','fcf']],
-      ['shareRepurchases',   ['share repurchases','buyback','skup akcji']],
+      ['revenue',                ['revenue','przychody','revenues','total revenue','net revenue','sales']],
+      ['grossProfit',            ['gross profit','zysk brutto']],
+      ['operatingCost',          ['operating expense','operating cost','koszty oper','opex']],
+      ['operatingIncome',        ['operating income','operating profit','ebit','zysk oper']],
+      ['ebitda',                 ['ebitda']],
+      ['netIncome',              ['net income','zysk netto','net income to stockholders','net profit','net earnings']],
+      ['sharesOutstandingPer',   ['shares outstanding','liczba akcji']],
+      ['totalCurrentAssets',     ['total current assets','aktywa obrotowe','current assets']],
+      ['totalAssets',            ['total assets','aktywa ogółem','total asset']],
+      ['totalCurrentLiabilities',['total current liabilities','zobowiązania bieżące','current liabilities']],
+      ['totalLiabilities',       ['total liabilities','zobowiązania ogółem','zobowiązania']],
+      ['equity',                 ['total equity','stockholders equity','shareholders equity','kapitał własny']],
+      ['totalDebt',              ['total debt','dług całkowity']],
+      ['cashAndEquivalents',     ['cash and equiv','cash & equiv','cash and cash equiv','gotówka']],
+      ['netDebt',                ['net debt','dług netto']],
+      ['operatingCashFlow',      ['cash from operations','operating cash flow','cfo','cash flows from operating']],
+      ['capex',                  ['capex','capital expenditure','capital expenditures','cash from investing']],
+      ['cashFromFinancing',      ['cash from financing','financing activities','cash flows from financing']],
+      ['fcf',                    ['levered free cash flow','free cash flow','fcf']],
+      ['shareRepurchases',       ['share repurchases','buyback','skup akcji']],
     ];
     for (const [field, keys] of MAP) {
       if (keys.some(k => l.includes(k))) return field;
@@ -246,9 +250,12 @@ export default function FinancialsTab({ symbol }) {
     const empty = () => ({
       revenue: null, revenueGrowthYoY: null, grossProfit: null, grossMargin: null,
       operatingCost: null, operatingIncome: null, ebitda: null, ebitdaMargin: null,
-      netIncome: null, netDebt: null, totalAssets: null, totalLiabilities: null,
+      netIncome: null, netDebt: null,
+      totalCurrentAssets: null, totalAssets: null,
+      totalCurrentLiabilities: null, totalLiabilities: null,
       equity: null, cashAndEquivalents: null, totalDebt: null,
-      operatingCashFlow: null, capex: null, fcf: null, shareRepurchases: null,
+      operatingCashFlow: null, capex: null, cashFromFinancing: null, fcf: null,
+      shareRepurchases: null, sharesOutstandingPer: null,
     });
     const periods = labels.map(label => ({ label, date: labelToDate(label), ...empty() }));
     for (let i = 1; i < lines.length; i++) {
@@ -265,9 +272,15 @@ export default function FinancialsTab({ symbol }) {
       if (i > 0 && p.revenue && periods[i-1].revenue)
         p.revenueGrowthYoY = (p.revenue - periods[i-1].revenue) / Math.abs(periods[i-1].revenue);
     });
+    // extract sharesOutstanding from last non-null period into valuation (raw: multiply by 1e6)
+    const lastShares = [...periods].reverse().find(p => p.sharesOutstandingPer != null);
     return {
       periods,
-      valuation: { peRatio: null, forwardPE: null, evEbitda: null, ps: null, marketCap: null, sharesOutstanding: null, ev: null, pfcf: null, netDebtLatest: null },
+      valuation: {
+        peRatio: null, forwardPE: null, evEbitda: null, ps: null, marketCap: null,
+        sharesOutstanding: lastShares ? lastShares.sharesOutstandingPer : null,
+        ev: null, pfcf: null, netDebtLatest: null,
+      },
       currency: csvCurrency,
       period: isQuarterly ? 'quarterly' : 'annual',
     };
@@ -524,7 +537,9 @@ export default function FinancialsTab({ symbol }) {
           {/* Bilans */}
           <Accordion title="Bilans" unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={periods} />
+            <TableRow label="Aktywa obrotowe" values={periods.map(p => p.totalCurrentAssets)} />
             <TableRow label="Aktywa ogółem" values={periods.map(p => p.totalAssets)} />
+            <TableRow label="Zob. bieżące" values={periods.map(p => p.totalCurrentLiabilities)} />
             <TableRow label="Zobowiązania" values={periods.map(p => p.totalLiabilities)} />
             <TableRow label="Kapitał własny" values={periods.map(p => p.equity)} />
             <TableRow label="Gotówka" values={periods.map(p => p.cashAndEquivalents)} />
@@ -535,7 +550,8 @@ export default function FinancialsTab({ symbol }) {
           <Accordion title="Przepływy pieniężne" unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={periods} />
             <TableRow label="CFO (oper.)" values={periods.map(p => p.operatingCashFlow)} />
-            <TableRow label="CAPEX" values={periods.map(p => p.capex)} />
+            <TableRow label="CAPEX / Inwest." values={periods.map(p => p.capex)} />
+            <TableRow label="Finansowanie" values={periods.map(p => p.cashFromFinancing)} />
             <TableRow label="FCF" values={periods.map(p => p.fcf)} />
             <TableRow label="Skup akcji" values={periods.map(p => p.shareRepurchases)} />
           </Accordion>
