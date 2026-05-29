@@ -176,17 +176,36 @@ export default function FinancialsTab({ symbol }) {
     return () => { cancelled = true; };
   }, [symbol, period]);
 
+  async function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX_W = 1600;
+        let { width, height } = img;
+        if (width > MAX_W) { height = Math.round(height * MAX_W / width); width = MAX_W; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.88);
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
   async function handleUpload(file) {
     if (!file) return;
     setUploading(true);
     setUploadError('');
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = e => resolve(e.target.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const base64 = await compressImage(file);
       const token = localStorage.getItem(AUTH_KEY) || '';
       const resp = await fetch('/api/financials/upload', {
         method: 'POST',
@@ -194,15 +213,21 @@ export default function FinancialsTab({ symbol }) {
         body: JSON.stringify({ symbol, period, image_b64: base64 }),
       });
       if (resp.status === 422) throw new Error('parse_failed');
-      if (!resp.ok) throw new Error('upload_error');
+      if (resp.status === 503) throw new Error('api_key_missing');
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || 'upload_error');
+      }
       const d = await resp.json();
       setData(d);
       setUploadOpen(false);
     } catch (e) {
       if (e.message === 'parse_failed') {
         setUploadError('Nie udało się odczytać tabeli — spróbuj z wyraźniejszym screenshotem');
+      } else if (e.message === 'api_key_missing') {
+        setUploadError('Brak klucza API na serwerze — skontaktuj się z administratorem');
       } else {
-        setUploadError('Błąd przesyłania — spróbuj ponownie');
+        setUploadError(`Błąd: ${e.message}`);
       }
     } finally {
       setUploading(false);

@@ -1329,7 +1329,7 @@ async function doRecover() {
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
             try:
-                body      = self.read_json(max_size=5 * 1024 * 1024)
+                body      = self.read_json(max_size=10 * 1024 * 1024)
                 symbol    = str(body.get('symbol', '')).upper()
                 period    = str(body.get('period', 'quarterly'))
                 image_b64 = str(body.get('image_b64', ''))
