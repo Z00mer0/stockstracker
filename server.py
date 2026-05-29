@@ -1002,53 +1002,94 @@ class Handler(SimpleHTTPRequestHandler):
             symbol = qs.get('symbol', '').upper()
             if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
                 self.send_json(400, {'error': 'invalid symbol'}); return
+
+            out = {}
+
+            # 1. Finnhub – Beta, 52W range, dividend (no crumb needed)
+            fh_token = os.environ.get('FINNHUB_TOKEN', '')
+            if fh_token:
+                try:
+                    fh_url = (f'https://finnhub.io/api/v1/stock/metric?symbol='
+                              f'{urllib.parse.quote(symbol)}&metric=all&token={fh_token}')
+                    req = urllib.request.Request(fh_url, headers={'User-Agent': _YF_UA})
+                    with urllib.request.urlopen(req, timeout=10) as r:
+                        fh = json.loads(r.read()).get('metric', {})
+                    out['fiftyTwoWeekHigh'] = fh.get('52WeekHigh')
+                    out['fiftyTwoWeekLow']  = fh.get('52WeekLow')
+                    out['beta']             = fh.get('beta')
+                    out['dividendYield']    = fh.get('currentDividendYieldTTM')
+                    out['dividendRate']     = fh.get('dividendPerShareAnnual')
+                    out['priceToBook']      = fh.get('pbAnnual')
+                except Exception as e:
+                    print(f'[keystats/finnhub] {symbol}: {e}')
+
+            # 2. Stored financials from DB → send raw TTM values for frontend to compute ratios
             try:
-                result = _yf_quotesummary(symbol, 'summaryDetail,defaultKeyStatistics,calendarEvents,financialData')
-                if not result:
-                    self.send_json(404, {'error': 'no_data'}); return
-                sd  = result.get('summaryDetail', {})
-                ks  = result.get('defaultKeyStatistics', {})
-                cal = result.get('calendarEvents', {})
-                fd  = result.get('financialData', {})
-
-                def gv(d, k):
-                    v = d.get(k)
-                    return v.get('raw') if isinstance(v, dict) else v
-
-                earnings_dates = cal.get('earnings', {}).get('earningsDate', [])
-                next_earnings = None
-                now_ts = time.time()
-                for ed in earnings_dates:
-                    ts = ed.get('raw') if isinstance(ed, dict) else ed
-                    if ts and ts > now_ts:
-                        next_earnings = ts
+                with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    for period in ('quarterly', 'annual'):
+                        cur.execute("SELECT data_json FROM financials WHERE symbol=%s AND period=%s",
+                                    (symbol, period))
+                        row = cur.fetchone()
+                        if not row:
+                            continue
+                        fin      = json.loads(row['data_json'])
+                        periods  = fin.get('periods', [])
+                        val      = fin.get('valuation', {})
+                        shares   = val.get('sharesOutstanding')
+                        out.setdefault('sharesOutstanding', shares)
+                        if periods:
+                            last4 = periods[-4:] if period == 'quarterly' else periods[-1:]
+                            def _ttm(field):
+                                vals = [p[field] for p in last4 if p.get(field) is not None]
+                                return sum(vals) if vals else None
+                            out.setdefault('ttmNetIncome', _ttm('netIncome'))
+                            out.setdefault('ttmRevenue',   _ttm('revenue'))
+                            out.setdefault('ttmEbitda',    _ttm('ebitda'))
+                            fcf_vals = []
+                            for p in last4:
+                                f = p.get('fcf')
+                                if (f is None or f == 0) and p.get('operatingCashFlow') is not None and p.get('capex') is not None:
+                                    f = p['operatingCashFlow'] - abs(p['capex'])
+                                if f is not None:
+                                    fcf_vals.append(f)
+                            out.setdefault('ttmFcf', sum(fcf_vals) if fcf_vals else None)
+                            last = periods[-1]
+                            out.setdefault('totalDebt',           last.get('totalDebt'))
+                            out.setdefault('cashAndEquivalents',  last.get('cashAndEquivalents'))
+                            out.setdefault('equity',              last.get('equity'))
                         break
-
-                data = {
-                    'fiftyTwoWeekLow':           gv(sd, 'fiftyTwoWeekLow'),
-                    'fiftyTwoWeekHigh':          gv(sd, 'fiftyTwoWeekHigh'),
-                    'beta':                      gv(sd, 'beta'),
-                    'trailingPE':               gv(sd, 'trailingPE'),
-                    'forwardPE':                gv(sd, 'forwardPE'),
-                    'dividendYield':            gv(sd, 'dividendYield'),
-                    'dividendRate':             gv(sd, 'dividendRate'),
-                    'marketCap':                gv(sd, 'marketCap'),
-                    'trailingEps':              gv(ks, 'trailingEps'),
-                    'forwardEps':               gv(ks, 'forwardEps'),
-                    'pegRatio':                 gv(ks, 'pegRatio'),
-                    'priceToBook':              gv(ks, 'priceToBook'),
-                    'sharesOutstanding':        gv(ks, 'sharesOutstanding'),
-                    'targetMeanPrice':          gv(fd, 'targetMeanPrice'),
-                    'targetLowPrice':           gv(fd, 'targetLowPrice'),
-                    'targetHighPrice':          gv(fd, 'targetHighPrice'),
-                    'numberOfAnalystOpinions':  gv(fd, 'numberOfAnalystOpinions'),
-                    'recommendationKey':        fd.get('recommendationKey'),
-                    'nextEarningsDate':         next_earnings,
-                }
-                self.send_json(200, data)
             except Exception as e:
-                print(f'[financials/keystats] error for {symbol}: {e}')
-                self.send_json(502, {'error': 'upstream_error'})
+                print(f'[keystats/db] {symbol}: {e}')
+
+            # 3. Best-effort Yahoo Finance (crumb) – analyst targets, forward PE, earnings
+            try:
+                result = _yf_quotesummary(symbol,
+                    'defaultKeyStatistics,calendarEvents,financialData')
+                if result:
+                    def _gv(d, k):
+                        v = d.get(k); return v.get('raw') if isinstance(v, dict) else v
+                    ks  = result.get('defaultKeyStatistics', {})
+                    cal = result.get('calendarEvents', {})
+                    fd  = result.get('financialData', {})
+                    out.setdefault('forwardPE',               _gv(ks, 'forwardPE'))
+                    out.setdefault('forwardEps',              _gv(ks, 'forwardEps'))
+                    out.setdefault('pegRatio',                _gv(ks, 'pegRatio'))
+                    out.setdefault('targetMeanPrice',         _gv(fd, 'targetMeanPrice'))
+                    out.setdefault('targetLowPrice',          _gv(fd, 'targetLowPrice'))
+                    out.setdefault('targetHighPrice',         _gv(fd, 'targetHighPrice'))
+                    out.setdefault('numberOfAnalystOpinions', _gv(fd, 'numberOfAnalystOpinions'))
+                    out.setdefault('recommendationKey',       fd.get('recommendationKey'))
+                    eds = cal.get('earnings', {}).get('earningsDate', [])
+                    now_ts = time.time()
+                    for ed in eds:
+                        ts = ed.get('raw') if isinstance(ed, dict) else ed
+                        if ts and ts > now_ts:
+                            out.setdefault('nextEarningsDate', ts)
+                            break
+            except Exception as e:
+                print(f'[keystats/yf] {symbol}: {e}')
+
+            self.send_json(200, out)
 
         elif path == '/api/bench-pl':
             if not get_username(self):
