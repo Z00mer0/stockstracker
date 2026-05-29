@@ -17,6 +17,7 @@ import time
 import urllib.parse
 import urllib.request
 import http.cookiejar
+import requests as _requests
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -68,63 +69,52 @@ _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...
 _CAL_TTL   = 4 * 3600  # 4 hours
 
 # ── YAHOO FINANCE SESSION (crumb-based auth) ───────────────────────────────────
-_YF_SESSION     = {'crumb': None, 'opener': None, 'ts': 0}
+_YF_SESSION     = {'crumb': None, 'session': None, 'ts': 0}
 _YF_SESSION_TTL = 3600  # 1 hour
 _YF_UA          = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+_YF_HEADERS     = {
+    'User-Agent': _YF_UA,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+}
 
-def _get_yf_opener():
-    """Return (opener, crumb). Refreshes session if stale."""
+def _get_yf_session():
+    """Return (requests.Session, crumb). Refreshes if stale."""
     now = time.time()
     if _YF_SESSION['crumb'] and now - _YF_SESSION['ts'] < _YF_SESSION_TTL:
-        return _YF_SESSION['opener'], _YF_SESSION['crumb']
-    jar    = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-    # seed cookies from main Yahoo Finance page
+        return _YF_SESSION['session'], _YF_SESSION['crumb']
+    sess = _requests.Session()
+    sess.headers.update(_YF_HEADERS)
+    # seed cookies
     try:
-        seed_req = urllib.request.Request('https://finance.yahoo.com/', headers={
-            'User-Agent': _YF_UA,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'identity',
-        })
-        with opener.open(seed_req, timeout=12) as r:
-            r.read()
+        sess.get('https://finance.yahoo.com/', timeout=12)
     except Exception:
         pass
     # fetch crumb
-    crumb_req = urllib.request.Request('https://query1.finance.yahoo.com/v1/test/getcrumb', headers={
-        'User-Agent': _YF_UA,
-        'Referer': 'https://finance.yahoo.com/',
-        'Accept': 'text/plain, */*',
-        'Accept-Encoding': 'identity',
-    })
-    with opener.open(crumb_req, timeout=10) as r:
-        crumb = r.read().decode().strip()
-    _YF_SESSION.update({'crumb': crumb, 'opener': opener, 'ts': now})
-    return opener, crumb
+    r = sess.get('https://query1.finance.yahoo.com/v1/test/getcrumb',
+                 headers={'Referer': 'https://finance.yahoo.com/'}, timeout=10)
+    r.raise_for_status()
+    crumb = r.text.strip()
+    _YF_SESSION.update({'crumb': crumb, 'session': sess, 'ts': now})
+    return sess, crumb
 
 def _yf_quotesummary(symbol, modules):
     """Fetch Yahoo Finance quoteSummary with crumb auth. Returns result dict."""
     for attempt in range(2):
-        opener, crumb = _get_yf_opener()
+        sess, crumb = _get_yf_session()
         url = (
             f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
             f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
             f'&crumb={urllib.parse.quote(crumb)}'
         )
-        req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
-        try:
-            with opener.open(req, timeout=20) as r:
-                data = json.loads(r.read())
-            results = data.get('quoteSummary', {}).get('result') or []
-            if not results:
-                return None
-            return results[0]
-        except urllib.error.HTTPError as e:
-            if e.code in (401, 403) and attempt == 0:
-                _YF_SESSION['crumb'] = None  # force refresh on retry
-                continue
-            raise
+        r = sess.get(url, headers={'Accept': 'application/json'}, timeout=20)
+        if r.status_code in (401, 403) and attempt == 0:
+            _YF_SESSION['crumb'] = None  # force refresh on retry
+            continue
+        r.raise_for_status()
+        data    = r.json()
+        results = data.get('quoteSummary', {}).get('result') or []
+        return results[0] if results else None
 
 # ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
 _BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
