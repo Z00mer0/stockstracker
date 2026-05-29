@@ -1,0 +1,299 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "💰 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 💰
+        - text: Dywidendy
+      - link "📅 Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 📅
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - button "Wyloguj →" [ref=e32] [cursor=pointer]
+  - generic [ref=e33]:
+    - banner [ref=e34]:
+      - heading "Analiza atrybuacji" [level=1] [ref=e35]
+      - button "☀️" [ref=e36] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+      - generic [ref=e41]:
+        - generic [ref=e42]: NYSE
+        - generic [ref=e44]: GPW
+        - generic [ref=e46]: LSE
+      - button "↻ Odśwież" [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: ↻
+        - generic [ref=e50]: Odśwież
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - heading "Analiza ryzyka" [level=2] [ref=e55]
+            - paragraph [ref=e56]: Na podstawie historii snapshotów portfela
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Zmienność (rok.)
+              - generic [ref=e61]: 3078.2%
+              - generic [ref=e62]: Odch. std. zwrotów × √252
+            - generic [ref=e63]:
+              - generic [ref=e64]: Max Drawdown
+              - generic [ref=e66]: "-15.6%"
+              - generic [ref=e67]: Największy spadek od szczytu
+            - generic [ref=e68]:
+              - generic [ref=e69]: Sharpe Ratio
+              - generic [ref=e70]: "4.32"
+              - generic [ref=e71]: Zwrot / ryzyko (RF=4,5%)
+            - generic [ref=e72]:
+              - generic [ref=e73]: Sortino Ratio
+              - generic [ref=e74]: "143.58"
+              - generic [ref=e75]: Jak Sharpe, tylko dół
+            - generic [ref=e76]:
+              - generic [ref=e77]: Beta (S&P 500)
+              - generic [ref=e78]: ładowanie…
+              - generic [ref=e79]: Korelacja z rynkiem US
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - heading "Rebalansowanie portfela" [level=2] [ref=e82]
+            - button "✎ Ustaw cele" [ref=e83] [cursor=pointer]
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - generic [ref=e86]: XTB.WA
+              - generic [ref=e89]: 23,5%
+              - generic [ref=e91]: 0%
+            - generic [ref=e92]:
+              - generic [ref=e93]: HOOD
+              - generic [ref=e96]: 14,9%
+              - generic [ref=e98]: 0%
+            - generic [ref=e99]:
+              - generic [ref=e100]: ALE.WA
+              - generic [ref=e103]: 1,2%
+              - generic [ref=e105]: 0%
+            - generic [ref=e106]:
+              - generic [ref=e107]: NVDA
+              - generic [ref=e110]: 3,3%
+              - generic [ref=e112]: 0%
+            - generic [ref=e113]:
+              - generic [ref=e114]: KRU.WA
+              - generic [ref=e117]: 9,8%
+              - generic [ref=e119]: 0%
+            - generic [ref=e120]:
+              - generic [ref=e121]: PKN.WA
+              - generic [ref=e124]: 9,0%
+              - generic [ref=e126]: 0%
+            - generic [ref=e127]:
+              - generic [ref=e128]: CBF.WA
+              - generic [ref=e131]: 12,2%
+              - generic [ref=e133]: 0%
+            - generic [ref=e134]:
+              - generic [ref=e135]: VOT.WA
+              - generic [ref=e138]: 1,8%
+              - generic [ref=e140]: 0%
+            - generic [ref=e141]:
+              - generic [ref=e142]: MDV.WA
+              - generic [ref=e145]: 11,6%
+              - generic [ref=e147]: 0%
+            - generic [ref=e148]:
+              - generic [ref=e149]: DNP.WA
+              - generic [ref=e152]: 12,9%
+              - generic [ref=e154]: 0%
+            - paragraph [ref=e155]: Kliknij „Ustaw cele" aby zdefiniować docelową alokację i zobaczyć sugestie rebalansowania.
+        - generic [ref=e156]:
+          - generic [ref=e157]:
+            - paragraph [ref=e158]: Liczba pozycji
+            - paragraph [ref=e159]: "10"
+          - generic [ref=e160]:
+            - paragraph [ref=e161]: Zyskowne
+            - paragraph [ref=e162]: "6"
+          - generic [ref=e163]:
+            - paragraph [ref=e164]: Stratne
+            - paragraph [ref=e165]: "4"
+          - generic [ref=e166]:
+            - paragraph [ref=e167]: Śr. zwrot
+            - paragraph [ref=e168]: +23,2%
+        - generic [ref=e169]:
+          - generic [ref=e170]:
+            - heading "Najlepsze pozycje" [level=2] [ref=e172]
+            - table [ref=e173]:
+              - rowgroup [ref=e174]:
+                - row "Symbol P&L Zwrot" [ref=e175]:
+                  - columnheader "Symbol" [ref=e176]
+                  - columnheader "P&L" [ref=e177]
+                  - columnheader "Zwrot" [ref=e178]
+              - rowgroup [ref=e179]:
+                - row "PKN.WA +4289 zł +157,9%" [ref=e180]:
+                  - cell "PKN.WA" [ref=e181]
+                  - cell "+4289 zł" [ref=e182]
+                  - cell "+157,9%" [ref=e183]
+                - row "NVDA +1069 zł +72,2%" [ref=e184]:
+                  - cell "NVDA" [ref=e185]
+                  - cell "+1069 zł" [ref=e186]
+                  - cell "+72,2%" [ref=e187]
+                - row "XTB.WA +5291 zł +40,5%" [ref=e188]:
+                  - cell "XTB.WA" [ref=e189]
+                  - cell "+5291 zł" [ref=e190]
+                  - cell "+40,5%" [ref=e191]
+                - row "VOT.WA +189 zł +15,3%" [ref=e192]:
+                  - cell "VOT.WA" [ref=e193]
+                  - cell "+189 zł" [ref=e194]
+                  - cell "+15,3%" [ref=e195]
+                - row "KRU.WA +272 zł +3,7%" [ref=e196]:
+                  - cell "KRU.WA" [ref=e197]
+                  - cell "+272 zł" [ref=e198]
+                  - cell "+3,7%" [ref=e199]
+          - generic [ref=e200]:
+            - heading "Najgorsze pozycje" [level=2] [ref=e202]
+            - table [ref=e203]:
+              - rowgroup [ref=e204]:
+                - row "Symbol P&L Zwrot" [ref=e205]:
+                  - columnheader "Symbol" [ref=e206]
+                  - columnheader "P&L" [ref=e207]
+                  - columnheader "Zwrot" [ref=e208]
+              - rowgroup [ref=e209]:
+                - row "MDV.WA -3816 zł -29,6%" [ref=e210]:
+                  - cell "MDV.WA" [ref=e211]
+                  - cell "-3816 zł" [ref=e212]
+                  - cell "-29,6%" [ref=e213]
+                - row "CBF.WA -1438 zł -13,1%" [ref=e214]:
+                  - cell "CBF.WA" [ref=e215]
+                  - cell "-1438 zł" [ref=e216]
+                  - cell "-13,1%" [ref=e217]
+                - row "DNP.WA -1228 zł -10,9%" [ref=e218]:
+                  - cell "DNP.WA" [ref=e219]
+                  - cell "-1228 zł" [ref=e220]
+                  - cell "-10,9%" [ref=e221]
+                - row "HOOD -976 zł -7,7%" [ref=e222]:
+                  - cell "HOOD" [ref=e223]
+                  - cell "-976 zł" [ref=e224]
+                  - cell "-7,7%" [ref=e225]
+                - row "ALE.WA +31 zł +3,5%" [ref=e226]:
+                  - cell "ALE.WA" [ref=e227]
+                  - cell "+31 zł" [ref=e228]
+                  - cell "+3,5%" [ref=e229]
+        - generic [ref=e230]:
+          - heading "Alokacja walutowa" [level=2] [ref=e232]
+          - table [ref=e233]:
+            - rowgroup [ref=e234]:
+              - row "Waluta Wartość Udział" [ref=e235]:
+                - columnheader "Waluta" [ref=e236]
+                - columnheader "Wartość" [ref=e237]
+                - columnheader "Udział" [ref=e238]
+            - rowgroup [ref=e239]:
+              - row "PLN 63 988 zł 81,9%" [ref=e240]:
+                - cell "PLN" [ref=e241]
+                - cell "63 988 zł" [ref=e242]
+                - cell "81,9%" [ref=e243]
+              - row "USD 14 172 zł 18,1%" [ref=e244]:
+                - cell "USD" [ref=e245]
+                - cell "14 172 zł" [ref=e246]
+                - cell "18,1%" [ref=e247]
+              - row "Razem 78 159 zł 100%" [ref=e248]:
+                - cell "Razem" [ref=e249]
+                - cell "78 159 zł" [ref=e250]
+                - cell "100%" [ref=e251]
+        - generic [ref=e252]:
+          - heading "Koncentracja pozycji" [level=2] [ref=e254]
+          - table [ref=e256]:
+            - rowgroup [ref=e257]:
+              - row "Symbol Wartość Udział" [ref=e258]:
+                - columnheader "Symbol" [ref=e259]
+                - columnheader "Wartość" [ref=e260]
+                - columnheader "Udział" [ref=e261]
+            - rowgroup [ref=e262]:
+              - row "XTB.WA 18 343 zł 23,5%" [ref=e263]:
+                - cell "XTB.WA" [ref=e264]
+                - cell "18 343 zł" [ref=e265]
+                - cell "23,5%" [ref=e266]
+              - row "HOOD 11 621 zł 14,9%" [ref=e267]:
+                - cell "HOOD" [ref=e268]
+                - cell "11 621 zł" [ref=e269]
+                - cell "14,9%" [ref=e270]
+              - row "DNP.WA 10 049 zł 12,9%" [ref=e271]:
+                - cell "DNP.WA" [ref=e272]
+                - cell "10 049 zł" [ref=e273]
+                - cell "12,9%" [ref=e274]
+              - row "CBF.WA 9509 zł 12,2%" [ref=e275]:
+                - cell "CBF.WA" [ref=e276]
+                - cell "9509 zł" [ref=e277]
+                - cell "12,2%" [ref=e278]
+              - row "MDV.WA 9060 zł 11,6%" [ref=e279]:
+                - cell "MDV.WA" [ref=e280]
+                - cell "9060 zł" [ref=e281]
+                - cell "11,6%" [ref=e282]
+              - row "KRU.WA 7670 zł 9,8%" [ref=e283]:
+                - cell "KRU.WA" [ref=e284]
+                - cell "7670 zł" [ref=e285]
+                - cell "9,8%" [ref=e286]
+              - row "PKN.WA 7004 zł 9,0%" [ref=e287]:
+                - cell "PKN.WA" [ref=e288]
+                - cell "7004 zł" [ref=e289]
+                - cell "9,0%" [ref=e290]
+              - row "NVDA 2551 zł 3,3%" [ref=e291]:
+                - cell "NVDA" [ref=e292]
+                - cell "2551 zł" [ref=e293]
+                - cell "3,3%" [ref=e294]
+              - row "VOT.WA 1425 zł 1,8%" [ref=e295]:
+                - cell "VOT.WA" [ref=e296]
+                - cell "1425 zł" [ref=e297]
+                - cell "1,8%" [ref=e298]
+              - row "ALE.WA 928 zł 1,2%" [ref=e299]:
+                - cell "ALE.WA" [ref=e300]
+                - cell "928 zł" [ref=e301]
+                - cell "1,2%" [ref=e302]
+        - generic [ref=e303]:
+          - generic [ref=e304]:
+            - heading "Smart Insights" [level=2] [ref=e305]
+            - paragraph [ref=e306]: Automatyczne rekomendacje na podstawie Twojego portfela
+          - generic [ref=e307]:
+            - generic [ref=e308]:
+              - generic [ref=e309]: "📈 Realizacja zysku: PKN.WA +158%"
+              - list [ref=e310]:
+                - listitem [ref=e311]: "Niezrealizowany zysk: 4289 PLN."
+                - listitem [ref=e312]: "Podatek przy realizacji: ~815 PLN (19%)."
+                - listitem [ref=e313]: Rozważ częściową sprzedaż i reinwestycję w niedoważone sektory.
+            - generic [ref=e314]:
+              - generic [ref=e315]: 💚 Tax Loss Harvesting — oszczędność ~1417 PLN
+              - list [ref=e316]:
+                - listitem [ref=e317]: Realizując straty możesz obniżyć podatek od zysków.
+                - listitem [ref=e318]: "Kandydaci: MDV.WA (-3816 PLN), CBF.WA (-1438 PLN), DNP.WA (-1228 PLN)."
+                - listitem [ref=e319]: "Uwaga: nie odkupuj w ciągu 30 dni (wash-sale)."
+            - generic [ref=e320]:
+              - generic [ref=e321]: "🏥 Health Score: 8/10 — DOBRY ✅"
+              - list [ref=e322]:
+                - listitem [ref=e323]: "Dywersyfikacja: 10/10"
+                - listitem [ref=e324]: "Wyniki: 6/10"
+                - listitem [ref=e325]: "Ryzyko konc.: 7/10"
+                - listitem [ref=e326]: "Rekomendacja: HOLD & MONITOR"

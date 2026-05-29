@@ -1,0 +1,196 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "📅 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 📅
+        - text: Dywidendy
+      - link "🗓️ Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 🗓️
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [active] [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - generic [ref=e31]:
+      - paragraph [ref=e32]: Adam
+      - button "Wyloguj →" [ref=e33] [cursor=pointer]
+  - generic [ref=e34]:
+    - banner [ref=e35]:
+      - heading "Analiza atrybuacji" [level=1] [ref=e530]
+      - button "☀️" [ref=e37] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - generic [ref=e42]:
+        - generic [ref=e43]: NYSE
+        - generic [ref=e45]: GPW
+        - generic [ref=e47]: LSE
+      - button "↻ Odśwież" [ref=e55] [cursor=pointer]:
+        - generic [ref=e50]: ↻
+        - generic [ref=e51]: Odśwież
+    - main [ref=e52]:
+      - generic [ref=e531]:
+        - generic [ref=e532]:
+          - generic [ref=e533]:
+            - heading "Analiza ryzyka" [level=2] [ref=e534]
+            - paragraph [ref=e535]: Na podstawie historii snapshotów portfela
+          - generic [ref=e536]:
+            - generic [ref=e537]:
+              - generic [ref=e538]: Zmienność (rok.)
+              - generic [ref=e540]: 52.8%
+              - generic [ref=e541]: Odch. std. zwrotów × √252
+            - generic [ref=e542]:
+              - generic [ref=e543]: Max Drawdown
+              - generic [ref=e545]: "-15.6%"
+              - generic [ref=e546]: Największy spadek od szczytu
+            - generic [ref=e547]:
+              - generic [ref=e548]: Sharpe Ratio
+              - generic [ref=e549]: "-3.56"
+              - generic [ref=e550]: Zwrot / ryzyko (RF=4,5%)
+            - generic [ref=e551]:
+              - generic [ref=e552]: Sortino Ratio
+              - generic [ref=e553]: "-2.27"
+              - generic [ref=e554]: Jak Sharpe, tylko dół
+            - generic [ref=e555]:
+              - generic [ref=e556]: Beta (S&P 500)
+              - generic [ref=e557]: ładowanie…
+              - generic [ref=e558]: Korelacja z rynkiem US
+        - generic [ref=e559]:
+          - generic [ref=e560]:
+            - heading "Rebalansowanie portfela" [level=2] [ref=e561]
+            - button "✎ Ustaw cele" [ref=e562] [cursor=pointer]
+          - paragraph [ref=e564]: Kliknij „Ustaw cele" aby zdefiniować docelową alokację i zobaczyć sugestie rebalansowania.
+        - generic [ref=e565]:
+          - generic [ref=e566]:
+            - paragraph [ref=e567]: Liczba pozycji
+            - paragraph [ref=e568]: "10"
+          - generic [ref=e569]:
+            - paragraph [ref=e570]: Zyskowne
+            - paragraph [ref=e571]: "10"
+          - generic [ref=e572]:
+            - paragraph [ref=e573]: Stratne
+            - paragraph [ref=e574]: "0"
+          - generic [ref=e575]:
+            - paragraph [ref=e576]: Śr. zwrot
+            - paragraph [ref=e577]: +0,0%
+        - generic [ref=e578]:
+          - generic [ref=e579]:
+            - heading "Najlepsze pozycje" [level=2] [ref=e581]
+            - table [ref=e582]:
+              - rowgroup [ref=e583]:
+                - row "Symbol P&L Zwrot" [ref=e584]:
+                  - columnheader "Symbol" [ref=e585]
+                  - columnheader "P&L" [ref=e586]
+                  - columnheader "Zwrot" [ref=e587]
+              - rowgroup [ref=e588]:
+                - row "XTB.WA +— zł +0,0%" [ref=e589]:
+                  - cell "XTB.WA" [ref=e590]
+                  - cell "+— zł" [ref=e591]
+                  - cell "+0,0%" [ref=e592]
+                - row "HOOD +— zł +0,0%" [ref=e593]:
+                  - cell "HOOD" [ref=e594]
+                  - cell "+— zł" [ref=e595]
+                  - cell "+0,0%" [ref=e596]
+                - row "ALE.WA +— zł +0,0%" [ref=e597]:
+                  - cell "ALE.WA" [ref=e598]
+                  - cell "+— zł" [ref=e599]
+                  - cell "+0,0%" [ref=e600]
+                - row "NVDA +— zł +0,0%" [ref=e601]:
+                  - cell "NVDA" [ref=e602]
+                  - cell "+— zł" [ref=e603]
+                  - cell "+0,0%" [ref=e604]
+                - row "KRU.WA +— zł +0,0%" [ref=e605]:
+                  - cell "KRU.WA" [ref=e606]
+                  - cell "+— zł" [ref=e607]
+                  - cell "+0,0%" [ref=e608]
+          - generic [ref=e609]:
+            - heading "Najgorsze pozycje" [level=2] [ref=e611]
+            - table [ref=e612]:
+              - rowgroup [ref=e613]:
+                - row "Symbol P&L Zwrot" [ref=e614]:
+                  - columnheader "Symbol" [ref=e615]
+                  - columnheader "P&L" [ref=e616]
+                  - columnheader "Zwrot" [ref=e617]
+              - rowgroup [ref=e618]:
+                - row "DNP.WA +— zł +0,0%" [ref=e619]:
+                  - cell "DNP.WA" [ref=e620]
+                  - cell "+— zł" [ref=e621]
+                  - cell "+0,0%" [ref=e622]
+                - row "MDV.WA +— zł +0,0%" [ref=e623]:
+                  - cell "MDV.WA" [ref=e624]
+                  - cell "+— zł" [ref=e625]
+                  - cell "+0,0%" [ref=e626]
+                - row "VOT.WA +— zł +0,0%" [ref=e627]:
+                  - cell "VOT.WA" [ref=e628]
+                  - cell "+— zł" [ref=e629]
+                  - cell "+0,0%" [ref=e630]
+                - row "CBF.WA +— zł +0,0%" [ref=e631]:
+                  - cell "CBF.WA" [ref=e632]
+                  - cell "+— zł" [ref=e633]
+                  - cell "+0,0%" [ref=e634]
+                - row "PKN.WA +— zł +0,0%" [ref=e635]:
+                  - cell "PKN.WA" [ref=e636]
+                  - cell "+— zł" [ref=e637]
+                  - cell "+0,0%" [ref=e638]
+        - generic [ref=e639]:
+          - heading "Alokacja walutowa" [level=2] [ref=e641]
+          - table [ref=e642]:
+            - rowgroup [ref=e643]:
+              - row "Waluta Wartość Udział" [ref=e644]:
+                - columnheader "Waluta" [ref=e645]
+                - columnheader "Wartość" [ref=e646]
+                - columnheader "Udział" [ref=e647]
+            - rowgroup [ref=e648]:
+              - row "PLN 0 zł —" [ref=e649]:
+                - cell "PLN" [ref=e650]
+                - cell "0 zł" [ref=e651]
+                - cell "—" [ref=e652]
+              - row "USD 0 zł —" [ref=e653]:
+                - cell "USD" [ref=e654]
+                - cell "0 zł" [ref=e655]
+                - cell "—" [ref=e656]
+              - row "Razem 0 zł 100%" [ref=e657]:
+                - cell "Razem" [ref=e658]
+                - cell "0 zł" [ref=e659]
+                - cell "100%" [ref=e660]
+        - generic [ref=e661]:
+          - heading "Koncentracja pozycji" [level=2] [ref=e663]
+          - table [ref=e665]:
+            - rowgroup [ref=e666]:
+              - row "Symbol Wartość Udział" [ref=e667]:
+                - columnheader "Symbol" [ref=e668]
+                - columnheader "Wartość" [ref=e669]
+                - columnheader "Udział" [ref=e670]
+            - rowgroup

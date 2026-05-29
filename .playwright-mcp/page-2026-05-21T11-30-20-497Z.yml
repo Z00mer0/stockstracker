@@ -1,0 +1,213 @@
+- generic [ref=e16]:
+  - complementary [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e21]: 📈
+      - generic [ref=e22]: StocksTracker
+    - navigation [ref=e23]:
+      - link "📊 Dashboard" [ref=e24] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e25]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e26] [cursor=pointer]:
+        - /url: /portfolio
+        - generic [ref=e27]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e28] [cursor=pointer]:
+        - /url: /history
+        - generic [ref=e29]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e30] [cursor=pointer]:
+        - /url: /transactions
+        - generic [ref=e31]: 📋
+        - text: Transakcje
+      - link "📅 Dywidendy" [ref=e32] [cursor=pointer]:
+        - /url: /dividends
+        - generic [ref=e33]: 📅
+        - text: Dywidendy
+      - link "🗓️ Kalendarz" [ref=e34] [cursor=pointer]:
+        - /url: /calendar
+        - generic [ref=e35]: 🗓️
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e36] [cursor=pointer]:
+        - /url: /watchlist
+        - generic [ref=e37]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e38] [cursor=pointer]:
+        - /url: /scenario
+        - generic [ref=e39]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e40] [cursor=pointer]:
+        - /url: /analysis
+        - generic [ref=e41]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e42] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e43]: ⚙️
+        - text: Ustawienia
+    - generic [ref=e44]:
+      - paragraph [ref=e45]: Adam
+      - button "Wyloguj →" [ref=e46] [cursor=pointer]
+  - generic [ref=e47]:
+    - banner [ref=e48]:
+      - heading "Dashboard" [level=1] [ref=e49]
+      - button "☀️" [ref=e50] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e51] [cursor=pointer]:
+        - img [ref=e52]
+      - generic [ref=e55]:
+        - generic [ref=e56]: NYSE
+        - generic [ref=e58]: GPW
+        - generic [ref=e60]: LSE
+      - button "↻ Odśwież" [ref=e62] [cursor=pointer]:
+        - generic [ref=e63]: ↻
+        - generic [ref=e64]: Odśwież
+    - main [ref=e65]:
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - paragraph [ref=e69]: Wartość portfela
+            - paragraph [ref=e70]: 34 277,24 zł
+          - generic [ref=e71]:
+            - paragraph [ref=e72]: Unrealized P&L
+            - paragraph [ref=e73]: +0,00 zł
+            - paragraph [ref=e74]: +0,00% (ceny ładuję…)
+          - generic [ref=e75]:
+            - paragraph [ref=e76]: Realized P&L
+            - paragraph [ref=e77]: +0,00 zł
+            - paragraph [ref=e78]: "Total ROI: +0,0%"
+          - generic [ref=e79]:
+            - paragraph [ref=e80]: Roczna Dywidenda
+            - paragraph [ref=e81]: 0,00 zł
+            - paragraph [ref=e82]: ostatnie 12 miesięcy
+          - generic [ref=e83]:
+            - paragraph [ref=e84]: Zmiana dzienna
+            - paragraph [ref=e85]: +0,00 zł
+            - paragraph [ref=e86]: +0,00%
+          - generic [ref=e87]:
+            - paragraph [ref=e88]: IRR portfela
+            - paragraph [ref=e89]: N/A
+            - paragraph [ref=e90]: < 30 dni historii
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - paragraph [ref=e93]: Gotówka
+            - button "✎ Zarządzaj" [ref=e94] [cursor=pointer]
+          - paragraph [ref=e95]: Brak gotówki — kliknij „Zarządzaj" aby dodać.
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - paragraph [ref=e98]: Alokacja portfela
+            - generic [ref=e99]:
+              - button "Spółki" [ref=e100] [cursor=pointer]
+              - button "Waluty" [ref=e101] [cursor=pointer]
+              - button "Sektory" [ref=e102] [cursor=pointer]
+          - img [ref=e104]
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - paragraph [ref=e107]: Historia wartości portfela
+            - generic [ref=e108]: 20 punktów
+          - img [ref=e109]
+        - generic [ref=e112]:
+          - heading "Największe pozycje (wg kosztu)" [level=2] [ref=e114]
+          - table [ref=e116]:
+            - rowgroup [ref=e117]:
+              - row "Symbol Ilość Śr. Zakup Cena Teraz Zmiana Dz. Wart. Zakupu Wart. Teraz Zysk/Strata Okres MOIC" [ref=e118]:
+                - columnheader "Symbol" [ref=e119]
+                - columnheader "Ilość" [ref=e120]
+                - columnheader "Śr. Zakup" [ref=e121]
+                - columnheader "Cena Teraz" [ref=e122]
+                - columnheader "Zmiana Dz." [ref=e123]
+                - columnheader "Wart. Zakupu" [ref=e124]
+                - columnheader "Wart. Teraz" [ref=e125]
+                - columnheader "Zysk/Strata" [ref=e126]
+                - columnheader "Okres" [ref=e127]
+                - columnheader "MOIC" [ref=e128]
+            - rowgroup [ref=e129]:
+              - row "DNP.WADino Polska S.A. 313,2546 32,98 🇵🇱 — — 10 330,82 zł — — 5mo —" [ref=e130]:
+                - cell "DNP.WADino Polska S.A." [ref=e131] [cursor=pointer]
+                - cell "313,2546" [ref=e132]
+                - cell "32,98 🇵🇱" [ref=e133]:
+                  - generic [ref=e134]: 32,98 🇵🇱
+                - cell "—" [ref=e135]
+                - cell "—" [ref=e136]
+                - cell "10 330,82 zł" [ref=e137]:
+                  - generic [ref=e138]: 10 330,82 zł
+                - cell "—" [ref=e139]
+                - cell "—" [ref=e140]
+                - cell "5mo" [ref=e141]
+                - cell "—" [ref=e142]
+              - row "MOD.WA 116 82,27 🇵🇱 — — 9543,32 zł — — 5mo —" [ref=e143]:
+                - cell "MOD.WA" [ref=e144] [cursor=pointer]
+                - cell "116" [ref=e145]
+                - cell "82,27 🇵🇱" [ref=e146]:
+                  - generic [ref=e147]: 82,27 🇵🇱
+                - cell "—" [ref=e148]
+                - cell "—" [ref=e149]
+                - cell "9543,32 zł" [ref=e150]:
+                  - generic [ref=e151]: 9543,32 zł
+                - cell "—" [ref=e152]
+                - cell "—" [ref=e153]
+                - cell "5mo" [ref=e154]
+                - cell "—" [ref=e155]
+              - row "DGN.WADGN.WA,0P0001MDJ6,365 24 159,13 🇵🇱 — — 3819,12 zł — — 1mo —" [ref=e156]:
+                - cell "DGN.WADGN.WA,0P0001MDJ6,365" [ref=e157] [cursor=pointer]
+                - cell "24" [ref=e158]
+                - cell "159,13 🇵🇱" [ref=e159]:
+                  - generic [ref=e160]: 159,13 🇵🇱
+                - cell "—" [ref=e161]
+                - cell "—" [ref=e162]
+                - cell "3819,12 zł" [ref=e163]:
+                  - generic [ref=e164]: 3819,12 zł
+                - cell "—" [ref=e165]
+                - cell "—" [ref=e166]
+                - cell "1mo" [ref=e167]
+                - cell "—" [ref=e168]
+              - row "XTB.WAXTB S.A. 36 100,02 🇵🇱 — — 3600,72 zł — — 22d —" [ref=e169]:
+                - cell "XTB.WAXTB S.A." [ref=e170] [cursor=pointer]
+                - cell "36" [ref=e171]
+                - cell "100,02 🇵🇱" [ref=e172]:
+                  - generic [ref=e173]: 100,02 🇵🇱
+                - cell "—" [ref=e174]
+                - cell "—" [ref=e175]
+                - cell "3600,72 zł" [ref=e176]:
+                  - generic [ref=e177]: 3600,72 zł
+                - cell "—" [ref=e178]
+                - cell "—" [ref=e179]
+                - cell "22d" [ref=e180]
+                - cell "—" [ref=e181]
+              - row "MRB.WA 213 10,72 🇵🇱 — — 2283,36 zł — — 1mo —" [ref=e182]:
+                - cell "MRB.WA" [ref=e183] [cursor=pointer]
+                - cell "213" [ref=e184]
+                - cell "10,72 🇵🇱" [ref=e185]:
+                  - generic [ref=e186]: 10,72 🇵🇱
+                - cell "—" [ref=e187]
+                - cell "—" [ref=e188]
+                - cell "2283,36 zł" [ref=e189]:
+                  - generic [ref=e190]: 2283,36 zł
+                - cell "—" [ref=e191]
+                - cell "—" [ref=e192]
+                - cell "1mo" [ref=e193]
+                - cell "—" [ref=e194]
+              - row "CDR.WA 8 240,60 🇵🇱 — — 1924,80 zł — — 5mo —" [ref=e195]:
+                - cell "CDR.WA" [ref=e196] [cursor=pointer]
+                - cell "8" [ref=e197]
+                - cell "240,60 🇵🇱" [ref=e198]:
+                  - generic [ref=e199]: 240,60 🇵🇱
+                - cell "—" [ref=e200]
+                - cell "—" [ref=e201]
+                - cell "1924,80 zł" [ref=e202]:
+                  - generic [ref=e203]: 1924,80 zł
+                - cell "—" [ref=e204]
+                - cell "—" [ref=e205]
+                - cell "5mo" [ref=e206]
+                - cell "—" [ref=e207]
+              - row "SN2.WA 55 28,12 🇵🇱 — — 1546,60 zł — — 23d —" [ref=e208]:
+                - cell "SN2.WA" [ref=e209] [cursor=pointer]
+                - cell "55" [ref=e210]
+                - cell "28,12 🇵🇱" [ref=e211]:
+                  - generic [ref=e212]: 28,12 🇵🇱
+                - cell "—" [ref=e213]
+                - cell "—" [ref=e214]
+                - cell "1546,60 zł" [ref=e215]:
+                  - generic [ref=e216]: 1546,60 zł
+                - cell "—" [ref=e217]
+                - cell "—" [ref=e218]
+                - cell "23d" [ref=e219]
+                - cell "—" [ref=e220]

@@ -1,0 +1,22 @@
+- generic [ref=e2]:
+  - generic [ref=e1222]:
+    - heading "Postęp" [level=2] [ref=e1223]
+    - generic [ref=e1224]:
+      - generic [ref=e1225]: 0%
+      - generic [ref=e1226]: opanowania (ostatnie 30 dni)
+    - generic [ref=e1227]:
+      - generic [ref=e1228]: OSTATNIE SESJE
+      - paragraph [ref=e1229]: Brak sesji. Zrób pierwszy quiz!
+  - navigation [ref=e56]:
+    - link "📚 Materiały" [ref=e57] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e58]: 📚
+      - generic [ref=e59]: Materiały
+    - link "✍️ Quiz" [ref=e60] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e61]: ✍️
+      - generic [ref=e62]: Quiz
+    - link "📊 Postęp" [active] [ref=e63] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e64]: 📊
+      - generic [ref=e65]: Postęp

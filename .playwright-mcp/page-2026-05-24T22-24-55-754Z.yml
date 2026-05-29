@@ -1,0 +1,54 @@
+- generic [ref=e2]:
+  - generic [ref=e41]:
+    - heading "Quiz" [level=2] [ref=e42]
+    - generic [ref=e43]:
+      - generic [ref=e44]: KATEGORIA
+      - combobox [ref=e45]:
+        - option "Wszystkie (711)" [selected]
+        - option "Matematyka finansowa (25)"
+        - option "Ustawa o rachunkowości – Definicje (art. 1–25) (52)"
+        - option "Ustawa o rachunkowości – Łączenie spółek (art. 26+) (27)"
+        - option "Ustawa o rachunkowości – Zadania testowe (48)"
+        - option "Ustawa o obrocie instrumentami finansowymi (58)"
+        - option "Metody wyceny przedsiębiorstw (64)"
+        - option "Zarządzanie portfelem (6)"
+        - option "Instrumenty pochodne i opcje (10)"
+        - option "KSH i Kodeks cywilny (45)"
+        - option "Rozporządzenie MF – Warunki tech.-org. FI (14)"
+        - option "Ustawa o funduszach inwestycyjnych i zarządzaniu AFI (34)"
+        - option "Ustawa o nadzorze nad rynkiem finansowym (20)"
+        - option "Ustawa o ofercie publicznej i spółkach publicznych (13)"
+        - option "Ustawa o obligacjach (14)"
+        - option "Obowiązki informacyjne emitentów (5)"
+        - option "Ustawa o nadzorze nad rynkiem kapitałowym (4)"
+        - option "Rozporządzenie MF – Tryb i warunki postępowania FI (19)"
+        - option "Etyka zawodowa maklerów i doradców (2)"
+        - option "Egzamin Marzec 2026 (pytania 1–120) (120)"
+        - option "regulamin_gpw (60)"
+        - option "szog (71)"
+    - generic [ref=e46]:
+      - generic [ref=e47]: "LICZBA PYTAŃ: 711 / 711"
+      - slider [ref=e48]: "711"
+    - button "🔀 Losowa kolejność wyłączona" [ref=e49] [cursor=pointer]:
+      - text: 🔀 Losowa kolejność
+      - generic [ref=e50]: wyłączona
+    - generic [ref=e51]:
+      - button "📚 Tryb nauki Natychmiastowy feedback po każdej odpowiedzi" [ref=e52] [cursor=pointer]:
+        - text: 📚 Tryb nauki
+        - generic [ref=e53]: Natychmiastowy feedback po każdej odpowiedzi
+      - button "✍️ Tryb egzaminu Wyniki i omówienie po zakończeniu" [ref=e54] [cursor=pointer]:
+        - text: ✍️ Tryb egzaminu
+        - generic [ref=e55]: Wyniki i omówienie po zakończeniu
+  - navigation [ref=e56]:
+    - link "📚 Materiały" [ref=e57] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e58]: 📚
+      - generic [ref=e59]: Materiały
+    - link "✍️ Quiz" [ref=e60] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e61]: ✍️
+      - generic [ref=e62]: Quiz
+    - link "📊 Postęp" [ref=e63] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e64]: 📊
+      - generic [ref=e65]: Postęp

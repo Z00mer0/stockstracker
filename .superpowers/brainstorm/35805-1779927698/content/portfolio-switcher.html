@@ -1,0 +1,94 @@
+<h2>Jak przełączać się między portfelami?</h2>
+<p class="subtitle">Wybierz styl nawigacji portfeli — kliknij żeby wybrać</p>
+
+<div class="cards">
+
+  <!-- Option A: Dropdown w headerze -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0d1117;border-radius:8px;">
+      <div style="display:flex;align-items:center;gap:8px;background:#161b22;padding:8px 12px;border-radius:8px;border:1px solid #30363d;margin-bottom:12px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
+        <span style="color:#e6edf3;font-size:12px;font-weight:600;">▼ XTB — GPW · PLN</span>
+        <span style="margin-left:auto;color:#7d8590;font-size:10px;">+ Nowy portfel</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">WARTOŚĆ</div>
+          <div style="color:#e6edf3;font-size:14px;font-weight:700;">35 447 zł</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">ZYSK</div>
+          <div style="color:#22c55e;font-size:14px;font-weight:700;">+604 zł</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">WARTOŚĆ</div>
+          <div style="color:#e6edf3;font-size:14px;font-weight:700;">$1 200</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">ŁĄCZNIE PLN</div>
+          <div style="color:#e6edf3;font-size:14px;font-weight:700;">39 791 zł</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Dropdown w headerze</h3>
+      <p>Selektor portfela w górnym pasku obok logo. Szybki dostęp, nie zajmuje miejsca w UI. Dashboard pokazuje wybrany portfel lub "Wszystkie".</p>
+    </div>
+  </div>
+
+  <!-- Option B: Zakładki pod headerem -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0d1117;border-radius:8px;">
+      <div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid #30363d;padding-bottom:0;">
+        <div style="padding:6px 12px;background:transparent;color:#22c55e;font-size:11px;font-weight:600;border-bottom:2px solid #22c55e;">Wszystkie</div>
+        <div style="padding:6px 12px;background:transparent;color:#7d8590;font-size:11px;">XTB · PLN</div>
+        <div style="padding:6px 12px;background:transparent;color:#7d8590;font-size:11px;">IBKR · USD</div>
+        <div style="padding:6px 12px;background:transparent;color:#7d8590;font-size:11px;">+ Nowy</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">ŁĄCZNA WARTOŚĆ</div>
+          <div style="color:#e6edf3;font-size:14px;font-weight:700;">39 791 zł</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">ZYSK ŁĄCZNY</div>
+          <div style="color:#22c55e;font-size:14px;font-weight:700;">+1 234 zł</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Zakładki na dashboardzie</h3>
+      <p>Poziome taby na górze dashboardu: "Wszystkie | XTB | IBKR". Widoczne od razu, łatwe przełączanie. Na innych stronach (Portfel, Transakcje) zawsze aktywny portfel z ostatniego wyboru.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Sidebar -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0d1117;border-radius:8px;display:flex;gap:8px;">
+      <div style="width:90px;background:#161b22;border-radius:6px;border:1px solid #30363d;padding:8px;flex-shrink:0;">
+        <div style="color:#7d8590;font-size:8px;margin-bottom:6px;text-transform:uppercase;">PORTFELE</div>
+        <div style="padding:4px 6px;border-radius:4px;background:#1f2d1f;border:1px solid #22c55e;color:#22c55e;font-size:9px;margin-bottom:3px;">✦ Wszystkie</div>
+        <div style="padding:4px 6px;border-radius:4px;color:#7d8590;font-size:9px;margin-bottom:3px;">XTB · PLN</div>
+        <div style="padding:4px 6px;border-radius:4px;color:#7d8590;font-size:9px;margin-bottom:6px;">IBKR · USD</div>
+        <div style="padding:4px 6px;border-radius:4px;color:#30363d;font-size:9px;border:1px dashed #30363d;">+ Nowy</div>
+      </div>
+      <div style="flex:1;">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;margin-bottom:6px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">ŁĄCZNA WARTOŚĆ</div>
+          <div style="color:#e6edf3;font-size:14px;font-weight:700;">39 791 zł</div>
+        </div>
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;">
+          <div style="color:#7d8590;font-size:9px;margin-bottom:2px;">ZYSK ŁĄCZNY</div>
+          <div style="color:#22c55e;font-size:14px;font-weight:700;">+1 234 zł</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Sekcja w sidebarze</h3>
+      <p>Lista portfeli w lewym menu nad nawigacją. Kliknięcie portfela przełącza cały kontekst aplikacji. Profesjonalne podejście, ale zajmuje stałe miejsce w sidebarze.</p>
+    </div>
+  </div>
+
+</div>

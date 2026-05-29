@@ -1,0 +1,14 @@
+[     342ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ chrome-error://chromewebdata/:0
+[    6815ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://stockstracker-ai.vercel.app/:0
+[   23889ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   23986ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   24034ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   24083ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   24095ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   24131ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   24206ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   24315ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   30776ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[   30788ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[   30846ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[   30862ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893

@@ -1,0 +1,6 @@
+[     444ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/finnhub/v1/calendar/economic?from=2026-05-24&to=2026-11-20:0
+[     444ms] [WARNING] [cal] Finnhub economic: HTTP 503 @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:79
+[     663ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/finnhub/v1/calendar/economic?from=2026-05-24&to=2026-11-20:0
+[     663ms] [WARNING] [cal] Finnhub economic: HTTP 503 @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:79
+[     767ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/finnhub/v1/calendar/earnings?from=2026-05-24&to=2026-11-20:0
+[     767ms] [WARNING] [cal] Finnhub earnings: HTTP 503 @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:79

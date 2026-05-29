@@ -1,0 +1,11 @@
+- generic [ref=e4]:
+  - heading "Zaloguj się" [level=2] [ref=e5]
+  - paragraph [ref=e6]: StocksTracker — konto z Render
+  - generic [ref=e7]:
+    - generic [ref=e8]: Nazwa użytkownika
+    - textbox [ref=e9]: adamxdd
+  - generic [ref=e10]:
+    - generic [ref=e11]: Hasło
+    - textbox [ref=e12]: test123
+  - paragraph [ref=e14]: Błędny login lub hasło
+  - button "Zaloguj" [ref=e13] [cursor=pointer]

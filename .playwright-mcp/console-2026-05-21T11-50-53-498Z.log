@@ -1,0 +1,17 @@
+[    6638ms] [WARNING] AV fundamentals failed MOD.WA signal timed out @ https://stockstracker.onrender.com/:4028
+[    6663ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[    6664ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[    6665ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[    6666ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[    6720ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   13649ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker.onrender.com/:2893
+[   19763ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://stockstracker.onrender.com/api/alphavantage?function=COMPANY_OVERVIEW&symbol=DGN:0
+[   19792ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[   19793ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[   19793ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[   19794ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[   19837ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://stockstracker.onrender.com/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   19916ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   20226ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://stockstracker.onrender.com/api/data:0
+[   26775ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker.onrender.com/:2893
+[   30212ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ chrome-error://chromewebdata/:0

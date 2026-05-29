@@ -1,0 +1,38 @@
+- generic [ref=e2]:
+  - generic [ref=e105]:
+    - heading "Materiały do nauki" [level=2] [ref=e106]
+    - generic [ref=e107]:
+      - button "Przykładowy Rozdział ›" [ref=e108] [cursor=pointer]:
+        - generic [ref=e109]: Przykładowy Rozdział
+        - generic [ref=e110]: ›
+      - button "Rozporządzenie MF — Tryb i warunki postępowania FI (~4 pytania) ›" [ref=e111] [cursor=pointer]:
+        - generic [ref=e112]: Rozporządzenie MF — Tryb i warunki postępowania FI (~4 pytania)
+        - generic [ref=e113]: ›
+      - button "Rozporządzenie MF — Szczegółowe warunki techniczne i organizacyjne FI (~3 pytania) ›" [ref=e114] [cursor=pointer]:
+        - generic [ref=e115]: Rozporządzenie MF — Szczegółowe warunki techniczne i organizacyjne FI (~3 pytania)
+        - generic [ref=e116]: ›
+      - button "Ustawa o nadzorze nad rynkiem finansowym (~1 pytanie) ›" [ref=e117] [cursor=pointer]:
+        - generic [ref=e118]: Ustawa o nadzorze nad rynkiem finansowym (~1 pytanie)
+        - generic [ref=e119]: ›
+      - button "Ustawa o nadzorze nad rynkiem kapitałowym (~1 pytanie) ›" [ref=e120] [cursor=pointer]:
+        - generic [ref=e121]: Ustawa o nadzorze nad rynkiem kapitałowym (~1 pytanie)
+        - generic [ref=e122]: ›
+      - button "Ustawa o obrocie instrumentami finansowymi (~12 pytań) ›" [ref=e123] [cursor=pointer]:
+        - generic [ref=e124]: Ustawa o obrocie instrumentami finansowymi (~12 pytań)
+        - generic [ref=e125]: ›
+      - button "Ustawa o rachunkowości (~10 pytań) ›" [ref=e126] [cursor=pointer]:
+        - generic [ref=e127]: Ustawa o rachunkowości (~10 pytań)
+        - generic [ref=e128]: ›
+  - navigation [ref=e19]:
+    - link "📚 Materiały" [active] [ref=e20] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e21]: 📚
+      - generic [ref=e22]: Materiały
+    - link "✍️ Quiz" [ref=e23] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e24]: ✍️
+      - generic [ref=e25]: Quiz
+    - link "📊 Postęp" [ref=e26] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e27]: 📊
+      - generic [ref=e28]: Postęp

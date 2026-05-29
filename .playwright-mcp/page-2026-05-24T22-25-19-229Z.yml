@@ -1,0 +1,1403 @@
+- generic [ref=e2]:
+  - generic [ref=e138]:
+    - button "‹ Wróć do listy" [ref=e139] [cursor=pointer]
+    - generic [ref=e140]:
+      - heading "Szczegółowe Zasady Obrotu Giełdowego (SZOG)" [level=1] [ref=e141]
+      - heading "Dział I – Dopuszczanie i wprowadzanie instrumentów finansowych" [level=2] [ref=e142]
+      - heading "Rozdział 1 – Dopuszczanie do obrotu (§ 1 – § 10)" [level=3] [ref=e143]
+      - paragraph [ref=e144]:
+        - strong [ref=e145]: "Przeliczanie walut (§ 2):"
+        - text: Jeżeli we wniosku o dopuszczenie do obrotu pojawiają się wartości wyrażone w walucie obcej (np. progi kapitalizacyjne 15 mln EUR lub 1 mln EUR), przelicza się je według
+        - strong [ref=e146]: średniego kursu NBP z dnia poprzedzającego dzień złożenia wniosku
+        - text: . Zasada sztywna, niepodlegająca negocjacjom.
+      - paragraph [ref=e147]:
+        - strong [ref=e148]: "Wymogi dokumentowe i LEI (§ 3):"
+        - text: "Do wniosku należy dołączyć:"
+      - list [ref=e149]:
+        - listitem [ref=e150]: oświadczenie, że instrumenty objęte są wnioskiem o dematerializację w KDPW (lub innym depozycie),
+        - listitem [ref=e151]:
+          - text: potwierdzenie posiadania kodu
+          - strong [ref=e152]: LEI
+          - text: (Legal Entity Identifier) – jest to unikalny identyfikator podmiotu w transakcjach finansowych,
+        - listitem [ref=e153]: oświadczenie, że nie toczy się wobec emitenta postępowanie upadłościowe, restrukturyzacyjne ani likwidacyjne,
+        - listitem [ref=e154]: oświadczenie o dojściu emisji do skutku i dacie przydziału instrumentów.
+      - paragraph [ref=e155]:
+        - strong [ref=e156]: "Opinia firmy inwestycyjnej przy akcjach (§ 5 – § 6):"
+      - paragraph [ref=e157]:
+        - text: "Kto może sporządzić: wyłącznie"
+        - strong [ref=e158]: firma inwestycyjna
+        - text: (biuro maklerskie lub bank prowadzący działalność maklerską).
+      - paragraph [ref=e159]:
+        - text: Kryterium bezstronności – opiniującym
+        - strong [ref=e160]: nie może być
+        - text: ":"
+      - list [ref=e161]:
+        - listitem [ref=e162]:
+          - text: podmiot
+          - strong [ref=e163]: dominujący lub zależny
+          - text: wobec emitenta,
+        - listitem [ref=e164]:
+          - text: podmiot, z którym emitent zawarł umowę o pełnienie funkcji
+          - strong [ref=e165]: animatora
+          - text: "(wyjątek: jeśli umowa wejdzie w życie"
+          - strong [ref=e166]: dopiero po dopuszczeniu
+          - text: instrumentu do obrotu).
+      - paragraph [ref=e167]: "Treść opinii musi zawierać ocenę:"
+      - list [ref=e168]:
+        - listitem [ref=e169]:
+          - text: zdolności emitenta do
+          - strong [ref=e170]: wypełniania obowiązków informacyjnych
+          - text: ","
+        - listitem [ref=e171]:
+          - strong [ref=e172]: bezpieczeństwa obrotu
+          - text: danym instrumentem.
+      - paragraph [ref=e173]:
+        - strong [ref=e174]: "Instrumenty dłużne (§ 9):"
+        - text: "Wniosek o dopuszczenie obligacji musi zawierać: wartość nominalną jednostkową, walutę, maksymalną liczbę instrumentów oraz"
+        - strong [ref=e175]: precyzyjny termin wykupu
+        - text: .
+      - separator [ref=e176]
+      - heading "Rozdział 2 – Wprowadzanie do obrotu (§ 11 – § 38)" [level=3] [ref=e177]
+      - paragraph [ref=e178]:
+        - strong [ref=e179]: "Sposób składania wniosków (§ 11):"
+        - text: Wnioski składa się w formie
+        - strong [ref=e180]: elektronicznej
+        - text: (PDF z kwalifikowanym podpisem elektronicznym lub podpisem zaufanym). Forma papierowa jest dopuszczalna, ale rzadko stosowana.
+      - paragraph [ref=e181]:
+        - strong [ref=e182]: "Akcje i PDA (Oddział 2):"
+      - list [ref=e183]:
+        - listitem [ref=e184]:
+          - text: Wniosek można złożyć
+          - strong [ref=e185]: łącznie z wnioskiem o dopuszczenie
+          - text: .
+        - listitem [ref=e186]:
+          - text: Musi zawierać
+          - strong [ref=e187]: szczegółową strukturę akcjonariatu
+          - text: ": liczba akcji i głosów przypadających na akcjonariuszy posiadających co najmniej"
+          - strong [ref=e188]: 5% ogólnej liczby głosów
+          - text: .
+        - listitem [ref=e189]:
+          - text: Należy dołączyć dokument potwierdzający zarejestrowanie akcji w KDPW (
+          - strong [ref=e190]: kod ISIN
+          - text: ).
+      - paragraph [ref=e191]:
+        - strong [ref=e192]: "Obligacje skarbowe – tabele odsetkowe (Oddział 5 i 6):"
+      - table [ref=e193]:
+        - rowgroup [ref=e194]:
+          - row "Sytuacja Termin dostarczenia tabeli odsetkowej" [ref=e195]:
+            - columnheader "Sytuacja" [ref=e196]
+            - columnheader "Termin dostarczenia tabeli odsetkowej" [ref=e197]
+        - rowgroup [ref=e198]:
+          - row "Nowo wprowadzane obligacje Do godz. 15:00 w dniu sesyjnym poprzedzającym 1. dzień notowania" [ref=e199]:
+            - cell "Nowo wprowadzane obligacje" [ref=e200]
+            - cell "Do godz. 15:00 w dniu sesyjnym poprzedzającym 1. dzień notowania" [ref=e201]:
+              - text: Do
+              - strong [ref=e202]: godz. 15:00
+              - text: w dniu sesyjnym poprzedzającym 1. dzień notowania
+          - row "Obligacje już notowane (nowy okres odsetkowy) Do godz. 16:30 na 3 dni sesyjne przed nowym okresem" [ref=e203]:
+            - cell "Obligacje już notowane (nowy okres odsetkowy)" [ref=e204]
+            - cell "Do godz. 16:30 na 3 dni sesyjne przed nowym okresem" [ref=e205]:
+              - text: Do
+              - strong [ref=e206]: godz. 16:30
+              - text: na
+              - strong [ref=e207]: 3 dni sesyjne
+              - text: przed nowym okresem
+      - paragraph [ref=e208]: Brak tabeli w terminie skutkuje wstrzymaniem wyznaczania kursu lub zawieszeniem obrotu.
+      - paragraph [ref=e209]:
+        - strong [ref=e210]: "Instrumenty strukturyzowane (Oddział 9):"
+        - text: Obrót kończy się z upływem
+        - strong [ref=e211]: trzeciego dnia sesyjnego poprzedzającego
+        - text: planowany przedterminowy wykup.
+      - paragraph [ref=e212]:
+        - strong [ref=e213]: "Prawa poboru (§ 18 – § 20):"
+      - list [ref=e214]:
+        - listitem [ref=e215]:
+          - text: Prawa poboru są notowane na giełdzie po raz ostatni na sesji giełdowej odbywającej się
+          - strong [ref=e216]: trzeciego dnia sesyjnego przed dniem zakończenia przyjmowania zapisów na akcje
+          - text: (§ 18 ust. 3).
+        - listitem [ref=e217]: "Warunek: okres notowania praw poboru wynosi co najmniej jeden dzień sesyjny."
+        - listitem [ref=e218]:
+          - strong [ref=e219]: Przedmiotem obrotu jest prawo poboru z jednej akcji
+          - text: (§ 20).
+      - paragraph [ref=e220]:
+        - strong [ref=e221]: "Instrumenty pochodne (Oddział 10):"
+      - list [ref=e222]:
+        - listitem [ref=e223]: Giełda nadaje nazwy (kody) kontraktom terminowym i opcjom.
+        - listitem [ref=e224]:
+          - text: Kontrakty na indeksy (np. WIG20) posiadają
+          - strong [ref=e225]: mnożnik
+          - text: (np. 20 zł za punkt indeksowy), który jest integralną częścią standardu instrumentu.
+        - listitem [ref=e226]: Przedmiotem obrotu nie mogą być instrumenty pochodne, których bazą są towary wskazane w rozporządzeniach UE (towary rolne i inne specyficzne mierniki).
+      - paragraph [ref=e227]:
+        - strong [ref=e228]: "Kody miesięcy wykonania kontraktów terminowych (§ 85):"
+      - table [ref=e229]:
+        - rowgroup [ref=e230]:
+          - row "Miesiąc Kod Miesiąc Kod" [ref=e231]:
+            - columnheader "Miesiąc" [ref=e232]
+            - columnheader "Kod" [ref=e233]
+            - columnheader "Miesiąc" [ref=e234]
+            - columnheader "Kod" [ref=e235]
+        - rowgroup [ref=e236]:
+          - row "styczeń F lipiec N" [ref=e237]:
+            - cell "styczeń" [ref=e238]
+            - cell "F" [ref=e239]:
+              - strong [ref=e240]: F
+            - cell "lipiec" [ref=e241]
+            - cell "N" [ref=e242]:
+              - strong [ref=e243]: "N"
+          - row "luty G sierpień Q" [ref=e244]:
+            - cell "luty" [ref=e245]
+            - cell "G" [ref=e246]:
+              - strong [ref=e247]: G
+            - cell "sierpień" [ref=e248]
+            - cell "Q" [ref=e249]:
+              - strong [ref=e250]: Q
+          - row "marzec H wrzesień U" [ref=e251]:
+            - cell "marzec" [ref=e252]
+            - cell "H" [ref=e253]:
+              - strong [ref=e254]: H
+            - cell "wrzesień" [ref=e255]
+            - cell "U" [ref=e256]:
+              - strong [ref=e257]: U
+          - row "kwiecień J październik V" [ref=e258]:
+            - cell "kwiecień" [ref=e259]
+            - cell "J" [ref=e260]:
+              - strong [ref=e261]: J
+            - cell "październik" [ref=e262]
+            - cell "V" [ref=e263]:
+              - strong [ref=e264]: V
+          - row "maj K listopad X" [ref=e265]:
+            - cell "maj" [ref=e266]
+            - cell "K" [ref=e267]:
+              - strong [ref=e268]: K
+            - cell "listopad" [ref=e269]
+            - cell "X" [ref=e270]:
+              - strong [ref=e271]: X
+          - row "czerwiec M grudzień Z" [ref=e272]:
+            - cell "czerwiec" [ref=e273]
+            - cell "M" [ref=e274]:
+              - strong [ref=e275]: M
+            - cell "grudzień" [ref=e276]
+            - cell "Z" [ref=e277]:
+              - strong [ref=e278]: Z
+      - paragraph [ref=e279]: "Mnemotechnika: F G H J K M N Q U V X Z (pomijając A B C D E I L O P R S T W Y)"
+      - paragraph [ref=e280]:
+        - strong [ref=e281]: "Przykład kodu kontraktu:"
+        - text: FW20Z26 = kontrakt terminowy na WIG20 (FW20), wygasający w grudniu (Z) 2026 roku.
+      - separator [ref=e282]
+      - heading "Dział II – Członkowie Giełdy i Animatorzy Rynku" [level=2] [ref=e283]
+      - heading "Rozdział 1 – Członkowie Giełdy (§ 41 – § 57)" [level=3] [ref=e284]
+      - paragraph [ref=e285]:
+        - strong [ref=e286]: "Dostęp do systemu UTP (§ 41 – § 43):"
+        - text: "Przed uzyskaniem dostępu Członek Giełdy musi przejść:"
+      - list [ref=e287]:
+        - listitem [ref=e288]:
+          - strong [ref=e289]: testy kompetencyjne
+          - text: – znajomość Regulaminu Giełdy i SZOG,
+        - listitem [ref=e290]:
+          - strong [ref=e291]: testy techniczne
+          - text: – poprawność współpracy systemów informatycznych biura z systemem giełdowym.
+      - paragraph [ref=e292]:
+        - text: Zarząd Giełdy wyznacza termin rozpoczęcia działalności, ogłaszany
+        - strong [ref=e293]: najpóźniej w dniu sesyjnym poprzedzającym datę startu
+        - text: .
+      - paragraph [ref=e294]:
+        - text: "Wniosek musi wskazywać: zakres działalności (rachunek własny / rachunek klienta), stosowane systemy informatyczne oraz"
+        - strong [ref=e295]: osoby do kontaktów operacyjnych
+        - text: dostępne w trakcie sesji.
+      - paragraph [ref=e296]:
+        - strong [ref=e297]: "Makler Nadzorujący (§ 51 – § 57):"
+      - paragraph [ref=e298]:
+        - text: Każdy Członek Giełdy musi wyznaczyć
+        - strong [ref=e299]: co najmniej jednego maklera nadzorującego
+        - text: (często kilku, by zapewnić ciągłość działania). Makler nadzorujący musi być wpisany na
+        - strong [ref=e300]: listę prowadzoną przez Giełdę
+        - text: .
+      - paragraph [ref=e301]: "Obowiązki Maklera Nadzorującego:"
+      - list [ref=e302]:
+        - listitem [ref=e303]: bieżący nadzór nad zleceniami wprowadzanymi do systemu,
+        - listitem [ref=e304]:
+          - strong [ref=e305]: weryfikacja tożsamości
+          - text: osób wprowadzających zlecenia i ich uprawnień,
+        - listitem [ref=e306]:
+          - text: nadzór nad
+          - strong [ref=e307]: limitami zleceń
+          - text: (wielkość i cena),
+        - listitem [ref=e308]:
+          - text: możliwość
+          - strong [ref=e309]: natychmiastowego anulowania wszystkich zleceń
+          - text: danego Członka Giełdy (funkcja
+          - strong [ref=e310]: Kill Command
+          - text: ),
+        - listitem [ref=e311]: kontakt z Nadzorem Giełdowym w sprawach bezpieczeństwa obrotu.
+      - blockquote [ref=e312]:
+        - paragraph [ref=e313]:
+          - text: Członek Giełdy ma obowiązek
+          - strong [ref=e314]: niezwłocznie poinformować Giełdę
+          - text: o utracie przez maklera nadzorującego uprawnień (np. skreślenie z listy maklerów KNF).
+      - separator [ref=e315]
+      - heading "Rozdział 2 – Animatorzy Rynku (§ 58 – § 80)" [level=3] [ref=e316]
+      - paragraph [ref=e317]:
+        - strong [ref=e318]: "Umowa o animowanie:"
+        - text: Animator działa na podstawie
+        - strong [ref=e319]: pisemnej umowy z Giełdą
+        - text: i zobowiązuje się do utrzymywania dwustronnych ofert kupna i sprzedaży (
+        - strong [ref=e320]: kwotowanie dwustronne
+        - text: )
+        - strong [ref=e321]: na własny rachunek
+        - text: .
+      - paragraph [ref=e322]:
+        - text: Animator może zaprzestać animowania wyłącznie po uprzednim
+        - strong [ref=e323]: wypowiedzeniu umowy
+        - text: (z zachowaniem terminów) lub w sytuacjach nadzwyczajnych za zgodą Giełdy.
+      - paragraph [ref=e324]:
+        - strong [ref=e325]: "Parametry kwotowania:"
+      - table [ref=e326]:
+        - rowgroup [ref=e327]:
+          - row "Parametr Opis" [ref=e328]:
+            - columnheader "Parametr" [ref=e329]
+            - columnheader "Opis" [ref=e330]
+        - rowgroup [ref=e331]:
+          - row "Maksymalny spread Różnica między najlepszą ofertą kupna a sprzedaży; może być procentowa (np. 2%) lub kwotowa (np. 0,05 zł)" [ref=e332]:
+            - cell "Maksymalny spread" [ref=e333]
+            - cell "Różnica między najlepszą ofertą kupna a sprzedaży; może być procentowa (np. 2%) lub kwotowa (np. 0,05 zł)" [ref=e334]:
+              - text: Różnica między najlepszą ofertą kupna a sprzedaży; może być
+              - strong [ref=e335]: procentowa
+              - text: (np. 2%) lub
+              - strong [ref=e336]: kwotowa
+              - text: (np. 0,05 zł)
+          - row "Minimalny wolumen Najmniejsza dopuszczalna wielkość oferty w arkuszu, określana w sztukach lub wartościowo (np. min. 10 000 zł)" [ref=e337]:
+            - cell "Minimalny wolumen" [ref=e338]
+            - cell "Najmniejsza dopuszczalna wielkość oferty w arkuszu, określana w sztukach lub wartościowo (np. min. 10 000 zł)" [ref=e339]
+          - row "Czas obecności Minimalny % fazy notowań ciągłych, w którym animator musi być widoczny w arkuszu" [ref=e340]:
+            - cell "Czas obecności" [ref=e341]
+            - cell "Minimalny % fazy notowań ciągłych, w którym animator musi być widoczny w arkuszu" [ref=e342]
+      - paragraph [ref=e343]:
+        - text: Animator zobowiązany jest do utrzymywania ofert w
+        - strong [ref=e344]: fazie notowań ciągłych
+        - text: oraz w fazach
+        - strong [ref=e345]: wyznaczania kursu na otwarciu i zamknięciu
+        - text: .
+      - paragraph [ref=e346]:
+        - strong [ref=e347]: "Skrajne Warunki Rynkowe (EMC – Extreme Market Conditions):"
+      - paragraph [ref=e348]: "Giełda ogłasza je komunikatem w przypadku gwałtownego wzrostu zmienności. Konsekwencje dla animatora:"
+      - list [ref=e349]:
+        - listitem [ref=e350]:
+          - text: "Spread:"
+          - strong [ref=e351]: ×2
+          - text: (może być dwa razy szerszy),
+        - listitem [ref=e352]:
+          - text: "Wolumen:"
+          - strong [ref=e353]: ×0,5
+          - text: (może wystawiać o połowę mniejsze zlecenia).
+      - paragraph [ref=e354]:
+        - strong [ref=e355]: "Wyjątkowe Okoliczności (Exceptional Circumstances):"
+      - paragraph [ref=e356]:
+        - text: Sytuacje siły wyższej (np. awaria systemów, brak możliwości zabezpieczenia pozycji na instrumentach pochodnych). Animator może zostać
+        - strong [ref=e357]: zwolniony z obowiązków
+        - text: na czas ich trwania. Musi
+        - strong [ref=e358]: niezwłocznie zawiadomić Giełdę
+        - text: (telefonicznie lub e-mailem), a następnie potwierdzić ustanie tych okoliczności. Zwolnienie następuje na wniosek animatora – Giełda potwierdza komunikatem.
+      - paragraph [ref=e359]:
+        - strong [ref=e360]: "Programy Zachęt (HVP – High Volume Provider):"
+        - text: Animatorzy uczestniczący w programach HVP mogą korzystać z
+        - strong [ref=e361]: preferencyjnych stawek opłat giełdowych
+        - text: w zamian za generowanie określonego poziomu obrotów i płynności.
+      - separator [ref=e362]
+      - heading "Rozdział 3 – Dostęp Bezpośredni (DEA) (§ 81)" [level=3] [ref=e363]
+      - table [ref=e364]:
+        - rowgroup [ref=e365]:
+          - row "Typ dostępu Opis" [ref=e366]:
+            - columnheader "Typ dostępu" [ref=e367]
+            - columnheader "Opis" [ref=e368]
+        - rowgroup [ref=e369]:
+          - row "DMA (Direct Market Access) Zlecenia klienta przechodzą przez systemy kontroli ryzyka Członka Giełdy przed trafieniem na rynek" [ref=e370]:
+            - cell "DMA (Direct Market Access)" [ref=e371]:
+              - strong [ref=e372]: DMA
+              - text: (Direct Market Access)
+            - cell "Zlecenia klienta przechodzą przez systemy kontroli ryzyka Członka Giełdy przed trafieniem na rynek" [ref=e373]:
+              - text: Zlecenia klienta przechodzą przez
+              - strong [ref=e374]: systemy kontroli ryzyka Członka Giełdy
+              - text: przed trafieniem na rynek
+          - row "SA (Sponsored Access) Zlecenia trafiają bezpośrednio do systemu giełdowego z pominięciem infrastruktury Członka, ale Członek musi mieć możliwość ich monitorowania i blokowania w czasie rzeczywistym" [ref=e375]:
+            - cell "SA (Sponsored Access)" [ref=e376]:
+              - strong [ref=e377]: SA
+              - text: (Sponsored Access)
+            - cell "Zlecenia trafiają bezpośrednio do systemu giełdowego z pominięciem infrastruktury Członka, ale Członek musi mieć możliwość ich monitorowania i blokowania w czasie rzeczywistym" [ref=e378]:
+              - text: Zlecenia trafiają
+              - strong [ref=e379]: bezpośrednio
+              - text: do systemu giełdowego z pominięciem infrastruktury Członka, ale Członek musi mieć możliwość ich
+              - strong [ref=e380]: monitorowania i blokowania
+              - text: w czasie rzeczywistym
+      - paragraph [ref=e381]:
+        - strong [ref=e382]: "Odpowiedzialność:"
+        - text: Członek Giełdy ponosi
+        - strong [ref=e383]: pełną odpowiedzialność
+        - text: za wszelkie zlecenia wprowadzone przez jego klientów w ramach DEA, w tym za błędy techniczne algorytmów klientów. Musi posiadać filtry zatrzymujące błędne zlecenia.
+      - separator [ref=e384]
+      - heading "Dział IV – Notowania" [level=2] [ref=e385]
+      - heading "Rozdział 1 – Przepisy ogólne (§ 84 – § 85)" [level=3] [ref=e386]
+      - paragraph [ref=e387]:
+        - strong [ref=e388]: "Jednostka transakcyjna (§ 84):"
+        - text: Giełda określa ją dla każdego instrumentu (zazwyczaj 1 sztuka; może być inna dla obligacji lub instrumentów pochodnych). Zlecenie musi opiewać na
+        - strong [ref=e389]: wielokrotność jednostki transakcyjnej
+        - text: .
+      - paragraph [ref=e390]:
+        - strong [ref=e391]: "Krok notowania – Tick size (§ 85):"
+        - text: Minimalna wartość zmiany ceny instrumentu. Dla akcji i praw do akcji (PDA) krok notowania zależy od
+        - strong [ref=e392]: kursu instrumentu
+        - text: oraz
+        - strong [ref=e393]: płynności
+        - text: (liczby transakcji dziennie). Tabele kroków notowań zawarte są w załączniku do SZOG. Im wyższy kurs, tym większy może być krok notowania.
+      - paragraph [ref=e394]:
+        - strong [ref=e395]: "Kontrakty terminowe na indeksy giełdowe – WIG20 (§ 86):"
+      - table [ref=e396]:
+        - rowgroup [ref=e397]:
+          - row "Parametr Wartość" [ref=e398]:
+            - columnheader "Parametr" [ref=e399]
+            - columnheader "Wartość" [ref=e400]
+        - rowgroup [ref=e401]:
+          - row "Krok notowania 1 punkt indeksowy" [ref=e402]:
+            - cell "Krok notowania" [ref=e403]
+            - cell "1 punkt indeksowy" [ref=e404]:
+              - strong [ref=e405]: 1 punkt indeksowy
+          - row "Maks. wartość zlecenia 50 000 000 zł" [ref=e406]:
+            - cell "Maks. wartość zlecenia" [ref=e407]
+            - cell "50 000 000 zł" [ref=e408]:
+              - strong [ref=e409]: 50 000 000 zł
+          - row "Maks. wolumen zlecenia 500 instrumentów" [ref=e410]:
+            - cell "Maks. wolumen zlecenia" [ref=e411]
+            - cell "500 instrumentów" [ref=e412]:
+              - strong [ref=e413]: 500 instrumentów
+          - row "Statyczne ograniczenia wahań kursów 10% od kursu odniesienia" [ref=e414]:
+            - cell "Statyczne ograniczenia wahań kursów" [ref=e415]
+            - cell "10% od kursu odniesienia" [ref=e416]:
+              - strong [ref=e417]: 10% od kursu odniesienia
+          - row "Kurs odniesienia Ostatni dzienny kurs rozliczeniowy danej serii" [ref=e418]:
+            - cell "Kurs odniesienia" [ref=e419]
+            - cell "Ostatni dzienny kurs rozliczeniowy danej serii" [ref=e420]
+      - paragraph [ref=e421]: "Widełki dynamiczne (§ 86): równoważenie z jednoczesnym odrzuceniem niezrealizowanej części zlecenia, które wywołało przekroczenie. Widełki statyczne: równoważenie z jednoczesnym odrzuceniem zlecenia wywołującego."
+      - paragraph [ref=e422]:
+        - strong [ref=e423]: "Zmiana liczby akcji na kontrakt (§ 91–94):"
+        - text: W przypadku operacji korporacyjnych na akcjach bazowych (prawo poboru, zmiana wartości nominalnej, dywidenda nadzwyczajna) dokonuje się
+        - strong [ref=e424]: korekty liczby akcji przypadających na jeden kontrakt
+        - text: oraz kursu odniesienia kontraktu. Korekta dotyczy serii, na których jest otwarta co najmniej jedna pozycja. Nowa liczba akcji zaokrąglana jest do
+        - strong [ref=e425]: dwóch miejsc po przecinku
+        - text: .
+      - separator [ref=e426]
+      - heading "Rozdział 2 – Kursy i ceny giełdowe (§ 86 – § 90)" [level=3] [ref=e427]
+      - paragraph [ref=e428]:
+        - strong [ref=e429]: "Kurs odniesienia – punkt startowy dla widełek:"
+      - table [ref=e430]:
+        - rowgroup [ref=e431]:
+          - row "Typ widełek Punkt odniesienia" [ref=e432]:
+            - columnheader "Typ widełek" [ref=e433]
+            - columnheader "Punkt odniesienia" [ref=e434]
+        - rowgroup [ref=e435]:
+          - row "Widełki statyczne Kurs ostatniej transakcji z ostatniej sesji (kurs zamknięcia); jeśli brak transakcji – ostatni dostępny kurs odniesienia" [ref=e436]:
+            - cell "Widełki statyczne" [ref=e437]:
+              - strong [ref=e438]: Widełki statyczne
+            - cell "Kurs ostatniej transakcji z ostatniej sesji (kurs zamknięcia); jeśli brak transakcji – ostatni dostępny kurs odniesienia" [ref=e439]:
+              - text: Kurs ostatniej transakcji z
+              - strong [ref=e440]: ostatniej sesji
+              - text: (kurs zamknięcia); jeśli brak transakcji – ostatni dostępny kurs odniesienia
+          - row "Widełki dynamiczne Kurs ostatniej transakcji na danej sesji lub Teoretyczny Kurs Otwarcia (TKO)" [ref=e441]:
+            - cell "Widełki dynamiczne" [ref=e442]:
+              - strong [ref=e443]: Widełki dynamiczne
+            - cell "Kurs ostatniej transakcji na danej sesji lub Teoretyczny Kurs Otwarcia (TKO)" [ref=e444]:
+              - text: Kurs
+              - strong [ref=e445]: ostatniej transakcji na danej sesji
+              - text: lub Teoretyczny Kurs Otwarcia (TKO)
+      - paragraph [ref=e446]:
+        - strong [ref=e447]: "Zmiana kursu odniesienia:"
+        - text: W sytuacjach nadzwyczajnych (np. po przyznaniu prawa poboru) Giełda wyznacza nowy kurs odniesienia,
+        - strong [ref=e448]: skorygowany o wartość danego prawa
+        - text: .
+      - separator [ref=e449]
+      - heading "Rozdział 3 – Systemy i harmonogramy notowań" [level=3] [ref=e450]
+      - paragraph [ref=e451]:
+        - strong [ref=e452]: "System Notowań Ciągłych:"
+      - table [ref=e453]:
+        - rowgroup [ref=e454]:
+          - row "Faza Godziny Opis" [ref=e455]:
+            - columnheader "Faza" [ref=e456]
+            - columnheader "Godziny" [ref=e457]
+            - columnheader "Opis" [ref=e458]
+        - rowgroup [ref=e459]:
+          - row "Przed otwarciem 8:30–9:00 Przyjmowanie, modyfikacja i anulowanie zleceń; wyliczanie TKO; brak transakcji" [ref=e460]:
+            - cell "Przed otwarciem" [ref=e461]
+            - cell "8:30–9:00" [ref=e462]
+            - cell "Przyjmowanie, modyfikacja i anulowanie zleceń; wyliczanie TKO; brak transakcji" [ref=e463]
+          - row "Otwarcie 9:00 Wyznaczenie kursu otwarcia" [ref=e464]:
+            - cell "Otwarcie" [ref=e465]
+            - cell "9:00" [ref=e466]
+            - cell "Wyznaczenie kursu otwarcia" [ref=e467]
+          - row "Notowania ciągłe 9:00–16:50 Bieżąca realizacja transakcji" [ref=e468]:
+            - cell "Notowania ciągłe" [ref=e469]
+            - cell "9:00–16:50" [ref=e470]
+            - cell "Bieżąca realizacja transakcji" [ref=e471]
+          - row "Przed zamknięciem 16:50–17:00 Zbieranie zleceń na kurs zamknięcia" [ref=e472]:
+            - cell "Przed zamknięciem" [ref=e473]
+            - cell "16:50–17:00" [ref=e474]
+            - cell "Zbieranie zleceń na kurs zamknięcia" [ref=e475]
+          - row "Zamknięcie 17:00 Wyznaczenie kursu zamknięcia (fixing)" [ref=e476]:
+            - cell "Zamknięcie" [ref=e477]
+            - cell "17:00" [ref=e478]
+            - cell "Wyznaczenie kursu zamknięcia (fixing)" [ref=e479]
+          - row "Dogrywka 17:00–17:05 Handel wyłącznie po kursie zamknięcia (5 minut)" [ref=e480]:
+            - cell "Dogrywka" [ref=e481]
+            - cell "17:00–17:05" [ref=e482]
+            - cell "Handel wyłącznie po kursie zamknięcia (5 minut)" [ref=e483]:
+              - text: Handel
+              - strong [ref=e484]: wyłącznie po kursie zamknięcia
+              - text: (5 minut)
+      - paragraph [ref=e485]:
+        - strong [ref=e486]: "System Kursu Jednolitego (dwa fixingi):"
+      - paragraph [ref=e487]: Stosowany dla spółek o mniejszej płynności.
+      - list [ref=e488]:
+        - listitem [ref=e489]:
+          - text: "Godziny fixingów:"
+          - strong [ref=e490]: 11:00
+          - text: i
+          - strong [ref=e491]: 15:00
+          - text: .
+        - listitem [ref=e492]:
+          - text: Po każdym fixingu odbywa się
+          - strong [ref=e493]: 30-minutowa dogrywka
+          - text: (handel po kursie fixingu).
+      - separator [ref=e494]
+      - heading "Rozdział 4 – Zlecenia maklerskie (§ 93 – § 109)" [level=3] [ref=e495]
+      - heading "Rodzaje zleceń pod względem ceny" [level=4] [ref=e496]
+      - table [ref=e497]:
+        - rowgroup [ref=e498]:
+          - row "Typ zlecenia Opis Uwagi egzaminowe" [ref=e499]:
+            - columnheader "Typ zlecenia" [ref=e500]
+            - columnheader "Opis" [ref=e501]
+            - columnheader "Uwagi egzaminowe" [ref=e502]
+        - rowgroup [ref=e503]:
+          - 'row "LIMIT Z konkretną ceną (kupno: maks.; sprzedaż: min.) Standardowe zlecenie" [ref=e504]':
+            - cell "LIMIT" [ref=e505]:
+              - strong [ref=e506]: LIMIT
+            - 'cell "Z konkretną ceną (kupno: maks.; sprzedaż: min.)" [ref=e507]'
+            - cell "Standardowe zlecenie" [ref=e508]
+          - row "PKC (Po Każdej Cenie) Brak limitu; realizacja po najlepszych dostępnych cenach Najwyższy priorytet realizacji; może powodować duże poślizgi cenowe; NIE można składać w fazie dogrywki" [ref=e509]:
+            - cell "PKC (Po Każdej Cenie)" [ref=e510]:
+              - strong [ref=e511]: PKC
+              - text: (Po Każdej Cenie)
+            - cell "Brak limitu; realizacja po najlepszych dostępnych cenach" [ref=e512]
+            - cell "Najwyższy priorytet realizacji; może powodować duże poślizgi cenowe; NIE można składać w fazie dogrywki" [ref=e513]:
+              - text: Najwyższy priorytet realizacji; może powodować duże poślizgi cenowe;
+              - strong [ref=e514]: NIE można składać w fazie dogrywki
+          - row "PCR (Po Cenie Rynkowej) Składane wyłącznie w fazie przed otwarciem lub w fazie równoważenia; na otwarciu realizowane po kursie otwarcia Niezrealizowana część → zlecenie LIMIT po kursie otwarcia" [ref=e515]:
+            - cell "PCR (Po Cenie Rynkowej)" [ref=e516]:
+              - strong [ref=e517]: PCR
+              - text: (Po Cenie Rynkowej)
+            - cell "Składane wyłącznie w fazie przed otwarciem lub w fazie równoważenia; na otwarciu realizowane po kursie otwarcia" [ref=e518]:
+              - text: Składane wyłącznie
+              - strong [ref=e519]: w fazie przed otwarciem lub w fazie równoważenia
+              - text: ; na otwarciu realizowane po kursie otwarcia
+            - cell "Niezrealizowana część → zlecenie LIMIT po kursie otwarcia" [ref=e520]:
+              - text: Niezrealizowana część →
+              - strong [ref=e521]: zlecenie LIMIT po kursie otwarcia
+          - row "PEG Limit ceny automatycznie śledzi najlepszą ofertę po tej samej stronie arkusza Traci priorytet czasu przy każdej zmianie ceny; nie można składać w dogrywce i fazach równoważenia" [ref=e522]:
+            - cell "PEG" [ref=e523]:
+              - strong [ref=e524]: PEG
+            - cell "Limit ceny automatycznie śledzi najlepszą ofertę po tej samej stronie arkusza" [ref=e525]
+            - cell "Traci priorytet czasu przy każdej zmianie ceny; nie można składać w dogrywce i fazach równoważenia" [ref=e526]:
+              - text: Traci priorytet czasu przy każdej zmianie ceny;
+              - strong [ref=e527]: nie można składać w dogrywce i fazach równoważenia
+      - paragraph [ref=e528]:
+        - strong [ref=e529]: "Faza dogrywki – zasady szczególne (§ 12):"
+      - list [ref=e530]:
+        - listitem [ref=e531]:
+          - text: W fazie dogrywki można składać
+          - strong [ref=e532]: wyłącznie zlecenia LIMIT
+          - text: z limitem ceny równym
+          - strong [ref=e533]: kursowi odniesienia dla dynamicznych ograniczeń wahań kursów
+          - text: (tj. kursowi ostatniej transakcji z danej sesji).
+        - listitem [ref=e534]:
+          - text: PKC, PCR, PEG
+          - strong [ref=e535]: nie są przyjmowane
+          - text: w fazie dogrywki.
+        - listitem [ref=e536]:
+          - text: Dogrywki
+          - strong [ref=e537]: nie organizuje się
+          - text: "dla: dłużnych instrumentów pochodnych na stawki referencyjne WIBOR oraz instrumentów pochodnych na krótkoterminowe, średnioterminowe i długoterminowe obligacje skarbowe."
+      - paragraph [ref=e538]:
+        - strong [ref=e539]: "Zlecenia „cross\" (§ 36):"
+      - list [ref=e540]:
+        - listitem [ref=e541]: Zlecenia LIMIT składane w celu zawarcia transakcji między dwoma przeciwstawnymi zleceniami tego samego Członka Giełdy (np. kupno i sprzedaż na rachunek dwóch klientów).
+        - listitem [ref=e542]:
+          - strong [ref=e543]: Nie są przyjmowane do arkusza zleceń
+          - text: i
+          - strong [ref=e544]: nie biorą udziału
+          - text: w wyznaczaniu kursu otwarcia, zamknięcia ani kursu określanego w trakcie równoważenia.
+        - listitem [ref=e545]:
+          - text: Mogą być składane
+          - strong [ref=e546]: wyłącznie w fazie notowań ciągłych oraz w fazie dogrywki
+          - text: .
+        - listitem [ref=e547]: Limit ceny musi mieścić się w widełkach i spełniać warunki rynkowe (nie może być gorszy niż najlepsze zlecenia w arkuszu).
+        - listitem [ref=e548]:
+          - strong [ref=e549]: Nie mogą zawierać dodatkowych warunków realizacji
+          - text: (MWW, WDC itp.).
+      - heading "Parametry realizacji (dodatkowe oznaczenia)" [level=4] [ref=e550]
+      - table [ref=e551]:
+        - rowgroup [ref=e552]:
+          - row "Oznaczenie Nazwa Opis Parametry" [ref=e553]:
+            - columnheader "Oznaczenie" [ref=e554]
+            - columnheader "Nazwa" [ref=e555]
+            - columnheader "Opis" [ref=e556]
+            - columnheader "Parametry" [ref=e557]
+        - rowgroup [ref=e558]:
+          - 'row "WUJ Zlecenie z Ujawnianą Ilością (Iceberg) Tylko część zlecenia widoczna w arkuszu Min. wartość całości: 50 000 PLN (lub równoważ. w EUR); min. ilość ujawniana: 10 sztuk" [ref=e559]':
+            - cell "WUJ" [ref=e560]:
+              - strong [ref=e561]: WUJ
+            - cell "Zlecenie z Ujawnianą Ilością (Iceberg)" [ref=e562]
+            - cell "Tylko część zlecenia widoczna w arkuszu" [ref=e563]
+            - 'cell "Min. wartość całości: 50 000 PLN (lub równoważ. w EUR); min. ilość ujawniana: 10 sztuk" [ref=e564]':
+              - text: "Min. wartość całości:"
+              - strong [ref=e565]: 50 000 PLN
+              - text: "(lub równoważ. w EUR); min. ilość ujawniana:"
+              - strong [ref=e566]: 10 sztuk
+          - row "MWW Minimalna Wielkość Wykonania Realizacja tylko jeśli po drugiej stronie jest co najmniej wskazana liczba sztuk –" [ref=e567]:
+            - cell "MWW" [ref=e568]:
+              - strong [ref=e569]: MWW
+            - cell "Minimalna Wielkość Wykonania" [ref=e570]
+            - cell "Realizacja tylko jeśli po drugiej stronie jest co najmniej wskazana liczba sztuk" [ref=e571]
+            - cell "–" [ref=e572]
+          - row "WDC Wykonaj i Anuluj (IOC) Natychmiast w dostępnej części, reszta usuwana –" [ref=e573]:
+            - cell "WDC" [ref=e574]:
+              - strong [ref=e575]: WDC
+            - cell "Wykonaj i Anuluj (IOC)" [ref=e576]
+            - cell "Natychmiast w dostępnej części, reszta usuwana" [ref=e577]
+            - cell "–" [ref=e578]
+          - row "WWS Wykonaj lub Anuluj (FOK) Natychmiast w całości albo wcale –" [ref=e579]:
+            - cell "WWS" [ref=e580]:
+              - strong [ref=e581]: WWS
+            - cell "Wykonaj lub Anuluj (FOK)" [ref=e582]
+            - cell "Natychmiast w całości albo wcale" [ref=e583]
+            - cell "–" [ref=e584]
+      - heading "Ważność zleceń (§ 104)" [level=4] [ref=e585]
+      - table [ref=e586]:
+        - rowgroup [ref=e587]:
+          - row "Oznaczenie Nazwa Opis" [ref=e588]:
+            - columnheader "Oznaczenie" [ref=e589]
+            - columnheader "Nazwa" [ref=e590]
+            - columnheader "Opis" [ref=e591]
+        - rowgroup [ref=e592]:
+          - row "D Dzień Ważne do końca bieżącej sesji" [ref=e593]:
+            - cell "D" [ref=e594]:
+              - strong [ref=e595]: D
+            - cell "Dzień" [ref=e596]
+            - cell "Ważne do końca bieżącej sesji" [ref=e597]
+          - row "GVC Ważne do Czasu Ważne do konkretnej godziny na danej sesji" [ref=e598]:
+            - cell "GVC" [ref=e599]:
+              - strong [ref=e600]: GVC
+            - cell "Ważne do Czasu" [ref=e601]
+            - cell "Ważne do konkretnej godziny na danej sesji" [ref=e602]
+          - row "GTD Ważne do Dnia Ważne do wskazanego dnia; maksymalnie 365 dni" [ref=e603]:
+            - cell "GTD" [ref=e604]:
+              - strong [ref=e605]: GTD
+            - cell "Ważne do Dnia" [ref=e606]
+            - cell "Ważne do wskazanego dnia; maksymalnie 365 dni" [ref=e607]:
+              - text: Ważne do wskazanego dnia; maksymalnie
+              - strong [ref=e608]: 365 dni
+          - row "GTC Ważne na Czas Nieoznaczony Na GPW ważne maksymalnie 365 dni" [ref=e609]:
+            - cell "GTC" [ref=e610]:
+              - strong [ref=e611]: GTC
+            - cell "Ważne na Czas Nieoznaczony" [ref=e612]
+            - cell "Na GPW ważne maksymalnie 365 dni" [ref=e613]:
+              - text: Na GPW ważne maksymalnie
+              - strong [ref=e614]: 365 dni
+          - row "WNZ Ważne na Zamknięcie Bierze udział tylko w fixingu na zamknięcie (17:00); odrzucane w innych fazach" [ref=e615]:
+            - cell "WNZ" [ref=e616]:
+              - strong [ref=e617]: WNZ
+            - cell "Ważne na Zamknięcie" [ref=e618]
+            - cell "Bierze udział tylko w fixingu na zamknięcie (17:00); odrzucane w innych fazach" [ref=e619]:
+              - text: Bierze udział
+              - strong [ref=e620]: tylko w fixingu na zamknięcie
+              - text: (17:00); odrzucane w innych fazach
+      - separator [ref=e621]
+      - heading "Rozdział 5 – Priorytety realizacji zleceń" [level=3] [ref=e622]
+      - paragraph [ref=e623]: "Zasady nienaruszalne (w kolejności):"
+      - list [ref=e624]:
+        - listitem [ref=e625]:
+          - strong [ref=e626]: Cena
+          - text: – lepsza cena ma pierwszeństwo (zlecenie kupna z wyższym limitem lub sprzedaży z niższym limitem),
+        - listitem [ref=e627]:
+          - strong [ref=e628]: Czas
+          - text: – przy tej samej cenie pierwszeństwo ma zlecenie wcześniej wprowadzone do systemu (timestamp).
+      - separator [ref=e629]
+      - heading "Rozdział 6 – Wyznaczanie TKO i TWO (§ 112 – § 116)" [level=3] [ref=e630]
+      - paragraph [ref=e631]:
+        - strong [ref=e632]: Teoretyczny Kurs Otwarcia (TKO)
+        - text: "wyznaczany jest według algorytmu (hierarchia zasad):"
+      - list [ref=e633]:
+        - listitem [ref=e634]:
+          - strong [ref=e635]: "Maksymalizacja wolumenu obrotu:"
+          - text: Wybierany jest kurs, przy którym liczba instrumentów w transakcjach jest
+          - strong [ref=e636]: największa
+          - text: .
+        - listitem [ref=e637]:
+          - strong [ref=e638]: "Minimalizacja nadwyżki:"
+          - text: Jeśli kilka kursów daje ten sam wolumen, wybiera się ten, przy którym pozostaje
+          - strong [ref=e639]: najmniejsza niezrealizowana nadwyżka
+          - text: (różnica między podażą a popytem).
+        - listitem [ref=e640]:
+          - strong [ref=e641]: "Kierunek nadwyżki:"
+          - list [ref=e642]:
+            - listitem [ref=e643]:
+              - text: Nadwyżka po stronie
+              - strong [ref=e644]: kupna
+              - text: → wybiera się kurs
+              - strong [ref=e645]: wyższy
+              - text: ","
+            - listitem [ref=e646]:
+              - text: Nadwyżka po stronie
+              - strong [ref=e647]: sprzedaży
+              - text: → wybiera się kurs
+              - strong [ref=e648]: niższy
+              - text: .
+        - listitem [ref=e649]:
+          - strong [ref=e650]: "Zasada bliskości:"
+          - text: Jeśli nadwyżki są po obu stronach lub ich nie ma, wybiera się kurs
+          - strong [ref=e651]: bliższy kursowi odniesienia
+          - text: .
+      - paragraph [ref=e652]:
+        - strong [ref=e653]: "Teoretyczny Wolumen Otwarcia (TWO):"
+        - text: liczba instrumentów, która zostałaby zrealizowana przy danym TKO.
+      - separator [ref=e654]
+      - heading "Rozdział 7 – Ograniczenia wahań kursów (widełki) (§ 117 – § 123)" [level=3] [ref=e655]
+      - table [ref=e656]:
+        - rowgroup [ref=e657]:
+          - row "Typ Punkt odniesienia Skutek przekroczenia" [ref=e658]:
+            - columnheader "Typ" [ref=e659]
+            - columnheader "Punkt odniesienia" [ref=e660]
+            - columnheader "Skutek przekroczenia" [ref=e661]
+        - rowgroup [ref=e662]:
+          - row "Widełki statyczne Kurs zamknięcia poprzedniej sesji (kurs odniesienia) Równoważenie rynku; niezrealizowana część zlecenia może być odrzucona" [ref=e663]:
+            - cell "Widełki statyczne" [ref=e664]:
+              - strong [ref=e665]: Widełki statyczne
+            - cell "Kurs zamknięcia poprzedniej sesji (kurs odniesienia)" [ref=e666]
+            - cell "Równoważenie rynku; niezrealizowana część zlecenia może być odrzucona" [ref=e667]:
+              - text: Równoważenie rynku; niezrealizowana część zlecenia
+              - strong [ref=e668]: może być odrzucona
+          - row "Widełki dynamiczne Kurs ostatniej transakcji (lub TKO) Zawieszenie notowań ciągłych i przejście w fazę równoważenia; zlecenie pozostaje w arkuszu" [ref=e669]:
+            - cell "Widełki dynamiczne" [ref=e670]:
+              - strong [ref=e671]: Widełki dynamiczne
+            - cell "Kurs ostatniej transakcji (lub TKO)" [ref=e672]
+            - cell "Zawieszenie notowań ciągłych i przejście w fazę równoważenia; zlecenie pozostaje w arkuszu" [ref=e673]:
+              - text: Zawieszenie notowań ciągłych i
+              - strong [ref=e674]: przejście w fazę równoważenia
+              - text: ; zlecenie
+              - strong [ref=e675]: pozostaje
+              - text: w arkuszu
+      - paragraph [ref=e676]:
+        - text: Widełki dynamiczne są
+        - strong [ref=e677]: znacznie węższe
+        - text: niż statyczne.
+      - paragraph [ref=e678]:
+        - strong [ref=e679]: "Faza równoważenia:"
+        - text: Czas, w którym przyjmowane są nowe zlecenia (i modyfikacje), a
+        - strong [ref=e680]: Przewodniczący Nadzoru Giełdowego
+        - text: decyduje, czy puścić kurs poza widełki czy przedłużyć równoważenie.
+      - separator [ref=e681]
+      - heading "Rozdział 8 – Transakcje pakietowe (§ 124 – § 143)" [level=3] [ref=e682]
+      - paragraph [ref=e683]:
+        - text: Transakcje zawierane
+        - strong [ref=e684]: poza arkuszem zleceń
+        - text: ", uzgodnione bezpośrednio między stronami, ale rejestrowane na Giełdzie."
+      - paragraph [ref=e685]:
+        - strong [ref=e686]: "Czas zgłoszenia:"
+        - text: niezwłocznie, nie później niż w ciągu
+        - strong [ref=e687]: 15 minut
+        - text: od ustalenia warunków transakcji (§ 126).
+      - paragraph [ref=e688]:
+        - strong [ref=e689]: "Ograniczenia cenowe dla akcji:"
+      - table [ref=e690]:
+        - rowgroup [ref=e691]:
+          - row "Czas Maks. odchylenie ceny" [ref=e692]:
+            - columnheader "Czas" [ref=e693]
+            - columnheader "Maks. odchylenie ceny" [ref=e694]
+        - rowgroup [ref=e695]:
+          - row "W trakcie sesji (8:30–17:05) ±10% od ostatniego kursu rynkowego" [ref=e696]:
+            - cell "W trakcie sesji (8:30–17:05)" [ref=e697]
+            - cell "±10% od ostatniego kursu rynkowego" [ref=e698]:
+              - strong [ref=e699]: ±10%
+              - text: od ostatniego kursu rynkowego
+          - row "Po sesji (faza pozasesyjna) ±40% od kursu odniesienia (średnia ważona kursów z sesji)" [ref=e700]:
+            - cell "Po sesji (faza pozasesyjna)" [ref=e701]
+            - cell "±40% od kursu odniesienia (średnia ważona kursów z sesji)" [ref=e702]:
+              - strong [ref=e703]: ±40%
+              - text: od kursu odniesienia (średnia ważona kursów z sesji)
+      - paragraph [ref=e704]:
+        - strong [ref=e705]: "Minimalna wartość dla akcji:"
+        - text: od 200 000 PLN wzwyż (zależy od klasyfikacji płynności instrumentu).
+      - paragraph [ref=e706]:
+        - strong [ref=e707]: "Minimalne wolumeny dla instrumentów pochodnych:"
+      - table [ref=e708]:
+        - rowgroup [ref=e709]:
+          - row "Instrument Min. wolumen" [ref=e710]:
+            - columnheader "Instrument" [ref=e711]
+            - columnheader "Min. wolumen" [ref=e712]
+        - rowgroup [ref=e713]:
+          - row "Kontrakty na indeksy giełdowe 150 szt." [ref=e714]:
+            - cell "Kontrakty na indeksy giełdowe" [ref=e715]
+            - cell "150 szt." [ref=e716]
+          - row "Kontrakty na kursy akcji 400 szt." [ref=e717]:
+            - cell "Kontrakty na kursy akcji" [ref=e718]
+            - cell "400 szt." [ref=e719]
+          - row "Opcje na indeksy 200 szt." [ref=e720]:
+            - cell "Opcje na indeksy" [ref=e721]
+            - cell "200 szt." [ref=e722]
+          - row "Kontrakty na kursy walut 10 000 szt." [ref=e723]:
+            - cell "Kontrakty na kursy walut" [ref=e724]
+            - cell "10 000 szt." [ref=e725]
+      - paragraph [ref=e726]:
+        - strong [ref=e727]: "Dłużne i ETC/ETN:"
+        - text: "Minimalna wartość transakcji pakietowej dla instrumentów niepłynnych:"
+        - strong [ref=e728]: 75 000 PLN
+        - text: (lub 15 000 EUR).
+      - separator [ref=e729]
+      - heading "Rozdział 10 – Anulowanie transakcji (Mistrade)" [level=3] [ref=e730]
+      - paragraph [ref=e731]:
+        - text: Transakcję można anulować, jeśli zawarto ją na podstawie
+        - strong [ref=e732]: oczywistego błędu
+        - text: .
+      - list [ref=e733]:
+        - listitem [ref=e734]:
+          - strong [ref=e735]: "Termin złożenia wniosku:"
+          - text: Członek Giełdy musi złożyć wniosek w ciągu
+          - strong [ref=e736]: 15–30 minut
+          - text: od zawarcia transakcji.
+        - listitem [ref=e737]:
+          - strong [ref=e738]: "Decyzja:"
+          - text: podejmuje ją
+          - strong [ref=e739]: Przewodniczący Nadzoru Giełdowego
+          - text: lub upoważniony pracownik.
+        - listitem [ref=e740]:
+          - strong [ref=e741]: "Kryterium:"
+          - text: Giełda określa procentowe odchylenie od kursu odniesienia; transakcja mieszcząca się w tym zakresie zazwyczaj
+          - strong [ref=e742]: nie jest anulowana
+          - text: .
+      - separator [ref=e743]
+      - heading "Rozdział 10 – Karty umów (§ 101)" [level=3] [ref=e744]
+      - paragraph [ref=e745]:
+        - strong [ref=e746]: Karta umowy
+        - text: to dowód zawarcia transakcji giełdowej.
+      - list [ref=e747]:
+        - listitem [ref=e748]:
+          - strong [ref=e749]: Niezwłocznie
+          - text: po zawarciu transakcji są wystawiane i przekazywane Członkom Giełdy oraz do
+          - strong [ref=e750]: KDPW_CCP S.A.
+          - text: karty umów będące dowodem zawarcia transakcji giełdowych.
+        - listitem [ref=e751]:
+          - text: W sytuacjach nadzwyczajnych karty umów mogą być przekazywane za pośrednictwem systemu
+          - strong [ref=e752]: 4brokernet
+          - text: lub w innej formie.
+        - listitem [ref=e753]:
+          - strong [ref=e754]: Sprzeciw
+          - text: "co do zgodności karty umowy z przyjętymi zleceniami: strony mogą zgłosić go przewodniczącemu sesji w ciągu"
+          - strong [ref=e755]: 30 minut
+          - text: od zawarcia transakcji. Niezgłoszenie sprzeciwu = potwierdzenie.
+        - listitem [ref=e756]: Giełda przekazuje karty umów oraz informacje o anulowaniu transakcji do KDPW_CCP S.A.
+      - separator [ref=e757]
+      - heading "Rozdział 11 – Wstrzymanie i zawieszenie obrotu" [level=3] [ref=e758]
+      - table [ref=e759]:
+        - rowgroup [ref=e760]:
+          - row "Pojęcie Charakter Typowa przyczyna" [ref=e761]:
+            - columnheader "Pojęcie" [ref=e762]
+            - columnheader "Charakter" [ref=e763]
+            - columnheader "Typowa przyczyna" [ref=e764]
+        - rowgroup [ref=e765]:
+          - row "Wstrzymanie Krótkotrwałe, techniczne Ogłoszenie ważnego komunikatu przez spółkę" [ref=e766]:
+            - cell "Wstrzymanie" [ref=e767]:
+              - strong [ref=e768]: Wstrzymanie
+            - cell "Krótkotrwałe, techniczne" [ref=e769]
+            - cell "Ogłoszenie ważnego komunikatu przez spółkę" [ref=e770]
+          - row "Zawieszenie Dłuższe Wniosek emitenta lub KNF (podejrzenie manipulacji, brak raportów)" [ref=e771]:
+            - cell "Zawieszenie" [ref=e772]:
+              - strong [ref=e773]: Zawieszenie
+            - cell "Dłuższe" [ref=e774]
+            - cell "Wniosek emitenta lub KNF (podejrzenie manipulacji, brak raportów)" [ref=e775]
+      - paragraph [ref=e776]:
+        - text: Podczas zawieszenia zazwyczaj
+        - strong [ref=e777]: można składać i modyfikować zlecenia
+        - text: ", ale transakcje nie są zawierane."
+      - separator [ref=e778]
+      - heading "Rozdziały 12–13 – Transparentność i rozrachunek" [level=3] [ref=e779]
+      - paragraph [ref=e780]:
+        - strong [ref=e781]: "Post-trade transparency (Rozdział 12):"
+      - list [ref=e782]:
+        - listitem [ref=e783]: "Dane publiczne: wolumen, cena i czas każdej transakcji – publikowane w czasie rzeczywistym."
+        - listitem [ref=e784]:
+          - text: Giełda
+          - strong [ref=e785]: nie publikuje
+          - text: informacji o tym, który Członek Giełdy zawarł transakcję (dostępne wyłącznie dla nadzoru).
+      - paragraph [ref=e786]:
+        - strong [ref=e787]: "Rozliczenia (Rozdział 13):"
+      - list [ref=e788]:
+        - listitem [ref=e789]:
+          - text: Z chwilą zarejestrowania transakcji w systemie UTP staje się ona
+          - strong [ref=e790]: wiążąca
+          - text: dla stron.
+        - listitem [ref=e791]:
+          - text: "Standardowy cykl rozliczeniowy:"
+          - strong [ref=e792]: T+2
+          - text: dla akcji i obligacji.
+      - separator [ref=e793]
+      - heading "Dział V – System Animatora Rynku (SAR)" [level=2] [ref=e794]
+      - heading "Rozdział 1 – Model rynku i przepisy ogólne" [level=3] [ref=e795]
+      - paragraph [ref=e796]:
+        - text: W odróżnieniu od arkusza akcji (order-driven), rynek w SAR
+        - strong [ref=e797]: tworzą kwotowania animatora
+        - text: ", a nie zlecenia inwestorów (model"
+        - strong [ref=e798]: quote-driven
+        - text: ).
+      - paragraph [ref=e799]:
+        - strong [ref=e800]: "Warunki konieczne do notowania w SAR:"
+      - list [ref=e801]:
+        - listitem [ref=e802]:
+          - text: Istnienie
+          - strong [ref=e803]: ważnego, pisemnego zobowiązania animatora
+          - text: do wykonywania zadań określonych w umowie i SZOG.
+        - listitem [ref=e804]:
+          - text: Dla danego instrumentu (kodu ISIN) zadania może pełnić
+          - strong [ref=e805]: tylko jeden animator
+          - text: wskazany przez emitenta.
+      - paragraph [ref=e806]:
+        - strong [ref=e807]: "Brak crossingów:"
+        - text: Zlecenia dwóch klientów (kupno i sprzedaż po tej samej cenie)
+        - strong [ref=e808]: nie zostaną ze sobą skojarzone automatycznie
+        - text: – muszą osobno trafić w ofertę animatora.
+      - paragraph [ref=e809]:
+        - strong [ref=e810]: "Obowiązek kwotowania:"
+        - text: "Animator musi utrzymywać zlecenia (kupna, sprzedaży lub oba) w:"
+      - list [ref=e811]:
+        - listitem [ref=e812]:
+          - strong [ref=e813]: fazie przed otwarciem
+          - text: (przez 5 minut przed otwarciem sesji),
+        - listitem [ref=e814]:
+          - strong [ref=e815]: przez całą fazę notowań ciągłych
+          - text: .
+      - separator [ref=e816]
+      - heading "Rozdział 2 – Harmonogram i fazy notowań (SAR)" [level=3] [ref=e817]
+      - paragraph [ref=e818]:
+        - strong [ref=e819]: "Harmonogram SAR (§ 4) – system z fazą notowań ciągłych każdego dnia:"
+      - table [ref=e820]:
+        - rowgroup [ref=e821]:
+          - row "Godziny Faza" [ref=e822]:
+            - columnheader "Godziny" [ref=e823]
+            - columnheader "Faza" [ref=e824]
+        - rowgroup [ref=e825]:
+          - row "8:30 – 9:05 Faza przed otwarciem" [ref=e826]:
+            - cell "8:30 – 9:05" [ref=e827]:
+              - text: 8:30 –
+              - strong [ref=e828]: 9:05
+            - cell "Faza przed otwarciem" [ref=e829]
+          - row "9:05 Faza otwarcia (wyznaczanie kursu)" [ref=e830]:
+            - cell "9:05" [ref=e831]:
+              - strong [ref=e832]: 9:05
+            - cell "Faza otwarcia (wyznaczanie kursu)" [ref=e833]
+          - row "9:05 – 16:50 Faza notowań ciągłych" [ref=e834]:
+            - cell "9:05 – 16:50" [ref=e835]
+            - cell "Faza notowań ciągłych" [ref=e836]
+      - blockquote [ref=e837]:
+        - paragraph [ref=e838]:
+          - text: "Uwaga: W SAR faza przed otwarciem kończy się o"
+          - strong [ref=e839]: 9:05
+          - text: (nie o 9:00 jak w systemie ciągłym).
+          - text: Istnieje też wariant z fazą notowań ciągłych tylko w wybranym dniu tygodnia (zwykle środa).
+      - table [ref=e840]:
+        - rowgroup [ref=e841]:
+          - row "Faza Opis" [ref=e842]:
+            - columnheader "Faza" [ref=e843]
+            - columnheader "Opis" [ref=e844]
+        - rowgroup [ref=e845]:
+          - row "Przed otwarciem Składanie, modyfikacja i anulowanie zleceń; wyznaczanie TKO; brak transakcji. Jeśli najwyższy limit kupna < najniższy limit sprzedaży (rynek rozbieżny) → kurs otwarcia nie jest wyznaczany" [ref=e846]:
+            - cell "Przed otwarciem" [ref=e847]:
+              - strong [ref=e848]: Przed otwarciem
+            - cell "Składanie, modyfikacja i anulowanie zleceń; wyznaczanie TKO; brak transakcji. Jeśli najwyższy limit kupna < najniższy limit sprzedaży (rynek rozbieżny) → kurs otwarcia nie jest wyznaczany" [ref=e849]:
+              - text: Składanie, modyfikacja i anulowanie zleceń; wyznaczanie TKO; brak transakcji. Jeśli najwyższy limit kupna < najniższy limit sprzedaży (rynek rozbieżny) → kurs otwarcia
+              - strong [ref=e850]: nie jest wyznaczany
+          - row "Otwarcie Wyznaczanie kursu otwarcia i realizacja transakcji" [ref=e851]:
+            - cell "Otwarcie" [ref=e852]:
+              - strong [ref=e853]: Otwarcie
+            - cell "Wyznaczanie kursu otwarcia i realizacja transakcji" [ref=e854]
+          - row "Notowania ciągłe Bieżące składanie zleceń i zawieranie transakcji" [ref=e855]:
+            - cell "Notowania ciągłe" [ref=e856]:
+              - strong [ref=e857]: Notowania ciągłe
+            - cell "Bieżące składanie zleceń i zawieranie transakcji" [ref=e858]
+      - separator [ref=e859]
+      - heading "Rozdział 3 – Mechanizmy komunikacji z animatorem" [level=3] [ref=e860]
+      - table [ref=e861]:
+        - rowgroup [ref=e862]:
+          - row "Mechanizm Kiedy wysyłany Co oznacza" [ref=e863]:
+            - columnheader "Mechanizm" [ref=e864]
+            - columnheader "Kiedy wysyłany" [ref=e865]
+            - columnheader "Co oznacza" [ref=e866]
+        - rowgroup [ref=e867]:
+          - row "ZOK (Zapytanie o Kwotowanie) Gdy brak zleceń animatora w arkuszu, a są zlecenia klientów Sygnał dla animatora, by wystawił oferty" [ref=e868]:
+            - cell "ZOK (Zapytanie o Kwotowanie)" [ref=e869]:
+              - strong [ref=e870]: ZOK
+              - text: (Zapytanie o Kwotowanie)
+            - cell "Gdy brak zleceń animatora w arkuszu, a są zlecenia klientów" [ref=e871]
+            - cell "Sygnał dla animatora, by wystawił oferty" [ref=e872]
+          - row "ZOR (Zapytanie o Realizację) W Segmencie A, gdy zlecenie klienta spełnia warunki realizacji z kwotowaniem animatora Animator ma określony czas (Czas Opóźnienia Odpowiedzi) na reakcję" [ref=e873]:
+            - cell "ZOR (Zapytanie o Realizację)" [ref=e874]:
+              - strong [ref=e875]: ZOR
+              - text: (Zapytanie o Realizację)
+            - cell "W Segmencie A, gdy zlecenie klienta spełnia warunki realizacji z kwotowaniem animatora" [ref=e876]:
+              - text: W
+              - strong [ref=e877]: Segmencie A
+              - text: ", gdy zlecenie klienta spełnia warunki realizacji z kwotowaniem animatora"
+            - cell "Animator ma określony czas (Czas Opóźnienia Odpowiedzi) na reakcję" [ref=e878]
+      - separator [ref=e879]
+      - heading "Rozdział 4 – Stany instrumentu w SAR" [level=3] [ref=e880]
+      - paragraph [ref=e881]: "Instrument może znajdować się w jednym z trzech stanów:"
+      - table [ref=e882]:
+        - rowgroup [ref=e883]:
+          - row "Stan Opis Mechanika" [ref=e884]:
+            - columnheader "Stan" [ref=e885]
+            - columnheader "Opis" [ref=e886]
+            - columnheader "Mechanika" [ref=e887]
+        - rowgroup [ref=e888]:
+          - row "Stan podstawowy Animator utrzymuje zlecenia dwustronne (kupno i sprzedaż) Normalne działanie rynku" [ref=e889]:
+            - cell "Stan podstawowy" [ref=e890]:
+              - strong [ref=e891]: Stan podstawowy
+            - cell "Animator utrzymuje zlecenia dwustronne (kupno i sprzedaż)" [ref=e892]:
+              - text: Animator utrzymuje zlecenia
+              - strong [ref=e893]: dwustronne
+              - text: (kupno i sprzedaż)
+            - cell "Normalne działanie rynku" [ref=e894]
+          - row "Stan „Tylko Zlecenie Kupna\" Animator kwotuje tylko stronę kupna (np. wyprzedano całą emisję) Wyznacza się wirtualny limit ceny sprzedaży = limit kupna + maksymalny spread" [ref=e895]:
+            - cell "Stan „Tylko Zlecenie Kupna\"" [ref=e896]:
+              - strong [ref=e897]: Stan „Tylko Zlecenie Kupna"
+            - cell "Animator kwotuje tylko stronę kupna (np. wyprzedano całą emisję)" [ref=e898]:
+              - text: Animator kwotuje
+              - strong [ref=e899]: tylko stronę kupna
+              - text: (np. wyprzedano całą emisję)
+            - cell "Wyznacza się wirtualny limit ceny sprzedaży = limit kupna + maksymalny spread" [ref=e900]:
+              - text: Wyznacza się
+              - strong [ref=e901]: wirtualny limit ceny sprzedaży
+              - text: = limit kupna + maksymalny spread
+          - row "Stan „Tylko Zlecenie Sprzedaży\" Animator kwotuje tylko stronę sprzedaży Wirtualny limit ceny kupna = minimalna wartość kroku notowania" [ref=e902]:
+            - cell "Stan „Tylko Zlecenie Sprzedaży\"" [ref=e903]:
+              - strong [ref=e904]: Stan „Tylko Zlecenie Sprzedaży"
+            - cell "Animator kwotuje tylko stronę sprzedaży" [ref=e905]:
+              - text: Animator kwotuje
+              - strong [ref=e906]: tylko stronę sprzedaży
+            - cell "Wirtualny limit ceny kupna = minimalna wartość kroku notowania" [ref=e907]:
+              - text: Wirtualny limit ceny kupna =
+              - strong [ref=e908]: minimalna wartość kroku notowania
+      - separator [ref=e909]
+      - heading "Rozdział 5 – Wyznaczanie kursu na otwarciu (SAR)" [level=3] [ref=e910]
+      - paragraph [ref=e911]:
+        - text: Kurs otwarcia wyznaczany na podstawie
+        - strong [ref=e912]: zleceń klientów i kwotowania animatora
+        - text: ":"
+      - list [ref=e913]:
+        - listitem [ref=e914]: Jeżeli kwotowanie animatora „nachodzi" na zlecenia klientów (cena sprzedaży animatora ≤ cena kupna klienta) → dochodzi do transakcji.
+        - listitem [ref=e915]:
+          - text: Wybierany jest kurs
+          - strong [ref=e916]: maksymalizujący wolumen obrotu
+          - text: .
+        - listitem [ref=e917]:
+          - text: Przy kilku możliwych kursach → wybiera się
+          - strong [ref=e918]: bliższy kursowi odniesienia
+          - text: .
+      - separator [ref=e919]
+      - heading "Rozdział 5b – Zlecenia w SAR (§ 22–25)" [level=3] [ref=e920]
+      - paragraph [ref=e921]:
+        - text: W systemie animatora rynku zlecenia mogą mieć następujące
+        - strong [ref=e922]: oznaczenia ważności
+        - text: ":"
+      - list [ref=e923]:
+        - listitem [ref=e924]:
+          - strong [ref=e925]: D
+          - text: – Ważne na dzień bieżący (domyślne, jeśli brak oznaczenia)
+        - listitem [ref=e926]:
+          - strong [ref=e927]: WDD
+          - text: – Ważne do oznaczonego dnia (max 365 dni;
+          - strong [ref=e928]: nie może składać animator
+          - text: )
+        - listitem [ref=e929]:
+          - strong [ref=e930]: WIA
+          - text: – Wykonaj i Anuluj (
+          - strong [ref=e931]: wyłącznie w fazie notowań ciągłych
+          - text: ;
+          - strong [ref=e932]: wyłącznie jako zlecenia „cross"
+          - text: ;
+          - strong [ref=e933]: animator nie może ich składać
+          - text: )
+      - paragraph [ref=e934]:
+        - text: W SAR
+        - strong [ref=e935]: nie ma
+        - text: oznaczeń GVC, GTD, GTC, WNZ – te są charakterystyczne dla rynku kasowego.
+      - paragraph [ref=e936]:
+        - text: W SAR
+        - strong [ref=e937]: nie są dozwolone zlecenia PKC ani PCR
+        - text: – wyłącznie zlecenia
+        - strong [ref=e938]: LIMIT
+        - text: .
+      - separator [ref=e939]
+      - heading "Rozdział 6 – Mechanika zawierania transakcji i segmentacja" [level=3] [ref=e940]
+      - paragraph [ref=e941]:
+        - strong [ref=e942]: "Segmentacja instrumentów w SAR:"
+      - table [ref=e943]:
+        - rowgroup [ref=e944]:
+          - row "Segment Model Zasada realizacji" [ref=e945]:
+            - columnheader "Segment" [ref=e946]
+            - columnheader "Model" [ref=e947]
+            - columnheader "Zasada realizacji" [ref=e948]
+        - rowgroup [ref=e949]:
+          - row "Segment A Model z opóźnieniem Zlecenia spełniające warunki realizacji nie są wykonywane natychmiast; oczekują na reakcję animatora po komunikacie ZOR lub upływ czasu opóźnienia, po czym następuje rozkrosowanie" [ref=e950]:
+            - cell "Segment A" [ref=e951]:
+              - strong [ref=e952]: Segment A
+            - cell "Model z opóźnieniem" [ref=e953]
+            - cell "Zlecenia spełniające warunki realizacji nie są wykonywane natychmiast; oczekują na reakcję animatora po komunikacie ZOR lub upływ czasu opóźnienia, po czym następuje rozkrosowanie" [ref=e954]:
+              - text: Zlecenia spełniające warunki realizacji
+              - strong [ref=e955]: nie są wykonywane natychmiast
+              - text: ; oczekują na reakcję animatora po komunikacie
+              - strong [ref=e956]: ZOR
+              - text: lub upływ czasu opóźnienia, po czym następuje rozkrosowanie
+          - row "Segment B Model natychmiastowy Zlecenia realizowane natychmiast po cenie najlepszego zlecenia przeciwstawnego (zazwyczaj animatora)" [ref=e957]:
+            - cell "Segment B" [ref=e958]:
+              - strong [ref=e959]: Segment B
+            - cell "Model natychmiastowy" [ref=e960]
+            - cell "Zlecenia realizowane natychmiast po cenie najlepszego zlecenia przeciwstawnego (zazwyczaj animatora)" [ref=e961]:
+              - text: Zlecenia realizowane
+              - strong [ref=e962]: natychmiast
+              - text: po cenie najlepszego zlecenia przeciwstawnego (zazwyczaj animatora)
+      - paragraph [ref=e963]:
+        - strong [ref=e964]: "Zasada egzekucji:"
+        - text: Jeśli klient składa zlecenie kupna z limitem wyższym niż cena sprzedaży animatora, transakcja dochodzi do skutku
+        - strong [ref=e965]: po cenie sprzedaży animatora
+        - text: (klient uzyskuje cenę korzystniejszą niż zaoferował).
+      - separator [ref=e966]
+      - heading "Rozdział 7 – Widełki w SAR" [level=3] [ref=e967]
+      - paragraph [ref=e968]:
+        - text: Jeżeli kwotowanie animatora wychodzi poza widełki statyczne/dynamiczne, notowania zostają
+        - strong [ref=e969]: zawieszone
+        - text: . Animator musi dostosować kwotowanie do warunków rynkowych – lub Giełda musi rozszerzyć widełki (decyzja Przewodniczącego Nadzoru).
+      - separator [ref=e970]
+      - heading "Dział VI – Transakcje Szczególne" [level=2] [ref=e971]
+      - heading "Rozdział 1 – Przepisy ogólne" [level=3] [ref=e972]
+      - paragraph [ref=e973]: "SZOG wyróżnia następujące kategorie transakcji szczególnych:"
+      - list [ref=e974]:
+        - listitem [ref=e975]:
+          - strong [ref=e976]: Propozycje nabycia/zbycia
+          - text: (tryb ogłoszeniowy),
+        - listitem [ref=e977]:
+          - strong [ref=e978]: Transakcje pakietowe
+          - text: ","
+        - listitem [ref=e979]:
+          - strong [ref=e980]: Transakcje odkupu lub odsprzedaży (BISO)
+          - text: ","
+        - listitem [ref=e981]:
+          - strong [ref=e982]: Operacje na akcjach
+          - text: (wezwania, skup akcji własnych).
+      - separator [ref=e983]
+      - heading "Rozdział 2 – Propozycja nabycia/zbycia" [level=3] [ref=e984]
+      - paragraph [ref=e985]:
+        - text: "Tryb ogłoszeniowy: Członek Giełdy może skierować do wszystkich uczestników"
+        - strong [ref=e986]: propozycję zawarcia transakcji
+        - text: (pakietowej lub BISO).
+      - list [ref=e987]:
+        - listitem [ref=e988]:
+          - strong [ref=e989]: "Ważność propozycji i odpowiedzi:"
+          - strong [ref=e990]: 60 minut
+          - text: od momentu przyjęcia przez system.
+        - listitem [ref=e991]:
+          - text: Propozycja musi zawierać
+          - strong [ref=e992]: limit ceny
+          - text: .
+        - listitem [ref=e993]: Nie może posiadać dodatkowych warunków realizacji (np. MWW, WDC) ani oznaczeń ważności.
+      - separator [ref=e994]
+      - heading "Rozdział 3 – Transakcje pakietowe (szczegóły)" [level=3] [ref=e995]
+      - paragraph [ref=e996]: Transakcje o znacznej wartości, uzgodnione poza arkuszem zleceń, ale rejestrowane na Giełdzie.
+      - paragraph [ref=e997]:
+        - strong [ref=e998]: "Czas zgłoszenia:"
+        - text: W ciągu
+        - strong [ref=e999]: 15 minut
+        - text: od momentu ustalenia warunków.
+      - paragraph [ref=e1000]:
+        - strong [ref=e1001]: "Ograniczenia cenowe dla akcji:"
+      - table [ref=e1002]:
+        - rowgroup [ref=e1003]:
+          - row "Czas Maks. odchylenie ceny" [ref=e1004]:
+            - columnheader "Czas" [ref=e1005]
+            - columnheader "Maks. odchylenie ceny" [ref=e1006]
+        - rowgroup [ref=e1007]:
+          - row "W trakcie sesji (8:30–17:05) ±10% od kursu rynkowego" [ref=e1008]:
+            - cell "W trakcie sesji (8:30–17:05)" [ref=e1009]
+            - cell "±10% od kursu rynkowego" [ref=e1010]:
+              - strong [ref=e1011]: ±10%
+              - text: od kursu rynkowego
+          - row "Po sesji (faza pozasesyjna) ±40% od kursu odniesienia (średnia ważona obrotami z sesji)" [ref=e1012]:
+            - cell "Po sesji (faza pozasesyjna)" [ref=e1013]
+            - cell "±40% od kursu odniesienia (średnia ważona obrotami z sesji)" [ref=e1014]:
+              - strong [ref=e1015]: ±40%
+              - text: od kursu odniesienia (średnia ważona obrotami z sesji)
+      - paragraph [ref=e1016]:
+        - strong [ref=e1017]: "Minimalne wolumeny dla instrumentów pochodnych:"
+      - table [ref=e1018]:
+        - rowgroup [ref=e1019]:
+          - row "Instrument Min. wolumen" [ref=e1020]:
+            - columnheader "Instrument" [ref=e1021]
+            - columnheader "Min. wolumen" [ref=e1022]
+        - rowgroup [ref=e1023]:
+          - row "Kontrakty na indeksy giełdowe 150 szt." [ref=e1024]:
+            - cell "Kontrakty na indeksy giełdowe" [ref=e1025]
+            - cell "150 szt." [ref=e1026]
+          - row "Kontrakty na kursy akcji 400 szt." [ref=e1027]:
+            - cell "Kontrakty na kursy akcji" [ref=e1028]
+            - cell "400 szt." [ref=e1029]
+          - row "Opcje na indeksy 200 szt." [ref=e1030]:
+            - cell "Opcje na indeksy" [ref=e1031]
+            - cell "200 szt." [ref=e1032]
+          - row "Kontrakty na kursy walut 10 000 szt." [ref=e1033]:
+            - cell "Kontrakty na kursy walut" [ref=e1034]
+            - cell "10 000 szt." [ref=e1035]
+      - separator [ref=e1036]
+      - heading "Rozdział 4 – Transakcje odkupu lub odsprzedaży (BISO)" [level=3] [ref=e1037]
+      - list [ref=e1038]:
+        - listitem [ref=e1039]:
+          - text: "Przedmiot BISO: wyłącznie instrumenty, dla których"
+          - strong [ref=e1040]: nie ma płynnego rynku
+          - text: (akcje, PDA, prawa poboru, ETF-y, certyfikaty, obligacje).
+        - listitem [ref=e1041]:
+          - text: Liczba instrumentów
+          - strong [ref=e1042]: nie może być większa
+          - text: niż niezbędna do prawidłowego
+          - strong [ref=e1043]: rozrachunku transakcji
+          - text: .
+        - listitem [ref=e1044]:
+          - text: "Dla instrumentów dłużnych: data rozliczenia"
+          - strong [ref=e1045]: nie może przypadać po terminie wykupu
+          - text: .
+      - separator [ref=e1046]
+      - heading "Rozdziały 5–6 – Operacje na akcjach" [level=3] [ref=e1047]
+      - paragraph [ref=e1048]:
+        - strong [ref=e1049]: "Wezwania:"
+        - text: SZOG określa tryb postępowania przy realizacji wezwań do zapisywania się na sprzedaż lub zamianę akcji, w tym harmonogram przekazywania zleceń przez podmiot pośredniczący.
+      - paragraph [ref=e1050]:
+        - strong [ref=e1051]: "Skup akcji własnych:"
+        - text: Transakcje mogą być realizowane w formie transakcji
+        - strong [ref=e1052]: sesyjnych lub pakietowych
+        - text: ", zgodnie z warunkami ogłoszonymi przez emitenta."
+      - separator [ref=e1053]
+      - heading "Podsumowanie – kluczowe liczby SZOG" [level=2] [ref=e1054]
+      - table [ref=e1055]:
+        - rowgroup [ref=e1056]:
+          - row "Zagadnienie Wartość" [ref=e1057]:
+            - columnheader "Zagadnienie" [ref=e1058]
+            - columnheader "Wartość" [ref=e1059]
+        - rowgroup [ref=e1060]:
+          - row "Przeliczenie walut we wniosku Kurs NBP z dnia poprzedzającego złożenie wniosku" [ref=e1061]:
+            - cell "Przeliczenie walut we wniosku" [ref=e1062]
+            - cell "Kurs NBP z dnia poprzedzającego złożenie wniosku" [ref=e1063]:
+              - text: Kurs NBP z dnia
+              - strong [ref=e1064]: poprzedzającego
+              - text: złożenie wniosku
+          - row "Obligacje skarbowe – tabele odsetkowe (nowe) Do 15:00 w dniu sesyjnym poprzedzającym 1. notowanie" [ref=e1065]:
+            - cell "Obligacje skarbowe – tabele odsetkowe (nowe)" [ref=e1066]
+            - cell "Do 15:00 w dniu sesyjnym poprzedzającym 1. notowanie" [ref=e1067]:
+              - text: Do
+              - strong [ref=e1068]: 15:00
+              - text: w dniu sesyjnym poprzedzającym 1. notowanie
+          - row "Obligacje skarbowe – tabele odsetkowe (już notowane) Do 16:30 na 3 dni sesyjne przed nowym okresem odsetkowym" [ref=e1069]:
+            - cell "Obligacje skarbowe – tabele odsetkowe (już notowane)" [ref=e1070]
+            - cell "Do 16:30 na 3 dni sesyjne przed nowym okresem odsetkowym" [ref=e1071]:
+              - text: Do
+              - strong [ref=e1072]: 16:30
+              - text: na
+              - strong [ref=e1073]: 3 dni sesyjne
+              - text: przed nowym okresem odsetkowym
+          - row "Instrumenty strukturyzowane – koniec obrotu 3. dzień sesyjny przed przedterminowym wykupem" [ref=e1074]:
+            - cell "Instrumenty strukturyzowane – koniec obrotu" [ref=e1075]
+            - cell "3. dzień sesyjny przed przedterminowym wykupem" [ref=e1076]:
+              - strong [ref=e1077]: 3. dzień sesyjny
+              - text: przed przedterminowym wykupem
+          - row "WUJ – minimalna wartość zlecenia 50 000 PLN (lub 10 000 EUR)" [ref=e1078]:
+            - cell "WUJ – minimalna wartość zlecenia" [ref=e1079]
+            - cell "50 000 PLN (lub 10 000 EUR)" [ref=e1080]:
+              - strong [ref=e1081]: 50 000 PLN
+              - text: (lub 10 000 EUR)
+          - row "WUJ – minimalna ilość ujawniana 10 sztuk" [ref=e1082]:
+            - cell "WUJ – minimalna ilość ujawniana" [ref=e1083]
+            - cell "10 sztuk" [ref=e1084]:
+              - strong [ref=e1085]: 10 sztuk
+          - row "Ważność propozycji nabycia/zbycia 60 minut od przyjęcia przez system" [ref=e1086]:
+            - cell "Ważność propozycji nabycia/zbycia" [ref=e1087]
+            - cell "60 minut od przyjęcia przez system" [ref=e1088]:
+              - strong [ref=e1089]: 60 minut
+              - text: od przyjęcia przez system
+          - row "Transakcja pakietowa – czas zgłoszenia Do 15 minut od ustalenia warunków" [ref=e1090]:
+            - cell "Transakcja pakietowa – czas zgłoszenia" [ref=e1091]
+            - cell "Do 15 minut od ustalenia warunków" [ref=e1092]:
+              - text: Do
+              - strong [ref=e1093]: 15 minut
+              - text: od ustalenia warunków
+          - row "Transakcja pakietowa – cena w sesji (akcje) Maks. ±10% od kursu rynkowego" [ref=e1094]:
+            - cell "Transakcja pakietowa – cena w sesji (akcje)" [ref=e1095]
+            - cell "Maks. ±10% od kursu rynkowego" [ref=e1096]:
+              - text: Maks.
+              - strong [ref=e1097]: ±10%
+              - text: od kursu rynkowego
+          - row "Transakcja pakietowa – cena po sesji (akcje) Maks. ±40% od kursu odniesienia" [ref=e1098]:
+            - cell "Transakcja pakietowa – cena po sesji (akcje)" [ref=e1099]
+            - cell "Maks. ±40% od kursu odniesienia" [ref=e1100]:
+              - text: Maks.
+              - strong [ref=e1101]: ±40%
+              - text: od kursu odniesienia
+          - row "Kontrakty na indeksy – min. wolumen pakiet 150 szt." [ref=e1102]:
+            - cell "Kontrakty na indeksy – min. wolumen pakiet" [ref=e1103]
+            - cell "150 szt." [ref=e1104]:
+              - strong [ref=e1105]: 150 szt.
+          - row "Kontrakty na akcje – min. wolumen pakiet 400 szt." [ref=e1106]:
+            - cell "Kontrakty na akcje – min. wolumen pakiet" [ref=e1107]
+            - cell "400 szt." [ref=e1108]:
+              - strong [ref=e1109]: 400 szt.
+          - row "Opcje na indeksy – min. wolumen pakiet 200 szt." [ref=e1110]:
+            - cell "Opcje na indeksy – min. wolumen pakiet" [ref=e1111]
+            - cell "200 szt." [ref=e1112]:
+              - strong [ref=e1113]: 200 szt.
+          - row "Kontrakty na waluty – min. wolumen pakiet 10 000 szt." [ref=e1114]:
+            - cell "Kontrakty na waluty – min. wolumen pakiet" [ref=e1115]
+            - cell "10 000 szt." [ref=e1116]:
+              - strong [ref=e1117]: 10 000 szt.
+          - row "Widełki statyczne (akcje) ok. ±10% od kursu odniesienia" [ref=e1118]:
+            - cell "Widełki statyczne (akcje)" [ref=e1119]
+            - cell "ok. ±10% od kursu odniesienia" [ref=e1120]:
+              - text: ok.
+              - strong [ref=e1121]: ±10%
+              - text: od kursu odniesienia
+          - row "Widełki dynamiczne (akcje płynne) ok. ±3% od ostatniej transakcji" [ref=e1122]:
+            - cell "Widełki dynamiczne (akcje płynne)" [ref=e1123]
+            - cell "ok. ±3% od ostatniej transakcji" [ref=e1124]:
+              - text: ok.
+              - strong [ref=e1125]: ±3%
+              - text: od ostatniej transakcji
+          - row "Dogrywka w systemie ciągłym 5 minut (17:00–17:05)" [ref=e1126]:
+            - cell "Dogrywka w systemie ciągłym" [ref=e1127]
+            - cell "5 minut (17:00–17:05)" [ref=e1128]:
+              - strong [ref=e1129]: 5 minut
+              - text: (17:00–17:05)
+          - row "Dogrywka w systemie kursu jednolitego 30 minut po każdym fixingu" [ref=e1130]:
+            - cell "Dogrywka w systemie kursu jednolitego" [ref=e1131]
+            - cell "30 minut po każdym fixingu" [ref=e1132]:
+              - strong [ref=e1133]: 30 minut
+              - text: po każdym fixingu
+          - row "EMC – spread animatora ×2" [ref=e1134]:
+            - cell "EMC – spread animatora" [ref=e1135]
+            - cell "×2" [ref=e1136]:
+              - strong [ref=e1137]: ×2
+          - row "EMC – wolumen animatora ×0,5" [ref=e1138]:
+            - cell "EMC – wolumen animatora" [ref=e1139]
+            - cell "×0,5" [ref=e1140]:
+              - strong [ref=e1141]: ×0,5
+          - row "Anulowanie transakcji (Mistrade) – termin wniosku 15–30 minut od zawarcia" [ref=e1142]:
+            - cell "Anulowanie transakcji (Mistrade) – termin wniosku" [ref=e1143]
+            - cell "15–30 minut od zawarcia" [ref=e1144]:
+              - strong [ref=e1145]: 15–30 minut
+              - text: od zawarcia
+          - row "GTD / GTC – maksymalny termin ważności 365 dni" [ref=e1146]:
+            - cell "GTD / GTC – maksymalny termin ważności" [ref=e1147]
+            - cell "365 dni" [ref=e1148]:
+              - strong [ref=e1149]: 365 dni
+          - row "T+2 Standardowy cykl rozliczeniowy akcji i obligacji" [ref=e1150]:
+            - cell "T+2" [ref=e1151]
+            - cell "Standardowy cykl rozliczeniowy akcji i obligacji" [ref=e1152]
+          - row "Prawa poboru – ostatni dzień notowania 3. dzień sesyjny przed zakończeniem zapisów na akcje" [ref=e1153]:
+            - cell "Prawa poboru – ostatni dzień notowania" [ref=e1154]
+            - cell "3. dzień sesyjny przed zakończeniem zapisów na akcje" [ref=e1155]:
+              - strong [ref=e1156]: 3. dzień sesyjny przed zakończeniem zapisów
+              - text: na akcje
+          - row "Prawa poboru – przedmiot obrotu Prawo poboru z jednej akcji" [ref=e1157]:
+            - cell "Prawa poboru – przedmiot obrotu" [ref=e1158]
+            - cell "Prawo poboru z jednej akcji" [ref=e1159]:
+              - text: Prawo poboru
+              - strong [ref=e1160]: z jednej akcji
+          - row "Karty umów – wystawienie Niezwłocznie po zawarciu transakcji" [ref=e1161]:
+            - cell "Karty umów – wystawienie" [ref=e1162]
+            - cell "Niezwłocznie po zawarciu transakcji" [ref=e1163]:
+              - strong [ref=e1164]: Niezwłocznie
+              - text: po zawarciu transakcji
+          - row "Karty umów – sprzeciw W ciągu 30 minut od zawarcia transakcji" [ref=e1165]:
+            - cell "Karty umów – sprzeciw" [ref=e1166]
+            - cell "W ciągu 30 minut od zawarcia transakcji" [ref=e1167]:
+              - text: W ciągu
+              - strong [ref=e1168]: 30 minut
+              - text: od zawarcia transakcji
+          - row "Karty umów – tryb nadzwyczajny System 4brokernet" [ref=e1169]:
+            - cell "Karty umów – tryb nadzwyczajny" [ref=e1170]
+            - cell "System 4brokernet" [ref=e1171]:
+              - text: System
+              - strong [ref=e1172]: 4brokernet
+          - row "Kontrakty WIG20 – krok notowania 1 punkt indeksowy" [ref=e1173]:
+            - cell "Kontrakty WIG20 – krok notowania" [ref=e1174]
+            - cell "1 punkt indeksowy" [ref=e1175]:
+              - strong [ref=e1176]: 1 punkt indeksowy
+          - row "Kontrakty WIG20 – maks. wartość zlecenia 50 000 000 zł" [ref=e1177]:
+            - cell "Kontrakty WIG20 – maks. wartość zlecenia" [ref=e1178]
+            - cell "50 000 000 zł" [ref=e1179]:
+              - strong [ref=e1180]: 50 000 000 zł
+          - row "Kontrakty WIG20 – statyczne widełki 10% od kursu odniesienia" [ref=e1181]:
+            - cell "Kontrakty WIG20 – statyczne widełki" [ref=e1182]
+            - cell "10% od kursu odniesienia" [ref=e1183]:
+              - strong [ref=e1184]: 10%
+              - text: od kursu odniesienia
+          - row "SAR – faza przed otwarciem 8:30 – 9:05 (nie 9:00!)" [ref=e1185]:
+            - cell "SAR – faza przed otwarciem" [ref=e1186]
+            - cell "8:30 – 9:05 (nie 9:00!)" [ref=e1187]:
+              - text: 8:30 –
+              - strong [ref=e1188]: 9:05
+              - text: (nie 9:00!)
+          - row "SAR – faza notowań ciągłych 9:05 – 16:50" [ref=e1189]:
+            - cell "SAR – faza notowań ciągłych" [ref=e1190]
+            - cell "9:05 – 16:50" [ref=e1191]
+          - row "Zlecenia cross – dopuszczalne fazy Wyłącznie notowania ciągłe + dogrywka" [ref=e1192]:
+            - cell "Zlecenia cross – dopuszczalne fazy" [ref=e1193]
+            - cell "Wyłącznie notowania ciągłe + dogrywka" [ref=e1194]:
+              - text: Wyłącznie
+              - strong [ref=e1195]: notowania ciągłe + dogrywka
+          - row "Zlecenia cross – arkusz Nie są przyjmowane do arkusza zleceń" [ref=e1196]:
+            - cell "Zlecenia cross – arkusz" [ref=e1197]
+            - cell "Nie są przyjmowane do arkusza zleceń" [ref=e1198]:
+              - strong [ref=e1199]: Nie są przyjmowane
+              - text: do arkusza zleceń
+          - row "PKC w dogrywce Niedozwolone (dogrywka = wyłącznie LIMIT)" [ref=e1200]:
+            - cell "PKC w dogrywce" [ref=e1201]
+            - cell "Niedozwolone (dogrywka = wyłącznie LIMIT)" [ref=e1202]:
+              - strong [ref=e1203]: Niedozwolone
+              - text: (dogrywka = wyłącznie LIMIT)
+          - row "Kody miesięcy kontraktów F=sty, G=lut, H=mar, J=kwi, K=maj, M=cze, N=lip, Q=sie, U=wrz, V=paź, X=lis, Z=gru" [ref=e1204]:
+            - cell "Kody miesięcy kontraktów" [ref=e1205]
+            - cell "F=sty, G=lut, H=mar, J=kwi, K=maj, M=cze, N=lip, Q=sie, U=wrz, V=paź, X=lis, Z=gru" [ref=e1206]
+    - generic [ref=e1207]:
+      - button "‹ Poprzedni" [ref=e1208] [cursor=pointer]
+      - button "Następny ›" [ref=e1209] [cursor=pointer]
+    - generic [ref=e1210]:
+      - button "▶" [ref=e1211] [cursor=pointer]
+      - button "⏹" [ref=e1212] [cursor=pointer]
+      - generic [ref=e1213]:
+        - button "0.75×" [ref=e1214] [cursor=pointer]
+        - button "1×" [ref=e1215] [cursor=pointer]
+        - button "1.25×" [ref=e1216] [cursor=pointer]
+        - button "1.5×" [ref=e1217] [cursor=pointer]
+        - button "2×" [ref=e1218] [cursor=pointer]
+      - button "⌄" [ref=e1219] [cursor=pointer]
+  - navigation [ref=e56]:
+    - link "📚 Materiały" [ref=e57] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e58]: 📚
+      - generic [ref=e59]: Materiały
+    - link "✍️ Quiz" [ref=e60] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e61]: ✍️
+      - generic [ref=e62]: Quiz
+    - link "📊 Postęp" [ref=e63] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e64]: 📊
+      - generic [ref=e65]: Postęp

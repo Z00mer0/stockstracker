@@ -1,0 +1,81 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "Back to Dashboard" [ref=e66] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e67]
+        - generic [ref=e69]: Back
+      - generic [ref=e5]: New Project
+      - generic [ref=e70]:
+        - link "Team Settings" [ref=e72] [cursor=pointer]:
+          - /url: /z00mer0s-projects/~/settings
+          - img [ref=e73]
+        - button "Avatar for z00mer0" [ref=e77] [cursor=pointer]:
+          - img "Avatar for z00mer0" [ref=e78]:
+            - img "Avatar for z00mer0" [ref=e79]
+    - main [ref=e6]:
+      - generic [ref=e264]:
+        - generic [ref=e266]:
+          - paragraph [ref=e267]: Congratulations!
+          - paragraph [ref=e268]:
+            - text: You just deployed a new project to
+            - img [ref=e269]
+            - text: z00mer0's projects.
+        - generic [ref=e271]:
+          - link "Visit Deployment" [ref=e276] [cursor=pointer]:
+            - /url: https://stockstracker-mu.vercel.app
+            - img [ref=e279]
+          - generic [ref=e280]:
+            - generic [ref=e281]:
+              - paragraph [ref=e282]: Install Coding Agent Plugin
+              - generic [ref=e283]:
+                - generic [ref=e284]:
+                  - img [ref=e286]
+                  - img [ref=e289]
+                  - img [ref=e291]
+                - generic [ref=e292]: "|"
+                - button "Dismiss coding agent plugin notification" [ref=e293]:
+                  - img [ref=e294]
+            - paragraph [ref=e296]: Turn your coding agent into a Vercel expert. Simply copy and run this in your terminal to install the plugin. Available for Claude, Cursor and Codex.
+            - generic [ref=e298]:
+              - generic [ref=e299]: $ npx plugins add vercel/vercel-plugin
+              - button "Copy to clipboard" [ref=e300] [cursor=pointer]:
+                - generic [ref=e302]:
+                  - img [ref=e304]
+                  - img [ref=e307]
+          - generic [ref=e309]:
+            - heading "Next Steps" [level=4] [ref=e310]
+            - generic [ref=e312]:
+              - img [ref=e314]
+              - generic [ref=e316]:
+                - paragraph [ref=e317]: Instant Previews
+                - paragraph [ref=e318]: Push a new branch to preview changes instantly
+            - link "Add Domain Add a custom domain to your project" [ref=e320] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/settings/domains
+              - generic [ref=e321]:
+                - generic [ref=e322]:
+                  - img [ref=e324]
+                  - generic [ref=e326]:
+                    - paragraph [ref=e327]: Add Domain
+                    - paragraph [ref=e328]: Add a custom domain to your project
+                - img [ref=e329]
+            - link "Enable Speed Insights Track how users experience your site over time" [ref=e332] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/speed-insights
+              - generic [ref=e333]:
+                - generic [ref=e334]:
+                  - img [ref=e336]
+                  - generic [ref=e338]:
+                    - paragraph [ref=e339]: Enable Speed Insights
+                    - paragraph [ref=e340]: Track how users experience your site over time
+                - img [ref=e341]
+        - link "Continue to Dashboard" [ref=e343] [cursor=pointer]:
+          - /url: /z00mer0s-projects/stockstracker
+          - generic [ref=e344]: Continue to Dashboard
+  - alert [ref=e127]
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - img

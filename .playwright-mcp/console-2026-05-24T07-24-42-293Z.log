@@ -1,0 +1,2 @@
+[     408ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/portfolio:0
+[     408ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0

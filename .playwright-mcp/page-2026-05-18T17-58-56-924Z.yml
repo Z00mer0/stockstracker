@@ -1,0 +1,544 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - generic [ref=e5]:
+          - link "Render" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=e8]
+          - button "M My Workspace" [ref=e12] [cursor=pointer]:
+            - generic [ref=e13]:
+              - generic [ref=e14]: M
+              - generic "My Workspace" [ref=e15]
+              - img [ref=e16]
+        - generic [ref=e20]:
+          - navigation [ref=e21]:
+            - list [ref=e22]:
+              - listitem [ref=e23]:
+                - link "makler-exam-app" [ref=e24] [cursor=pointer]:
+                  - /url: /web/srv-d85l3rrrjlhs73a22nk0
+                  - img [ref=e25]
+                  - generic [ref=e27]: makler-exam-app
+                - button [ref=e30] [cursor=pointer]:
+                  - img [ref=e31]
+          - button "Search Command + K" [ref=e34] [cursor=pointer]:
+            - img [ref=e36]
+            - text: Search
+            - generic [ref=e38]:
+              - img [ref=e39]
+              - generic [ref=e41]: Command
+              - generic [ref=e42]: +
+              - generic [ref=e43]: K
+              - generic [ref=e44]: K
+        - generic [ref=e45]:
+          - button "New" [ref=e47] [cursor=pointer]:
+            - generic [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e51]: New
+          - button "Upgrade" [ref=e53] [cursor=pointer]:
+            - generic [ref=e54]:
+              - img [ref=e55]
+              - generic [ref=e57]: Upgrade
+          - button "Help" [ref=e59] [cursor=pointer]:
+            - img "Help" [ref=e60]
+          - button "g" [ref=e65] [cursor=pointer]:
+            - generic [ref=e67]: g
+      - generic [ref=e68]:
+        - navigation [ref=e69]:
+          - separator [ref=e70]
+          - generic [ref=e71]:
+            - generic [ref=e72]:
+              - link "Dashboard" [ref=e73] [cursor=pointer]:
+                - /url: /
+                - img [ref=e74]
+                - generic [ref=e76]: Dashboard
+              - generic [ref=e77]:
+                - img [ref=e78]
+                - generic [ref=e80]: makler-exam-app
+            - generic [ref=e81]:
+              - list [ref=e82]:
+                - listitem [ref=e83]:
+                  - link "Events" [ref=e84] [cursor=pointer]:
+                    - /url: /web/srv-d85l3rrrjlhs73a22nk0/events
+                    - img [ref=e85]
+                    - generic [ref=e92]: Events
+                - listitem [ref=e93]:
+                  - link "Settings" [ref=e94] [cursor=pointer]:
+                    - /url: /web/srv-d85l3rrrjlhs73a22nk0/settings
+                    - img [ref=e95]
+                    - generic [ref=e98]: Settings
+              - generic [ref=e99]:
+                - generic [ref=e100]: Monitor
+                - list "Monitor" [ref=e101]:
+                  - listitem [ref=e102]:
+                    - link "Logs" [ref=e103] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/logs
+                      - img [ref=e104]
+                      - generic [ref=e109]: Logs
+                  - listitem [ref=e110]:
+                    - link "Metrics" [ref=e111] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/metrics
+                      - img [ref=e112]
+                      - generic [ref=e114]: Metrics
+              - generic [ref=e115]:
+                - generic [ref=e116]: Manage
+                - list "Manage" [ref=e117]:
+                  - listitem [ref=e118]:
+                    - link "Environment" [ref=e119] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/env
+                      - img [ref=e120]
+                      - generic [ref=e124]: Environment
+                  - listitem [ref=e125]:
+                    - link "Shell" [ref=e126] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/shell
+                      - img [ref=e127]
+                      - generic [ref=e131]:
+                        - generic [ref=e132]: Shell
+                        - status [ref=e135]:
+                          - img [ref=e136]
+                  - listitem [ref=e138]:
+                    - link "Scaling" [ref=e139] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/scaling
+                      - img [ref=e140]
+                      - generic [ref=e145]:
+                        - generic [ref=e146]: Scaling
+                        - status [ref=e149]:
+                          - img [ref=e150]
+                  - listitem [ref=e152]:
+                    - link "Previews" [ref=e153] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/previews
+                      - img [ref=e154]
+                      - generic [ref=e158]: Previews
+                  - listitem [ref=e159]:
+                    - link "Disk" [ref=e160] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/disks
+                      - img [ref=e161]
+                      - generic [ref=e166]:
+                        - generic [ref=e167]: Disk
+                        - status [ref=e170]:
+                          - img [ref=e171]
+                  - listitem [ref=e173]:
+                    - link "One-Off Jobs" [ref=e174] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/jobs
+                      - img [ref=e175]
+                      - generic [ref=e181]:
+                        - generic [ref=e182]: One-Off Jobs
+                        - status [ref=e185]:
+                          - img [ref=e186]
+          - generic [ref=e189]:
+            - button "Collapse items" [expanded] [ref=e190] [cursor=pointer]:
+              - img [ref=e191]
+            - list "Footer navigation" [ref=e193]:
+              - listitem [ref=e194]:
+                - link "Changelog" [ref=e195] [cursor=pointer]:
+                  - /url: https://render.com/changelog
+                  - img [ref=e196]
+                  - generic [ref=e201]: Changelog
+              - listitem [ref=e202]:
+                - link "Invite a friend" [ref=e203] [cursor=pointer]:
+                  - /url: /invites
+                  - img [ref=e204]
+                  - generic [ref=e206]: Invite a friend
+              - listitem [ref=e207]:
+                - button "Contact support" [ref=e208] [cursor=pointer]:
+                  - img [ref=e209]
+                  - generic [ref=e213]: Contact support
+            - link "Render Status" [ref=e215] [cursor=pointer]:
+              - /url: https://status.render.com
+              - img [ref=e216]
+              - generic [ref=e218]: Render Status
+        - generic [ref=e220]:
+          - banner [ref=e222]:
+            - generic [ref=e223]:
+              - generic [ref=e224]:
+                - img [ref=e225]
+                - generic [ref=e227]: Web Service
+              - generic [ref=e228]:
+                - heading "makler-exam-app Python 3 Free Upgrade your instance" [level=1] [ref=e230]:
+                  - generic [ref=e231]: makler-exam-app
+                  - generic [ref=e232]:
+                    - generic [ref=e233]: Python 3
+                    - link "Free" [ref=e234] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/plan
+                      - generic [ref=e235]: Free
+                    - link "Upgrade your instance" [ref=e236] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/plan
+                      - text: Upgrade your instance
+                      - img [ref=e238]
+                - generic [ref=e241]:
+                  - button "Connect" [ref=e242] [cursor=pointer]:
+                    - generic [ref=e243]: Connect
+                    - img [ref=e244]
+                  - button "Manual Deploy" [ref=e246] [cursor=pointer]:
+                    - generic [ref=e247]: Manual Deploy
+                    - img [ref=e248]
+            - generic [ref=e252]:
+              - generic [ref=e254]:
+                - generic [ref=e255]: "Service ID:"
+                - generic "Service ID:" [ref=e256]:
+                  - generic [ref=e257]: srv-d85l3rrrjlhs73a22nk0
+                  - button "Copy" [ref=e260] [cursor=pointer]:
+                    - img [ref=e261]
+              - generic [ref=e264]:
+                - img "GitHub" [ref=e266]
+                - link "Z00mer0 / makler-exam-app main" [ref=e268] [cursor=pointer]:
+                  - /url: https://github.com/Z00mer0/makler-exam-app/tree/main
+                  - generic [ref=e269]:
+                    - generic [ref=e270]: Z00mer0 / makler-exam-app
+                    - img [ref=e271]
+                    - generic [ref=e273]: main
+              - generic "Copy" [ref=e275]:
+                - link "https://makler-exam-app.onrender.com" [ref=e277] [cursor=pointer]:
+                  - /url: https://makler-exam-app.onrender.com
+                - button "Copy" [ref=e280] [cursor=pointer]:
+                  - img [ref=e281]
+          - main [ref=e284]:
+            - generic [ref=e285]:
+              - alert [ref=e286]:
+                - generic [ref=e288]:
+                  - img [ref=e290]
+                  - generic [ref=e294]:
+                    - generic [ref=e296]: Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+                    - link "Upgrade now" [ref=e298] [cursor=pointer]:
+                      - /url: /web/srv-d85l3rrrjlhs73a22nk0/plan
+              - generic [ref=e301]:
+                - generic [ref=e302]:
+                  - generic [ref=e303]: May 18, 2026 at 7:52 PM
+                  - generic [ref=e304]:
+                    - img [ref=e305]
+                    - generic [ref=e307]: live
+                - generic [ref=e308]:
+                  - link "13eb45a" [ref=e309] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/makler-exam-app/commit/13eb45a52d5af6ba976cae0fb26b1789c522260b
+                  - generic [ref=e310]: "fix: absolute static_folder path, 401 redirect to / not /login"
+              - generic [ref=e311]:
+                - generic [ref=e313]:
+                  - generic [ref=e315]:
+                    - button "All logs" [ref=e318] [cursor=pointer]:
+                      - generic [ref=e319]:
+                        - generic [ref=e320]: All logs
+                        - img [ref=e321]
+                    - generic [ref=e324]:
+                      - generic [ref=e325]: Search
+                      - generic [ref=e327]:
+                        - img [ref=e328]
+                        - searchbox "Search" [ref=e330]
+                    - button "May 18, 7:51 PM - 7:54 PM GMT+2" [ref=e333] [cursor=pointer]:
+                      - generic [ref=e334]:
+                        - generic [ref=e336]:
+                          - img [ref=e337]
+                          - generic [ref=e340]: May 18, 7:51 PM - 7:54 PM
+                          - img [ref=e341]
+                        - generic [ref=e343]: GMT+2
+                    - button "Maximize" [ref=e348] [cursor=pointer]:
+                      - img "Maximize" [ref=e349]
+                    - button "Options" [ref=e354] [cursor=pointer]:
+                      - img "Options" [ref=e355]
+                  - generic:
+                    - button "Return to Bottom":
+                      - img
+                  - listbox [ref=e359]:
+                    - generic [ref=e360]: May 18
+                    - option "07:53:03 PM Downloading werkzeug-3.1.8-py3-none-any.whl (226 kB)" [ref=e361]:
+                      - generic [ref=e363]:
+                        - img [ref=e365]
+                        - time [ref=e369]: 07:53:03 PM
+                      - generic [ref=e372]: Downloading werkzeug-3.1.8-py3-none-any.whl (226 kB)
+                    - option "07:53:03 PM Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)" [ref=e373]:
+                      - generic [ref=e375]:
+                        - img [ref=e377]
+                        - time [ref=e381]: 07:53:03 PM
+                      - generic [ref=e384]: Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+                    - option "07:53:03 PM Downloading packaging-26.2-py3-none-any.whl (100 kB)" [ref=e385]:
+                      - generic [ref=e387]:
+                        - img [ref=e389]
+                        - time [ref=e393]: 07:53:03 PM
+                      - generic [ref=e396]: Downloading packaging-26.2-py3-none-any.whl (100 kB)
+                    - 'option "07:53:03 PM Installing collected packages: PyJWT, pluggy, packaging, MarkupSafe, itsdangerous, iniconfig, click, blinker, bcrypt, Werkzeug, pytest, Jinja2, gunicorn, flask, flask-cors" [ref=e397]':
+                      - generic [ref=e399]:
+                        - img [ref=e401]
+                        - time [ref=e405]: 07:53:03 PM
+                      - generic [ref=e408]: "Installing collected packages: PyJWT, pluggy, packaging, MarkupSafe, itsdangerous, iniconfig, click, blinker, bcrypt, Werkzeug, pytest, Jinja2, gunicorn, flask, flask-cors"
+                    - option "07:53:04 PM" [ref=e409]:
+                      - generic [ref=e411]:
+                        - img [ref=e413]
+                        - time [ref=e417]: 07:53:04 PM
+                    - option "07:53:04 PM Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.3 PyJWT-2.8.0 Werkzeug-3.1.8 bcrypt-4.1.3 blinker-1.9.0 click-8.4.0 flask-3.0.3 flask-cors-4.0.1 gunicorn-22.0.0 iniconfig-2.3.0 itsdangerous-2.2.0 packaging-26.2 pluggy-1.6.0 pytest-8.2.0" [ref=e420]:
+                      - generic [ref=e422]:
+                        - img [ref=e424]
+                        - time [ref=e428]: 07:53:04 PM
+                      - generic [ref=e431]: Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.3 PyJWT-2.8.0 Werkzeug-3.1.8 bcrypt-4.1.3 blinker-1.9.0 click-8.4.0 flask-3.0.3 flask-cors-4.0.1 gunicorn-22.0.0 iniconfig-2.3.0 itsdangerous-2.2.0 packaging-26.2 pluggy-1.6.0 pytest-8.2.0
+                    - option "07:53:04 PM" [ref=e432]:
+                      - generic [ref=e434]:
+                        - img [ref=e436]
+                        - time [ref=e440]: 07:53:04 PM
+                    - 'option "07:53:04 PM [notice] A new release of pip is available: 25.3 -> 26.1.1" [ref=e443]':
+                      - generic [ref=e445]:
+                        - img [ref=e447]
+                        - time [ref=e451]: 07:53:04 PM
+                      - generic [ref=e454]: "[notice] A new release of pip is available: 25.3 -> 26.1.1"
+                    - 'option "07:53:04 PM [notice] To update, run: pip install --upgrade pip" [ref=e455]':
+                      - generic [ref=e457]:
+                        - img [ref=e459]
+                        - time [ref=e463]: 07:53:04 PM
+                      - generic [ref=e466]: "[notice] To update, run: pip install --upgrade pip"
+                    - option "07:53:04 PM ==> Using Node.js version 24.14.1 (default)" [ref=e467]:
+                      - generic [ref=e469]:
+                        - img [ref=e471]
+                        - time [ref=e475]: 07:53:04 PM
+                      - generic [ref=e478]: ==> Using Node.js version 24.14.1 (default)
+                    - 'option "07:53:04 PM ==> Docs on specifying a Node.js version: https://render.com/docs/node-version" [ref=e479]':
+                      - generic [ref=e481]:
+                        - img [ref=e483]
+                        - time [ref=e487]: 07:53:04 PM
+                      - generic [ref=e490]:
+                        - text: ==>
+                        - generic [ref=e491]:
+                          - text: "Docs on specifying a Node.js version:"
+                          - link "https://render.com/docs/node-version" [ref=e492] [cursor=pointer]:
+                            - /url: https://render.com/docs/node-version
+                    - option "07:53:06 PM" [ref=e493]:
+                      - generic [ref=e495]:
+                        - img [ref=e497]
+                        - time [ref=e501]: 07:53:06 PM
+                    - option "07:53:06 PM added 73 packages, and audited 74 packages in 1s" [ref=e504]:
+                      - generic [ref=e506]:
+                        - img [ref=e508]
+                        - time [ref=e512]: 07:53:06 PM
+                      - generic [ref=e515]: added 73 packages, and audited 74 packages in 1s
+                    - option "07:53:06 PM" [ref=e516]:
+                      - generic [ref=e518]:
+                        - img [ref=e520]
+                        - time [ref=e524]: 07:53:06 PM
+                    - option "07:53:06 PM 9 packages are looking for funding" [ref=e527]:
+                      - generic [ref=e529]:
+                        - img [ref=e531]
+                        - time [ref=e535]: 07:53:06 PM
+                      - generic [ref=e538]: 9 packages are looking for funding
+                    - 'option "07:53:06 PM run `npm fund` for details" [ref=e539]':
+                      - generic [ref=e541]:
+                        - img [ref=e543]
+                        - time [ref=e547]: 07:53:06 PM
+                      - generic [ref=e550]: "run `npm fund` for details"
+                    - option "07:53:06 PM" [ref=e551]:
+                      - generic [ref=e553]:
+                        - img [ref=e555]
+                        - time [ref=e559]: 07:53:06 PM
+                    - option "07:53:06 PM found 0 vulnerabilities" [ref=e562]:
+                      - generic [ref=e564]:
+                        - img [ref=e566]
+                        - time [ref=e570]: 07:53:06 PM
+                      - generic [ref=e573]: found 0 vulnerabilities
+                    - option "07:53:06 PM" [ref=e574]:
+                      - generic [ref=e576]:
+                        - img [ref=e578]
+                        - time [ref=e582]: 07:53:06 PM
+                    - option "07:53:06 PM > makler-exam-frontend@0.0.0 build" [ref=e585]:
+                      - generic [ref=e587]:
+                        - img [ref=e589]
+                        - time [ref=e593]: 07:53:06 PM
+                      - generic [ref=e596]: "> makler-exam-frontend@0.0.0 build"
+                    - option "07:53:06 PM > vite build" [ref=e597]:
+                      - generic [ref=e599]:
+                        - img [ref=e601]
+                        - time [ref=e605]: 07:53:06 PM
+                      - generic [ref=e608]: "> vite build"
+                    - option "07:53:06 PM" [ref=e609]:
+                      - generic [ref=e611]:
+                        - img [ref=e613]
+                        - time [ref=e617]: 07:53:06 PM
+                    - option "07:53:06 PM vite v6.4.2 building for production..." [ref=e620]:
+                      - generic [ref=e622]:
+                        - img [ref=e624]
+                        - time [ref=e628]: 07:53:06 PM
+                      - generic [ref=e631]: vite v6.4.2 building for production...
+                    - option "07:53:06 PM transforming..." [ref=e632]:
+                      - generic [ref=e634]:
+                        - img [ref=e636]
+                        - time [ref=e640]: 07:53:06 PM
+                      - generic [ref=e643]: transforming...
+                    - option "07:53:07 PM ✓ 41 modules transformed." [ref=e644]:
+                      - generic [ref=e646]:
+                        - img [ref=e648]
+                        - time [ref=e652]: 07:53:07 PM
+                      - generic [ref=e655]: ✓ 41 modules transformed.
+                    - option "07:53:07 PM rendering chunks..." [ref=e656]:
+                      - generic [ref=e658]:
+                        - img [ref=e660]
+                        - time [ref=e664]: 07:53:07 PM
+                      - generic [ref=e667]: rendering chunks...
+                    - option "07:53:07 PM computing gzip size..." [ref=e668]:
+                      - generic [ref=e670]:
+                        - img [ref=e672]
+                        - time [ref=e676]: 07:53:07 PM
+                      - generic [ref=e679]: computing gzip size...
+                    - 'option "07:53:07 PM dist/index.html 0.46 kB │ gzip: 0.30 kB" [ref=e680]':
+                      - generic [ref=e682]:
+                        - img [ref=e684]
+                        - time [ref=e688]: 07:53:07 PM
+                      - generic [ref=e691]: "dist/index.html 0.46 kB │ gzip: 0.30 kB"
+                    - 'option "07:53:07 PM dist/assets/index-C37JvPNU.css 1.08 kB │ gzip: 0.53 kB" [ref=e692]':
+                      - generic [ref=e694]:
+                        - img [ref=e696]
+                        - time [ref=e700]: 07:53:07 PM
+                      - generic [ref=e703]: "dist/assets/index-C37JvPNU.css 1.08 kB │ gzip: 0.53 kB"
+                    - 'option "07:53:07 PM dist/assets/index-C4hX97pb.js 228.16 kB │ gzip: 72.18 kB" [ref=e704]':
+                      - generic [ref=e706]:
+                        - img [ref=e708]
+                        - time [ref=e712]: 07:53:07 PM
+                      - generic [ref=e715]: "dist/assets/index-C4hX97pb.js 228.16 kB │ gzip: 72.18 kB"
+                    - option "07:53:07 PM ✓ built in 916ms" [ref=e716]:
+                      - generic [ref=e718]:
+                        - img [ref=e720]
+                        - time [ref=e724]: 07:53:07 PM
+                      - generic [ref=e727]: ✓ built in 916ms
+                    - option "07:53:08 PM ==> Uploading build..." [ref=e728]:
+                      - generic [ref=e730]:
+                        - img [ref=e732]
+                        - time [ref=e736]: 07:53:08 PM
+                      - generic [ref=e739]: ==> Uploading build...
+                    - option "07:53:16 PM ==> Uploaded in 5.6s. Compression took 1.9s" [ref=e740]:
+                      - generic [ref=e742]:
+                        - img [ref=e744]
+                        - time [ref=e748]: 07:53:16 PM
+                      - generic [ref=e751]: ==> Uploaded in 5.6s. Compression took 1.9s
+                    - option "07:53:16 PM ==> Build successful 🎉" [ref=e752]:
+                      - generic [ref=e754]:
+                        - img [ref=e756]
+                        - time [ref=e760]: 07:53:16 PM
+                      - generic [ref=e763]: ==> Build successful 🎉
+                    - option "07:53:21 PM ==> Deploying..." [ref=e764]:
+                      - generic [ref=e766]:
+                        - img [ref=e768]
+                        - time [ref=e772]: 07:53:21 PM
+                      - generic [ref=e775]: ==> Deploying...
+                    - option "07:53:22 PM ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance" [ref=e776]:
+                      - generic [ref=e778]:
+                        - img [ref=e780]
+                        - time [ref=e784]: 07:53:22 PM
+                      - generic [ref=e787]: ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+                    - option "07:53:29 PM [pg5jl] ==> Running 'gunicorn backend.server:app --bind 0.0.0.0:$PORT'" [ref=e788]:
+                      - generic [ref=e789]:
+                        - generic [ref=e790]:
+                          - img [ref=e792]
+                          - time [ref=e796]: 07:53:29 PM
+                        - generic [ref=e800] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e802]: ==> Running 'gunicorn backend.server:app --bind 0.0.0.0:$PORT'
+                    - option "07:53:36 PM [pg5jl] [2026-05-18 17:53:36 +0000] [58] [INFO] Starting gunicorn 22.0.0" [ref=e803]:
+                      - generic [ref=e804]:
+                        - generic [ref=e805]:
+                          - img [ref=e807]
+                          - time [ref=e811]: 07:53:36 PM
+                        - generic [ref=e815] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e817]: "[2026-05-18 17:53:36 +0000] [58] [INFO] Starting gunicorn 22.0.0"
+                    - 'option "07:53:36 PM [pg5jl] [2026-05-18 17:53:36 +0000] [58] [INFO] Listening at: http://0.0.0.0:10000 (58)" [ref=e818]':
+                      - generic [ref=e819]:
+                        - generic [ref=e820]:
+                          - img [ref=e822]
+                          - time [ref=e826]: 07:53:36 PM
+                        - generic [ref=e830] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e833]:
+                        - text: "[2026-05-18 17:53:36 +0000] [58] [INFO] Listening at:"
+                        - link "http://0.0.0.0:10000" [ref=e834] [cursor=pointer]:
+                          - /url: http://0.0.0.0:10000
+                        - text: (58)
+                    - 'option "07:53:36 PM [pg5jl] [2026-05-18 17:53:36 +0000] [58] [INFO] Using worker: sync" [ref=e835]':
+                      - generic [ref=e836]:
+                        - generic [ref=e837]:
+                          - img [ref=e839]
+                          - time [ref=e843]: 07:53:36 PM
+                        - generic [ref=e847] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e849]: "[2026-05-18 17:53:36 +0000] [58] [INFO] Using worker: sync"
+                    - 'option "07:53:36 PM [pg5jl] [2026-05-18 17:53:36 +0000] [60] [INFO] Booting worker with pid: 60" [ref=e850]':
+                      - generic [ref=e851]:
+                        - generic [ref=e852]:
+                          - img [ref=e854]
+                          - time [ref=e858]: 07:53:36 PM
+                        - generic [ref=e862] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e864]: "[2026-05-18 17:53:36 +0000] [60] [INFO] Booting worker with pid: 60"
+                    - option "07:53:37 PM [pg5jl] 127.0.0.1 - - [18/May/2026:17:53:37 +0000] \"HEAD / HTTP/1.1\" 404 0 \"-\" \"Go-http-client/1.1\"" [ref=e865]:
+                      - generic [ref=e866]:
+                        - generic [ref=e867]:
+                          - img [ref=e869]
+                          - time [ref=e873]: 07:53:37 PM
+                        - generic [ref=e877] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e879]: 127.0.0.1 - - [18/May/2026:17:53:37 +0000] "HEAD / HTTP/1.1" 404 0 "-" "Go-http-client/1.1"
+                    - option "07:53:42 PM ==> Your service is live 🎉" [ref=e880]:
+                      - generic [ref=e882]:
+                        - img [ref=e884]
+                        - time [ref=e888]: 07:53:42 PM
+                      - generic [ref=e891]: ==> Your service is live 🎉
+                    - option "07:53:43 PM ==>" [ref=e892]:
+                      - generic [ref=e894]:
+                        - img [ref=e896]
+                        - time [ref=e900]: 07:53:43 PM
+                      - generic [ref=e903]: ==>
+                    - option "07:53:43 PM ==> ///////////////////////////////////////////////////////////" [ref=e904]:
+                      - generic [ref=e906]:
+                        - img [ref=e908]
+                        - time [ref=e912]: 07:53:43 PM
+                      - generic [ref=e915]: ==> ///////////////////////////////////////////////////////////
+                    - option "07:53:43 PM ==>" [ref=e916]:
+                      - generic [ref=e918]:
+                        - img [ref=e920]
+                        - time [ref=e924]: 07:53:43 PM
+                      - generic [ref=e927]: ==>
+                    - option "07:53:43 PM ==> Available at your primary URL https://makler-exam-app.onrender.com" [ref=e928]:
+                      - generic [ref=e930]:
+                        - img [ref=e932]
+                        - time [ref=e936]: 07:53:43 PM
+                      - generic [ref=e939]:
+                        - text: ==>
+                        - generic [ref=e940]:
+                          - text: Available at your primary URL
+                          - link "https://makler-exam-app.onrender.com" [ref=e941] [cursor=pointer]:
+                            - /url: https://makler-exam-app.onrender.com
+                    - option "07:53:43 PM ==>" [ref=e942]:
+                      - generic [ref=e944]:
+                        - img [ref=e946]
+                        - time [ref=e950]: 07:53:43 PM
+                      - generic [ref=e953]: ==>
+                    - option "07:53:43 PM ==> ///////////////////////////////////////////////////////////" [ref=e954]:
+                      - generic [ref=e956]:
+                        - img [ref=e958]
+                        - time [ref=e962]: 07:53:43 PM
+                      - generic [ref=e965]: ==> ///////////////////////////////////////////////////////////
+                    - option "07:53:43 PM [pg5jl] 127.0.0.1 - - [18/May/2026:17:53:43 +0000] \"GET / HTTP/1.1\" 404 207 \"-\" \"Go-http-client/2.0\"" [ref=e966]:
+                      - generic [ref=e967]:
+                        - generic [ref=e968]:
+                          - img [ref=e970]
+                          - time [ref=e974]: 07:53:43 PM
+                        - generic [ref=e978] [cursor=pointer]: "[pg5jl]"
+                      - generic [ref=e980]: 127.0.0.1 - - [18/May/2026:17:53:43 +0000] "GET / HTTP/1.1" 404 207 "-" "Go-http-client/2.0"
+                - paragraph [ref=e982]:
+                  - text: Need better ways to work with logs? Try the
+                  - link "Render CLI" [ref=e983] [cursor=pointer]:
+                    - /url: https://render.com/docs/cli
+                    - img [ref=e984]
+                    - text: Render CLI
+                  - text: ","
+                  - link "Render MCP Server" [ref=e987] [cursor=pointer]:
+                    - /url: https://render.com/docs/mcp-server
+                  - text: ", or set up a"
+                  - link "log stream integration" [ref=e988] [cursor=pointer]:
+                    - /url: https://render.com/docs/log-streams
+                    - text: log stream integration
+                    - img [ref=e989]
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic:
+                - img
+              - generic: Move
+              - img
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button:
+              - img
+  - iframe [ref=e992]:
+    

@@ -1,0 +1,88 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e10]: stockstracker.
+    - navigation [ref=e11]:
+      - generic [ref=e12]: Główne
+      - link "Dashboard" [ref=e13] [cursor=pointer]:
+        - /url: /
+        - img [ref=e15]
+        - text: Dashboard
+      - link "Portfel" [ref=e20] [cursor=pointer]:
+        - /url: /portfolio
+        - img [ref=e22]
+        - text: Portfel
+      - link "Historia" [ref=e24] [cursor=pointer]:
+        - /url: /history
+        - img [ref=e26]
+        - text: Historia
+      - link "Transakcje" [ref=e28] [cursor=pointer]:
+        - /url: /transactions
+        - img [ref=e30]
+        - text: Transakcje
+      - link "Dywidendy" [ref=e33] [cursor=pointer]:
+        - /url: /dividends
+        - img [ref=e35]
+        - text: Dywidendy
+      - link "Kalendarz" [ref=e37] [cursor=pointer]:
+        - /url: /calendar
+        - img [ref=e39]
+        - text: Kalendarz
+      - link "Watchlist" [ref=e41] [cursor=pointer]:
+        - /url: /watchlist
+        - img [ref=e43]
+        - text: Watchlist
+      - link "Scenario Lab" [ref=e46] [cursor=pointer]:
+        - /url: /scenario
+        - img [ref=e48]
+        - text: Scenario Lab
+      - link "Atrybucja" [ref=e49] [cursor=pointer]:
+        - /url: /analysis
+        - img [ref=e51]
+        - text: Atrybucja
+      - generic [ref=e54]: Konto
+      - link "Ustawienia" [ref=e55] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e57]
+        - text: Ustawienia
+    - generic [ref=e60]:
+      - generic [ref=e61]: AD
+      - generic [ref=e62]:
+        - generic [ref=e63]: Adam
+        - generic [ref=e64]: GPW · PLN
+      - button "↪" [ref=e65] [cursor=pointer]
+  - generic [ref=e66]:
+    - banner [ref=e67]:
+      - generic [ref=e68]:
+        - img
+        - textbox "Szukaj spółki…" [ref=e69]
+        - generic: ⌘K
+      - generic:
+        - generic [ref=e70]:
+          - generic [ref=e71]: WIG20
+          - generic [ref=e72]: —
+        - generic [ref=e73]:
+          - generic [ref=e74]: S&P500
+          - generic [ref=e75]: —
+        - generic [ref=e76]:
+          - generic [ref=e77]: DAX
+          - generic [ref=e78]: —
+        - generic [ref=e79]:
+          - generic [ref=e80]: EUR/PLN
+          - generic [ref=e81]: —
+        - generic [ref=e82]:
+          - generic [ref=e83]: USD/PLN
+          - generic [ref=e84]: —
+      - generic [ref=e85]:
+        - generic [ref=e86]: GPW
+        - generic [ref=e88]: NYSE
+        - generic [ref=e90]: LSE
+      - button "Motyw jasny" [ref=e92] [cursor=pointer]:
+        - img [ref=e93]
+      - button "Ukryj wartości" [ref=e99] [cursor=pointer]:
+        - img [ref=e100]
+      - button "Powiadomienia" [ref=e104] [cursor=pointer]:
+        - img [ref=e105]
+      - button "+ Dodaj transakcję" [ref=e108] [cursor=pointer]
+    - main [ref=e109]

@@ -1,0 +1,10 @@
+[    6226ms] [WARNING] [fx] fetch failed, using fallback: signal timed out @ https://stockstracker.onrender.com/app/assets/index-URE_6AA5.js:58
+[   29085ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker.onrender.com/api/login:0
+[  111797ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=CBF.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111798ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=KRU.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111799ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=VOT.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111804ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=PKN.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111805ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=ALE.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111807ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=XTB.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111839ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=DNP.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0
+[  111893ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://finnhub.io/api/v1/quote?symbol=MDV.WA&token=d7uhj69r01qnv95nm3e0d7uhj69r01qnv95nm3eg:0

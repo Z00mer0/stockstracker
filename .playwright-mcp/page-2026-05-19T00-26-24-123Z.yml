@@ -1,0 +1,47 @@
+- generic [ref=e2]:
+  - generic [ref=e53]:
+    - heading "Quiz" [level=2] [ref=e54]
+    - generic [ref=e55]:
+      - generic [ref=e56]: KATEGORIA
+      - combobox [ref=e57]:
+        - option "Wszystkie (277)"
+        - option "Metody wyceny przedsiębiorstw (55)"
+        - option "Ustawa o rachunkowości – Definicje (art. 1–25) (42)"
+        - option "Ustawa o rachunkowości – Łączenie spółek (art. 26+) (27)"
+        - option "Ustawa o rachunkowości – Zadania testowe (48)"
+        - option "Ustawa o nadzorze nad rynkiem finansowym (17)"
+        - option "Ustawa o nadzorze nad rynkiem kapitałowym (4)"
+        - option "Ustawa o obrocie instrumentami finansowymi (47)"
+        - option "Rozporządzenie MF – Tryb i warunki postępowania FI (14)"
+        - option "Rozporządzenie MF – Warunki tech.-org. FI (14)" [selected]
+        - option "Instrumenty pochodne i opcje (2)"
+        - option "Matematyka finansowa (3)"
+        - option "Obowiązki informacyjne emitentów (1)"
+        - option "Regulamin Giełdy i SZOG (2)"
+        - option "Zarządzanie portfelem (1)"
+    - generic [ref=e58]:
+      - generic [ref=e59]: "LICZBA PYTAŃ: 14 / 14"
+      - slider [ref=e60]: "14"
+    - button "🔀 Losowa kolejność wyłączona" [ref=e61] [cursor=pointer]:
+      - text: 🔀 Losowa kolejność
+      - generic [ref=e62]: wyłączona
+    - generic [ref=e63]:
+      - button "📚 Tryb nauki Natychmiastowy feedback po każdej odpowiedzi" [ref=e64] [cursor=pointer]:
+        - text: 📚 Tryb nauki
+        - generic [ref=e65]: Natychmiastowy feedback po każdej odpowiedzi
+      - button "✍️ Tryb egzaminu Wyniki i omówienie po zakończeniu" [ref=e66] [cursor=pointer]:
+        - text: ✍️ Tryb egzaminu
+        - generic [ref=e67]: Wyniki i omówienie po zakończeniu
+  - navigation [ref=e19]:
+    - link "📚 Materiały" [ref=e20] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e21]: 📚
+      - generic [ref=e22]: Materiały
+    - link "✍️ Quiz" [active] [ref=e23] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e24]: ✍️
+      - generic [ref=e25]: Quiz
+    - link "📊 Postęp" [ref=e26] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e27]: 📊
+      - generic [ref=e28]: Postęp

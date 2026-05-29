@@ -1,0 +1,6 @@
+[    2019ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[    2029ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[    2085ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[    2142ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[    8160ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[    8172ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893

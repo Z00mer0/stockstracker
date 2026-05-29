@@ -1,0 +1,102 @@
+<h2>Quiz — widok mobilny</h2>
+<p class="subtitle">Dwa warianty layoutu. Kliknij który bardziej Ci odpowiada.</p>
+
+<div class="split">
+  <div class="mockup" style="cursor:pointer;" data-choice="a" onclick="toggleSelect(this)">
+    <div class="mockup-header">A — Timer na górze (jak Twój screenshot)</div>
+    <div class="mockup-body" style="padding:0;font-size:0.8rem;">
+      <div style="background:#0f172a;border-radius:8px;overflow:hidden;max-width:320px;margin:0 auto;">
+        <!-- Top bar -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1e293b;">
+          <div style="background:#334155;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.75rem;">1</div>
+          <div style="color:#fff;font-weight:600;font-size:0.9rem;letter-spacing:2px;">00:12:34</div>
+          <div style="background:#334155;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:0.9rem;">⚑</div>
+        </div>
+        <!-- Progress bar -->
+        <div style="height:3px;background:#1e293b;"><div style="width:4%;height:100%;background:#22c55e;"></div></div>
+        <!-- Question -->
+        <div style="padding:16px;color:#e2e8f0;font-size:0.78rem;line-height:1.5;min-height:90px;">
+          Zgodnie z rozporządzeniem Ministra Finansów, wyceny aktywów finansowych dokonuje się na dzień bilansowy w ten sposób, że:
+        </div>
+        <!-- Options -->
+        <div style="padding:0 12px 12px;">
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:18px;height:18px;border:2px solid #475569;border-radius:50%;flex-shrink:0;margin-top:1px;"></div>
+            <span style="color:#cbd5e1;font-size:0.73rem;line-height:1.4;">Akcje i udziały wycenia się metodą praw własności</span>
+          </div>
+          <div style="background:#1e293b;border:2px solid #22c55e;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:18px;height:18px;border:2px solid #22c55e;border-radius:50%;flex-shrink:0;margin-top:1px;background:#22c55e;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;background:#0f172a;border-radius:50%;"></div></div>
+            <span style="color:#22c55e;font-size:0.73rem;line-height:1.4;">Aktywa do obrotu wycenia się według wartości rynkowej</span>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:18px;height:18px;border:2px solid #475569;border-radius:50%;flex-shrink:0;margin-top:1px;"></div>
+            <span style="color:#cbd5e1;font-size:0.73rem;line-height:1.4;">Aktywa utrzymywane do zapadalności wycenia się wg wartości godziwej</span>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:18px;height:18px;border:2px solid #475569;border-radius:50%;flex-shrink:0;margin-top:1px;"></div>
+            <span style="color:#cbd5e1;font-size:0.73rem;line-height:1.4;">Aktywa dostępne do sprzedaży wycenia się wg kosztu</span>
+          </div>
+        </div>
+        <!-- Bottom nav -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 12px;">
+          <div style="background:#334155;border-radius:8px;padding:10px;text-align:center;color:#94a3b8;font-size:0.7rem;font-weight:600;">‹ WSTECZ</div>
+          <div style="background:#22c55e;border-radius:8px;padding:10px;text-align:center;color:#0f172a;font-size:0.7rem;font-weight:700;">DALEJ ›</div>
+        </div>
+        <div style="padding:0 12px 12px;">
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px;text-align:center;color:#64748b;font-size:0.7rem;">POMIŃ</div>
+        </div>
+        <!-- Stats bottom -->
+        <div style="display:flex;justify-content:center;gap:16px;padding:8px 12px 12px;border-top:1px solid #1e293b;">
+          <span style="color:#22c55e;font-size:0.75rem;">✓ 3 poprawne</span>
+          <span style="color:#94a3b8;font-size:0.75rem;">→ 2 pominięte</span>
+          <span style="color:#ef4444;font-size:0.75rem;">✗ 1 błędna</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="cursor:pointer;" data-choice="b" onclick="toggleSelect(this)">
+    <div class="mockup-header">B — Timer zintegrowany z paskiem postępu</div>
+    <div class="mockup-body" style="padding:0;font-size:0.8rem;">
+      <div style="background:#0f172a;border-radius:8px;overflow:hidden;max-width:320px;margin:0 auto;">
+        <!-- Top bar compact -->
+        <div style="padding:10px 16px;background:#1e293b;display:flex;align-items:center;gap:10px;">
+          <span style="color:#64748b;font-size:0.7rem;">1/23</span>
+          <div style="flex:1;height:6px;background:#0f172a;border-radius:3px;">
+            <div style="width:4%;height:100%;background:#22c55e;border-radius:3px;"></div>
+          </div>
+          <span style="color:#22c55e;font-size:0.75rem;font-weight:600;font-variant-numeric:tabular-nums;">12:34</span>
+        </div>
+        <!-- Question -->
+        <div style="padding:16px;color:#e2e8f0;font-size:0.78rem;line-height:1.5;min-height:90px;">
+          Zgodnie z rozporządzeniem Ministra Finansów, wyceny aktywów finansowych dokonuje się na dzień bilansowy w ten sposób, że:
+        </div>
+        <!-- Options -->
+        <div style="padding:0 12px 12px;">
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#475569;font-weight:700;font-size:0.75rem;flex-shrink:0;">A.</span>
+            <span style="color:#cbd5e1;font-size:0.73rem;line-height:1.4;">Akcje i udziały wycenia się metodą praw własności</span>
+          </div>
+          <div style="background:#1e293b;border:2px solid #22c55e;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#22c55e;font-weight:700;font-size:0.75rem;flex-shrink:0;">B.</span>
+            <span style="color:#22c55e;font-size:0.73rem;line-height:1.4;">Aktywa do obrotu wycenia się według wartości rynkowej</span>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#475569;font-weight:700;font-size:0.75rem;flex-shrink:0;">C.</span>
+            <span style="color:#cbd5e1;font-size:0.73rem;line-height:1.4;">Aktywa utrzymywane do zapadalności wycenia się wg wartości godziwej</span>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#475569;font-weight:700;font-size:0.75rem;flex-shrink:0;">D.</span>
+            <span style="color:#cbd5e1;font-size:0.73rem;line-height:1.4;">Aktywa dostępne do sprzedaży wycenia się wg kosztu</span>
+          </div>
+        </div>
+        <!-- Big bottom buttons -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 12px 16px;">
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 6px;text-align:center;color:#94a3b8;font-size:0.65rem;font-weight:600;">‹ WSTECZ</div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 6px;text-align:center;color:#64748b;font-size:0.65rem;">POMIŃ</div>
+          <div style="background:#22c55e;border-radius:8px;padding:12px 6px;text-align:center;color:#0f172a;font-size:0.65rem;font-weight:700;">DALEJ ›</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

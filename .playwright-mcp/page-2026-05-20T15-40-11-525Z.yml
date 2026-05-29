@@ -1,0 +1,401 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - alert [ref=e5]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e14]:
+          - generic [ref=e15]: Upcoming maintenance
+          - generic [ref=e16]:
+            - text: We will be upgrading critical infrastructure on May 27th, 3:00 am GMT+2 (May 27th, 1:00 am UTC). Follow our
+            - link "status page" [ref=e17] [cursor=pointer]:
+              - /url: https://status.render.com/incidents/7rdmw95g2h5q
+            - text: for updates.
+      - button "Close notification" [ref=e18] [cursor=pointer]:
+        - img [ref=e19]
+    - banner [ref=e21]:
+      - generic [ref=e22]:
+        - link "Render" [ref=e24] [cursor=pointer]:
+          - /url: /
+          - img "Render" [ref=e25]
+        - button "M My Workspace" [ref=e29] [cursor=pointer]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: M
+            - generic "My Workspace" [ref=e32]
+            - img [ref=e33]
+      - generic [ref=e37]:
+        - navigation [ref=e38]:
+          - list [ref=e39]:
+            - listitem [ref=e40]:
+              - link "My project" [ref=e41] [cursor=pointer]:
+                - /url: /project/prj-d7r8p8favr4c739v4or0
+                - img [ref=e42]
+                - generic [ref=e46]: My project
+              - button [ref=e49] [cursor=pointer]:
+                - img [ref=e50]
+              - text: /
+            - listitem [ref=e52]:
+              - link "Production" [ref=e53] [cursor=pointer]:
+                - /url: /project/prj-d7r8p8favr4c739v4or0/environment/evm-d7r8p8favr4c739v4org
+                - img [ref=e54]
+                - generic [ref=e67]: Production
+              - button [ref=e70] [cursor=pointer]:
+                - img [ref=e71]
+              - text: /
+            - listitem [ref=e73]:
+              - link "stockstracker" [ref=e74] [cursor=pointer]:
+                - /url: /web/srv-d7r8p8jbc2fs7388alo0
+                - img [ref=e75]
+                - generic [ref=e77]: stockstracker
+              - button [ref=e80] [cursor=pointer]:
+                - img [ref=e81]
+        - button "Search Command + K" [ref=e84] [cursor=pointer]:
+          - img [ref=e86]
+          - text: Search
+          - generic [ref=e88]:
+            - img [ref=e89]
+            - generic [ref=e91]: Command
+            - generic [ref=e92]: +
+            - generic [ref=e93]: K
+            - generic [ref=e94]: K
+      - generic [ref=e95]:
+        - button "New" [ref=e97] [cursor=pointer]:
+          - generic [ref=e98]:
+            - img [ref=e99]
+            - generic [ref=e101]: New
+        - button "Upgrade" [ref=e103] [cursor=pointer]:
+          - generic [ref=e104]:
+            - img [ref=e105]
+            - generic [ref=e107]: Upgrade
+        - button "Help" [ref=e109] [cursor=pointer]:
+          - img "Help" [ref=e110]
+        - button "g" [ref=e115] [cursor=pointer]:
+          - generic [ref=e117]: g
+    - generic [ref=e118]:
+      - navigation [ref=e119]:
+        - separator [ref=e120]
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - link "Environment" [ref=e123] [cursor=pointer]:
+              - /url: /project/prj-d7r8p8favr4c739v4or0/environment/evm-d7r8p8favr4c739v4org
+              - img [ref=e124]
+              - generic [ref=e126]: Environment
+            - generic [ref=e127]:
+              - img [ref=e128]
+              - generic [ref=e130]: stockstracker
+          - generic [ref=e131]:
+            - list [ref=e132]:
+              - listitem [ref=e133]:
+                - link "Events" [ref=e134] [cursor=pointer]:
+                  - /url: /web/srv-d7r8p8jbc2fs7388alo0/events
+                  - img [ref=e135]
+                  - generic [ref=e142]: Events
+              - listitem [ref=e143]:
+                - link "Settings" [ref=e144] [cursor=pointer]:
+                  - /url: /web/srv-d7r8p8jbc2fs7388alo0/settings
+                  - img [ref=e145]
+                  - generic [ref=e148]: Settings
+            - generic [ref=e149]:
+              - generic [ref=e150]: Monitor
+              - list "Monitor" [ref=e151]:
+                - listitem [ref=e152]:
+                  - link "Logs" [ref=e153] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/logs
+                    - img [ref=e154]
+                    - generic [ref=e159]: Logs
+                - listitem [ref=e160]:
+                  - link "Metrics" [ref=e161] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/metrics
+                    - img [ref=e162]
+                    - generic [ref=e164]: Metrics
+            - generic [ref=e165]:
+              - generic [ref=e166]: Manage
+              - list "Manage" [ref=e167]:
+                - listitem [ref=e168]:
+                  - link "Environment" [ref=e169] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/env
+                    - img [ref=e170]
+                    - generic [ref=e174]: Environment
+                - listitem [ref=e175]:
+                  - link "Shell" [ref=e176] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/shell
+                    - img [ref=e177]
+                    - generic [ref=e181]:
+                      - generic [ref=e182]: Shell
+                      - status [ref=e185]:
+                        - img [ref=e186]
+                - listitem [ref=e188]:
+                  - link "Scaling" [ref=e189] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/scaling
+                    - img [ref=e190]
+                    - generic [ref=e195]:
+                      - generic [ref=e196]: Scaling
+                      - status [ref=e199]:
+                        - img [ref=e200]
+                - listitem [ref=e202]:
+                  - link "Previews" [ref=e203] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/previews
+                    - img [ref=e204]
+                    - generic [ref=e208]: Previews
+                - listitem [ref=e209]:
+                  - link "Disk" [ref=e210] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/disks
+                    - img [ref=e211]
+                    - generic [ref=e216]:
+                      - generic [ref=e217]: Disk
+                      - status [ref=e220]:
+                        - img [ref=e221]
+                - listitem [ref=e223]:
+                  - link "One-Off Jobs" [ref=e224] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/jobs
+                    - img [ref=e225]
+                    - generic [ref=e231]:
+                      - generic [ref=e232]: One-Off Jobs
+                      - status [ref=e235]:
+                        - img [ref=e236]
+        - generic [ref=e239]:
+          - button "Collapse items" [expanded] [ref=e240] [cursor=pointer]:
+            - img [ref=e241]
+          - list "Footer navigation" [ref=e243]:
+            - listitem [ref=e244]:
+              - link "Changelog" [ref=e245] [cursor=pointer]:
+                - /url: https://render.com/changelog
+                - img [ref=e246]
+                - generic [ref=e251]: Changelog
+            - listitem [ref=e252]:
+              - link "Invite a friend" [ref=e253] [cursor=pointer]:
+                - /url: /invites
+                - img [ref=e254]
+                - generic [ref=e256]: Invite a friend
+            - listitem [ref=e257]:
+              - button "Contact support" [ref=e258] [cursor=pointer]:
+                - img [ref=e259]
+                - generic [ref=e263]: Contact support
+          - link "Render Status" [ref=e265] [cursor=pointer]:
+            - /url: https://status.render.com
+            - img [ref=e266]
+            - generic [ref=e268]: Render Status
+      - main [ref=e271]:
+        - generic [ref=e274]:
+          - alert [ref=e275]:
+            - generic [ref=e277]:
+              - img [ref=e279]
+              - generic [ref=e283]:
+                - generic [ref=e285]: Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+                - link "Upgrade now" [ref=e287] [cursor=pointer]:
+                  - /url: /web/srv-d7r8p8jbc2fs7388alo0/plan
+          - generic [ref=e289]:
+            - button "All logs" [ref=e292] [cursor=pointer]:
+              - generic [ref=e293]:
+                - generic [ref=e294]: All logs
+                - img [ref=e295]
+            - generic [ref=e298]:
+              - generic [ref=e299]: Search
+              - generic [ref=e301]:
+                - img [ref=e302]
+                - searchbox "Search" [ref=e304]
+            - button "Last hour" [ref=e307] [cursor=pointer]:
+              - generic [ref=e310]:
+                - img [ref=e311]
+                - generic [ref=e314]: Last hour
+                - img [ref=e315]
+            - button "Maximize" [ref=e321] [cursor=pointer]:
+              - img "Maximize" [ref=e322]
+            - button "Options" [ref=e327] [cursor=pointer]:
+              - img "Options" [ref=e328]
+          - generic:
+            - button "Return to Bottom":
+              - img
+          - listbox [ref=e332]:
+            - generic [ref=e333]: May 20
+            - option "04:58:18 PM ==> Deploying..." [ref=e334]:
+              - generic [ref=e336]:
+                - img [ref=e338]
+                - time [ref=e342]: 04:58:18 PM
+              - generic [ref=e345]: ==> Deploying...
+            - option "04:58:19 PM ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance" [ref=e346]:
+              - generic [ref=e348]:
+                - img [ref=e350]
+                - time [ref=e354]: 04:58:19 PM
+              - generic [ref=e357]: ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+            - option "04:58:28 PM [gjtjt] ==> Running 'python server.py'" [ref=e358]:
+              - generic [ref=e359]:
+                - generic [ref=e360]:
+                  - img [ref=e362]
+                  - time [ref=e366]: 04:58:28 PM
+                - generic [ref=e370] [cursor=pointer]: "[gjtjt]"
+              - generic [ref=e372]: ==> Running 'python server.py'
+            - option "04:58:40 PM ==> Your service is live 🎉" [ref=e373]:
+              - generic [ref=e375]:
+                - img [ref=e377]
+                - time [ref=e381]: 04:58:40 PM
+              - generic [ref=e384]: ==> Your service is live 🎉
+            - option "04:58:40 PM ==>" [ref=e385]:
+              - generic [ref=e387]:
+                - img [ref=e389]
+                - time [ref=e393]: 04:58:40 PM
+              - generic [ref=e396]: ==>
+            - option "04:58:40 PM ==> ///////////////////////////////////////////////////////////" [ref=e397]:
+              - generic [ref=e399]:
+                - img [ref=e401]
+                - time [ref=e405]: 04:58:40 PM
+              - generic [ref=e408]: ==> ///////////////////////////////////////////////////////////
+            - option "04:58:40 PM ==>" [ref=e409]:
+              - generic [ref=e411]:
+                - img [ref=e413]
+                - time [ref=e417]: 04:58:40 PM
+              - generic [ref=e420]: ==>
+            - option "04:58:40 PM ==> Available at your primary URL https://stockstracker.onrender.com" [ref=e421]:
+              - generic [ref=e423]:
+                - img [ref=e425]
+                - time [ref=e429]: 04:58:40 PM
+              - generic [ref=e432]:
+                - text: ==>
+                - generic [ref=e433]:
+                  - text: Available at your primary URL
+                  - link "https://stockstracker.onrender.com" [ref=e434] [cursor=pointer]:
+                    - /url: https://stockstracker.onrender.com
+            - option "04:58:40 PM ==>" [ref=e435]:
+              - generic [ref=e437]:
+                - img [ref=e439]
+                - time [ref=e443]: 04:58:40 PM
+              - generic [ref=e446]: ==>
+            - option "04:58:40 PM ==> ///////////////////////////////////////////////////////////" [ref=e447]:
+              - generic [ref=e449]:
+                - img [ref=e451]
+                - time [ref=e455]: 04:58:40 PM
+              - generic [ref=e458]: ==> ///////////////////////////////////////////////////////////
+            - option "05:03:39 PM ==> Detected service running on port 10000" [ref=e459]:
+              - generic [ref=e461]:
+                - img [ref=e463]
+                - time [ref=e467]: 05:03:39 PM
+              - generic [ref=e470]: ==> Detected service running on port 10000
+            - 'option "05:03:39 PM ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding" [ref=e471]':
+              - generic [ref=e473]:
+                - img [ref=e475]
+                - time [ref=e479]: 05:03:39 PM
+              - generic [ref=e482]:
+                - text: ==>
+                - generic [ref=e483]:
+                  - text: "Docs on specifying a port:"
+                  - link "https://render.com/docs/web-services#port-binding" [ref=e484] [cursor=pointer]:
+                    - /url: https://render.com/docs/web-services#port-binding
+            - option "05:13:43 PM ==> Deploying..." [ref=e485]:
+              - generic [ref=e487]:
+                - img [ref=e489]
+                - time [ref=e493]: 05:13:43 PM
+              - generic [ref=e496]: ==> Deploying...
+            - option "05:13:43 PM ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance" [ref=e497]:
+              - generic [ref=e499]:
+                - img [ref=e501]
+                - time [ref=e505]: 05:13:43 PM
+              - generic [ref=e508]: ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+            - option "05:13:51 PM [m5m6j] ==> Running 'python server.py'" [ref=e509]:
+              - generic [ref=e510]:
+                - generic [ref=e511]:
+                  - img [ref=e513]
+                  - time [ref=e517]: 05:13:51 PM
+                - generic [ref=e521] [cursor=pointer]: "[m5m6j]"
+              - generic [ref=e523]: ==> Running 'python server.py'
+            - option "05:19:03 PM ==> Detected service running on port 10000" [ref=e524]:
+              - generic [ref=e526]:
+                - img [ref=e528]
+                - time [ref=e532]: 05:19:03 PM
+              - generic [ref=e535]: ==> Detected service running on port 10000
+            - 'option "05:19:03 PM ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding" [ref=e536]':
+              - generic [ref=e538]:
+                - img [ref=e540]
+                - time [ref=e544]: 05:19:03 PM
+              - generic [ref=e547]:
+                - text: ==>
+                - generic [ref=e548]:
+                  - text: "Docs on specifying a port:"
+                  - link "https://render.com/docs/web-services#port-binding" [ref=e549] [cursor=pointer]:
+                    - /url: https://render.com/docs/web-services#port-binding
+            - option "05:27:01 PM ==> Deploying..." [ref=e550]:
+              - generic [ref=e552]:
+                - img [ref=e554]
+                - time [ref=e558]: 05:27:01 PM
+              - generic [ref=e561]: ==> Deploying...
+            - option "05:27:01 PM ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance" [ref=e562]:
+              - generic [ref=e564]:
+                - img [ref=e566]
+                - time [ref=e570]: 05:27:01 PM
+              - generic [ref=e573]: ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+            - option "05:27:10 PM [mwqc8] ==> Running 'python server.py'" [ref=e574]:
+              - generic [ref=e575]:
+                - generic [ref=e576]:
+                  - img [ref=e578]
+                  - time [ref=e582]: 05:27:10 PM
+                - generic [ref=e586] [cursor=pointer]: "[mwqc8]"
+              - generic [ref=e588]: ==> Running 'python server.py'
+            - option "05:27:23 PM ==> Your service is live 🎉" [ref=e589]:
+              - generic [ref=e591]:
+                - img [ref=e593]
+                - time [ref=e597]: 05:27:23 PM
+              - generic [ref=e600]: ==> Your service is live 🎉
+            - option "05:27:23 PM ==>" [ref=e601]:
+              - generic [ref=e603]:
+                - img [ref=e605]
+                - time [ref=e609]: 05:27:23 PM
+              - generic [ref=e612]: ==>
+            - option "05:27:23 PM ==> ///////////////////////////////////////////////////////////" [ref=e613]:
+              - generic [ref=e615]:
+                - img [ref=e617]
+                - time [ref=e621]: 05:27:23 PM
+              - generic [ref=e624]: ==> ///////////////////////////////////////////////////////////
+            - option "05:27:23 PM ==>" [ref=e625]:
+              - generic [ref=e627]:
+                - img [ref=e629]
+                - time [ref=e633]: 05:27:23 PM
+              - generic [ref=e636]: ==>
+            - option "05:27:23 PM ==> Available at your primary URL https://stockstracker.onrender.com" [ref=e637]:
+              - generic [ref=e639]:
+                - img [ref=e641]
+                - time [ref=e645]: 05:27:23 PM
+              - generic [ref=e648]:
+                - text: ==>
+                - generic [ref=e649]:
+                  - text: Available at your primary URL
+                  - link "https://stockstracker.onrender.com" [ref=e650] [cursor=pointer]:
+                    - /url: https://stockstracker.onrender.com
+            - option "05:27:23 PM ==>" [ref=e651]:
+              - generic [ref=e653]:
+                - img [ref=e655]
+                - time [ref=e659]: 05:27:23 PM
+              - generic [ref=e662]: ==>
+            - option "05:27:23 PM ==> ///////////////////////////////////////////////////////////" [ref=e663]:
+              - generic [ref=e665]:
+                - img [ref=e667]
+                - time [ref=e671]: 05:27:23 PM
+              - generic [ref=e674]: ==> ///////////////////////////////////////////////////////////
+            - option "05:32:26 PM ==> Detected service running on port 10000" [ref=e675]:
+              - generic [ref=e677]:
+                - img [ref=e679]
+                - time [ref=e683]: 05:32:26 PM
+              - generic [ref=e686]: ==> Detected service running on port 10000
+            - 'option "05:32:27 PM ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding" [ref=e687]':
+              - generic [ref=e689]:
+                - img [ref=e691]
+                - time [ref=e695]: 05:32:27 PM
+              - generic [ref=e698]:
+                - text: ==>
+                - generic [ref=e699]:
+                  - text: "Docs on specifying a port:"
+                  - link "https://render.com/docs/web-services#port-binding" [ref=e700] [cursor=pointer]:
+                    - /url: https://render.com/docs/web-services#port-binding
+  - generic:
+    - generic:
+      - generic: "0 services selected:"
+      - generic:
+        - generic:
+          - button:
+            - generic:
+              - img
+            - generic: Move
+            - img
+    - generic:
+      - separator
+      - generic:
+        - generic:
+          - button:
+            - img

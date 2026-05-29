@@ -1,0 +1,133 @@
+- generic [ref=e1]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "Back to Dashboard" [ref=e66] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e67]
+        - generic [ref=e69]: Back
+      - generic [ref=e5]: New Project
+      - generic [ref=e70]:
+        - link "Team Settings" [ref=e72] [cursor=pointer]:
+          - /url: /z00mer0s-projects/~/settings
+          - img [ref=e73]
+        - button "Avatar for z00mer0" [ref=e77] [cursor=pointer]:
+          - img "Avatar for z00mer0" [ref=e78]:
+            - img "Avatar for z00mer0" [ref=e79]
+    - main [ref=e6]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - heading "New Project" [level=3] [ref=e15]
+          - generic [ref=e16]:
+            - listitem [ref=e17]:
+              - generic [ref=e21]:
+                - paragraph [ref=e22]: importing from GitHub
+                - generic [ref=e23]:
+                  - link "github Z00mer0/stockstracker" [ref=e24] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/stockstracker
+                    - img "github" [ref=e25]
+                    - generic "Z00mer0/stockstracker" [ref=e27]
+                  - link "main" [ref=e80] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/stockstracker
+                    - img [ref=e29]
+                    - generic "main" [ref=e81]
+            - paragraph [ref=e32]: Choose where you want to create the project and give it a name.
+            - generic [ref=e36]:
+              - generic [ref=e37]:
+                - generic [ref=e38]:
+                  - generic [ref=e39]: Vercel Team
+                  - combobox [ref=e83]:
+                    - generic [ref=e84]:
+                      - generic:
+                        - img
+                      - searchbox "Select a Vercel Team" [ref=e85]: z00mer0's projects
+                      - generic [ref=e89]: Hobby
+                      - button "Open menu" [ref=e90] [cursor=pointer]:
+                        - img [ref=e91]
+                - img "Slash Divider" [ref=e41]
+                - generic [ref=e42]:
+                  - generic [ref=e43]: Project Name
+                  - textbox "New Project Name" [ref=e95]:
+                    - /placeholder: my-project
+                    - text: stockstracker
+              - separator [ref=e44]
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - generic [ref=e47]: Application Preset
+                  - combobox [ref=e97]:
+                    - generic [ref=e98]:
+                      - generic:
+                        - img
+                      - searchbox "Application Preset" [ref=e99]: Python
+                      - button "Open menu" [ref=e100] [cursor=pointer]:
+                        - img [ref=e101]
+                - generic [ref=e48]:
+                  - generic [ref=e49]: Root Directory
+                  - generic [ref=e50]:
+                    - textbox "Root Directory" [disabled] [ref=e105]: ./
+                    - button "Edit" [ref=e108] [cursor=pointer]:
+                      - generic [ref=e109]: Edit
+                - generic [ref=e51]:
+                  - group [ref=e113]:
+                    - generic "Build and Output Settings" [active] [ref=e114] [cursor=pointer]:
+                      - img [ref=e115]
+                      - text: Build and Output Settings
+                    - generic [ref=e128]:
+                      - generic [ref=e130]:
+                        - generic [ref=e131]:
+                          - generic [ref=e132]: Build Command
+                          - img [ref=e135]
+                        - generic [ref=e139]:
+                          - textbox "Build Command" [disabled] [ref=e140]:
+                            - /placeholder: cd frontend-react && npm install && npm run build
+                            - text: cd frontend-react && npm install && npm run build
+                          - generic [ref=e142]:
+                            - checkbox [checked] [disabled] [ref=e143]
+                            - img [ref=e147]
+                      - generic [ref=e150]:
+                        - generic [ref=e151]:
+                          - generic [ref=e152]: Output Directory
+                          - img [ref=e155]
+                        - generic [ref=e159]:
+                          - textbox "Output Directory" [disabled] [ref=e160]:
+                            - /placeholder: N/A
+                            - text: frontend-react/dist
+                          - generic [ref=e162]:
+                            - checkbox [checked] [disabled] [ref=e163]
+                            - img [ref=e167]
+                      - generic [ref=e170]:
+                        - generic [ref=e171]:
+                          - generic [ref=e172]: Install Command
+                          - img [ref=e175]
+                        - generic [ref=e179]:
+                          - textbox "Install Command" [disabled] [ref=e180]:
+                            - /placeholder: "`pip install -r requirements.txt`"
+                          - generic [ref=e182]:
+                            - checkbox [ref=e183]
+                            - img [ref=e187] [cursor=pointer]
+                  - group [ref=e120]:
+                    - generic "Environment Variables" [ref=e121] [cursor=pointer]:
+                      - img [ref=e122]
+                      - text: Environment Variables
+                    - option "Production and Preview" [selected]
+                    - option "Production"
+                    - option "Preview"
+                    - option "Development"
+            - button "Deploy" [ref=e125] [cursor=pointer]:
+              - generic [ref=e126]: Deploy
+        - generic [ref=e56]:
+          - heading "Deployment" [level=3] [ref=e58]
+          - generic [ref=e59]: Once you're ready, start deploying to see the progress here…
+          - img "Globe" [ref=e60]
+        - generic [ref=e61]:
+          - link "Import a different Git Repository →" [ref=e62] [cursor=pointer]:
+            - /url: /new
+          - link "Browse Templates →" [ref=e63] [cursor=pointer]:
+            - /url: /new/templates
+  - alert [ref=e127]
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - img

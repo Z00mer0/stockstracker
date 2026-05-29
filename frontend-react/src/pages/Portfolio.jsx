@@ -7,6 +7,7 @@ import SellStockModal from '../components/SellStockModal';
 import EditPositionModal from '../components/EditPositionModal';
 import AddDividendModal from '../components/AddDividendModal';
 import { useChart } from '../context/ChartContext';
+import StockDetailModal from '../components/StockDetailModal';
 import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
@@ -124,6 +125,7 @@ export default function Portfolio() {
   const [confirmDel, setConfirmDel]   = useState(null);
   const [toast, setToast]             = useState('');
   const [editTicker, setEditTicker]   = useState(null); // { oldSymbol, value }
+  const [selectedItem, setSelectedItem] = useState(null);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -285,8 +287,8 @@ export default function Portfolio() {
                   <tr key={pos.id ?? pos.symbol}>
                     <td
                       style={{ cursor: 'pointer', position: 'sticky', left: 0, zIndex: 1, background: 'var(--panel)' }}
-                      onClick={() => openChart(pos.symbol)}
-                      title={`Otwórz wykres ${pos.symbol}`}
+                      onClick={() => setSelectedItem(pos)}
+                      title={`Otwórz szczegóły ${pos.symbol}`}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <TickerLogo symbol={pos.symbol} />
@@ -375,7 +377,7 @@ export default function Portfolio() {
                             { icon: '✏', label: 'Edytuj pozycję', action: () => { setEditTarget(pos); setMenuSym(null); } },
                             { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
                             { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
-                            { icon: '📊', label: 'Fundamenty', action: () => { openChart(pos.symbol); setMenuSym(null); } },
+                            { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
                             null,
                             { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
                           ].map((item, i) =>
@@ -492,6 +494,14 @@ export default function Portfolio() {
             </div>
           </div>
         </div>
+      )}
+      {selectedItem && (
+        <StockDetailModal
+          item={selectedItem}
+          existingPortfolio={portfolio}
+          onSave={async (data) => { await addPosition(data); refresh(); }}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
       {toast && (
         <div style={{

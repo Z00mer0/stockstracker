@@ -1,0 +1,328 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - alert [ref=e5]:
+        - generic [ref=e7]:
+          - img [ref=e9]
+          - generic [ref=e14]:
+            - generic [ref=e15]: Upcoming maintenance
+            - generic [ref=e16]:
+              - text: We will be upgrading critical infrastructure on May 27th, 3:00 am GMT+2 (May 27th, 1:00 am UTC). Follow our
+              - link "status page" [ref=e17] [cursor=pointer]:
+                - /url: https://status.render.com/incidents/7rdmw95g2h5q
+              - text: for updates.
+        - button "Close notification" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+      - banner [ref=e21]:
+        - generic [ref=e22]:
+          - link "Render" [ref=e24] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=e25]
+          - button "M My Workspace" [ref=e29] [cursor=pointer]:
+            - generic [ref=e30]:
+              - generic [ref=e31]: M
+              - generic "My Workspace" [ref=e32]
+              - img [ref=e33]
+        - generic [ref=e37]:
+          - navigation [ref=e38]:
+            - list [ref=e39]:
+              - listitem [ref=e40]:
+                - link "My project" [ref=e41] [cursor=pointer]:
+                  - /url: /project/prj-d7r8p8favr4c739v4or0
+                  - img [ref=e42]
+                  - generic [ref=e46]: My project
+                - button [ref=e49] [cursor=pointer]:
+                  - img [ref=e50]
+                - text: /
+              - listitem [ref=e52]:
+                - link "Production" [ref=e53] [cursor=pointer]:
+                  - /url: /project/prj-d7r8p8favr4c739v4or0/environment/evm-d7r8p8favr4c739v4org
+                  - img [ref=e54]
+                  - generic [ref=e67]: Production
+                - button [ref=e70] [cursor=pointer]:
+                  - img [ref=e71]
+                - text: /
+              - listitem [ref=e73]:
+                - link "stockstracker" [ref=e74] [cursor=pointer]:
+                  - /url: /web/srv-d7r8p8jbc2fs7388alo0
+                  - img [ref=e75]
+                  - generic [ref=e77]: stockstracker
+                - button [ref=e80] [cursor=pointer]:
+                  - img [ref=e81]
+          - button "Search Command + K" [ref=e84] [cursor=pointer]:
+            - img [ref=e86]
+            - text: Search
+            - generic [ref=e88]:
+              - img [ref=e89]
+              - generic [ref=e91]: Command
+              - generic [ref=e92]: +
+              - generic [ref=e93]: K
+              - generic [ref=e94]: K
+        - generic [ref=e95]:
+          - button "New" [ref=e97] [cursor=pointer]:
+            - generic [ref=e98]:
+              - img [ref=e99]
+              - generic [ref=e101]: New
+          - button "Upgrade" [ref=e103] [cursor=pointer]:
+            - generic [ref=e104]:
+              - img [ref=e105]
+              - generic [ref=e107]: Upgrade
+          - button "Help" [ref=e109] [cursor=pointer]:
+            - img "Help" [ref=e110]
+          - button "g" [ref=e115] [cursor=pointer]:
+            - generic [ref=e117]: g
+      - generic [ref=e118]:
+        - navigation [ref=e119]:
+          - separator [ref=e120]
+          - generic [ref=e121]:
+            - generic [ref=e122]:
+              - link "Environment" [ref=e123] [cursor=pointer]:
+                - /url: /project/prj-d7r8p8favr4c739v4or0/environment/evm-d7r8p8favr4c739v4org
+                - img [ref=e124]
+                - generic [ref=e126]: Environment
+              - generic [ref=e127]:
+                - img [ref=e128]
+                - generic [ref=e130]: stockstracker
+            - generic [ref=e131]:
+              - list [ref=e132]:
+                - listitem [ref=e133]:
+                  - link "Events" [ref=e134] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/events
+                    - img [ref=e135]
+                    - generic [ref=e142]: Events
+                - listitem [ref=e143]:
+                  - link "Settings" [ref=e144] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/settings
+                    - img [ref=e145]
+                    - generic [ref=e148]: Settings
+              - generic [ref=e149]:
+                - generic [ref=e150]: Monitor
+                - list "Monitor" [ref=e151]:
+                  - listitem [ref=e152]:
+                    - link "Logs" [ref=e153] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/logs
+                      - img [ref=e154]
+                      - generic [ref=e159]: Logs
+                  - listitem [ref=e160]:
+                    - link "Metrics" [ref=e161] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/metrics
+                      - img [ref=e162]
+                      - generic [ref=e164]: Metrics
+              - generic [ref=e165]:
+                - generic [ref=e166]: Manage
+                - list "Manage" [ref=e167]:
+                  - listitem [ref=e168]:
+                    - link "Environment" [ref=e169] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/env
+                      - img [ref=e170]
+                      - generic [ref=e174]: Environment
+                  - listitem [ref=e175]:
+                    - link "Shell" [ref=e176] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/shell
+                      - img [ref=e177]
+                      - generic [ref=e181]:
+                        - generic [ref=e182]: Shell
+                        - status [ref=e185]:
+                          - img [ref=e186]
+                  - listitem [ref=e188]:
+                    - link "Scaling" [ref=e189] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/scaling
+                      - img [ref=e190]
+                      - generic [ref=e195]:
+                        - generic [ref=e196]: Scaling
+                        - status [ref=e199]:
+                          - img [ref=e200]
+                  - listitem [ref=e202]:
+                    - link "Previews" [ref=e203] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/previews
+                      - img [ref=e204]
+                      - generic [ref=e208]: Previews
+                  - listitem [ref=e209]:
+                    - link "Disk" [ref=e210] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/disks
+                      - img [ref=e211]
+                      - generic [ref=e216]:
+                        - generic [ref=e217]: Disk
+                        - status [ref=e220]:
+                          - img [ref=e221]
+                  - listitem [ref=e223]:
+                    - link "One-Off Jobs" [ref=e224] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/jobs
+                      - img [ref=e225]
+                      - generic [ref=e231]:
+                        - generic [ref=e232]: One-Off Jobs
+                        - status [ref=e235]:
+                          - img [ref=e236]
+          - generic [ref=e239]:
+            - button "Collapse items" [expanded] [ref=e240] [cursor=pointer]:
+              - img [ref=e241]
+            - list "Footer navigation" [ref=e243]:
+              - listitem [ref=e244]:
+                - link "Changelog" [ref=e245] [cursor=pointer]:
+                  - /url: https://render.com/changelog
+                  - img [ref=e246]
+                  - generic [ref=e251]: Changelog
+              - listitem [ref=e252]:
+                - link "Invite a friend" [ref=e253] [cursor=pointer]:
+                  - /url: /invites
+                  - img [ref=e254]
+                  - generic [ref=e256]: Invite a friend
+              - listitem [ref=e257]:
+                - button "Contact support" [ref=e258] [cursor=pointer]:
+                  - img [ref=e259]
+                  - generic [ref=e263]: Contact support
+            - link "Render Status" [ref=e265] [cursor=pointer]:
+              - /url: https://status.render.com
+              - img [ref=e266]
+              - generic [ref=e268]: Render Status
+        - generic [ref=e270]:
+          - banner [ref=e272]:
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - img [ref=e275]
+                - generic [ref=e277]: Web Service
+              - generic [ref=e278]:
+                - heading "stockstracker Python 3 Free Upgrade your instance" [level=1] [ref=e280]:
+                  - generic [ref=e281]: stockstracker
+                  - generic [ref=e282]:
+                    - generic [ref=e283]: Python 3
+                    - link "Free" [ref=e284] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/plan
+                      - generic [ref=e285]: Free
+                    - link "Upgrade your instance" [ref=e286] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/plan
+                      - text: Upgrade your instance
+                      - img [ref=e288]
+                - generic [ref=e291]:
+                  - button "Connect" [ref=e292] [cursor=pointer]:
+                    - generic [ref=e293]: Connect
+                    - img [ref=e294]
+                  - button "Manual Deploy" [ref=e296] [cursor=pointer]:
+                    - generic [ref=e297]: Manual Deploy
+                    - img [ref=e298]
+            - generic [ref=e302]:
+              - generic [ref=e304]:
+                - generic [ref=e305]: "Service ID:"
+                - generic "Service ID:" [ref=e306]:
+                  - generic [ref=e307]: srv-d7r8p8jbc2fs7388alo0
+                  - button "Copy" [ref=e310] [cursor=pointer]:
+                    - img [ref=e311]
+              - generic [ref=e314]:
+                - img "GitHub" [ref=e316]
+                - link "Z00mer0 / stockstracker main" [ref=e318] [cursor=pointer]:
+                  - /url: https://github.com/Z00mer0/stockstracker/tree/main
+                  - generic [ref=e319]:
+                    - generic [ref=e320]: Z00mer0 / stockstracker
+                    - img [ref=e321]
+                    - generic [ref=e323]: main
+              - generic "Copy" [ref=e325]:
+                - link "https://stockstracker.onrender.com" [ref=e327] [cursor=pointer]:
+                  - /url: https://stockstracker.onrender.com
+                - button "Copy" [ref=e330] [cursor=pointer]:
+                  - img [ref=e331]
+          - main [ref=e334]:
+            - generic [ref=e335]:
+              - heading "Environment" [level=2] [ref=e336]
+              - button "Create environment group" [ref=e337] [cursor=pointer]:
+                - img [ref=e339]
+                - text: Create environment group
+            - generic [ref=e341]:
+              - generic [ref=e343]:
+                - generic [ref=e346]:
+                  - heading "Environment Variables" [level=4] [ref=e348]
+                  - generic [ref=e349]:
+                    - text: Set environment-specific config and secrets (such as API keys), then read those values from your code.
+                    - link "Learn more." [ref=e350] [cursor=pointer]:
+                      - /url: https://render.com/docs/configure-environment-variables
+                - generic [ref=e363]:
+                  - table [ref=e364]:
+                    - rowgroup [ref=e365]:
+                      - row "Key Value Delete" [ref=e430]:
+                        - columnheader "Key" [ref=e367]
+                        - columnheader "Value" [ref=e368]
+                        - columnheader "Delete" [ref=e431]:
+                          - generic [ref=e432]: Delete
+                    - rowgroup [ref=e369]:
+                      - row "Key DATABASE_URL Value • • • • • • • • • • • • Show secret Delete" [ref=e433]:
+                        - rowheader "Key DATABASE_URL" [ref=e371]:
+                          - generic [ref=e373]:
+                            - generic [ref=e374]: Key
+                            - textbox "Key" [ref=e376]:
+                              - /placeholder: NAME_OF_VARIABLE
+                              - text: DATABASE_URL
+                        - cell "Value • • • • • • • • • • • • Show secret" [ref=e377]:
+                          - generic [ref=e378]:
+                            - generic [ref=e379]:
+                              - generic [ref=e380]: Value
+                              - generic [ref=e381]:
+                                - textbox "Value" [ref=e382]:
+                                  - /placeholder: value
+                                - generic:
+                                  - generic: • • • • • • • • • • • •
+                            - button "Show secret" [ref=e383] [cursor=pointer]:
+                              - img "Show secret" [ref=e384]
+                        - cell "Delete" [ref=e434]:
+                          - button "Delete" [ref=e435] [cursor=pointer]:
+                            - img "Delete" [ref=e436]
+                  - generic [ref=e441]:
+                    - generic [ref=e443]:
+                      - button "Add variable" [ref=e444] [cursor=pointer]:
+                        - img [ref=e446]
+                        - text: Add variable
+                      - button "More options" [ref=e448] [cursor=pointer]:
+                        - generic [ref=e449]: More options
+                        - img [ref=e450]
+                    - generic [ref=e452]:
+                      - generic [ref=e453]:
+                        - button "Save, rebuild, and deploy" [ref=e454] [cursor=pointer]
+                        - button "Choose an option" [ref=e455] [cursor=pointer]:
+                          - generic [ref=e456]: Choose an option
+                          - img [ref=e457]
+                      - button "Cancel" [ref=e459] [cursor=pointer]
+              - generic [ref=e388]:
+                - generic [ref=e391]:
+                  - heading "Secret Files" [level=4] [ref=e393]
+                  - generic [ref=e395]:
+                    - generic [ref=e396]:
+                      - text: Store plaintext files containing secret data (such as a
+                      - code [ref=e397]: .env
+                      - text: file or a private key).
+                    - generic [ref=e398]:
+                      - text: Access during builds and at runtime from your app's root, or from
+                      - code [ref=e399]: /etc/secrets/<filename>
+                      - text: .
+                - generic [ref=e404]:
+                  - button "Add file" [ref=e405] [cursor=pointer]:
+                    - img [ref=e407]
+                    - text: Add file
+                  - button "More options" [ref=e409] [cursor=pointer]:
+                    - generic [ref=e410]: More options
+                    - img [ref=e411]
+              - generic [ref=e414]:
+                - generic [ref=e417]:
+                  - heading "Linked Environment Groups" [level=4] [ref=e419]
+                  - generic [ref=e420]: Environment groups are collections of environment variables and secret files that you can share across multiple services.
+                - generic [ref=e423]:
+                  - generic [ref=e424]: No environment groups available to link.
+                  - link "New Environment Group" [ref=e425] [cursor=pointer]:
+                    - /url: /new/env-group
+                    - img [ref=e427]
+                    - text: New Environment Group
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic:
+                - img
+              - generic: Move
+              - img
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button:
+              - img
+  - iframe [ref=e429]:
+    

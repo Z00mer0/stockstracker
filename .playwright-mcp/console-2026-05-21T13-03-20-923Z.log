@@ -1,0 +1,15 @@
+[    1420ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ https://myfund-app.vercel.app/assets/index-Bh-FowDD.js:202
+[    1848ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/portfolio:0
+[    1849ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    1850ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/portfolio:0
+[    1850ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    1853ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0
+[    1926ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0
+[    1950ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fapi.frankfurter.app%2Flatest%3Ffrom%3DUSD%26to%3DPLN%2CEUR%2CGBP:0
+[    1951ms] [WARNING] [fx] fetch failed, using fallback: HTTP 401 @ https://myfund-app.vercel.app/assets/index-Bh-FowDD.js:222
+[    2090ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fapi.frankfurter.app%2Flatest%3Ffrom%3DUSD%26to%3DPLN%2CEUR%2CGBP:0
+[    2090ms] [WARNING] [fx] fetch failed, using fallback: HTTP 401 @ https://myfund-app.vercel.app/assets/index-Bh-FowDD.js:222
+[   25063ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=MOD.WA:0
+[   25185ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=SN2.WA:0
+[   45870ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=SN2.WA:0
+[   51569ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=MOD.WA:0

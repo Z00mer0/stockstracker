@@ -1,0 +1,13 @@
+[     691ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[    1013ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/:0
+[    1014ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    1017ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[    1143ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0
+[    1192ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fapi.frankfurter.app%2Flatest%3Ffrom%3DUSD%26to%3DPLN%2CEUR%2CGBP:0
+[    1194ms] [WARNING] [fx] fetch failed, using fallback: HTTP 401 @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:58
+[    9742ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[    9800ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[    9988ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 34245.92, cashValue: 0.00, totalValue: 34245.92, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[   10077ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 34245.92, cashValue: 0.00, totalValue: 34245.92, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[   10335ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 34617.05, cashValue: 0.00, totalValue: 34617.05, unrealPLN: 371.13} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77
+[   10351ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 34617.05, cashValue: 0.00, totalValue: 34617.05, unrealPLN: 371.13} @ https://myfund-app.vercel.app/assets/index-DQfV-Fir.js:77

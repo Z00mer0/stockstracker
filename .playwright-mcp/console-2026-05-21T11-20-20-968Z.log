@@ -1,0 +1,182 @@
+[    2921ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/data?t=1779362423533:0
+[    3024ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://stockstracker-ai.vercel.app/:0
+[   15591ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   15883ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[   15884ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[   15885ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[   16969ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[   16970ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[   18429ms] [ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v1/test/getcrumb' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[   18430ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query1.finance.yahoo.com/v1/test/getcrumb:0
+[   18588ms] [ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=DNP.WA,MOD.WA,DGN.WA,XTB.WA,MRB.WA,CDR.WA,SN2.WA,MSW.WA&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[   18588ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query1.finance.yahoo.com/v7/finance/quote?symbols=DNP.WA,MOD.WA,DGN.WA,XTB.WA,MRB.WA,CDR.WA,SN2.WA,MSW.WA&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook:0
+[   18588ms] [WARNING] direct v7 failed on query1.finance.yahoo.com Failed to fetch @ https://stockstracker-ai.vercel.app/:1524
+[   19791ms] [ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v1/test/getcrumb' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[   19791ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query1.finance.yahoo.com/v1/test/getcrumb:0
+[   26793ms] [WARNING] direct v7 failed on query2.finance.yahoo.com signal timed out @ https://stockstracker-ai.vercel.app/:1524
+[   33795ms] [WARNING] proxy v7 failed on query1.finance.yahoo.com All promises were rejected @ https://stockstracker-ai.vercel.app/:1535
+[   40796ms] [WARNING] proxy v7 failed on query2.finance.yahoo.com All promises were rejected @ https://stockstracker-ai.vercel.app/:1535
+[   40796ms] [INFO] Fallback: v8/chart per symbol @ https://stockstracker-ai.vercel.app/:1539
+[   47801ms] [INFO] Fallback: Stooq CSV for [DNP.WA, MOD.WA, DGN.WA, XTB.WA, MRB.WA, CDR.WA, SN2.WA, MSW.WA] @ https://stockstracker-ai.vercel.app/:1547
+[   55831ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[   55833ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[   55836ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[   55837ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[   65491ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=DNP:0
+[   65506ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[   65506ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[   65511ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[   65511ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[   82470ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=MOD:0
+[   82493ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[   82493ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[   82495ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[   82497ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  107484ms] [WARNING] AV fundamentals failed DGN.WA signal timed out @ https://stockstracker-ai.vercel.app/:4028
+[  107509ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  107510ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  107511ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  107511ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  132500ms] [WARNING] AV fundamentals failed XTB.WA signal timed out @ https://stockstracker-ai.vercel.app/:4028
+[  132516ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  132517ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  132517ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  132518ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  142455ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://stockstracker-ai.vercel.app/api/data:0
+[  157513ms] [WARNING] AV fundamentals failed MRB.WA signal timed out @ https://stockstracker-ai.vercel.app/:4028
+[  157529ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  157529ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  157530ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  157531ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  170650ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://stockstracker-ai.vercel.app/api/data:0
+[  177521ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://stockstracker-ai.vercel.app/api/data:0
+[  182526ms] [WARNING] AV fundamentals failed CDR.WA signal timed out @ https://stockstracker-ai.vercel.app/:4028
+[  182543ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  182544ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  182544ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  182545ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  197345ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=SN2:0
+[  197360ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  197361ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  197362ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  197363ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  210488ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=MSW:0
+[  210504ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  210505ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  210506ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  210511ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  228298ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  228355ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  228617ms] [ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v1/test/getcrumb' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  228617ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query1.finance.yahoo.com/v1/test/getcrumb:0
+[  228769ms] [ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=DNP.WA,MOD.WA,DGN.WA,XTB.WA,MRB.WA,CDR.WA,SN2.WA,MSW.WA&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  228769ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query1.finance.yahoo.com/v7/finance/quote?symbols=DNP.WA,MOD.WA,DGN.WA,XTB.WA,MRB.WA,CDR.WA,SN2.WA,MSW.WA&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook:0
+[  228769ms] [WARNING] direct v7 failed on query1.finance.yahoo.com Failed to fetch @ https://stockstracker-ai.vercel.app/:1524
+[  228771ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  228771ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  229140ms] [ERROR] Access to fetch at 'https://query1.finance.yahoo.com/v1/test/getcrumb' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  229140ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query1.finance.yahoo.com/v1/test/getcrumb:0
+[  229144ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  229144ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  229326ms] [ERROR] Access to fetch at 'https://query2.finance.yahoo.com/v7/finance/quote?symbols=DNP.WA,MOD.WA,DGN.WA,XTB.WA,MRB.WA,CDR.WA,SN2.WA,MSW.WA&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  229326ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://query2.finance.yahoo.com/v7/finance/quote?symbols=DNP.WA,MOD.WA,DGN.WA,XTB.WA,MRB.WA,CDR.WA,SN2.WA,MSW.WA&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,regularMarketChange,shortName,longName,currency,earningsTimestamp,earningsTimestampStart,earningsTimestampEnd,exDividendDate,dividendDate,trailingAnnualDividendRate,dividendRate,trailingPE,forwardPE,priceToBook:0
+[  229326ms] [WARNING] direct v7 failed on query2.finance.yahoo.com Failed to fetch @ https://stockstracker-ai.vercel.app/:1524
+[  229387ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv7%2Ffinance%2Fquote%3Fsymbols%3DDNP.WA%2CMOD.WA%2CDGN.WA%2CXTB.WA%2CMRB.WA%2CCDR.WA%2CSN2.WA%2CMSW.WA%26fields%3DregularMarketPrice%2CregularMarketPreviousClose%2CregularMarketChangePercent%2CregularMarketChange%2CshortName%2ClongName%2Ccurrency%2CearningsTimestamp%2CearningsTimestampStart%2CearningsTimestampEnd%2CexDividendDate%2CdividendDate%2CtrailingAnnualDividendRate%2CdividendRate%2CtrailingPE%2CforwardPE%2CpriceToBook:0
+[  229422ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv7%2Ffinance%2Fquote%3Fsymbols%3DDNP.WA%2CMOD.WA%2CDGN.WA%2CXTB.WA%2CMRB.WA%2CCDR.WA%2CSN2.WA%2CMSW.WA%26fields%3DregularMarketPrice%2CregularMarketPreviousClose%2CregularMarketChangePercent%2CregularMarketChange%2CshortName%2ClongName%2Ccurrency%2CearningsTimestamp%2CearningsTimestampStart%2CearningsTimestampEnd%2CexDividendDate%2CdividendDate%2CtrailingAnnualDividendRate%2CdividendRate%2CtrailingPE%2CforwardPE%2CpriceToBook:0
+[  235186ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[  236327ms] [WARNING] proxy v7 failed on query1.finance.yahoo.com All promises were rejected @ https://stockstracker-ai.vercel.app/:1535
+[  236388ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery2.finance.yahoo.com%2Fv7%2Ffinance%2Fquote%3Fsymbols%3DDNP.WA%2CMOD.WA%2CDGN.WA%2CXTB.WA%2CMRB.WA%2CCDR.WA%2CSN2.WA%2CMSW.WA%26fields%3DregularMarketPrice%2CregularMarketPreviousClose%2CregularMarketChangePercent%2CregularMarketChange%2CshortName%2ClongName%2Ccurrency%2CearningsTimestamp%2CearningsTimestampStart%2CearningsTimestampEnd%2CexDividendDate%2CdividendDate%2CtrailingAnnualDividendRate%2CdividendRate%2CtrailingPE%2CforwardPE%2CpriceToBook:0
+[  236441ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery2.finance.yahoo.com%2Fv7%2Ffinance%2Fquote%3Fsymbols%3DDNP.WA%2CMOD.WA%2CDGN.WA%2CXTB.WA%2CMRB.WA%2CCDR.WA%2CSN2.WA%2CMSW.WA%26fields%3DregularMarketPrice%2CregularMarketPreviousClose%2CregularMarketChangePercent%2CregularMarketChange%2CshortName%2ClongName%2Ccurrency%2CearningsTimestamp%2CearningsTimestampStart%2CearningsTimestampEnd%2CexDividendDate%2CdividendDate%2CtrailingAnnualDividendRate%2CdividendRate%2CtrailingPE%2CforwardPE%2CpriceToBook:0
+[  243329ms] [WARNING] proxy v7 failed on query2.finance.yahoo.com All promises were rejected @ https://stockstracker-ai.vercel.app/:1535
+[  243329ms] [INFO] Fallback: v8/chart per symbol @ https://stockstracker-ai.vercel.app/:1539
+[  243411ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FDNP.WA%3Finterval%3D1d%26range%3D5d:0
+[  243412ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FMOD.WA%3Finterval%3D1d%26range%3D5d:0
+[  243420ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FDGN.WA%3Finterval%3D1d%26range%3D5d:0
+[  243437ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FXTB.WA%3Finterval%3D1d%26range%3D5d:0
+[  243438ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FMRB.WA%3Finterval%3D1d%26range%3D5d:0
+[  243438ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FCDR.WA%3Finterval%3D1d%26range%3D5d:0
+[  243458ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FMSW.WA%3Finterval%3D1d%26range%3D5d:0
+[  243461ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FSN2.WA%3Finterval%3D1d%26range%3D5d:0
+[  243461ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FMRB.WA%3Finterval%3D1d%26range%3D5d:0
+[  243474ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FDGN.WA%3Finterval%3D1d%26range%3D5d:0
+[  243475ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FMOD.WA%3Finterval%3D1d%26range%3D5d:0
+[  243476ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FSN2.WA%3Finterval%3D1d%26range%3D5d:0
+[  243485ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FCDR.WA%3Finterval%3D1d%26range%3D5d:0
+[  243485ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FXTB.WA%3Finterval%3D1d%26range%3D5d:0
+[  243487ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FDNP.WA%3Finterval%3D1d%26range%3D5d:0
+[  243492ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2FMSW.WA%3Finterval%3D1d%26range%3D5d:0
+[  250334ms] [INFO] Fallback: Stooq CSV for [DNP.WA, MOD.WA, DGN.WA, XTB.WA, MRB.WA, CDR.WA, SN2.WA, MSW.WA] @ https://stockstracker-ai.vercel.app/:1547
+[  250443ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dmod%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  250449ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Ddnp%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  250452ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dxtb%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  250453ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dmrb%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  250462ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dsn2%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  250463ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dmsw%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  250479ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Ddgn%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  254000ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dcdr%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[  254025ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  254027ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  254029ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  254030ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  254625ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  254626ms] [ERROR] Access to fetch at 'https://api.allorigins.win/raw?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  254626ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.allorigins.win/raw?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  254627ms] [ERROR] Access to fetch at 'https://api.allorigins.win/get?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  254627ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.allorigins.win/get?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  254674ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  254675ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[  254760ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=DNP:0
+[  254776ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  254776ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  254777ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  254777ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  255024ms] [ERROR] Access to fetch at 'https://api.allorigins.win/get?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  255024ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.allorigins.win/get?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  255025ms] [ERROR] Access to fetch at 'https://api.allorigins.win/raw?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax' from origin 'https://stockstracker-ai.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://stockstracker-ai.vercel.app/:0
+[  255025ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.allorigins.win/raw?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  255033ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  255092ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  255092ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[  267887ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=MOD:0
+[  267902ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  267902ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  267903ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  267904ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  267954ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  268002ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  274896ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[  281000ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=DGN:0
+[  281015ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  281015ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  281015ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  281017ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  281071ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  281128ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  288010ms] [WARNING] portfolio beta failed: All promises were rejected @ https://stockstracker-ai.vercel.app/:2893
+[  294144ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=XTB:0
+[  294161ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  294162ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  294162ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  294163ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  294208ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://corsproxy.io/?https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  294332ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/proxy?url=https%3A%2F%2Fquery1.finance.yahoo.com%2Fv8%2Ffinance%2Fchart%2F%255EGSPC%3Finterval%3D1d%26range%3Dmax:0
+[  307280ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=MRB:0
+[  307308ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  307309ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  307309ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  307310ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  320415ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=CDR:0
+[  320430ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  320431ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  320434ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  320437ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  333527ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=SN2:0
+[  333541ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  333541ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  333542ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  333543ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0
+[  346651ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://stockstracker-ai.vercel.app/api/alphavantage?function=COMPANY_OVERVIEW&symbol=MSW:0
+[  346666ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MOD.WA:0
+[  346667ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/DGN.WA:0
+[  346668ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/SN2.WA:0
+[  346669ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://assets.parqet.com/logos/symbol/MSW.WA:0

@@ -1,0 +1,7 @@
+[  660335ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://myfund-app.vercel.app/api/market:0
+[  760318ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://myfund-app.vercel.app/api/market:0
+[  831032ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://myfund-app.vercel.app/api/market:0
+[  840336ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://myfund-app.vercel.app/api/market:0
+[  900339ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://myfund-app.vercel.app/api/market:0
+[  960342ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://myfund-app.vercel.app/api/market:0
+[ 1020343ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://myfund-app.vercel.app/api/market:0

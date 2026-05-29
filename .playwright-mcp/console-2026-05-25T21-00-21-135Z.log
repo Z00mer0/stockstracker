@@ -1,0 +1,6 @@
+[     412ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://myfund-app.vercel.app/settings:0
+[     412ms] [VERBOSE] [DOM] Password forms should have (optionally hidden) username fields for accessibility: (More info: https://goo.gl/9p2vKq) %o @ https://myfund-app.vercel.app/settings:0
+[  559071ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34105.32, positionsValue: 34105.32, cashValue: 0.00, totalValue: 34105.32, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-Cj6V9l_L.js:77
+[  559148ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34105.32, positionsValue: 34105.32, cashValue: 0.00, totalValue: 34105.32, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-Cj6V9l_L.js:77
+[  560082ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34105.32, positionsValue: 34866.17, cashValue: 0.00, totalValue: 34866.17, unrealPLN: 760.85} @ https://myfund-app.vercel.app/assets/index-Cj6V9l_L.js:77
+[  560101ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34105.32, positionsValue: 34866.17, cashValue: 0.00, totalValue: 34866.17, unrealPLN: 760.85} @ https://myfund-app.vercel.app/assets/index-Cj6V9l_L.js:77

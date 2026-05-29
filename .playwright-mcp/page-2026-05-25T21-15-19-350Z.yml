@@ -1,0 +1,135 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e8]
+      - generic [ref=e11]: stockstracker.
+      - button "Zamknij menu" [ref=e12] [cursor=pointer]: ×
+    - navigation [ref=e13]:
+      - generic [ref=e14]: Główne
+      - link "Dashboard" [ref=e15] [cursor=pointer]:
+        - /url: /
+        - img [ref=e17]
+        - text: Dashboard
+      - link "Portfel" [ref=e22] [cursor=pointer]:
+        - /url: /portfolio
+        - img [ref=e24]
+        - text: Portfel
+      - link "Historia" [ref=e26] [cursor=pointer]:
+        - /url: /history
+        - img [ref=e28]
+        - text: Historia
+      - link "Transakcje" [ref=e30] [cursor=pointer]:
+        - /url: /transactions
+        - img [ref=e32]
+        - text: Transakcje
+      - link "Dywidendy" [ref=e35] [cursor=pointer]:
+        - /url: /dividends
+        - img [ref=e37]
+        - text: Dywidendy
+      - link "Kalendarz" [ref=e39] [cursor=pointer]:
+        - /url: /calendar
+        - img [ref=e41]
+        - text: Kalendarz
+      - link "Watchlist" [ref=e43] [cursor=pointer]:
+        - /url: /watchlist
+        - img [ref=e45]
+        - text: Watchlist
+      - link "Scenario Lab" [ref=e48] [cursor=pointer]:
+        - /url: /scenario
+        - img [ref=e50]
+        - text: Scenario Lab
+      - link "Atrybucja" [ref=e51] [cursor=pointer]:
+        - /url: /analysis
+        - img [ref=e53]
+        - text: Atrybucja
+      - generic [ref=e56]: Konto
+      - link "Ustawienia" [ref=e57] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e59]
+        - text: Ustawienia
+    - generic [ref=e62]:
+      - generic [ref=e63]: AD
+      - generic [ref=e64]:
+        - generic [ref=e65]: Adam
+        - generic [ref=e66]: GPW · PLN
+      - button "↪" [ref=e67] [cursor=pointer]
+  - generic [ref=e68]:
+    - banner [ref=e69]:
+      - button "Menu" [ref=e70] [cursor=pointer]:
+        - img [ref=e71]
+      - generic [ref=e72]:
+        - img
+        - textbox "Szukaj spółki…" [ref=e73]: adamxdd
+      - button "Motyw jasny" [ref=e74] [cursor=pointer]:
+        - img [ref=e75]
+      - button "Ukryj wartości" [ref=e81] [cursor=pointer]:
+        - img [ref=e82]
+      - button "+" [ref=e85] [cursor=pointer]
+    - main [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e90]: Konto
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]: Zalogowany jako
+              - generic [ref=e94]: Adam
+            - generic [ref=e96]: API URL
+            - generic [ref=e97]:
+              - button "Odśwież dane" [ref=e98] [cursor=pointer]
+              - button "Wyloguj →" [ref=e99] [cursor=pointer]
+        - generic [ref=e100]:
+          - generic [ref=e102]: Zmiana hasła
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - generic [ref=e105]: Aktualne hasło
+              - textbox [ref=e106]
+            - generic [ref=e107]:
+              - generic [ref=e108]: Nowe hasło
+              - textbox [ref=e109]
+            - generic [ref=e110]:
+              - generic [ref=e111]: Powtórz nowe
+              - textbox [ref=e112]
+            - button "Zmień hasło" [disabled] [ref=e113] [cursor=pointer]
+        - generic [ref=e114]:
+          - generic [ref=e116]: Klucze API
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - generic [ref=e120]: MarketData.app nie ustawiony
+              - generic [ref=e121]:
+                - textbox "Wklej klucz…" [ref=e122]: Piwoiwo123
+                - button "Zapisz" [ref=e123] [cursor=pointer]
+            - paragraph [ref=e124]: "Klucz przechowywany tylko lokalnie. Darmowy klucz: marketdata.app"
+        - generic [ref=e125]:
+          - generic [ref=e127]: Podatek od dywidend
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - generic [ref=e130]: GPW (.WA)
+              - generic [ref=e131]: 19% ryczałt (stała)
+            - generic [ref=e132]:
+              - generic [ref=e133]: Akcje US
+              - generic [ref=e134]:
+                - button "15% Umowa PL-US" [ref=e135] [cursor=pointer]:
+                  - generic [ref=e136]: 15%
+                  - generic [ref=e137]: Umowa PL-US
+                - button "30% Pełny withholding" [ref=e138] [cursor=pointer]:
+                  - generic [ref=e139]: 30%
+                  - generic [ref=e140]: Pełny withholding
+        - generic [ref=e141]:
+          - generic [ref=e143]: Import danych brokera
+          - generic [ref=e144]:
+            - paragraph [ref=e145]: "Importuj historię z pliku CSV (eToro itp.). Obsługiwane: Closed Positions, Cash Operations."
+            - button "↑ Importuj CSV brokera" [ref=e146] [cursor=pointer]
+        - generic [ref=e147]:
+          - generic [ref=e149]: Kursy walut
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - generic [ref=e152]: USD / PLN
+              - generic [ref=e153]: 3.6369 zł
+            - generic [ref=e154]:
+              - generic [ref=e155]: EUR / PLN
+              - generic [ref=e156]: 4.2344 zł
+            - generic [ref=e157]:
+              - generic [ref=e158]: GBP / PLN
+              - generic [ref=e159]: 4.9092 zł
+            - paragraph [ref=e160]: Aktualizowane co 30 min (frankfurter.app)
+        - generic [ref=e161]: "StocksTracker — Vite + React. Dane: Render (PostgreSQL)."

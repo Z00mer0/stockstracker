@@ -1,0 +1,31 @@
+- generic [ref=e2]:
+  - generic [ref=e10]:
+    - heading "Quiz" [level=2] [ref=e11]
+    - generic [ref=e12]:
+      - generic [ref=e13]: KATEGORIA
+      - combobox [ref=e14]:
+        - option "Wszystkie (2)" [selected]
+        - option "przyklad (2)"
+    - generic [ref=e15]:
+      - generic [ref=e16]: "LICZBA PYTAŃ: 2 / 2"
+      - slider [ref=e17]: "2"
+    - generic [ref=e18]:
+      - button "📚 Tryb nauki Natychmiastowy feedback po każdej odpowiedzi" [ref=e19] [cursor=pointer]:
+        - text: 📚 Tryb nauki
+        - generic [ref=e20]: Natychmiastowy feedback po każdej odpowiedzi
+      - button "✍️ Tryb egzaminu Wyniki i omówienie po zakończeniu" [ref=e21] [cursor=pointer]:
+        - text: ✍️ Tryb egzaminu
+        - generic [ref=e22]: Wyniki i omówienie po zakończeniu
+  - navigation [ref=e23]:
+    - link "📚 Materiały" [ref=e24] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e25]: 📚
+      - generic [ref=e26]: Materiały
+    - link "✍️ Quiz" [ref=e27] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e28]: ✍️
+      - generic [ref=e29]: Quiz
+    - link "📊 Postęp" [ref=e30] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e31]: 📊
+      - generic [ref=e32]: Postęp

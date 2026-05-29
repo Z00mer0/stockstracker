@@ -1,0 +1,10 @@
+[     704ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    1230ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    1336ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    1348ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0
+[    5147ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    5158ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    5322ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 33984.91, positionsValue: 33984.91, cashValue: 858.52, totalValue: 34843.43, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    5406ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 33984.91, positionsValue: 33984.91, cashValue: 858.52, totalValue: 34843.43, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    5893ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 33984.91, positionsValue: 34589.02, cashValue: 858.52, totalValue: 35447.54, unrealPLN: 604.11} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77
+[    5924ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 33984.91, positionsValue: 34589.02, cashValue: 858.52, totalValue: 35447.54, unrealPLN: 604.11} @ https://myfund-app.vercel.app/assets/index-CpKFRoEJ.js:77

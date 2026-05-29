@@ -1,0 +1,33 @@
+- generic [ref=e3]:
+  - generic:
+    - img
+  - generic:
+    - img
+  - generic [ref=e4]:
+    - heading "Quiz" [level=2] [ref=e5]
+    - generic [ref=e6]:
+      - generic [ref=e7]: KATEGORIA
+      - generic [ref=e8]:
+        - generic [ref=e9]: Wszystkie
+        - generic [ref=e10]: 68 pytań
+    - generic [ref=e12]: "LICZBA PYTAŃ: 68 / 68"
+    - generic [ref=e15]:
+      - text: 🔀 Losowa kolejność
+      - generic [ref=e16]: wyłączona
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - text: 📚 Tryb nauki
+        - generic [ref=e19]: Natychmiastowy feedback po każdej odpowiedzi
+      - generic [ref=e20]:
+        - text: ✍️ Tryb egzaminu
+        - generic [ref=e21]: Wyniki i omówienie po zakończeniu
+  - generic [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e24]: 📚
+      - generic [ref=e25]: Materiały
+    - generic [ref=e26]:
+      - generic [ref=e27]: ✍️
+      - generic [ref=e28]: Quiz
+    - generic [ref=e29]:
+      - generic [ref=e30]: 📊
+      - generic [ref=e31]: Postęp

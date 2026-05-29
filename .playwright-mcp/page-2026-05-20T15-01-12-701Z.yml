@@ -1,0 +1,46 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - generic [ref=e2]:
+    - generic [ref=e5]: New Project
+    - main [ref=e6]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - heading "New Project" [level=3] [ref=e15]
+          - generic [ref=e16]:
+            - listitem [ref=e17]:
+              - generic [ref=e21]:
+                - paragraph [ref=e22]: importing from GitHub
+                - generic [ref=e23]:
+                  - link "github Z00mer0/stockstracker" [ref=e24] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/stockstracker
+                    - img "github" [ref=e25]
+                    - generic "Z00mer0/stockstracker" [ref=e27]
+                  - link "…" [ref=e28] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/stockstracker
+                    - img [ref=e29]
+                    - generic "…" [ref=e31]
+            - paragraph [ref=e32]: Choose where you want to create the project and give it a name.
+            - generic [ref=e36]:
+              - generic [ref=e37]:
+                - generic [ref=e39]: Vercel Team
+                - img "Slash Divider" [ref=e41]
+                - generic [ref=e43]: Project Name
+              - separator [ref=e44]
+              - generic [ref=e45]:
+                - generic [ref=e47]: Application Preset
+                - generic [ref=e49]: Root Directory
+                - generic [ref=e51]:
+                  - option "Production and Preview" [selected]
+                  - option "Production"
+                  - option "Preview"
+                  - option "Development"
+        - generic [ref=e56]:
+          - heading "Deployment" [level=3] [ref=e58]
+          - generic [ref=e59]: Once you're ready, start deploying to see the progress here…
+          - img "Globe" [ref=e60]
+        - generic [ref=e61]:
+          - link "Import a different Git Repository →" [ref=e62] [cursor=pointer]:
+            - /url: /new
+          - link "Browse Templates →" [ref=e63] [cursor=pointer]:
+            - /url: /new/templates

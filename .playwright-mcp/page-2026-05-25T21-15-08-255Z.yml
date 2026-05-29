@@ -1,0 +1,114 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e8]
+      - generic [ref=e11]: stockstracker.
+      - button "Zamknij menu" [ref=e12] [cursor=pointer]: ×
+    - navigation [ref=e13]:
+      - generic [ref=e14]: Główne
+      - link "Dashboard" [ref=e15] [cursor=pointer]:
+        - /url: /
+        - img [ref=e17]
+        - text: Dashboard
+      - link "Portfel" [ref=e22] [cursor=pointer]:
+        - /url: /portfolio
+        - img [ref=e24]
+        - text: Portfel
+      - link "Historia" [ref=e26] [cursor=pointer]:
+        - /url: /history
+        - img [ref=e28]
+        - text: Historia
+      - link "Transakcje" [ref=e30] [cursor=pointer]:
+        - /url: /transactions
+        - img [ref=e32]
+        - text: Transakcje
+      - link "Dywidendy" [ref=e35] [cursor=pointer]:
+        - /url: /dividends
+        - img [ref=e37]
+        - text: Dywidendy
+      - link "Kalendarz" [ref=e39] [cursor=pointer]:
+        - /url: /calendar
+        - img [ref=e41]
+        - text: Kalendarz
+      - link "Watchlist" [ref=e43] [cursor=pointer]:
+        - /url: /watchlist
+        - img [ref=e45]
+        - text: Watchlist
+      - link "Scenario Lab" [ref=e48] [cursor=pointer]:
+        - /url: /scenario
+        - img [ref=e50]
+        - text: Scenario Lab
+      - link "Atrybucja" [ref=e51] [cursor=pointer]:
+        - /url: /analysis
+        - img [ref=e53]
+        - text: Atrybucja
+      - generic [ref=e56]: Konto
+      - link "Ustawienia" [ref=e57] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e59]
+        - text: Ustawienia
+    - generic [ref=e62]:
+      - generic [ref=e63]: AD
+      - generic [ref=e64]:
+        - generic [ref=e65]: Adam
+        - generic [ref=e66]: GPW · PLN
+      - button "↪" [ref=e67] [cursor=pointer]
+  - generic [ref=e68]:
+    - banner [ref=e69]:
+      - button "Menu" [ref=e70] [cursor=pointer]:
+        - img [ref=e71]
+      - generic [ref=e72]:
+        - img
+        - textbox "Szukaj spółki…" [ref=e73]
+        - generic: ⌘K
+      - button "Motyw jasny" [ref=e74] [cursor=pointer]:
+        - img [ref=e75]
+      - button "Ukryj wartości" [ref=e81] [cursor=pointer]:
+        - img [ref=e82]
+      - button "+" [ref=e85] [cursor=pointer]
+    - main [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - paragraph [ref=e90]: Dywidendy (12 mies.) · brutto
+            - paragraph [ref=e91]: 0,00 zł
+            - paragraph [ref=e92]: ostatnie 12 miesięcy
+          - generic [ref=e93]:
+            - paragraph [ref=e94]: Yield portfela (proj.)
+            - paragraph [ref=e95]: 2,62%
+            - paragraph [ref=e96]: roczne dywidendy / wartość portfela
+          - generic [ref=e97]:
+            - paragraph [ref=e98]: Nadchodzące (30 dni)
+            - paragraph [ref=e99]: "0"
+            - paragraph [ref=e100]: brak zaplanowanych
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - paragraph [ref=e103]: Tryb wyświetlania kwot
+            - paragraph [ref=e104]: Kwoty brutto — przed potrąceniem podatku
+          - generic [ref=e105]:
+            - button "BRUTTO" [ref=e106] [cursor=pointer]
+            - button "NETTO" [ref=e107] [cursor=pointer]
+        - generic [ref=e108]:
+          - paragraph [ref=e109]: ℹ️ Daty dywidend GPW (XTB.WA, VOT.WA itp.) są dodawane ręcznie. Daty US (NVDA, HOOD itp.) pobierane automatycznie z Finnhub.
+          - button "+ Dodaj dywidendę GPW" [ref=e110] [cursor=pointer]
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]: Nadchodzące dywidendy
+            - button "+ Dodaj ręcznie" [ref=e115] [cursor=pointer]
+          - generic [ref=e116]: Brak nadchodzących dywidend.
+        - generic [ref=e117]:
+          - generic [ref=e118]:
+            - paragraph [ref=e119]: Łącznie dywidendy (brutto)
+            - paragraph [ref=e120]: 0,00 zł
+          - generic [ref=e121]:
+            - paragraph [ref=e122]: Liczba wypłat
+            - paragraph [ref=e123]: "0"
+          - generic [ref=e124]:
+            - paragraph [ref=e125]: Spółki dywidendowe
+            - paragraph [ref=e126]: "0"
+        - generic [ref=e127]:
+          - generic [ref=e129]: Dywidendy per spółka · Yield on Cost
+          - generic [ref=e130]:
+            - generic [ref=e131]: 🌱
+            - paragraph [ref=e132]: Brak spółek dywidendowych w portfelu
+            - paragraph [ref=e133]: "Dodaj wypłatę dywidendy w sekcji Transakcje (typ: DIV) lub ręcznie powyżej."

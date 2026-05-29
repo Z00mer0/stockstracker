@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 
 const CSV_EXAMPLE = `Symbol,Ilość,Cena,Waluta,Data
@@ -137,13 +137,45 @@ const card = {
 };
 
 export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
-  const [text, setText]       = useState('');
-  const [mode, setMode]       = useState('replace');
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState('');
+  const [text, setText]         = useState('');
+  const [mode, setMode]         = useState('replace');
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
   const [fileName, setFileName] = useState('');
-  const [filePreview, setFilePreview] = useState(null); // parsed from file
+  const [filePreview, setFilePreview] = useState(null);
+  const [invalidSymbols, setInvalidSymbols] = useState(new Set());
+  const [validating, setValidating] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Active preview: file takes priority over textarea (defined early so useEffect can use it)
+  const rawRows = filePreview ?? (text.trim() ? parseCsv(text) : []);
+  const preview = mergeBySymbol(rawRows);
+  const symbolsKey = preview.map(p => p.symbol).sort().join(',');
+
+  useEffect(() => {
+    if (!preview.length) { setInvalidSymbols(new Set()); return; }
+    setValidating(true);
+    Promise.allSettled(
+      preview.map(async ({ symbol }) => {
+        try {
+          const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(symbol)}`, { signal: AbortSignal.timeout(8000) });
+          if (res.status === 404) return symbol;
+          if (!res.ok) return null;
+          const json = await res.json();
+          if (json.stooq) return null; // stooq fallback means price found
+          const q = json?.quoteResponse?.result?.[0];
+          return q?.regularMarketPrice ? null : symbol;
+        } catch { return null; }
+      })
+    ).then(results => {
+      const invalid = new Set(
+        results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value)
+      );
+      setInvalidSymbols(invalid);
+      setValidating(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolsKey]);
 
   function handleFile(file) {
     setError(''); setFileName(file.name);
@@ -160,10 +192,6 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   }
 
   function handleDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
-
-  // Active preview: file takes priority over textarea
-  const rawRows = filePreview ?? (text.trim() ? parseCsv(text) : []);
-  const preview = mergeBySymbol(rawRows);
 
   async function handleImport() {
     if (!preview.length) { setError('Brak poprawnych danych do importu.'); return; }
@@ -285,7 +313,9 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
         {/* Preview table */}
         {preview.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 8 }}>Podgląd ({preview.length} pozycji):</p>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 8 }}>
+              Podgląd ({preview.length} pozycji){validating ? ' — sprawdzam symbole…' : invalidSymbols.size > 0 ? ` — ${invalidSymbols.size} ⚠ nieznany` : ''}:
+            </p>
             <div style={{ background: 'var(--panel-2)', borderRadius: 8, overflow: 'hidden', maxHeight: 200, overflowY: 'auto' }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                 <thead>
@@ -296,15 +326,23 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.map((p, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
-                      <td style={{ padding: '5px 10px', fontWeight: 700, color: 'var(--accent)' }}>{p.symbol}</td>
-                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.qty}</td>
-                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.avgPrice.toFixed(2)}</td>
-                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-faint)' }}>{p.currency}</td>
-                      <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-faint)' }}>{p.date}</td>
-                    </tr>
-                  ))}
+                  {preview.map((p, i) => {
+                    const bad = invalidSymbols.has(p.symbol);
+                    return (
+                      <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                        <td style={{ padding: '5px 10px', fontWeight: 700, color: bad ? 'var(--down)' : 'var(--accent)', whiteSpace: 'nowrap' }}>
+                          {p.symbol}
+                          {bad && (
+                            <span title="Nie znaleziono kursu — symbol może być nieprawidłowy lub zmieniony" style={{ marginLeft: 6, cursor: 'default' }}>⚠</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.qty}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.avgPrice.toFixed(2)}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-faint)' }}>{p.currency}</td>
+                        <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-faint)' }}>{p.date}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

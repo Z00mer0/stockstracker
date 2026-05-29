@@ -1,0 +1,186 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "💰 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 💰
+        - text: Dywidendy
+      - link "📅 Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 📅
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - button "Wyloguj →" [ref=e32] [cursor=pointer]
+  - generic [ref=e33]:
+    - banner [ref=e34]:
+      - heading "Transakcje" [level=1] [ref=e35]
+      - button "☀️" [ref=e36] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+      - generic [ref=e41]:
+        - generic [ref=e42]: NYSE
+        - generic [ref=e44]: GPW
+        - generic [ref=e46]: LSE
+      - button "↻ Odśwież" [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: ↻
+        - generic [ref=e50]: Odśwież
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - button "Wszystkie" [ref=e54] [cursor=pointer]
+          - button "Kupno(10)" [ref=e55] [cursor=pointer]:
+            - text: Kupno
+            - generic [ref=e56]: (10)
+          - button "Sprzedaż(1)" [ref=e57] [cursor=pointer]:
+            - text: Sprzedaż
+            - generic [ref=e58]: (1)
+          - button "Dywidenda(0)" [ref=e59] [cursor=pointer]:
+            - text: Dywidenda
+            - generic [ref=e60]: (0)
+          - button "Gotówka(0)" [ref=e61] [cursor=pointer]:
+            - text: Gotówka
+            - generic [ref=e62]: (0)
+          - generic [ref=e63]:
+            - generic [ref=e64]: 12 wyników
+            - button "+ Dodaj" [ref=e65] [cursor=pointer]
+        - table [ref=e68]:
+          - rowgroup [ref=e69]:
+            - row "Data Typ Symbol Ilość Cena Wartość Notatka" [ref=e70]:
+              - columnheader "Data" [ref=e71]
+              - columnheader "Typ" [ref=e72]
+              - columnheader "Symbol" [ref=e73]
+              - columnheader "Ilość" [ref=e74]
+              - columnheader "Cena" [ref=e75]
+              - columnheader "Wartość" [ref=e76]
+              - columnheader "Notatka" [ref=e77]
+          - rowgroup [ref=e78]:
+            - 'row "2026-05-15 Sprzedaż S2B.PL 4 33,70 zł 134,80 zł Import brokera | P&L: +16.32 PLN" [ref=e79]':
+              - cell "2026-05-15" [ref=e80]
+              - cell "Sprzedaż" [ref=e81]
+              - cell "S2B.PL" [ref=e82]
+              - cell "4" [ref=e83]
+              - cell "33,70 zł" [ref=e84]
+              - cell "134,80 zł" [ref=e85]
+              - 'cell "Import brokera | P&L: +16.32 PLN" [ref=e86]'
+            - row "2026-05-07 WIT CASHGotówka PLN 20 000 1,00 zł 20 000,00 zł Wypłata gotówki" [ref=e87]:
+              - cell "2026-05-07" [ref=e88]
+              - cell "WIT" [ref=e89]
+              - cell "CASHGotówka PLN" [ref=e90]
+              - cell "20 000" [ref=e91]
+              - cell "1,00 zł" [ref=e92]
+              - cell "20 000,00 zł" [ref=e93]
+              - cell "Wypłata gotówki" [ref=e94]
+            - row "2026-04-28 Kupno S2B.PL 4 29,62 zł 118,48 zł Import brokera" [ref=e95]:
+              - cell "2026-04-28" [ref=e96]
+              - cell "Kupno" [ref=e97]
+              - cell "S2B.PL" [ref=e98]
+              - cell "4" [ref=e99]
+              - cell "29,62 zł" [ref=e100]
+              - cell "118,48 zł" [ref=e101]
+              - cell "Import brokera" [ref=e102]
+            - row "2026-03-27 Kupno NVDA 1,4000 173,02 $ 242,23 $ —" [ref=e103]:
+              - cell "2026-03-27" [ref=e104]
+              - cell "Kupno" [ref=e105]
+              - cell "NVDA" [ref=e106]
+              - cell "1,4000" [ref=e107]
+              - cell "173,02 $" [ref=e108]
+              - cell "242,23 $" [ref=e109]
+              - cell "—" [ref=e110]
+            - row "2026-02-04 Kupno CBF.WA 54 202,72 zł 10 947,12 zł —" [ref=e111]:
+              - cell "2026-02-04" [ref=e112]
+              - cell "Kupno" [ref=e113]
+              - cell "CBF.WA" [ref=e114]
+              - cell "54" [ref=e115]
+              - cell "202,72 zł" [ref=e116]
+              - cell "10 947,12 zł" [ref=e117]
+              - cell "—" [ref=e118]
+            - row "2026-01-02 Kupno DNP.WA 313,2546 36,00 zł 11 277,17 zł —" [ref=e119]:
+              - cell "2026-01-02" [ref=e120]
+              - cell "Kupno" [ref=e121]
+              - cell "DNP.WA" [ref=e122]
+              - cell "313,2546" [ref=e123]
+              - cell "36,00 zł" [ref=e124]
+              - cell "11 277,17 zł" [ref=e125]
+              - cell "—" [ref=e126]
+            - row "2025-10-08 Kupno XTB.WA 151 71,08 zł 10 733,08 zł —" [ref=e127]:
+              - cell "2025-10-08" [ref=e128]
+              - cell "Kupno" [ref=e129]
+              - cell "XTB.WA" [ref=e130]
+              - cell "151" [ref=e131]
+              - cell "71,08 zł" [ref=e132]
+              - cell "10 733,08 zł" [ref=e133]
+              - cell "—" [ref=e134]
+            - row "2025-08-06 Kupno MDV.WA 116 111,00 zł 12 876,00 zł —" [ref=e135]:
+              - cell "2025-08-06" [ref=e136]
+              - cell "Kupno" [ref=e137]
+              - cell "MDV.WA" [ref=e138]
+              - cell "116" [ref=e139]
+              - cell "111,00 zł" [ref=e140]
+              - cell "12 876,00 zł" [ref=e141]
+              - cell "—" [ref=e142]
+            - row "2025-04-28 Kupno NVDA 1,7000 96,17 $ 163,49 $ —" [ref=e143]:
+              - cell "2025-04-28" [ref=e144]
+              - cell "Kupno" [ref=e145]
+              - cell "NVDA" [ref=e146]
+              - cell "1,7000" [ref=e147]
+              - cell "96,17 $" [ref=e148]
+              - cell "163,49 $" [ref=e149]
+              - cell "—" [ref=e150]
+            - row "2025-03-12 Kupno VOT.WA 30 41,20 zł 1236,00 zł —" [ref=e151]:
+              - cell "2025-03-12" [ref=e152]
+              - cell "Kupno" [ref=e153]
+              - cell "VOT.WA" [ref=e154]
+              - cell "30" [ref=e155]
+              - cell "41,20 zł" [ref=e156]
+              - cell "1236,00 zł" [ref=e157]
+              - cell "—" [ref=e158]
+            - row "2025-01-15 Kupno PKN.WA 50 54,31 zł 2715,50 zł —" [ref=e159]:
+              - cell "2025-01-15" [ref=e160]
+              - cell "Kupno" [ref=e161]
+              - cell "PKN.WA" [ref=e162]
+              - cell "50" [ref=e163]
+              - cell "54,31 zł" [ref=e164]
+              - cell "2715,50 zł" [ref=e165]
+              - cell "—" [ref=e166]
+            - row "2024-05-04 Kupno KRU.WA 18 411,00 zł 7398,00 zł —" [ref=e167]:
+              - cell "2024-05-04" [ref=e168]
+              - cell "Kupno" [ref=e169]
+              - cell "KRU.WA" [ref=e170]
+              - cell "18" [ref=e171]
+              - cell "411,00 zł" [ref=e172]
+              - cell "7398,00 zł" [ref=e173]
+              - cell "—" [ref=e174]

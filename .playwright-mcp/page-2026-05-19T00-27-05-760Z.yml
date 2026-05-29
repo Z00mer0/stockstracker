@@ -1,0 +1,40 @@
+- generic [ref=e2]:
+  - generic [ref=e68]:
+    - generic [ref=e69]:
+      - generic [ref=e70]: "1"
+      - generic [ref=e71]: 00:00:36
+      - button "⚑" [ref=e72] [cursor=pointer]
+    - generic [ref=e75]:
+      - paragraph [ref=e76]: "Zgodnie z rozporządzeniem Ministra Finansów w sprawie szczegółowych warunków technicznych i organizacyjnych dla firm inwestycyjnych oraz banków powierniczych, w odniesieniu do firmy inwestycyjnej świadczącej usługę przechowywania lub rejestrowania instrumentów finansowych oraz prowadzenia rachunków pieniężnych nie jest prawdą, że:"
+      - generic [ref=e77]:
+        - button "Firma przechowuje lub rejestruje aktywa klienta w sposób umożliwiający w każdej chwili wyodrębnienie aktywów przechowywanych na jego rzecz od aktywów innego klienta oraz od aktywów własnych firmy inwestycyjnej" [disabled] [ref=e78] [cursor=pointer]:
+          - generic [ref=e80]: Firma przechowuje lub rejestruje aktywa klienta w sposób umożliwiający w każdej chwili wyodrębnienie aktywów przechowywanych na jego rzecz od aktywów innego klienta oraz od aktywów własnych firmy inwestycyjnej
+        - button "Firma może powierzyć przechowywanie IF klienta innemu podmiotowi, pod warunkiem że podmiot ten prowadzi działalność w państwie, którego prawo reguluje działalność polegającą na przechowywaniu IF na cudzy rachunek i podlega w tym zakresie nadzorowi właściwego organu nadzoru" [disabled] [ref=e81] [cursor=pointer]:
+          - generic [ref=e83]: Firma może powierzyć przechowywanie IF klienta innemu podmiotowi, pod warunkiem że podmiot ten prowadzi działalność w państwie, którego prawo reguluje działalność polegającą na przechowywaniu IF na cudzy rachunek i podlega w tym zakresie nadzorowi właściwego organu nadzoru
+        - button "Firma może wykorzystywać na własny rachunek lub na rachunek podmiotu trzeciego instrumenty finansowe należące do klienta lub uprawnionego z IF zapisanych na rachunku zbiorczym, pod warunkiem uzyskania zgody tego klienta" [disabled] [ref=e84] [cursor=pointer]:
+          - generic [ref=e86]: Firma może wykorzystywać na własny rachunek lub na rachunek podmiotu trzeciego instrumenty finansowe należące do klienta lub uprawnionego z IF zapisanych na rachunku zbiorczym, pod warunkiem uzyskania zgody tego klienta
+        - button "Firma inwestycyjna, na rzecz której zostało ustanowione zabezpieczenie na IF należących do klienta, rejestruje informacje obejmujące niezbędne dane klientów, którzy ustanowili zabezpieczenie zleceń, oraz liczbę i rodzaj IF będących przedmiotem zabezpieczenia" [disabled] [ref=e87] [cursor=pointer]:
+          - generic [ref=e89]: Firma inwestycyjna, na rzecz której zostało ustanowione zabezpieczenie na IF należących do klienta, rejestruje informacje obejmujące niezbędne dane klientów, którzy ustanowili zabezpieczenie zleceń, oraz liczbę i rodzaj IF będących przedmiotem zabezpieczenia
+      - generic [ref=e100]: Poprawnie! ✓
+    - generic [ref=e90]:
+      - generic [ref=e91]:
+        - button "‹ WSTECZ" [disabled] [ref=e92] [cursor=pointer]
+        - button "DALEJ ›" [disabled] [ref=e93] [cursor=pointer]
+      - button "POMIŃ" [ref=e94] [cursor=pointer]
+      - generic [ref=e95]:
+        - generic [ref=e96]: ✓ 1 poprawne
+        - generic [ref=e97]: → 0 pominięte
+        - generic [ref=e98]: ✗ 0 błędna
+  - navigation [ref=e19]:
+    - link "📚 Materiały" [ref=e20] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e21]: 📚
+      - generic [ref=e22]: Materiały
+    - link "✍️ Quiz" [ref=e23] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e24]: ✍️
+      - generic [ref=e25]: Quiz
+    - link "📊 Postęp" [ref=e26] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e27]: 📊
+      - generic [ref=e28]: Postęp

@@ -1,0 +1,235 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - generic [ref=e5]:
+          - link "Render" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=e8]
+          - button "M My Workspace" [ref=e12] [cursor=pointer]:
+            - generic [ref=e13]:
+              - generic [ref=e14]: M
+              - generic "My Workspace" [ref=e15]
+              - img [ref=e16]
+        - generic [ref=e20]:
+          - navigation [ref=e21]:
+            - list [ref=e22]:
+              - listitem [ref=e23]:
+                - generic [ref=e24]:
+                  - img [ref=e25]
+                  - generic [ref=e29]: Projects
+          - button "Search Command + K" [ref=e31] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Search
+            - generic [ref=e35]:
+              - img [ref=e36]
+              - generic [ref=e38]: Command
+              - generic [ref=e39]: +
+              - generic [ref=e40]: K
+              - generic [ref=e41]: K
+        - generic [ref=e42]:
+          - button "New" [expanded] [active] [ref=e44] [cursor=pointer]:
+            - generic [ref=e45]:
+              - img [ref=e46]
+              - generic [ref=e48]: New
+          - button "Upgrade" [ref=e50] [cursor=pointer]:
+            - generic [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e54]: Upgrade
+          - button "Help" [ref=e56] [cursor=pointer]:
+            - img "Help" [ref=e57]
+          - button "g" [ref=e62] [cursor=pointer]:
+            - generic [ref=e64]: g
+      - generic [ref=e65]:
+        - navigation [ref=e66]:
+          - separator [ref=e67]
+          - generic [ref=e69]:
+            - list [ref=e70]:
+              - listitem [ref=e71]:
+                - link "Projects" [ref=e72] [cursor=pointer]:
+                  - /url: /
+                  - img [ref=e73]
+                  - generic [ref=e77]: Projects
+              - listitem [ref=e78]:
+                - link "Blueprints" [ref=e79] [cursor=pointer]:
+                  - /url: /blueprints
+                  - img [ref=e80]
+                  - generic [ref=e85]: Blueprints
+              - listitem [ref=e86]:
+                - link "Environment Groups" [ref=e87] [cursor=pointer]:
+                  - /url: /env-groups
+                  - img [ref=e88]
+                  - generic [ref=e94]: Environment Groups
+            - generic [ref=e95]:
+              - generic [ref=e96]: Integrations
+              - list "Integrations" [ref=e97]:
+                - listitem [ref=e98]:
+                  - link "Observability" [ref=e99] [cursor=pointer]:
+                    - /url: /observability
+                    - img [ref=e100]
+                    - generic [ref=e102]: Observability
+                - listitem [ref=e103]:
+                  - link "Webhooks" [ref=e104] [cursor=pointer]:
+                    - /url: /webhooks
+                    - img [ref=e105]
+                    - generic [ref=e109]: Webhooks
+                - listitem [ref=e110]:
+                  - link "Notifications" [ref=e111] [cursor=pointer]:
+                    - /url: /notifications
+                    - img [ref=e112]
+                    - generic [ref=e122]: Notifications
+            - generic [ref=e123]:
+              - generic [ref=e124]: Networking
+              - list "Networking" [ref=e125]:
+                - listitem [ref=e126]:
+                  - link "Private Links" [ref=e127] [cursor=pointer]:
+                    - /url: /private-links
+                    - img [ref=e128]
+                    - generic [ref=e130]: Private Links
+            - generic [ref=e131]:
+              - generic [ref=e132]: Workspace
+              - list "Workspace" [ref=e133]:
+                - listitem [ref=e134]:
+                  - link "Billing" [ref=e135] [cursor=pointer]:
+                    - /url: /w/tea-d7r8m5ugkk3c738frikg/billing
+                    - img [ref=e136]
+                    - generic [ref=e139]: Billing
+                - listitem [ref=e140]:
+                  - link "Settings" [ref=e141] [cursor=pointer]:
+                    - /url: /w/tea-d7r8m5ugkk3c738frikg/settings
+                    - img [ref=e142]
+                    - generic [ref=e145]: Settings
+          - generic [ref=e147]:
+            - button "Collapse items" [expanded] [ref=e148] [cursor=pointer]:
+              - img [ref=e149]
+            - list "Footer navigation" [ref=e151]:
+              - listitem [ref=e152]:
+                - link "Changelog" [ref=e153] [cursor=pointer]:
+                  - /url: https://render.com/changelog
+                  - img [ref=e154]
+                  - generic [ref=e159]: Changelog
+              - listitem [ref=e160]:
+                - link "Invite a friend" [ref=e161] [cursor=pointer]:
+                  - /url: /invites
+                  - img [ref=e162]
+                  - generic [ref=e164]: Invite a friend
+              - listitem [ref=e165]:
+                - button "Contact support" [ref=e166] [cursor=pointer]:
+                  - img [ref=e167]
+                  - generic [ref=e171]: Contact support
+            - link "Render Status" [ref=e173] [cursor=pointer]:
+              - /url: https://status.render.com
+              - img [ref=e174]
+              - generic [ref=e176]: Render Status
+        - main [ref=e178]:
+          - generic [ref=e179]:
+            - heading "Overview" [level=1] [ref=e181]
+            - generic [ref=e183]:
+              - button "Invite your team" [disabled] [ref=e188]:
+                - img [ref=e190]
+                - text: Invite your team
+              - button "New" [ref=e195] [cursor=pointer]:
+                - generic [ref=e196]:
+                  - img [ref=e197]
+                  - generic [ref=e199]: New
+                  - img [ref=e200]
+          - generic [ref=e203]:
+            - generic [ref=e206]: Projects
+            - list [ref=e207]:
+              - listitem [ref=e208]:
+                - link "My project All services are up and running" [ref=e209] [cursor=pointer]:
+                  - /url: /project/prj-d7r8p8favr4c739v4or0
+                  - generic [ref=e210]:
+                    - heading "My project" [level=6] [ref=e211]:
+                      - generic [ref=e212]: My project
+                    - generic [ref=e214]:
+                      - img [ref=e215]
+                      - generic [ref=e217]: All services are up and running
+              - listitem [ref=e218]:
+                - link "Create new project" [ref=e220] [cursor=pointer]:
+                  - /url: /new/project
+                  - img [ref=e222]
+                  - text: Create new project
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic:
+                - img
+              - generic: Move
+              - img
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button:
+              - img
+  - iframe [ref=e224]:
+    
+  - listbox "New" [ref=e226]:
+    - list [ref=e228]:
+      - option "Static Site" [ref=e229]:
+        - link "Static Site" [ref=e230] [cursor=pointer]:
+          - /url: /static/new
+          - generic [ref=e231]:
+            - img [ref=e232]
+            - generic [ref=e235]: Static Site
+      - option "Web Service" [ref=e236]:
+        - link "Web Service" [ref=e237] [cursor=pointer]:
+          - /url: /web/new
+          - generic [ref=e238]:
+            - img [ref=e239]
+            - generic [ref=e241]: Web Service
+      - option "Private Service" [ref=e242]:
+        - link "Private Service" [ref=e243] [cursor=pointer]:
+          - /url: /pserv/new
+          - generic [ref=e244]:
+            - img [ref=e245]
+            - generic [ref=e247]: Private Service
+      - option "Workflow Beta" [ref=e248]:
+        - link "Workflow Beta" [ref=e249] [cursor=pointer]:
+          - /url: /workflow/new
+          - generic [ref=e250]:
+            - img [ref=e251]
+            - generic [ref=e256]: Workflow
+            - generic [ref=e257]: Beta
+      - option "Background Worker" [ref=e258]:
+        - link "Background Worker" [ref=e259] [cursor=pointer]:
+          - /url: /worker/new
+          - generic [ref=e260]:
+            - img [ref=e261]
+            - generic [ref=e266]: Background Worker
+      - option "Cron Job" [ref=e267]:
+        - link "Cron Job" [ref=e268] [cursor=pointer]:
+          - /url: /cron/new
+          - generic [ref=e269]:
+            - img [ref=e270]
+            - generic [ref=e274]: Cron Job
+        - separator [ref=e275]
+      - option "Postgres" [ref=e277]:
+        - link "Postgres" [ref=e278] [cursor=pointer]:
+          - /url: /new/database
+          - generic [ref=e279]:
+            - img [ref=e280]
+            - generic [ref=e282]: Postgres
+      - option "Key Value" [ref=e283]:
+        - link "Key Value" [ref=e284] [cursor=pointer]:
+          - /url: /new/redis
+          - generic [ref=e285]:
+            - img [ref=e286]
+            - generic [ref=e290]: Key Value
+        - separator [ref=e291]
+      - option "Project" [ref=e293]:
+        - link "Project" [ref=e294] [cursor=pointer]:
+          - /url: /new/project
+          - generic [ref=e295]:
+            - img [ref=e296]
+            - generic [ref=e300]: Project
+      - option "Blueprint" [ref=e301]:
+        - link "Blueprint" [ref=e302] [cursor=pointer]:
+          - /url: /select-repo?type=blueprint
+          - generic [ref=e303]:
+            - img [ref=e304]
+            - generic [ref=e309]: Blueprint

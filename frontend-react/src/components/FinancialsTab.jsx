@@ -156,7 +156,9 @@ export default function FinancialsTab({ symbol }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading]   = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [csvCurrency, setCsvCurrency] = useState('PLN');
   const fileRef = useRef(null);
+  const csvRef  = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,6 +178,126 @@ export default function FinancialsTab({ symbol }) {
     return () => { cancelled = true; };
   }, [symbol, period]);
 
+  // ── CSV import (no API needed) ────────────────────────────────────────
+  function parseCsvLine(line) {
+    const out = []; let cur = ''; let q = false;
+    for (const ch of line) {
+      if (ch === '"') { q = !q; }
+      else if (ch === ',' && !q) { out.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  function labelToDate(label) {
+    const l = label.trim();
+    if (/^ltm$/i.test(l)) return null;
+    if (/^\d{4}$/.test(l)) return `${l}-12-31`;
+    const qm = l.match(/Q([1-4])\s*[`']?(\d{2,4})/i);
+    if (qm) {
+      const q = parseInt(qm[1]);
+      let yr = qm[2]; if (yr.length === 2) yr = '20' + yr;
+      return `${yr}-${['03','06','09','12'][q-1]}-${['31','30','30','31'][q-1]}`;
+    }
+    return null;
+  }
+
+  function matchCsvField(name) {
+    const l = name.toLowerCase().trim();
+    const MAP = [
+      ['revenue',            ['revenue','przychody','revenues','total revenue','net revenue','sales']],
+      ['grossProfit',        ['gross profit','zysk brutto']],
+      ['operatingCost',      ['operating expense','operating cost','koszty oper','opex']],
+      ['operatingIncome',    ['operating income','operating profit','ebit','zysk oper']],
+      ['ebitda',             ['ebitda']],
+      ['netIncome',          ['net income','zysk netto','net income to stockholders','net profit','net earnings']],
+      ['totalAssets',        ['total assets','aktywa ogółem','total asset']],
+      ['totalLiabilities',   ['total liabilities','zobowiązania']],
+      ['equity',             ['total equity','stockholders equity','shareholders equity','kapitał własny']],
+      ['totalDebt',          ['total debt','dług całkowity']],
+      ['cashAndEquivalents', ['cash and equiv','cash & equiv','cash and cash equiv','gotówka']],
+      ['netDebt',            ['net debt','dług netto']],
+      ['operatingCashFlow',  ['cash from operations','operating cash flow','cfo','cash flows from operating']],
+      ['capex',              ['capex','capital expenditure','capital expenditures','cash from investing']],
+      ['fcf',                ['levered free cash flow','free cash flow','fcf']],
+      ['shareRepurchases',   ['share repurchases','buyback','skup akcji']],
+    ];
+    for (const [field, keys] of MAP) {
+      if (keys.some(k => l.includes(k))) return field;
+    }
+    return null;
+  }
+
+  function parseNumMln(str) {
+    if (!str) return null;
+    const s = str.trim().replace(/[, ]/g, '').replace(/[^0-9.\-]/g, '');
+    const n = parseFloat(s);
+    return isNaN(n) ? null : Math.round(n * 1e6);
+  }
+
+  function parseCsvToData(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) throw new Error('Za mało wierszy w CSV');
+    const header = parseCsvLine(lines[0]);
+    const labels = header.slice(1).map(l => l.trim()).filter(Boolean);
+    if (!labels.length) throw new Error('Brak kolumn z danymi');
+    const isQuarterly = labels.some(l => /Q[1-4]/i.test(l));
+    const empty = () => ({
+      revenue: null, revenueGrowthYoY: null, grossProfit: null, grossMargin: null,
+      operatingCost: null, operatingIncome: null, ebitda: null, ebitdaMargin: null,
+      netIncome: null, netDebt: null, totalAssets: null, totalLiabilities: null,
+      equity: null, cashAndEquivalents: null, totalDebt: null,
+      operatingCashFlow: null, capex: null, fcf: null, shareRepurchases: null,
+    });
+    const periods = labels.map(label => ({ label, date: labelToDate(label), ...empty() }));
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCsvLine(lines[i]);
+      const field = matchCsvField(row[0] || '');
+      if (!field) continue;
+      row.slice(1).forEach((val, idx) => { if (idx < periods.length) periods[idx][field] = parseNumMln(val); });
+    }
+    periods.forEach((p, i) => {
+      if (p.revenue && p.grossProfit) p.grossMargin = p.grossProfit / p.revenue;
+      if (p.revenue && p.ebitda) p.ebitdaMargin = p.ebitda / p.revenue;
+      if (p.fcf == null && p.operatingCashFlow != null && p.capex != null)
+        p.fcf = p.operatingCashFlow - Math.abs(p.capex);
+      if (i > 0 && p.revenue && periods[i-1].revenue)
+        p.revenueGrowthYoY = (p.revenue - periods[i-1].revenue) / Math.abs(periods[i-1].revenue);
+    });
+    return {
+      periods,
+      valuation: { peRatio: null, forwardPE: null, evEbitda: null, ps: null, marketCap: null, sharesOutstanding: null, ev: null, pfcf: null, netDebtLatest: null },
+      currency: csvCurrency,
+      period: isQuarterly ? 'quarterly' : 'annual',
+    };
+  }
+
+  async function handleCsvUpload(file) {
+    if (!file) return;
+    setUploading(true);
+    setUploadError('');
+    try {
+      const text = await file.text();
+      const parsed = parseCsvToData(text);
+      const token = localStorage.getItem(AUTH_KEY) || '';
+      const resp = await fetch('/api/financials/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        body: JSON.stringify({ symbol, period: parsed.period, data: parsed }),
+      });
+      if (!resp.ok) { const b = await resp.json().catch(() => ({})); throw new Error(b.error || 'save_error'); }
+      const d = await resp.json();
+      setData(d);
+      setUploadOpen(false);
+    } catch (e) {
+      setUploadError(`Błąd: ${e.message}`);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // ── Screenshot import (requires Anthropic API key) ────────────────────
   async function compressImage(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -200,7 +322,7 @@ export default function FinancialsTab({ symbol }) {
     });
   }
 
-  async function handleUpload(file) {
+  async function handleScreenshotUpload(file) {
     if (!file) return;
     setUploading(true);
     setUploadError('');
@@ -214,21 +336,14 @@ export default function FinancialsTab({ symbol }) {
       });
       if (resp.status === 422) throw new Error('parse_failed');
       if (resp.status === 503) throw new Error('api_key_missing');
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}));
-        throw new Error(body.error || 'upload_error');
-      }
+      if (!resp.ok) { const b = await resp.json().catch(() => ({})); throw new Error(b.error || 'upload_error'); }
       const d = await resp.json();
       setData(d);
       setUploadOpen(false);
     } catch (e) {
-      if (e.message === 'parse_failed') {
-        setUploadError('Nie udało się odczytać tabeli — spróbuj z wyraźniejszym screenshotem');
-      } else if (e.message === 'api_key_missing') {
-        setUploadError('Brak klucza API na serwerze — skontaktuj się z administratorem');
-      } else {
-        setUploadError(`Błąd: ${e.message}`);
-      }
+      if (e.message === 'parse_failed') setUploadError('Nie udało się odczytać tabeli — spróbuj z wyraźniejszym screenshotem');
+      else if (e.message === 'api_key_missing') setUploadError('Brak klucza API na serwerze');
+      else setUploadError(`Błąd: ${e.message}`);
     } finally {
       setUploading(false);
     }
@@ -239,10 +354,7 @@ export default function FinancialsTab({ symbol }) {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        handleUpload(item.getAsFile());
-        break;
-      }
+      if (item.type.startsWith('image/')) { handleScreenshotUpload(item.getAsFile()); break; }
     }
   }
 
@@ -250,7 +362,7 @@ export default function FinancialsTab({ symbol }) {
   const val      = data?.valuation ?? {};
   const currency = data?.currency ?? '';
   const sourceLabel = data
-    ? `${data.source === 'yahoo' ? 'Yahoo Finance' : 'Screenshot'} · ${periods[0]?.label ?? ''}`
+    ? `${data.source === 'yahoo' ? 'Yahoo Finance' : data.source === 'manual' ? 'CSV' : 'Screenshot'} · ${periods[0]?.label ?? ''}`
     : '';
 
   if (loading) {
@@ -302,7 +414,7 @@ export default function FinancialsTab({ symbol }) {
         </div>
       </div>
 
-      {/* Upload panel */}
+      {/* Import panel */}
       {uploadOpen && (
         <div style={{
           background: 'rgba(124, 158, 255, 0.06)',
@@ -312,39 +424,55 @@ export default function FinancialsTab({ symbol }) {
           marginBottom: 10,
           fontSize: 11,
         }}>
-          <div style={{ color: 'var(--info)', fontWeight: 600, marginBottom: 4 }}>
-            📎 Import ze screenshota
+          {/* CSV — primary (free) */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ color: 'var(--info)', fontWeight: 600, marginBottom: 4 }}>📄 Import CSV (bezpłatnie)</div>
+            <div style={{ color: 'var(--text-faint)', lineHeight: 1.5, marginBottom: 6 }}>
+              Format: pierwsza kolumna = nazwa wskaźnika, kolejne = lata/kwartały. Wartości w milionach.{' '}
+              <a
+                href="data:text/csv;charset=utf-8,Metric%2C2022%2C2023%2C2024%2C2025%0ARevenue%2C%2C%2C%2C%0AOperating%20Income%2C%2C%2C%2C%0AEBITDA%2C%2C%2C%2C%0ANet%20Income%2C%2C%2C%2C%0ATotal%20Assets%2C%2C%2C%2C%0ATotal%20Liabilities%2C%2C%2C%2C%0ATotal%20Equity%2C%2C%2C%2C%0ATotal%20Debt%2C%2C%2C%2C%0ACash%20from%20Operations%2C%2C%2C%2C%0ACapEx%2C%2C%2C%2C%0AFCF%2C%2C%2C%2C"
+                download="financials_template.csv"
+                style={{ color: 'var(--info)', textDecoration: 'underline' }}
+              >pobierz szablon</a>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => csvRef.current?.click()}
+                disabled={uploading}
+                style={{ background: 'var(--info)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 11, fontWeight: 600, cursor: uploading ? 'wait' : 'pointer' }}
+              >{uploading ? 'Wczytuję…' : 'Wrzuć CSV'}</button>
+              <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Waluta:</span>
+              <select
+                value={csvCurrency}
+                onChange={e => setCsvCurrency(e.target.value)}
+                disabled={uploading}
+                style={{ background: 'var(--panel-2)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, padding: '3px 6px', fontSize: 11 }}
+              >
+                {['PLN','EUR','USD','GBP','CHF','CZK','SEK','NOK','DKK'].map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
-          <div style={{ color: 'var(--text-faint)', lineHeight: 1.5, marginBottom: 8 }}>
-            Wrzuć screen z InvestingPro / Bloomberg / innego źródła → Claude odczyta tabelę i uzupełni dane. Ważność: 90 dni.
+
+          {/* Screenshot — secondary (requires API) */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+            <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 4, fontSize: 10 }}>📎 Ze screenshota (wymaga Anthropic API)</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                style={{ background: 'var(--panel-2)', color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', fontSize: 11, cursor: uploading ? 'wait' : 'pointer' }}
+              >Wrzuć obraz</button>
+              <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>lub Ctrl+V</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              style={{
-                background: 'var(--info)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                padding: '5px 14px',
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: uploading ? 'wait' : 'pointer',
-              }}
-            >{uploading ? 'Wczytuję…' : 'Wrzuć plik'}</button>
-            <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>lub wklej ze schowka (Ctrl+V)</span>
-          </div>
+
           {uploadError && (
             <div style={{ color: 'var(--down)', fontSize: 11, marginTop: 6 }}>{uploadError}</div>
           )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={e => { handleUpload(e.target.files?.[0]); e.target.value = ''; }}
-          />
+          <input ref={csvRef} type="file" accept=".csv,.txt" style={{ display: 'none' }}
+            onChange={e => { handleCsvUpload(e.target.files?.[0]); e.target.value = ''; }} />
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { handleScreenshotUpload(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
       )}
 
@@ -359,7 +487,7 @@ export default function FinancialsTab({ symbol }) {
           fontSize: 12,
           color: 'var(--info)',
         }}>
-          Brak danych z Yahoo Finance — wrzuć screenshot z InvestingPro lub innego źródła
+          Brak danych z Yahoo Finance — zaimportuj CSV lub screenshot z InvestingPro / Bloomberg
         </div>
       )}
 

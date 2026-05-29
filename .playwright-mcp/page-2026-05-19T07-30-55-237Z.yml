@@ -1,0 +1,392 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3] [cursor=pointer]: StocksTracker
+    - generic [ref=e4] [cursor=pointer]:
+      - generic [ref=e5]: 💼
+      - generic [ref=e6]: Mój portfel
+      - generic [ref=e7]: ▾
+    - navigation [ref=e8]:
+      - button "Portfel" [ref=e9] [cursor=pointer]
+      - button "Historia" [ref=e10] [cursor=pointer]
+      - button "Transakcje" [ref=e11] [cursor=pointer]
+      - button "Dywidendy" [ref=e12] [cursor=pointer]
+      - button "Kalendarz" [ref=e13] [cursor=pointer]
+      - button "👁 Watchlist" [ref=e14] [cursor=pointer]
+      - button "📊 Analiza" [ref=e15] [cursor=pointer]
+      - button "🧪 Lab" [ref=e16] [cursor=pointer]
+    - generic [ref=e17]:
+      - button "👁" [ref=e18] [cursor=pointer]
+      - button "🇬🇧 EN" [ref=e19] [cursor=pointer]
+      - button "🌙 Dark" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]: 🇵🇱 Otwarte
+        - generic [ref=e24]: 🇺🇸 Zamknięte
+      - generic [ref=e28]: Brak danych
+      - button "Ładowanie…" [disabled] [ref=e99]: Ładowanie…
+      - generic [ref=e101]:
+        - generic [ref=e102]: Adam
+        - button "Wyloguj" [ref=e103] [cursor=pointer]
+  - main [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: Wartość portfela (PLN)
+        - generic [ref=e36]: —
+        - generic [ref=e37]: Akcje + gotówka
+      - generic [ref=e38]:
+        - generic [ref=e39]: Zmiana dzienna
+        - generic [ref=e40]: —
+        - generic [ref=e41]: vs. poprzednie zamknięcie
+      - generic [ref=e42]:
+        - generic [ref=e43]: Niezrealizowany zysk
+        - generic [ref=e44]: —
+        - generic [ref=e45]: na otwartych pozycjach
+      - generic [ref=e46]:
+        - generic [ref=e47]: Zrealizowany zysk
+        - generic [ref=e48]: +16,32 zł
+        - generic [ref=e49]: 1 transakcja sprzedaży
+      - generic [ref=e50]:
+        - generic [ref=e51]: Gotówka
+        - generic [ref=e52]: 33 515,14 zł
+        - generic [ref=e53]: "PLN: 33 515,14"
+      - generic [ref=e54]:
+        - generic [ref=e55]: IRR portfela
+        - generic [ref=e56]: —
+        - generic [ref=e57]: ważona roczna stopa zwrotu
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]: Moje pozycje
+          - generic [ref=e62]:
+            - button "⚙️" [ref=e64] [cursor=pointer]
+            - button "⬆ Import CSV" [ref=e65] [cursor=pointer]
+            - button "+ Dodaj spółkę" [ref=e66] [cursor=pointer]
+        - table [ref=e105]:
+          - rowgroup [ref=e106]:
+            - row "Spółka Ilość Śr. zakup i Cena teraz Zmiana dz. i Wart. zakupu i Wart. teraz (PLN) i Zysk/Strata i Okres i MOIC i IRR r. i" [ref=e107]:
+              - columnheader "Spółka" [ref=e108] [cursor=pointer]: Spółka
+              - columnheader "Ilość" [ref=e109] [cursor=pointer]: Ilość
+              - columnheader "Śr. zakup i" [ref=e110]:
+                - text: Śr. zakup
+                - generic [ref=e111]: i
+              - columnheader "Cena teraz" [ref=e112]
+              - columnheader "Zmiana dz. i" [ref=e113] [cursor=pointer]:
+                - text: Zmiana dz.
+                - generic [ref=e114]: i
+              - columnheader "Wart. zakupu i" [ref=e115] [cursor=pointer]:
+                - text: Wart. zakupu
+                - generic [ref=e116]: i
+              - columnheader "Wart. teraz (PLN) i" [ref=e117] [cursor=pointer]:
+                - text: Wart. teraz (PLN)
+                - generic [ref=e118]: i
+              - columnheader "Zysk/Strata i" [ref=e119] [cursor=pointer]:
+                - text: Zysk/Strata
+                - generic [ref=e120]: i
+              - columnheader "Okres i" [ref=e121]:
+                - text: Okres
+                - generic [ref=e122]: i
+              - columnheader "MOIC i" [ref=e123] [cursor=pointer]:
+                - text: MOIC
+                - generic [ref=e124]: i
+              - columnheader "IRR r. i" [ref=e125] [cursor=pointer]:
+                - text: IRR r.
+                - generic [ref=e126]: i
+              - columnheader [ref=e127]
+          - rowgroup [ref=e128]:
+            - row "XTB.WA XTB S.A. 174 75,01 zł Ładowanie… — 13 051,94 zł — — 6 mies. — — ⋯" [ref=e129]:
+              - cell "XTB.WA XTB S.A." [ref=e130]:
+                - generic [ref=e131]:
+                  - img [ref=e133]
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: XTB.WA
+                    - generic "XTB S.A." [ref=e136]
+              - cell "174" [ref=e137]
+              - cell "75,01 zł" [ref=e138]
+              - cell "Ładowanie…" [ref=e139]
+              - cell "—" [ref=e140]
+              - cell "13 051,94 zł" [ref=e141]
+              - cell "—" [ref=e142]
+              - cell "—" [ref=e143]:
+                - generic [ref=e144]: —
+              - cell "6 mies." [ref=e145]
+              - cell "—" [ref=e146]
+              - cell "—" [ref=e147]
+              - cell "⋯" [ref=e148]:
+                - button "⋯" [ref=e151] [cursor=pointer]
+            - row "HOOD Robinhood Markets, Inc. 41,25 83,62 USD Ładowanie… — 13 624,83 zł — — 2 mies. — — ⋯" [ref=e152]:
+              - cell "HOOD Robinhood Markets, Inc." [ref=e153]:
+                - generic [ref=e154]:
+                  - img [ref=e156]
+                  - generic [ref=e157]:
+                    - generic [ref=e158]: HOOD
+                    - generic "Robinhood Markets, Inc." [ref=e159]
+              - cell "41,25" [ref=e160]
+              - cell "83,62 USD" [ref=e161]
+              - cell "Ładowanie…" [ref=e162]
+              - cell "—" [ref=e163]
+              - cell "13 624,83 zł" [ref=e164]
+              - cell "—" [ref=e165]
+              - cell "—" [ref=e166]:
+                - generic [ref=e167]: —
+              - cell "2 mies." [ref=e168]
+              - cell "—" [ref=e169]
+              - cell "—" [ref=e170]
+              - cell "⋯" [ref=e171]:
+                - button "⋯" [ref=e174] [cursor=pointer]
+            - row "ALE.WA Allegro.eu S.A. 30 29,88 zł Ładowanie… — 896,25 zł — — 26 dni — — ⋯" [ref=e175]:
+              - cell "ALE.WA Allegro.eu S.A." [ref=e176]:
+                - generic [ref=e177]:
+                  - img [ref=e179]
+                  - generic [ref=e180]:
+                    - generic [ref=e181]: ALE.WA
+                    - generic "Allegro.eu S.A." [ref=e182]
+              - cell "30" [ref=e183]
+              - cell "29,88 zł" [ref=e184]
+              - cell "Ładowanie…" [ref=e185]
+              - cell "—" [ref=e186]
+              - cell "896,25 zł" [ref=e187]
+              - cell "—" [ref=e188]
+              - cell "—" [ref=e189]:
+                - generic [ref=e190]: —
+              - cell "26 dni" [ref=e191]
+              - cell "—" [ref=e192]
+              - cell "—" [ref=e193]
+              - cell "⋯" [ref=e194]:
+                - button "⋯" [ref=e197] [cursor=pointer]
+            - row "NVDA NVIDIA Corporation 3,1 130,88 USD Ładowanie… — 1602,58 zł — — 6 mies. — — ⋯" [ref=e198]:
+              - cell "NVDA NVIDIA Corporation" [ref=e199]:
+                - generic [ref=e200]:
+                  - img [ref=e202]
+                  - generic [ref=e203]:
+                    - generic [ref=e204]: NVDA
+                    - generic "NVIDIA Corporation" [ref=e205]
+              - cell "3,1" [ref=e206]
+              - cell "130,88 USD" [ref=e207]
+              - cell "Ładowanie…" [ref=e208]
+              - cell "—" [ref=e209]
+              - cell "1602,58 zł" [ref=e210]
+              - cell "—" [ref=e211]
+              - cell "—" [ref=e212]:
+                - generic [ref=e213]: —
+              - cell "6 mies." [ref=e214]
+              - cell "—" [ref=e215]
+              - cell "—" [ref=e216]
+              - cell "⋯" [ref=e217]:
+                - button "⋯" [ref=e220] [cursor=pointer]
+            - row "KRU.WA KRUK Spólka Akcyjna 18 411,00 zł Ładowanie… — 7398,00 zł — — 2.0 lat — — ⋯" [ref=e221]:
+              - cell "KRU.WA KRUK Spólka Akcyjna" [ref=e222]:
+                - generic [ref=e223]:
+                  - img [ref=e225]
+                  - generic [ref=e226]:
+                    - generic [ref=e227]: KRU.WA
+                    - generic "KRUK Spólka Akcyjna" [ref=e228]
+              - cell "18" [ref=e229]
+              - cell "411,00 zł" [ref=e230]
+              - cell "Ładowanie…" [ref=e231]
+              - cell "—" [ref=e232]
+              - cell "7398,00 zł" [ref=e233]
+              - cell "—" [ref=e234]
+              - cell "—" [ref=e235]:
+                - generic [ref=e236]: —
+              - cell "2.0 lat" [ref=e237]
+              - cell "—" [ref=e238]
+              - cell "—" [ref=e239]
+              - cell "⋯" [ref=e240]:
+                - button "⋯" [ref=e243] [cursor=pointer]
+            - row "PKN.WA Orlen S.A. 50 54,31 zł Ładowanie… — 2715,50 zł — — 1.3 lat — — ⋯" [ref=e244]:
+              - cell "PKN.WA Orlen S.A." [ref=e245]:
+                - generic [ref=e246]:
+                  - img [ref=e248]
+                  - generic [ref=e249]:
+                    - generic [ref=e250]: PKN.WA
+                    - generic "Orlen S.A." [ref=e251]
+              - cell "50" [ref=e252]
+              - cell "54,31 zł" [ref=e253]
+              - cell "Ładowanie…" [ref=e254]
+              - cell "—" [ref=e255]
+              - cell "2715,50 zł" [ref=e256]
+              - cell "—" [ref=e257]
+              - cell "—" [ref=e258]:
+                - generic [ref=e259]: —
+              - cell "1.3 lat" [ref=e260]
+              - cell "—" [ref=e261]
+              - cell "—" [ref=e262]
+              - cell "⋯" [ref=e263]:
+                - button "⋯" [ref=e266] [cursor=pointer]
+            - row "C CBF.WA Cyber_Folks S.A. 54 202,72 zł Ładowanie… — 10 947,12 zł — — 3 mies. — — ⋯" [ref=e267]:
+              - cell "C CBF.WA Cyber_Folks S.A." [ref=e268]:
+                - generic [ref=e269]:
+                  - generic [ref=e271]: C
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: CBF.WA
+                    - generic "Cyber_Folks S.A." [ref=e274]
+              - cell "54" [ref=e275]
+              - cell "202,72 zł" [ref=e276]
+              - cell "Ładowanie…" [ref=e277]
+              - cell "—" [ref=e278]
+              - cell "10 947,12 zł" [ref=e279]
+              - cell "—" [ref=e280]
+              - cell "—" [ref=e281]:
+                - generic [ref=e282]: —
+              - cell "3 mies." [ref=e283]
+              - cell "—" [ref=e284]
+              - cell "—" [ref=e285]
+              - cell "⋯" [ref=e286]:
+                - button "⋯" [ref=e289] [cursor=pointer]
+            - row "VOT.WA Votum S.A. 30 41,20 zł Ładowanie… — 1236,00 zł — — 1.2 lat — — ⋯" [ref=e290]:
+              - cell "VOT.WA Votum S.A." [ref=e291]:
+                - generic [ref=e292]:
+                  - img [ref=e294]
+                  - generic [ref=e295]:
+                    - generic [ref=e296]: VOT.WA
+                    - generic "Votum S.A." [ref=e297]
+              - cell "30" [ref=e298]
+              - cell "41,20 zł" [ref=e299]
+              - cell "Ładowanie…" [ref=e300]
+              - cell "—" [ref=e301]
+              - cell "1236,00 zł" [ref=e302]
+              - cell "—" [ref=e303]
+              - cell "—" [ref=e304]:
+                - generic [ref=e305]: —
+              - cell "1.2 lat" [ref=e306]
+              - cell "—" [ref=e307]
+              - cell "—" [ref=e308]
+              - cell "⋯" [ref=e309]:
+                - button "⋯" [ref=e312] [cursor=pointer]
+            - row "M MDV.WA Modivo S.A. 116 111,00 zł Ładowanie… — 12 876,00 zł — — 10 mies. — — ⋯" [ref=e313]:
+              - cell "M MDV.WA Modivo S.A." [ref=e314]:
+                - generic [ref=e315]:
+                  - generic [ref=e317]: M
+                  - generic [ref=e318]:
+                    - generic [ref=e319]: MDV.WA
+                    - generic "Modivo S.A." [ref=e320]
+              - cell "116" [ref=e321]
+              - cell "111,00 zł" [ref=e322]
+              - cell "Ładowanie…" [ref=e323]
+              - cell "—" [ref=e324]
+              - cell "12 876,00 zł" [ref=e325]
+              - cell "—" [ref=e326]
+              - cell "—" [ref=e327]:
+                - generic [ref=e328]: —
+              - cell "10 mies." [ref=e329]
+              - cell "—" [ref=e330]
+              - cell "—" [ref=e331]
+              - cell "⋯" [ref=e332]:
+                - button "⋯" [ref=e335] [cursor=pointer]
+            - row "DNP.WA Dino Polska S.A. 313,2546 36,00 zł Ładowanie… — 11 277,17 zł — — 5 mies. — — ⋯" [ref=e336]:
+              - cell "DNP.WA Dino Polska S.A." [ref=e337]:
+                - generic [ref=e338]:
+                  - img [ref=e340]
+                  - generic [ref=e341]:
+                    - generic [ref=e342]: DNP.WA
+                    - generic "Dino Polska S.A." [ref=e343]
+              - cell "313,2546" [ref=e344]
+              - cell "36,00 zł" [ref=e345]
+              - cell "Ładowanie…" [ref=e346]
+              - cell "—" [ref=e347]
+              - cell "11 277,17 zł" [ref=e348]
+              - cell "—" [ref=e349]
+              - cell "—" [ref=e350]:
+                - generic [ref=e351]: —
+              - cell "5 mies." [ref=e352]
+              - cell "—" [ref=e353]
+              - cell "—" [ref=e354]
+              - cell "⋯" [ref=e355]:
+                - button "⋯" [ref=e358] [cursor=pointer]
+      - generic [ref=e71]:
+        - generic [ref=e72]: Alokacja portfela
+        - generic [ref=e73]:
+          - button "Spółki" [ref=e74] [cursor=pointer]
+          - button "Sektory" [ref=e75] [cursor=pointer]
+          - button "Waluty" [ref=e76] [cursor=pointer]
+        - generic [ref=e360]:
+          - generic [ref=e361]: Gotówka
+          - generic [ref=e363]: 100.0%
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]: 💵 Gotówka w portfelu
+        - button "✎ Zarządzaj gotówką" [ref=e81] [cursor=pointer]
+      - generic [ref=e364]:
+        - generic [ref=e365]: PLN
+        - generic [ref=e366]: 33 515,14 zł
+    - generic [ref=e367]:
+      - generic [ref=e369]: 📊 Analiza ryzyka
+      - generic [ref=e370]:
+        - generic [ref=e371]:
+          - generic [ref=e372]:
+            - text: Zmienność (roczna)
+            - generic [ref=e373]: i
+          - generic [ref=e374]: 2811.5%
+        - generic [ref=e375]:
+          - generic [ref=e376]:
+            - text: Max Drawdown
+            - generic [ref=e377]: i
+          - generic [ref=e378]: "-15.6%"
+        - generic [ref=e379]:
+          - generic [ref=e380]:
+            - text: Sharpe Ratio
+            - generic [ref=e381]: i
+          - generic [ref=e382]: "3.90"
+        - generic [ref=e383]:
+          - generic [ref=e384]:
+            - text: Sortino Ratio
+            - generic [ref=e385]: i
+          - generic [ref=e386]: "222.31"
+    - generic [ref=e387]:
+      - generic [ref=e388]:
+        - generic [ref=e389]: 🎯 Alokacja docelowa
+        - button "⚙️ Edytuj cele" [ref=e390] [cursor=pointer]
+      - generic [ref=e391]:
+        - generic [ref=e392]:
+          - generic [ref=e393]: Kategoria
+          - generic [ref=e394]: Alokacja
+          - generic [ref=e395]: Teraz
+          - generic [ref=e396]: Cel
+          - generic [ref=e397]: Odchylenie
+        - generic [ref=e398]:
+          - generic [ref=e399]:
+            - generic [ref=e400]: US Equities
+            - generic [ref=e402]: 0.0%
+            - generic [ref=e403]: 40%
+            - generic [ref=e404]: ▼ -40.0%
+          - generic [ref=e405]:
+            - generic [ref=e406]: EU Equities
+            - generic [ref=e408]: 0.0%
+            - generic [ref=e409]: 5%
+            - generic [ref=e410]: ▼ -5.0%
+          - generic [ref=e411]:
+            - generic [ref=e412]: PL Equities
+            - generic [ref=e414]: 0.0%
+            - generic [ref=e415]: 30%
+            - generic [ref=e416]: ▼ -30.0%
+          - generic [ref=e417]:
+            - generic [ref=e418]: Bonds
+            - generic [ref=e420]: 0.0%
+            - generic [ref=e421]: 15%
+            - generic [ref=e422]: ▼ -15.0%
+          - generic [ref=e423]:
+            - generic [ref=e424]: Cash
+            - generic [ref=e427]: 100.0%
+            - generic [ref=e428]: 10%
+            - generic [ref=e429]: ▲ +90.0%
+        - generic [ref=e430]:
+          - generic [ref=e431]: 💡 Sugestie rebalansowania
+          - generic [ref=e432]:
+            - text: 🔻 Ogranicz
+            - strong [ref=e433]: Cash
+            - text: ": sprzedaj lub unikaj dokupowania ~30 163,62 zł"
+          - generic [ref=e434]:
+            - text: 🟢 Dokup
+            - strong [ref=e435]: US Equities
+            - text: ": ~13 406,05 zł"
+          - generic [ref=e436]:
+            - text: 🟢 Dokup
+            - strong [ref=e437]: PL Equities
+            - text: ": ~10 054,54 zł"
+          - generic [ref=e438]:
+            - text: 🟢 Dokup
+            - strong [ref=e439]: Bonds
+            - text: ": ~5027,27 zł"
+          - generic [ref=e440]:
+            - text: 🟢 Dokup
+            - strong [ref=e441]: EU Equities
+            - text: ": ~1675,76 zł"

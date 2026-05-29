@@ -1,0 +1,69 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e8]
+      - generic [ref=e11]: stockstracker.
+      - button "Zamknij menu" [ref=e12] [cursor=pointer]: ×
+    - navigation [ref=e13]:
+      - generic [ref=e14]: Główne
+      - link "Dashboard" [ref=e15] [cursor=pointer]:
+        - /url: /
+        - img [ref=e17]
+        - text: Dashboard
+      - link "Portfel" [ref=e22] [cursor=pointer]:
+        - /url: /portfolio
+        - img [ref=e24]
+        - text: Portfel
+      - link "Historia" [ref=e26] [cursor=pointer]:
+        - /url: /history
+        - img [ref=e28]
+        - text: Historia
+      - link "Transakcje" [ref=e30] [cursor=pointer]:
+        - /url: /transactions
+        - img [ref=e32]
+        - text: Transakcje
+      - link "Dywidendy" [ref=e35] [cursor=pointer]:
+        - /url: /dividends
+        - img [ref=e37]
+        - text: Dywidendy
+      - link "Kalendarz" [ref=e39] [cursor=pointer]:
+        - /url: /calendar
+        - img [ref=e41]
+        - text: Kalendarz
+      - link "Watchlist" [ref=e43] [cursor=pointer]:
+        - /url: /watchlist
+        - img [ref=e45]
+        - text: Watchlist
+      - link "Scenario Lab" [ref=e48] [cursor=pointer]:
+        - /url: /scenario
+        - img [ref=e50]
+        - text: Scenario Lab
+      - link "Atrybucja" [ref=e51] [cursor=pointer]:
+        - /url: /analysis
+        - img [ref=e53]
+        - text: Atrybucja
+      - generic [ref=e56]: Konto
+      - link "Ustawienia" [ref=e57] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e59]
+        - text: Ustawienia
+    - generic [ref=e62]:
+      - generic [ref=e63]: AD
+      - generic [ref=e64]:
+        - generic [ref=e65]: Adam
+        - generic [ref=e66]: GPW · PLN
+      - button "↪" [ref=e67] [cursor=pointer]
+  - generic [ref=e68]:
+    - banner [ref=e69]:
+      - button "Menu" [ref=e70] [cursor=pointer]:
+        - img [ref=e71]
+      - generic [ref=e72]:
+        - img
+        - textbox "Szukaj spółki…" [ref=e73]
+        - generic: ⌘K
+      - button "Motyw jasny" [ref=e74] [cursor=pointer]:
+        - img [ref=e75]
+      - button "Ukryj wartości" [ref=e81] [cursor=pointer]:
+        - img [ref=e82]
+      - button "+" [ref=e85] [cursor=pointer]
+    - main [ref=e86]

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
+import StockDetailModal from '../components/StockDetailModal';
 import Card from '../components/shared/Card';
 import Chip from '../components/shared/Chip';
 import TickerLogo from '../components/shared/TickerLogo';
@@ -66,6 +67,7 @@ export default function Watchlist() {
   const { portfolio } = useApp();
   const { openChart } = useChart();
   const [watchItems, setWatchItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [alertTarget, setAlertTarget] = useState(null);
   const [livePrices, setLivePrices] = useState({});
   const [loading, setLoading] = useState(false);
@@ -119,7 +121,7 @@ export default function Watchlist() {
                 {watchItems.map(w => {
                   const live = livePrices[w.symbol];
                   return (
-                    <tr key={w.id ?? w.symbol} onClick={() => openChart(w.symbol)}>
+                    <tr key={w.id ?? w.symbol} onClick={() => setSelectedItem({ symbol: w.symbol, name: w.name })}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <TickerLogo symbol={w.symbol} />
@@ -175,7 +177,7 @@ export default function Watchlist() {
               </thead>
               <tbody>
                 {portfolio.map(pos => (
-                  <tr key={pos.id ?? pos.symbol} onClick={() => openChart(pos.symbol)}>
+                  <tr key={pos.id ?? pos.symbol} onClick={() => setSelectedItem(pos)}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <TickerLogo symbol={pos.symbol} />
@@ -197,6 +199,14 @@ export default function Watchlist() {
 
       {alertTarget && (
         <AlertModal item={alertTarget} onClose={() => setAlertTarget(null)} onSave={alert => addAlert(alertTarget.id, alert)} />
+      )}
+      {selectedItem && (
+        <StockDetailModal
+          item={selectedItem}
+          existingPortfolio={portfolio}
+          onSave={async () => {}}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
     </div>
   );

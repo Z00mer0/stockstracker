@@ -58,6 +58,7 @@ export function AppProvider({ children }) {
   function login(newToken, name) {
     localStorage.setItem(TOKEN_KEY, newToken);
     localStorage.setItem(DISPLAY_NAME_KEY, name || '');
+    setLoading(true); // prevent premature empty-portfolio modal before fetchData fires
     setToken(newToken);
     setDisplayName(name || '');
   }

@@ -1,0 +1,38 @@
+- generic [ref=e2]:
+  - generic [ref=e29]:
+    - heading "Materiały do nauki" [level=2] [ref=e30]
+    - generic [ref=e31]:
+      - button "Przykładowy Rozdział ›" [ref=e32] [cursor=pointer]:
+        - generic [ref=e33]: Przykładowy Rozdział
+        - generic [ref=e34]: ›
+      - button "Rozporządzenie MF — Tryb i warunki postępowania FI (~4 pytania) ›" [ref=e35] [cursor=pointer]:
+        - generic [ref=e36]: Rozporządzenie MF — Tryb i warunki postępowania FI (~4 pytania)
+        - generic [ref=e37]: ›
+      - button "Rozporządzenie MF — Szczegółowe warunki techniczne i organizacyjne FI (~3 pytania) ›" [ref=e38] [cursor=pointer]:
+        - generic [ref=e39]: Rozporządzenie MF — Szczegółowe warunki techniczne i organizacyjne FI (~3 pytania)
+        - generic [ref=e40]: ›
+      - button "Ustawa o nadzorze nad rynkiem finansowym (~1 pytanie) ›" [ref=e41] [cursor=pointer]:
+        - generic [ref=e42]: Ustawa o nadzorze nad rynkiem finansowym (~1 pytanie)
+        - generic [ref=e43]: ›
+      - button "Ustawa o nadzorze nad rynkiem kapitałowym (~1 pytanie) ›" [ref=e44] [cursor=pointer]:
+        - generic [ref=e45]: Ustawa o nadzorze nad rynkiem kapitałowym (~1 pytanie)
+        - generic [ref=e46]: ›
+      - button "Ustawa o obrocie instrumentami finansowymi (~12 pytań) ›" [ref=e47] [cursor=pointer]:
+        - generic [ref=e48]: Ustawa o obrocie instrumentami finansowymi (~12 pytań)
+        - generic [ref=e49]: ›
+      - button "Ustawa o rachunkowości (~10 pytań) ›" [ref=e50] [cursor=pointer]:
+        - generic [ref=e51]: Ustawa o rachunkowości (~10 pytań)
+        - generic [ref=e52]: ›
+  - navigation [ref=e19]:
+    - link "📚 Materiały" [active] [ref=e20] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e21]: 📚
+      - generic [ref=e22]: Materiały
+    - link "✍️ Quiz" [ref=e23] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e24]: ✍️
+      - generic [ref=e25]: Quiz
+    - link "📊 Postęp" [ref=e26] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e27]: 📊
+      - generic [ref=e28]: Postęp

@@ -1,0 +1,35 @@
+[    2811ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:202
+[    2839ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/:0
+[    2839ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    2841ms] [WARNING] [fx] fetch failed, using fallback: no token for proxy @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:222
+[    2841ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/:0
+[    2841ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[    2841ms] [WARNING] [fx] fetch failed, using fallback: no token for proxy @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:222
+[   11614ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   11631ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   11816ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   11816ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   11990ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34277.24, positionsValue: 34277.24, cashValue: 0.00, totalValue: 34277.24, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   11993ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34277.24, positionsValue: 34277.24, cashValue: 0.00, totalValue: 34277.24, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   12055ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34277.24, positionsValue: 34277.24, cashValue: 0.00, totalValue: 34277.24, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   12057ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34277.24, positionsValue: 34277.24, cashValue: 0.00, totalValue: 34277.24, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-B8BKdZP4.js:262
+[   12645ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=DGN.WA:0
+[   12734ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=MRB.WA:0
+[   12752ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=CDR.WA:0
+[   19506ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=MOD.WA:0
+[   19508ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=XTB.WA:0
+[   19510ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=MSW.WA:0
+[   19511ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=SN2.WA:0
+[   19512ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=DNP.WA:0
+[   23578ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=DGN.WA:0
+[   23580ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=MRB.WA:0
+[   23582ms] [ERROR] Failed to load resource: the server responded with a status of 502 () @ https://myfund-app.vercel.app/api/quotes?symbols=CDR.WA:0
+[   51584ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Ddnp%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   51586ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Ddgn%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   51587ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dcdr%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   57242ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dmod%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   57264ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Ddnp%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   57266ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Ddgn%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   57380ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dmrb%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   57381ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dsn2%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0
+[   57632ms] [ERROR] Failed to load resource: the server responded with a status of 503 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fstooq.com%2Fq%2Fl%2F%3Fs%3Dmsw%26f%3Dsd2ohlcv%26h%26e%3Dcsv:0

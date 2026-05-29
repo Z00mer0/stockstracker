@@ -1,0 +1,83 @@
+<h2>Gdzie powinny pojawiać się dane finansowe?</h2>
+<p class="subtitle">Pierwsze pytanie — gdzie w interfejsie najlepiej umieścić sprawozdania finansowe?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0f172a;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#94a3b8">
+        <div style="display:flex;gap:8px;margin-bottom:10px;border-bottom:1px solid #1e293b;padding-bottom:8px">
+          <span style="color:#60a5fa;border-bottom:2px solid #60a5fa;padding-bottom:4px">Wykres</span>
+          <span>Pozycja</span>
+          <span style="color:#60a5fa;font-weight:bold">📊 Finanse</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px">
+          <div style="background:#1e293b;padding:4px;border-radius:4px"><div style="color:#64748b">Przychody</div><div style="color:#e2e8f0">1.181 M</div><div style="color:#10b981;font-size:9px">+70%</div></div>
+          <div style="background:#1e293b;padding:4px;border-radius:4px"><div style="color:#64748b">Zysk brutto</div><div style="color:#e2e8f0">973 M</div><div style="color:#10b981;font-size:9px">+80%</div></div>
+          <div style="background:#1e293b;padding:4px;border-radius:4px"><div style="color:#64748b">Marża</div><div style="color:#e2e8f0">82,4%</div><div style="color:#10b981;font-size:9px">↑</div></div>
+          <div style="background:#1e293b;padding:4px;border-radius:4px"><div style="color:#64748b">Zysk oper.</div><div style="color:#e2e8f0">420 M</div><div style="color:#10b981;font-size:9px">+150%</div></div>
+          <div style="background:#1e293b;padding:4px;border-radius:4px"><div style="color:#64748b">Koszt R&D</div><div style="color:#e2e8f0">-135 M</div><div style="color:#64748b;font-size:9px">—</div></div>
+          <div style="background:#1e293b;padding:4px;border-radius:4px"><div style="color:#64748b">Koszty S&M</div><div style="color:#e2e8f0">-244 M</div><div style="color:#64748b;font-size:9px">—</div></div>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:#64748b">Q-4 / 2025-03-31 ▾</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Nowa zakładka w StockDetailModal</h3>
+      <p>Finanse jako trzecia zakładka obok "Wykres" i "Pozycja" w istniejącym okienku szczegółów spółki.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0f172a;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#94a3b8">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="color:#e2e8f0;font-weight:bold">PLTR</span>
+          <span style="background:#1e3a5f;color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer">📊 Finanse</span>
+        </div>
+        <div style="background:#1e293b;padding:6px;border-radius:4px;font-size:10px">
+          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:4px"><span>Przychody</span><span style="color:#e2e8f0">1.181M</span><span style="color:#10b981">+70%</span></div>
+          <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:4px"><span>Zysk brutto</span><span style="color:#e2e8f0">973M</span><span style="color:#10b981">+80%</span></div>
+          <div style="display:flex;justify-content:space-between;color:#64748b"><span>Marża brutto</span><span style="color:#e2e8f0">82.4%</span><span style="color:#10b981">↑</span></div>
+        </div>
+        <div style="text-align:right;margin-top:6px"><span style="color:#60a5fa;font-size:10px">Pełne sprawozdanie →</span></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Inline w wierszu portfela</h3>
+      <p>Rozwijalne podsumowanie bezpośrednio pod wierszem spółki w tabeli portfela. Pełne dane po kliknięciu.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0f172a;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#94a3b8">
+        <div style="display:flex;gap:16px;margin-bottom:10px">
+          <div style="background:#1e293b;padding:8px;border-radius:6px;flex:1;text-align:center">
+            <div style="color:#64748b;font-size:9px">PLTR</div>
+            <div style="color:#10b981;font-size:10px;margin:2px 0">↑ Rev +70%</div>
+            <div style="color:#e2e8f0;font-size:9px">Marża 82%</div>
+          </div>
+          <div style="background:#1e293b;padding:8px;border-radius:6px;flex:1;text-align:center">
+            <div style="color:#64748b;font-size:9px">MSFT</div>
+            <div style="color:#10b981;font-size:10px;margin:2px 0">↑ Rev +13%</div>
+            <div style="color:#e2e8f0;font-size:9px">Marża 70%</div>
+          </div>
+          <div style="background:#1e293b;padding:8px;border-radius:6px;flex:1;text-align:center">
+            <div style="color:#64748b;font-size:9px">NVDA</div>
+            <div style="color:#10b981;font-size:10px;margin:2px 0">↑ Rev +122%</div>
+            <div style="color:#e2e8f0;font-size:9px">Marża 75%</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#64748b;text-align:center">Kliknij spółkę → pełne sprawozdanie</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Osobna sekcja "Fundamenty"</h3>
+      <p>Nowa strona/zakładka w nawigacji głównej z przeglądem fundamentów wszystkich spółek z portfela i obserwowanych.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px">Kliknij opcję lub napisz w terminalu co preferujesz.</p>

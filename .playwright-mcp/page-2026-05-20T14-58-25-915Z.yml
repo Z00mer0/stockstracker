@@ -1,0 +1,91 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - generic [ref=e2]:
+    - generic [ref=e5]: New Project
+    - main [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - heading "Let's build something new" [level=2] [ref=e10]
+          - generic [ref=e13]:
+            - generic [ref=e14]:
+              - textbox "v0 Prompt or Git Repository URL" [ref=e15]:
+                - /placeholder: Ask v0 to build or enter a Git repository URL…
+              - img [ref=e17]
+            - generic [ref=e19]:
+              - button "Contact Form" [ref=e20] [cursor=pointer]:
+                - generic [ref=e21]:
+                  - img [ref=e23]
+                  - text: Contact Form
+              - button "Image Editor" [ref=e25] [cursor=pointer]:
+                - generic [ref=e26]:
+                  - img [ref=e28]
+                  - text: Image Editor
+              - button "Mini Game" [ref=e30] [cursor=pointer]:
+                - generic [ref=e31]:
+                  - img [ref=e33]
+                  - text: Mini Game
+              - button "Finance Calculator" [ref=e35] [cursor=pointer]:
+                - generic [ref=e36]:
+                  - img [ref=e38]
+                  - text: Finance Calculator
+              - button "Refresh suggestions" [ref=e40] [cursor=pointer]:
+                - img [ref=e43]
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - heading "Import Git Repository" [level=3] [ref=e49]
+            - generic [ref=e102]:
+              - generic [ref=e103]:
+                - heading "Clone Template" [level=2] [ref=e104]
+                - generic [ref=e105]:
+                  - button "AI/Agent" [ref=e106] [cursor=pointer]:
+                    - generic [ref=e108]:
+                      - text: AI/Agent
+                      - img [ref=e109]
+                  - link "Browse" [ref=e111] [cursor=pointer]:
+                    - /url: /new/templates?type=ai
+                    - generic [ref=e112]: Browse
+                    - img [ref=e114]
+              - generic [ref=e116]:
+                - link "Vibe Coding Platform An end to end text-to-app coding platform Vibe Coding Platform" [ref=e117] [cursor=pointer]:
+                  - /url: /new/clone?demo-description=An%20end%20to%20end%20text-to-app%20coding%20platform&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2FWt6jnxAtBGWapPn2hphXX%2Ff482eba41754f65e70f4e05c2eb9544c%2Fimage.png&demo-title=Vibe%20Coding%20Platform%20&demo-url=https%3A%2F%2Foss-vibe-coding-platform.vercel.app%2F&from=templates&project-name=Vibe%20Coding%20Platform%20&project-names=Comma%20separated%20list%20of%20project%20names%2Cto%20match%20the%20root-directories&repository-name=vibe-coding-platform&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fexamples%2Ftree%2Fmain%2Fapps%2Fvibe-coding-platform&root-directories=List%20of%20directory%20paths%20for%20the%20directories%20to%20clone%20into%20projects&skippable-integrations=1
+                  - generic [ref=e118]:
+                    - generic [ref=e119]:
+                      - heading "Vibe Coding Platform" [level=3] [ref=e120]
+                      - img [ref=e121]
+                    - generic [ref=e123]: An end to end text-to-app coding platform
+                  - img "Vibe Coding Platform" [ref=e124]
+                - link "AI Gateway Demo An open-source AI chatbot built with Next.js, the AI SDK, and the AI Gateway. AI Gateway Demo" [ref=e125] [cursor=pointer]:
+                  - /url: /new/clone?demo-description=An%20open-source%20AI%20chatbot%20built%20with%20Next.js%2C%20the%20AI%20SDK%2C%20and%20the%20AI%20Gateway.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F5mz2JCK2z8hNLIiV0PkKux%2F4f4345c6d0a73e27d765a57c9cf1c44a%2Flight.png&demo-title=Vercel%20AI%20Gateway%20Demo&demo-url=https%3A%2F%2Fai-sdk-gateway-demo.labs.vercel.dev%2F&project-name=Vercel%20AI%20Gateway%20Demo&repository-name=vercel-ai-gateway-demo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fai-sdk-gateway-demo
+                  - generic [ref=e126]:
+                    - generic [ref=e127]:
+                      - heading "AI Gateway Demo" [level=3] [ref=e128]
+                      - img [ref=e129]
+                    - generic [ref=e131]: An open-source AI chatbot built with Next.js, the AI SDK, and the AI Gateway.
+                  - img "AI Gateway Demo" [ref=e132]
+                - generic [ref=e134]:
+                  - generic [ref=e135]:
+                    - paragraph [ref=e136]: Install Coding Agent Plugin
+                    - generic [ref=e137]:
+                      - generic [ref=e138]:
+                        - img [ref=e140]
+                        - img [ref=e143]
+                        - img [ref=e145]
+                      - generic [ref=e146]: "|"
+                      - button "Dismiss coding agent plugin notification" [ref=e147]:
+                        - img [ref=e148]
+                  - paragraph [ref=e150]: Turn your coding agent into a Vercel expert. Simply copy and run this in your terminal to install the plugin. Available for Claude, Cursor and Codex.
+                  - generic [ref=e152]:
+                    - generic [ref=e153]: $ npx plugins add vercel/vercel-plugin
+                    - button "Copy to clipboard" [ref=e154] [cursor=pointer]:
+                      - generic [ref=e156]:
+                        - img [ref=e158]
+                        - img [ref=e161]
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - img [ref=e169]
+              - generic [ref=e171]:
+                - paragraph [ref=e172]: Create Empty Project
+                - paragraph [ref=e173]: Skip Git setup and instantly access Web Analytics, Speed Insights, and other Vercel products.
+            - button "Create Empty Project" [ref=e175] [cursor=pointer]:
+              - generic [ref=e176]: Create Empty Project

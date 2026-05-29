@@ -1,0 +1,324 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - main [ref=e346]:
+    - generic [ref=e347]:
+      - generic [ref=e348]:
+        - generic [ref=e349]:
+          - generic [ref=e352]:
+            - link "z00mer0's projects Hobby" [ref=e353] [cursor=pointer]:
+              - /url: /z00mer0s-projects
+              - img [ref=e354]
+              - generic [ref=e355]:
+                - generic [ref=e356]: z00mer0's projects
+                - generic [ref=e358]: Hobby
+            - button [ref=e359] [cursor=pointer]:
+              - img [ref=e361]
+          - button "Find… F" [ref=e364]:
+            - generic [ref=e366]:
+              - img [ref=e368]
+              - generic [ref=e370]: Find…
+              - generic [ref=e372]: F
+        - navigation [ref=e374]:
+          - generic [ref=e377]:
+            - link "Other Overview" [ref=e378] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker
+              - img "Other" [ref=e380]:
+                - img "Other" [ref=e381]
+              - generic [ref=e383]: Overview
+            - link "Deployments" [ref=e384] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/deployments
+              - img [ref=e386]
+              - generic [ref=e389]: Deployments
+            - link "Logs" [ref=e390] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/logs
+              - img [ref=e392]
+              - generic [ref=e395]: Logs
+            - link "Analytics" [ref=e396] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/analytics
+              - img [ref=e398]
+              - generic [ref=e401]: Analytics
+            - link "Speed Insights" [ref=e402] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/speed-insights
+              - img [ref=e404]
+              - generic [ref=e407]: Speed Insights
+            - link "Observability" [ref=e408] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/observability
+              - img [ref=e410]
+              - generic [ref=e413]: Observability
+              - img [ref=e415]
+            - link "Firewall" [ref=e417] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/firewall
+              - img [ref=e419]
+              - generic [ref=e423]: Firewall
+              - img [ref=e425]
+            - link "CDN" [ref=e427] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/cdn
+              - img [ref=e429]
+              - generic [ref=e432]: CDN
+              - img [ref=e434]
+            - separator [ref=e436]
+            - link "Environment Variables" [ref=e437] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/settings/environment-variables
+              - img [ref=e439]
+              - generic [ref=e442]: Environment Variables
+            - link "Domains" [ref=e443] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/settings/domains
+              - img [ref=e445]
+              - generic [ref=e448]: Domains
+            - link "Integrations" [ref=e449] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/settings/integrations
+              - img [ref=e451]
+              - generic [ref=e454]: Integrations
+            - link "Storage" [ref=e455] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/stores
+              - img [ref=e457]
+              - generic [ref=e460]: Storage
+            - link "Flags" [ref=e461] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/flags
+              - img [ref=e463]
+              - generic [ref=e466]: Flags
+              - img [ref=e468]
+            - link "Agent" [ref=e470] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/agent
+              - img [ref=e472]
+              - generic [ref=e475]: Agent
+              - img [ref=e477]
+            - link "AI Gateway" [ref=e479] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/ai-gateway
+              - img [ref=e481]
+              - generic [ref=e484]: AI Gateway
+              - img [ref=e486]
+            - link "Sandboxes" [ref=e488] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/sandboxes
+              - img [ref=e490]
+              - generic [ref=e493]: Sandboxes
+            - link "Workflows" [ref=e494] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/workflows
+              - img [ref=e496]
+              - generic [ref=e499]: Workflows
+            - separator [ref=e500]
+            - link "Usage" [ref=e501] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/usage
+              - img [ref=e503]
+              - generic [ref=e506]: Usage
+            - link "Support" [ref=e507] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/support
+              - img [ref=e509]
+              - generic [ref=e512]: Support
+            - link "Settings" [ref=e513] [cursor=pointer]:
+              - /url: /z00mer0s-projects/stockstracker/settings
+              - img [ref=e515]
+              - generic [ref=e518]: Settings
+              - img [ref=e520]
+        - generic [ref=e524]:
+          - generic [ref=e525]:
+            - generic [ref=e526]:
+              - generic [ref=e528]: Vercel Agent
+              - button "Dismiss" [ref=e529] [cursor=pointer]:
+                - img [ref=e531]
+            - generic [ref=e533]:
+              - generic [ref=e535]:
+                - text: Code reviews that catch bugs before they reach production.
+                - text: Get started with $100 in free credit.
+              - button "Enable" [ref=e537] [cursor=pointer]:
+                - generic [ref=e538]: Enable
+          - generic [ref=e540]:
+            - button "Avatar for z00mer0 z00mer0" [ref=e541] [cursor=pointer]:
+              - img "Avatar for z00mer0" [ref=e542]:
+                - img "Avatar for z00mer0" [ref=e543]
+              - generic [ref=e545]: z00mer0
+              - img [ref=e547]
+            - button "notifications" [ref=e551] [cursor=pointer]:
+              - generic [ref=e553]:
+                - img
+      - button [ref=e555] [cursor=pointer]:
+        - img [ref=e556]
+    - generic [ref=e559]:
+      - generic [ref=e560]:
+        - generic [ref=e563]:
+          - link "Other" [ref=e564] [cursor=pointer]:
+            - /url: /z00mer0s-projects/stockstracker
+            - img "Other" [ref=e565]:
+              - img "Other" [ref=e566]
+          - button [ref=e567] [cursor=pointer]:
+            - img [ref=e569]
+          - link "Back to team view" [ref=e573] [cursor=pointer]:
+            - /url: /z00mer0s-projects
+            - img [ref=e575]
+        - generic [ref=e579]: Overview
+        - button "Open page actions menu" [ref=e581] [cursor=pointer]:
+          - img [ref=e583]
+      - generic [ref=e587]:
+        - generic [ref=e591]:
+          - generic [ref=e592]:
+            - generic [ref=e593]:
+              - heading "Production Deployment" [level=3] [ref=e594]
+              - generic [ref=e597]:
+                - link "Repository" [ref=e599] [cursor=pointer]:
+                  - /url: https://github.com/Z00mer0/stockstracker
+                  - img [ref=e601]
+                  - generic [ref=e604]: Repository
+                - generic [ref=e605]:
+                  - button "Rollback" [ref=e606] [cursor=pointer]:
+                    - generic [ref=e608]:
+                      - img [ref=e609]
+                      - generic [ref=e611]: Rollback
+                  - generic [ref=e612]:
+                    - link "Visit" [ref=e613] [cursor=pointer]:
+                      - /url: https://stockstracker-mu.vercel.app
+                      - generic [ref=e614]: Visit
+                    - button "Visit with" [ref=e615] [cursor=pointer]:
+                      - img [ref=e617]
+            - generic [ref=e620]:
+              - link "Visit Deployment" [ref=e623] [cursor=pointer]:
+                - /url: https://stockstracker-mu.vercel.app
+                - img [ref=e626]
+              - generic [ref=e628]:
+                - generic [ref=e629]:
+                  - generic [ref=e631]:
+                    - term [ref=e632]: Deployment
+                    - definition [ref=e633]:
+                      - link "stockstracker-n1oa9xlx9-z00mer0s-projects.vercel.app" [ref=e635] [cursor=pointer]:
+                        - /url: /z00mer0s-projects/stockstracker/3PApiQiEuwK7rggbGvw9tQziyrJv
+                  - link "0" [ref=e637] [cursor=pointer]:
+                    - /url: /z00mer0s-projects/stockstracker/speed-insights
+                    - progressbar [ref=e639]:
+                      - img [ref=e640]
+                      - img [ref=e645]
+                - generic [ref=e648]:
+                  - term [ref=e649]:
+                    - generic [ref=e651]:
+                      - text: Domains
+                      - link [ref=e652] [cursor=pointer]:
+                        - /url: /z00mer0s-projects/stockstracker/settings/domains
+                        - img [ref=e653]
+                  - definition [ref=e655]:
+                    - link "stockstracker-mu.vercel.app" [ref=e659] [cursor=pointer]:
+                      - /url: https://stockstracker-mu.vercel.app
+                      - generic [ref=e660]: stockstracker-mu.vercel.app
+                      - img [ref=e661]
+                - generic [ref=e663]:
+                  - generic [ref=e664]:
+                    - term [ref=e665]: Status
+                    - definition [ref=e666]:
+                      - generic "This deployment is ready." [ref=e669]:
+                        - generic [ref=e673]: Ready
+                  - generic [ref=e675]:
+                    - term [ref=e676]: Created
+                    - definition [ref=e677]:
+                      - generic [ref=e679] [cursor=pointer]:
+                        - paragraph [ref=e680]: 2m ago by z00mer0
+                        - img "z00mer0 Avatar" [ref=e681]:
+                          - img "z00mer0 Avatar" [ref=e682]
+                - generic [ref=e684]:
+                  - term [ref=e685]: Source
+                  - definition [ref=e686]:
+                    - generic [ref=e688]:
+                      - generic [ref=e689]:
+                        - img [ref=e690]
+                        - link "main" [ref=e692] [cursor=pointer]:
+                          - /url: https://github.com/Z00mer0/stockstracker/tree/main
+                          - code [ref=e693]: main
+                      - generic [ref=e694]:
+                        - img [ref=e695]
+                        - 'link "86bcc3b feat(vercel): add vercel.json + dynamic CORS for Vercel deploy" [ref=e697] [cursor=pointer]':
+                          - /url: https://github.com/Z00mer0/stockstracker/commit/86bcc3b8dbcaf942644fdac1e108343c44717b84
+                          - code [ref=e698]: 86bcc3b
+                          - 'generic "feat(vercel): add vercel.json + dynamic CORS for Vercel deploy" [ref=e699]'
+            - button "Deployment Settings 4 Recommendations" [ref=e702] [cursor=pointer]:
+              - generic [ref=e703]:
+                - img [ref=e704]
+                - generic [ref=e706]:
+                  - generic [ref=e707]: Deployment Settings
+                  - generic [ref=e713]: 4 Recommendations
+          - generic [ref=e716]:
+            - generic [ref=e718]: To update your Production Deployment, push to the main branch.
+            - generic [ref=e720]:
+              - link "Deployments" [ref=e721] [cursor=pointer]:
+                - /url: /z00mer0s-projects/stockstracker/deployments?environment=production
+                - img [ref=e723]
+                - generic [ref=e725]: Deployments
+              - link "Learn more" [ref=e726] [cursor=pointer]:
+                - /url: /docs/git#production-branch
+                - img [ref=e728]
+        - generic [ref=e732]:
+          - generic [ref=e733]:
+            - generic [ref=e734]:
+              - generic [ref=e735]:
+                - paragraph [ref=e736]:
+                  - strong [ref=e737]: Production Checklist
+                - generic [ref=e739]: 1/5
+              - button "Go to page" [ref=e740] [cursor=pointer]:
+                - img [ref=e742]
+              - button [ref=e744] [cursor=pointer]
+            - generic [ref=e748]:
+              - button "Connect Git Repository" [ref=e749] [cursor=pointer]:
+                - img [ref=e750]
+                - generic [ref=e752]: Connect Git Repository
+                - img [ref=e753]
+              - button "Add Custom Domain" [ref=e755] [cursor=pointer]:
+                - img [ref=e756]
+                - generic [ref=e758]: Add Custom Domain
+              - button "Preview Deployment" [ref=e759] [cursor=pointer]:
+                - img [ref=e760]
+                - generic [ref=e762]: Preview Deployment
+              - button "Enable Web Analytics" [ref=e763] [cursor=pointer]:
+                - img [ref=e764]
+                - generic [ref=e766]: Enable Web Analytics
+              - button "Enable Speed Insights" [ref=e767] [cursor=pointer]:
+                - img [ref=e768]
+                - generic [ref=e770]: Enable Speed Insights
+          - generic [ref=e771]:
+            - generic [ref=e772]:
+              - generic [ref=e773]:
+                - paragraph [ref=e774]:
+                  - strong [ref=e775]: Observability
+                - time [ref=e776]: 6h
+              - link "Go to page" [ref=e777] [cursor=pointer]:
+                - /url: /z00mer0s-projects/stockstracker/observability?period=6h
+                - img [ref=e779]
+              - link [ref=e781] [cursor=pointer]:
+                - /url: /z00mer0s-projects/stockstracker/observability?period=6h
+            - generic [ref=e783]:
+              - generic [ref=e784]:
+                - generic [ref=e785]: Edge Requests
+                - generic [ref=e786]: "0"
+              - img [ref=e791]
+              - generic [ref=e792]:
+                - generic [ref=e793]: Function Invocations
+                - generic [ref=e794]: "6"
+              - img [ref=e799]
+              - generic [ref=e804]:
+                - generic [ref=e805]: Error Rate
+                - generic [ref=e806]: 0%
+              - img [ref=e811]
+          - generic [ref=e818]:
+            - generic [ref=e819]:
+              - paragraph [ref=e821]:
+                - strong [ref=e822]: Analytics
+              - link "Go to page" [ref=e823] [cursor=pointer]:
+                - /url: /z00mer0s-projects/stockstracker/analytics
+                - img [ref=e825]
+              - link [ref=e827] [cursor=pointer]:
+                - /url: /z00mer0s-projects/stockstracker/analytics
+            - generic [ref=e829]:
+              - img [ref=e831]
+              - generic [ref=e833]:
+                - paragraph [ref=e834]: Track Visitors and Page Views
+                - paragraph [ref=e835]: See real-time traffic, top pages, and audience trends.
+              - link "Enable Analytics" [ref=e836] [cursor=pointer]:
+                - /url: /z00mer0s-projects/stockstracker/analytics?enable=1&source=project-overview-analytics-card
+                - generic [ref=e837]: Enable Analytics
+        - generic [ref=e838]:
+          - paragraph [ref=e842]: Active Branches
+          - generic [ref=e846]:
+            - heading "No Active Branches" [level=3] [ref=e847]
+            - paragraph [ref=e849]: Commit using our Git connections.
+  - text: $
+  - alert [ref=e127]
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - img

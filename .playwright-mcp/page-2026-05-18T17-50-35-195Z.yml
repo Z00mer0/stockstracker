@@ -1,0 +1,106 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - generic [ref=e5]:
+          - link "Render" [ref=e7] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=e8]
+          - button "M My Workspace" [ref=e12] [cursor=pointer]:
+            - generic [ref=e13]:
+              - generic [ref=e14]: M
+              - generic "My Workspace" [ref=e15]
+              - img [ref=e16]
+        - generic [ref=e20]:
+          - navigation [ref=e21]:
+            - list [ref=e22]:
+              - listitem [ref=e23]:
+                - button "New Web Service" [ref=e185] [cursor=pointer]:
+                  - generic [ref=e186]:
+                    - img [ref=e187]
+                    - generic [ref=e189]:
+                      - generic [ref=e190]: New Web Service
+                      - img [ref=e191]
+          - button "Search Command + K" [ref=e32] [cursor=pointer]:
+            - img [ref=e34]
+            - text: Search
+            - generic [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: Command
+              - generic [ref=e40]: +
+              - generic [ref=e41]: K
+              - generic [ref=e42]: K
+        - generic [ref=e43]:
+          - button "New" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46]:
+              - img [ref=e47]
+              - generic [ref=e49]: New
+          - button "Upgrade" [ref=e51] [cursor=pointer]:
+            - generic [ref=e52]:
+              - img [ref=e53]
+              - generic [ref=e55]: Upgrade
+          - button "Help" [ref=e57] [cursor=pointer]:
+            - img "Help" [ref=e58]
+          - button "g" [ref=e63] [cursor=pointer]:
+            - generic [ref=e65]: g
+      - main [ref=e194]:
+        - heading "New Web Service" [level=1] [ref=e197]
+        - generic [ref=e198]:
+          - generic [ref=e201]: Source Code
+          - generic [ref=e202]:
+            - list [ref=e203]:
+              - listitem [ref=e204]:
+                - tab "Git Provider" [selected] [ref=e205] [cursor=pointer]
+              - listitem [ref=e206]:
+                - tab "Public Git Repository" [ref=e207] [cursor=pointer]
+              - listitem [ref=e208]:
+                - tab "Existing Image" [ref=e209] [cursor=pointer]
+            - tabpanel "Git Provider" [ref=e211]:
+              - generic [ref=e213]:
+                - generic [ref=e214]:
+                  - generic [ref=e217]:
+                    - img
+                    - textbox "Search" [active] [ref=e218]
+                  - button "Credentials (1)" [ref=e220] [cursor=pointer]:
+                    - generic [ref=e222]:
+                      - img [ref=e225]
+                      - img [ref=e229]
+                      - img [ref=e236]
+                    - generic [ref=e241]: Credentials (1)
+                    - img [ref=e242]
+                - list [ref=e246]:
+                  - listitem [ref=e247]:
+                    - button "GitHub Z00mer0 / makler-exam-app 16m ago" [ref=e248] [cursor=pointer]:
+                      - generic [ref=e249]:
+                        - img "GitHub" [ref=e251]
+                        - generic [ref=e253]: Z00mer0
+                        - generic [ref=e254]: /
+                        - img [ref=e255]
+                        - generic [ref=e257]: makler-exam-app
+                      - time [ref=e259]: 16m ago
+                  - listitem [ref=e260]:
+                    - button "GitHub Z00mer0 / stockstracker 11h ago" [ref=e261] [cursor=pointer]:
+                      - generic [ref=e262]:
+                        - img "GitHub" [ref=e264]
+                        - generic [ref=e266]: Z00mer0
+                        - generic [ref=e267]: /
+                        - generic [ref=e268]: stockstracker
+                      - time [ref=e270]: 11h ago
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic:
+                - img
+              - generic: Move
+              - img
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button:
+              - img
+  - iframe [ref=e182]:
+    

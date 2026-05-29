@@ -1,0 +1,289 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3] [cursor=pointer]: StocksTracker
+    - generic [ref=e4] [cursor=pointer]:
+      - generic [ref=e5]: 💼
+      - generic [ref=e6]: Mój portfel
+      - generic [ref=e7]: ▾
+    - navigation [ref=e8]:
+      - button "Portfel" [ref=e9] [cursor=pointer]
+      - button "Historia" [ref=e10] [cursor=pointer]
+      - button "Transakcje" [ref=e11] [cursor=pointer]
+      - button "Dywidendy" [ref=e12] [cursor=pointer]
+      - button "Kalendarz" [ref=e13] [cursor=pointer]
+      - button "👁 Watchlist" [ref=e14] [cursor=pointer]
+      - button "📊 Analiza" [ref=e15] [cursor=pointer]
+      - button "🧪 Lab" [ref=e16] [cursor=pointer]
+    - generic [ref=e17]:
+      - button "👁" [ref=e18] [cursor=pointer]
+      - button "🇬🇧 EN" [ref=e19] [cursor=pointer]
+      - button "🌙 Dark" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]: 🇵🇱 Otwarte
+        - generic [ref=e24]: 🇺🇸 Zamknięte
+      - generic [ref=e28]: Brak danych
+      - button "Ładowanie…" [disabled] [ref=e99]: Ładowanie…
+      - generic [ref=e101]:
+        - generic [ref=e102]: Adam
+        - button "Wyloguj" [ref=e103] [cursor=pointer]
+  - main [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: Wartość portfela (PLN)
+        - generic [ref=e36]: —
+        - generic [ref=e37]: Akcje + gotówka
+      - generic [ref=e38]:
+        - generic [ref=e39]: Zmiana dzienna
+        - generic [ref=e40]: —
+        - generic [ref=e41]: vs. poprzednie zamknięcie
+      - generic [ref=e42]:
+        - generic [ref=e43]: Niezrealizowany zysk
+        - generic [ref=e44]: —
+        - generic [ref=e45]: na otwartych pozycjach
+      - generic [ref=e46]:
+        - generic [ref=e47]: Zrealizowany zysk
+        - generic [ref=e48]: +0,00 zł
+        - generic [ref=e49]: brak sprzedaży
+      - generic [ref=e50]:
+        - generic [ref=e51]: Gotówka
+        - generic [ref=e52]: 0,00 zł
+        - generic [ref=e53]: brak gotówki
+      - generic [ref=e54]:
+        - generic [ref=e55]: IRR portfela
+        - generic [ref=e56]: —
+        - generic [ref=e57]: ważona roczna stopa zwrotu
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]: Moje pozycje
+          - generic [ref=e62]:
+            - button "⚙️" [ref=e64] [cursor=pointer]
+            - button "⬆ Import CSV" [ref=e65] [cursor=pointer]
+            - button "+ Dodaj spółkę" [ref=e66] [cursor=pointer]
+        - table [ref=e105]:
+          - rowgroup [ref=e106]:
+            - row "Spółka Ilość Śr. zakup i Cena teraz Zmiana dz. i Wart. zakupu i Wart. teraz (PLN) i Zysk/Strata i Okres i MOIC i IRR r. i" [ref=e107]:
+              - columnheader "Spółka" [ref=e108] [cursor=pointer]: Spółka
+              - columnheader "Ilość" [ref=e109] [cursor=pointer]: Ilość
+              - columnheader "Śr. zakup i" [ref=e110]:
+                - text: Śr. zakup
+                - generic [ref=e111]: i
+              - columnheader "Cena teraz" [ref=e112]
+              - columnheader "Zmiana dz. i" [ref=e113] [cursor=pointer]:
+                - text: Zmiana dz.
+                - generic [ref=e114]: i
+              - columnheader "Wart. zakupu i" [ref=e115] [cursor=pointer]:
+                - text: Wart. zakupu
+                - generic [ref=e116]: i
+              - columnheader "Wart. teraz (PLN) i" [ref=e117] [cursor=pointer]:
+                - text: Wart. teraz (PLN)
+                - generic [ref=e118]: i
+              - columnheader "Zysk/Strata i" [ref=e119] [cursor=pointer]:
+                - text: Zysk/Strata
+                - generic [ref=e120]: i
+              - columnheader "Okres i" [ref=e121]:
+                - text: Okres
+                - generic [ref=e122]: i
+              - columnheader "MOIC i" [ref=e123] [cursor=pointer]:
+                - text: MOIC
+                - generic [ref=e124]: i
+              - columnheader "IRR r. i" [ref=e125] [cursor=pointer]:
+                - text: IRR r.
+                - generic [ref=e126]: i
+              - columnheader [ref=e127]
+          - rowgroup [ref=e128]:
+            - row "DNP.WA Dino Polska S.A. 313,2546 32,98 zł Ładowanie… — 10 330,82 zł — — 5 mies. — — ⋯" [ref=e129]:
+              - cell "DNP.WA Dino Polska S.A." [ref=e130]:
+                - generic [ref=e131]:
+                  - img [ref=e133]
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: DNP.WA
+                    - generic "Dino Polska S.A." [ref=e136]
+              - cell "313,2546" [ref=e137]
+              - cell "32,98 zł" [ref=e138]
+              - cell "Ładowanie…" [ref=e139]
+              - cell "—" [ref=e140]
+              - cell "10 330,82 zł" [ref=e141]
+              - cell "—" [ref=e142]
+              - cell "—" [ref=e143]:
+                - generic [ref=e144]: —
+              - cell "5 mies." [ref=e145]
+              - cell "—" [ref=e146]
+              - cell "—" [ref=e147]
+              - cell "⋯" [ref=e148]:
+                - button "⋯" [ref=e151] [cursor=pointer]
+            - row "M MOD.WA MOD.WA 116 82,27 zł Ładowanie… — 9543,32 zł — — 5 mies. — — ⋯" [ref=e152]:
+              - cell "M MOD.WA MOD.WA" [ref=e153]:
+                - generic [ref=e154]:
+                  - generic [ref=e156]: M
+                  - generic [ref=e157]:
+                    - generic [ref=e158]: MOD.WA
+                    - generic "MOD.WA" [ref=e159]
+              - cell "116" [ref=e160]
+              - cell "82,27 zł" [ref=e161]
+              - cell "Ładowanie…" [ref=e162]
+              - cell "—" [ref=e163]
+              - cell "9543,32 zł" [ref=e164]
+              - cell "—" [ref=e165]
+              - cell "—" [ref=e166]:
+                - generic [ref=e167]: —
+              - cell "5 mies." [ref=e168]
+              - cell "—" [ref=e169]
+              - cell "—" [ref=e170]
+              - cell "⋯" [ref=e171]:
+                - button "⋯" [ref=e174] [cursor=pointer]
+            - row "D DGN.WA DGN.WA,0P0001MDJ6,365 24 159,13 zł Ładowanie… — 3819,12 zł — — 1 mies. — — ⋯" [ref=e175]:
+              - cell "D DGN.WA DGN.WA,0P0001MDJ6,365" [ref=e176]:
+                - generic [ref=e177]:
+                  - generic [ref=e179]: D
+                  - generic [ref=e180]:
+                    - generic [ref=e181]: DGN.WA
+                    - generic "DGN.WA,0P0001MDJ6,365" [ref=e182]
+              - cell "24" [ref=e183]
+              - cell "159,13 zł" [ref=e184]
+              - cell "Ładowanie…" [ref=e185]
+              - cell "—" [ref=e186]
+              - cell "3819,12 zł" [ref=e187]
+              - cell "—" [ref=e188]
+              - cell "—" [ref=e189]:
+                - generic [ref=e190]: —
+              - cell "1 mies." [ref=e191]
+              - cell "—" [ref=e192]
+              - cell "—" [ref=e193]
+              - cell "⋯" [ref=e194]:
+                - button "⋯" [ref=e197] [cursor=pointer]
+            - row "XTB.WA XTB S.A. 36 100,02 zł Ładowanie… — 3600,72 zł — — 22 dni — — ⋯" [ref=e198]:
+              - cell "XTB.WA XTB S.A." [ref=e199]:
+                - generic [ref=e200]:
+                  - img [ref=e202]
+                  - generic [ref=e203]:
+                    - generic [ref=e204]: XTB.WA
+                    - generic "XTB S.A." [ref=e205]
+              - cell "36" [ref=e206]
+              - cell "100,02 zł" [ref=e207]
+              - cell "Ładowanie…" [ref=e208]
+              - cell "—" [ref=e209]
+              - cell "3600,72 zł" [ref=e210]
+              - cell "—" [ref=e211]
+              - cell "—" [ref=e212]:
+                - generic [ref=e213]: —
+              - cell "22 dni" [ref=e214]
+              - cell "—" [ref=e215]
+              - cell "—" [ref=e216]
+              - cell "⋯" [ref=e217]:
+                - button "⋯" [ref=e220] [cursor=pointer]
+            - row "MRB.WA Mirbud S.A. 213 10,72 zł Ładowanie… — 2283,36 zł — — 1 mies. — — ⋯" [ref=e221]:
+              - cell "MRB.WA Mirbud S.A." [ref=e222]:
+                - generic [ref=e223]:
+                  - img [ref=e225]
+                  - generic [ref=e226]:
+                    - generic [ref=e227]: MRB.WA
+                    - generic "Mirbud S.A." [ref=e228]
+              - cell "213" [ref=e229]
+              - cell "10,72 zł" [ref=e230]
+              - cell "Ładowanie…" [ref=e231]
+              - cell "—" [ref=e232]
+              - cell "2283,36 zł" [ref=e233]
+              - cell "—" [ref=e234]
+              - cell "—" [ref=e235]:
+                - generic [ref=e236]: —
+              - cell "1 mies." [ref=e237]
+              - cell "—" [ref=e238]
+              - cell "—" [ref=e239]
+              - cell "⋯" [ref=e240]:
+                - button "⋯" [ref=e243] [cursor=pointer]
+            - row "CDR.WA CD Projekt S.A. 8 240,60 zł Ładowanie… — 1924,80 zł — — 5 mies. — — ⋯" [ref=e244]:
+              - cell "CDR.WA CD Projekt S.A." [ref=e245]:
+                - generic [ref=e246]:
+                  - img [ref=e248]
+                  - generic [ref=e249]:
+                    - generic [ref=e250]: CDR.WA
+                    - generic "CD Projekt S.A." [ref=e251]
+              - cell "8" [ref=e252]
+              - cell "240,60 zł" [ref=e253]
+              - cell "Ładowanie…" [ref=e254]
+              - cell "—" [ref=e255]
+              - cell "1924,80 zł" [ref=e256]
+              - cell "—" [ref=e257]
+              - cell "—" [ref=e258]:
+                - generic [ref=e259]: —
+              - cell "5 mies." [ref=e260]
+              - cell "—" [ref=e261]
+              - cell "—" [ref=e262]
+              - cell "⋯" [ref=e263]:
+                - button "⋯" [ref=e266] [cursor=pointer]
+            - row "S SN2.WA SN2.WA 55 28,12 zł Ładowanie… — 1546,60 zł — — 23 dni — — ⋯" [ref=e267]:
+              - cell "S SN2.WA SN2.WA" [ref=e268]:
+                - generic [ref=e269]:
+                  - generic [ref=e271]: S
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: SN2.WA
+                    - generic "SN2.WA" [ref=e274]
+              - cell "55" [ref=e275]
+              - cell "28,12 zł" [ref=e276]
+              - cell "Ładowanie…" [ref=e277]
+              - cell "—" [ref=e278]
+              - cell "1546,60 zł" [ref=e279]
+              - cell "—" [ref=e280]
+              - cell "—" [ref=e281]:
+                - generic [ref=e282]: —
+              - cell "23 dni" [ref=e283]
+              - cell "—" [ref=e284]
+              - cell "—" [ref=e285]
+              - cell "⋯" [ref=e286]:
+                - button "⋯" [ref=e289] [cursor=pointer]
+            - row "M MSW.WA Mostostal Warszawa S.A. 150 8,19 zł Ładowanie… — 1228,50 zł — — 3 mies. — — ⋯" [ref=e290]:
+              - cell "M MSW.WA Mostostal Warszawa S.A." [ref=e291]:
+                - generic [ref=e292]:
+                  - generic [ref=e294]: M
+                  - generic [ref=e295]:
+                    - generic [ref=e296]: MSW.WA
+                    - generic "Mostostal Warszawa S.A." [ref=e297]
+              - cell "150" [ref=e298]
+              - cell "8,19 zł" [ref=e299]
+              - cell "Ładowanie…" [ref=e300]
+              - cell "—" [ref=e301]
+              - cell "1228,50 zł" [ref=e302]
+              - cell "—" [ref=e303]
+              - cell "—" [ref=e304]:
+                - generic [ref=e305]: —
+              - cell "3 mies." [ref=e306]
+              - cell "—" [ref=e307]
+              - cell "—" [ref=e308]
+              - cell "⋯" [ref=e309]:
+                - button "⋯" [ref=e312] [cursor=pointer]
+      - generic [ref=e71]:
+        - generic [ref=e72]: Alokacja portfela
+        - generic [ref=e73]:
+          - button "Spółki" [ref=e74] [cursor=pointer]
+          - button "Sektory" [ref=e75] [cursor=pointer]
+          - button "Waluty" [ref=e76] [cursor=pointer]
+        - paragraph [ref=e314]: Dodaj spółki, aby zobaczyć alokację
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e80]: 💵 Gotówka w portfelu
+        - button "✎ Zarządzaj gotówką" [ref=e81] [cursor=pointer]
+      - generic [ref=e315]: Brak gotówki — kliknij „Zarządzaj gotówką" aby dodać.
+    - generic [ref=e316]:
+      - generic [ref=e318]: 📊 Analiza ryzyka
+      - generic [ref=e319]:
+        - generic [ref=e320]:
+          - generic [ref=e321]:
+            - text: Zmienność (roczna)
+            - generic [ref=e322]: i
+          - generic [ref=e323]: 2705.4%
+        - generic [ref=e324]:
+          - generic [ref=e325]:
+            - text: Max Drawdown
+            - generic [ref=e326]: i
+          - generic [ref=e327]: "-93.2%"
+        - generic [ref=e328]:
+          - generic [ref=e329]:
+            - text: Sharpe Ratio
+            - generic [ref=e330]: i
+          - generic [ref=e331]: "3.17"
+        - generic [ref=e332]:
+          - generic [ref=e333]:
+            - text: Sortino Ratio
+            - generic [ref=e334]: i
+          - generic [ref=e335]: "25.38"

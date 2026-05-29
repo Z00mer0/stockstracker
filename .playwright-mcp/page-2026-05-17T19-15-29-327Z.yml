@@ -1,0 +1,250 @@
+- generic [ref=e65]:
+  - complementary [ref=e67]:
+    - generic [ref=e69]:
+      - generic [ref=e70]: 📈
+      - generic [ref=e71]: StocksTracker
+    - navigation [ref=e72]:
+      - link "📊 Dashboard" [ref=e73] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e74]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e75] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e76]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e77] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e78]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e79] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e80]: 📋
+        - text: Transakcje
+      - link "📅 Dywidendy" [ref=e81] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e82]: 📅
+        - text: Dywidendy
+      - link "🗓️ Kalendarz" [ref=e83] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e84]: 🗓️
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e85] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e86]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e87] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e88]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e89] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e90]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e91] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e92]: ⚙️
+        - text: Ustawienia
+    - generic [ref=e93]:
+      - paragraph [ref=e94]: Adam
+      - button "Wyloguj →" [ref=e95] [cursor=pointer]
+  - generic [ref=e96]:
+    - banner [ref=e97]:
+      - heading "Dashboard" [level=1] [ref=e98]
+      - button "☀️" [ref=e99] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e100] [cursor=pointer]:
+        - img [ref=e101]
+      - generic [ref=e104]:
+        - generic [ref=e105]: NYSE
+        - generic [ref=e107]: GPW
+        - generic [ref=e109]: LSE
+      - button "↻ Odśwież" [ref=e111] [cursor=pointer]:
+        - generic [ref=e112]: ↻
+        - generic [ref=e113]: Odśwież
+    - main [ref=e114]:
+      - generic [ref=e115]:
+        - generic [ref=e116]:
+          - generic [ref=e117]:
+            - paragraph [ref=e118]: Wartość portfela
+            - paragraph [ref=e119]: 111 677,71 zł
+          - generic [ref=e120]:
+            - paragraph [ref=e121]: Unrealized P&L
+            - paragraph [ref=e122]: +3685,99 zł
+            - paragraph [ref=e123]: +4,95%
+          - generic [ref=e124]:
+            - paragraph [ref=e125]: Realized P&L
+            - paragraph [ref=e126]: +0,00 zł
+            - paragraph [ref=e127]: "Total ROI: +4,9%"
+          - generic [ref=e128]:
+            - paragraph [ref=e129]: Roczna Dywidenda
+            - paragraph [ref=e130]: 0,00 zł
+            - paragraph [ref=e131]: ostatnie 12 miesięcy
+          - generic [ref=e132]:
+            - paragraph [ref=e133]: Zmiana dzienna
+            - paragraph [ref=e134]: "-769,37 zł"
+            - paragraph [ref=e135]: "-0,69%"
+          - generic [ref=e136]:
+            - paragraph [ref=e137]: IRR portfela
+            - paragraph [ref=e138]: 41.9%
+            - paragraph [ref=e139]: ważona roczna stopa zwrotu
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - paragraph [ref=e142]: Gotówka
+            - button "✎ Zarządzaj" [ref=e143] [cursor=pointer]
+          - generic [ref=e145]:
+            - paragraph [ref=e146]: 🇵🇱 PLN
+            - paragraph [ref=e147]: 33 515,14
+        - generic [ref=e148]:
+          - generic [ref=e149]:
+            - paragraph [ref=e150]: Alokacja portfela
+            - generic [ref=e151]:
+              - button "Spółki" [ref=e152] [cursor=pointer]
+              - button "Waluty" [ref=e153] [cursor=pointer]
+              - button "Sektory" [ref=e154] [cursor=pointer]
+          - img [ref=e156]
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - paragraph [ref=e159]: Historia wartości portfela
+            - generic [ref=e160]: 16 punktów
+          - img [ref=e161]
+        - generic [ref=e164]:
+          - heading "Największe pozycje (wg kosztu)" [level=2] [ref=e166]
+          - table [ref=e168]:
+            - rowgroup [ref=e169]:
+              - row "Symbol Ilość Śr. Zakup Cena Teraz Zmiana Dz. Wart. Zakupu Wart. Teraz Zysk/Strata Okres MOIC" [ref=e170]:
+                - columnheader "Symbol" [ref=e171]
+                - columnheader "Ilość" [ref=e172]
+                - columnheader "Śr. Zakup" [ref=e173]
+                - columnheader "Cena Teraz" [ref=e174]
+                - columnheader "Zmiana Dz." [ref=e175]
+                - columnheader "Wart. Zakupu" [ref=e176]
+                - columnheader "Wart. Teraz" [ref=e177]
+                - columnheader "Zysk/Strata" [ref=e178]
+                - columnheader "Okres" [ref=e179]
+                - columnheader "MOIC" [ref=e180]
+            - rowgroup [ref=e181]:
+              - row "XTB.WAXTB S.A. 174 75,01 🇵🇱 105,42 🇵🇱 -4,42% 13 051,94 zł 18 343,08 zł +5291,14 zł 7mo 1,41x" [ref=e182]:
+                - cell "XTB.WAXTB S.A." [ref=e183] [cursor=pointer]
+                - cell "174" [ref=e184]
+                - cell "75,01 🇵🇱" [ref=e185]:
+                  - generic [ref=e186]: 75,01 🇵🇱
+                - cell "105,42 🇵🇱" [ref=e187]:
+                  - generic [ref=e188]: 105,42 🇵🇱
+                - cell "-4,42%" [ref=e189]:
+                  - generic [ref=e190]: "-4,42%"
+                - cell "13 051,94 zł" [ref=e191]:
+                  - generic [ref=e192]: 13 051,94 zł
+                - cell "18 343,08 zł" [ref=e193]:
+                  - generic [ref=e194]: 18 343,08 zł
+                - cell "+5291,14 zł" [ref=e195]:
+                  - generic [ref=e196]: +5291,14 zł
+                - cell "7mo" [ref=e197]
+                - cell "1,41x" [ref=e198]:
+                  - generic [ref=e199]: 1,41x
+              - row "MDV.WAModivo S.A. 116 111,00 🇵🇱 78,10 🇵🇱 +0,64% 12 876,00 zł 9059,60 zł -3816,40 zł 9mo 0,70x" [ref=e200]:
+                - cell "MDV.WAModivo S.A." [ref=e201] [cursor=pointer]
+                - cell "116" [ref=e202]
+                - cell "111,00 🇵🇱" [ref=e203]:
+                  - generic [ref=e204]: 111,00 🇵🇱
+                - cell "78,10 🇵🇱" [ref=e205]:
+                  - generic [ref=e206]: 78,10 🇵🇱
+                - cell "+0,64%" [ref=e207]:
+                  - generic [ref=e208]: +0,64%
+                - cell "12 876,00 zł" [ref=e209]:
+                  - generic [ref=e210]: 12 876,00 zł
+                - cell "9059,60 zł" [ref=e211]:
+                  - generic [ref=e212]: 9059,60 zł
+                - cell "-3816,40 zł" [ref=e213]:
+                  - generic [ref=e214]: "-3816,40 zł"
+                - cell "9mo" [ref=e215]
+                - cell "0,70x" [ref=e216]:
+                  - generic [ref=e217]: 0,70x
+              - row "HOODRobinhood Markets, Inc. 41,2500 83,62 🇺🇸 77,16 🇺🇸 -4,39% 12 596,93 zł 11 623,77 zł -973,17 zł 2mo 0,92x" [ref=e218]:
+                - cell "HOODRobinhood Markets, Inc." [ref=e219] [cursor=pointer]
+                - cell "41,2500" [ref=e220]
+                - cell "83,62 🇺🇸" [ref=e221]:
+                  - generic [ref=e222]: 83,62 🇺🇸
+                - cell "77,16 🇺🇸" [ref=e223]:
+                  - generic [ref=e224]: 77,16 🇺🇸
+                - cell "-4,39%" [ref=e225]:
+                  - generic [ref=e226]: "-4,39%"
+                - cell "12 596,93 zł" [ref=e227]:
+                  - generic [ref=e228]: 12 596,93 zł
+                - cell "11 623,77 zł" [ref=e229]:
+                  - generic [ref=e230]: 11 623,77 zł
+                - cell "-973,17 zł" [ref=e231]:
+                  - generic [ref=e232]: "-973,17 zł"
+                - cell "2mo" [ref=e233]
+                - cell "0,92x" [ref=e234]:
+                  - generic [ref=e235]: 0,92x
+              - row "DNP.WADino Polska S.A. 313,2546 36,00 🇵🇱 32,08 🇵🇱 +9,98% 11 277,17 zł 10 049,21 zł -1227,96 zł 4mo 0,89x" [ref=e236]:
+                - cell "DNP.WADino Polska S.A." [ref=e237] [cursor=pointer]
+                - cell "313,2546" [ref=e238]
+                - cell "36,00 🇵🇱" [ref=e239]:
+                  - generic [ref=e240]: 36,00 🇵🇱
+                - cell "32,08 🇵🇱" [ref=e241]:
+                  - generic [ref=e242]: 32,08 🇵🇱
+                - cell "+9,98%" [ref=e243]:
+                  - generic [ref=e244]: +9,98%
+                - cell "11 277,17 zł" [ref=e245]:
+                  - generic [ref=e246]: 11 277,17 zł
+                - cell "10 049,21 zł" [ref=e247]:
+                  - generic [ref=e248]: 10 049,21 zł
+                - cell "-1227,96 zł" [ref=e249]:
+                  - generic [ref=e250]: "-1227,96 zł"
+                - cell "4mo" [ref=e251]
+                - cell "0,89x" [ref=e252]:
+                  - generic [ref=e253]: 0,89x
+              - row "CBF.WACyber_Folks S.A. 54 202,72 🇵🇱 176,10 🇵🇱 -0,17% 10 947,12 zł 9509,40 zł -1437,72 zł 3mo 0,87x" [ref=e254]:
+                - cell "CBF.WACyber_Folks S.A." [ref=e255] [cursor=pointer]
+                - cell "54" [ref=e256]
+                - cell "202,72 🇵🇱" [ref=e257]:
+                  - generic [ref=e258]: 202,72 🇵🇱
+                - cell "176,10 🇵🇱" [ref=e259]:
+                  - generic [ref=e260]: 176,10 🇵🇱
+                - cell "-0,17%" [ref=e261]:
+                  - generic [ref=e262]: "-0,17%"
+                - cell "10 947,12 zł" [ref=e263]:
+                  - generic [ref=e264]: 10 947,12 zł
+                - cell "9509,40 zł" [ref=e265]:
+                  - generic [ref=e266]: 9509,40 zł
+                - cell "-1437,72 zł" [ref=e267]:
+                  - generic [ref=e268]: "-1437,72 zł"
+                - cell "3mo" [ref=e269]
+                - cell "0,87x" [ref=e270]:
+                  - generic [ref=e271]: 0,87x
+              - row "KRU.WAKRUK Spólka Akcyjna 18 411,00 🇵🇱 426,10 🇵🇱 -0,51% 7398,00 zł 7669,80 zł +271,80 zł 2.0yr 1,04x" [ref=e272]:
+                - cell "KRU.WAKRUK Spólka Akcyjna" [ref=e273] [cursor=pointer]
+                - cell "18" [ref=e274]
+                - cell "411,00 🇵🇱" [ref=e275]:
+                  - generic [ref=e276]: 411,00 🇵🇱
+                - cell "426,10 🇵🇱" [ref=e277]:
+                  - generic [ref=e278]: 426,10 🇵🇱
+                - cell "-0,51%" [ref=e279]:
+                  - generic [ref=e280]: "-0,51%"
+                - cell "7398,00 zł" [ref=e281]:
+                  - generic [ref=e282]: 7398,00 zł
+                - cell "7669,80 zł" [ref=e283]:
+                  - generic [ref=e284]: 7669,80 zł
+                - cell "+271,80 zł" [ref=e285]:
+                  - generic [ref=e286]: +271,80 zł
+                - cell "2.0yr" [ref=e287]
+                - cell "1,04x" [ref=e288]:
+                  - generic [ref=e289]: 1,04x
+              - row "PKN.WAOrlen S.A. 50 54,31 🇵🇱 140,08 🇵🇱 -2,96% 2715,50 zł 7004,00 zł +4288,50 zł 1.3yr 2,58x" [ref=e290]:
+                - cell "PKN.WAOrlen S.A." [ref=e291] [cursor=pointer]
+                - cell "50" [ref=e292]
+                - cell "54,31 🇵🇱" [ref=e293]:
+                  - generic [ref=e294]: 54,31 🇵🇱
+                - cell "140,08 🇵🇱" [ref=e295]:
+                  - generic [ref=e296]: 140,08 🇵🇱
+                - cell "-2,96%" [ref=e297]:
+                  - generic [ref=e298]: "-2,96%"
+                - cell "2715,50 zł" [ref=e299]:
+                  - generic [ref=e300]: 2715,50 zł
+                - cell "7004,00 zł" [ref=e301]:
+                  - generic [ref=e302]: 7004,00 zł
+                - cell "+4288,50 zł" [ref=e303]:
+                  - generic [ref=e304]: +4288,50 zł
+                - cell "1.3yr" [ref=e305]
+                - cell "2,58x" [ref=e306]:
+                  - generic [ref=e307]: 2,58x

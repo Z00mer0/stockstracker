@@ -1,0 +1,40 @@
+{"type":"server-started","port":51685,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:51685","screen_dir":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content","state_dir":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/state"}
+{"type":"screen-added","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"source":"user-event","type":"click","text":"B\n    \n      Tryb nauki — materiały\n      Lista tematów/rozdziałów do przeczytania, widok treści z nawigacją między rozdziałami","choice":"study","id":null,"timestamp":1779087713755}
+{"source":"user-event","type":"click","text":"A\n    \n      Dashboard / Strona główna\n      Po zalogowaniu: kafelki \"Ucz się\" i \"Quiz/Egzamin\", ostatnie wyniki, procent opanowania materiału","choice":"home","id":null,"timestamp":1779087714815}
+{"source":"user-event","type":"click","text":"B\n    \n      Tryb nauki — materiały\n      Lista tematów/rozdziałów do przeczytania, widok treści z nawigacją między rozdziałami","choice":"study","id":null,"timestamp":1779087715504}
+{"source":"user-event","type":"click","text":"C\n    \n      Tryb Quiz / Egzamin\n      Jak w Twoim screenshocie: timer, pytania wielokrotnego wyboru, nawigacja, wyniki na końcu","choice":"quiz","id":null,"timestamp":1779087716300}
+{"source":"user-event","type":"click","text":"A\n    \n      Dashboard / Strona główna\n      Po zalogowaniu: kafelki \"Ucz się\" i \"Quiz/Egzamin\", ostatnie wyniki, procent opanowania materiału","choice":"home","id":null,"timestamp":1779087716904}
+{"source":"user-event","type":"click","text":"C\n    \n      Tryb Quiz / Egzamin\n      Jak w Twoim screenshocie: timer, pytania wielokrotnego wyboru, nawigacja, wyniki na końcu","choice":"quiz","id":null,"timestamp":1779087717493}
+{"type":"screen-added","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-added","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/quiz-mobile.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/waiting.html"}
+{"type":"screen-updated","file":"/Users/adamgorski/Desktop/ClaudeCode/.superpowers/brainstorm/20875-1779087294/content/app-screens.html"}
+{"type":"server-stopped","reason":"idle timeout"}

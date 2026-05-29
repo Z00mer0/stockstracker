@@ -1,0 +1,602 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - alert [ref=e5]:
+        - generic [ref=e7]:
+          - img [ref=e9]
+          - generic [ref=e14]:
+            - generic [ref=e15]: Upcoming maintenance
+            - generic [ref=e16]:
+              - text: We will be upgrading critical infrastructure on May 27th, 3:00 am GMT+2 (May 27th, 1:00 am UTC). Follow our
+              - link "status page" [ref=e17] [cursor=pointer]:
+                - /url: https://status.render.com/incidents/7rdmw95g2h5q
+              - text: for updates.
+        - button "Close notification" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+      - banner [ref=e21]:
+        - generic [ref=e22]:
+          - link "Render" [ref=e24] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=e25]
+          - button "M My Workspace" [ref=e29] [cursor=pointer]:
+            - generic [ref=e30]:
+              - generic [ref=e31]: M
+              - generic "My Workspace" [ref=e32]
+              - img [ref=e33]
+        - generic [ref=e37]:
+          - navigation [ref=e38]:
+            - list [ref=e39]:
+              - listitem [ref=e40]:
+                - link "My project" [ref=e447] [cursor=pointer]:
+                  - /url: /project/prj-d7r8p8favr4c739v4or0
+                  - img [ref=e448]
+                  - generic [ref=e452]: My project
+                - button [ref=e453] [cursor=pointer]:
+                  - img [ref=e454]
+                - text: /
+              - listitem [ref=e456]:
+                - link "Production" [ref=e457] [cursor=pointer]:
+                  - /url: /project/prj-d7r8p8favr4c739v4or0/environment/evm-d7r8p8favr4c739v4org
+                  - img [ref=e458]
+                  - generic [ref=e471]: Production
+                - button [ref=e474] [cursor=pointer]:
+                  - img [ref=e475]
+                - text: /
+              - listitem [ref=e477]:
+                - button "stockstracker" [ref=e480] [cursor=pointer]:
+                  - generic [ref=e481]:
+                    - img [ref=e482]
+                    - generic [ref=e484]:
+                      - generic [ref=e485]: stockstracker
+                      - img [ref=e486]
+          - button "Search Command + K" [ref=e48] [cursor=pointer]:
+            - img [ref=e50]
+            - text: Search
+            - generic [ref=e52]:
+              - img [ref=e53]
+              - generic [ref=e55]: Command
+              - generic [ref=e56]: +
+              - generic [ref=e57]: K
+              - generic [ref=e58]: K
+        - generic [ref=e59]:
+          - button "New" [ref=e61] [cursor=pointer]:
+            - generic [ref=e62]:
+              - img [ref=e63]
+              - generic [ref=e65]: New
+          - button "Upgrade" [ref=e67] [cursor=pointer]:
+            - generic [ref=e68]:
+              - img [ref=e69]
+              - generic [ref=e71]: Upgrade
+          - button "Help" [ref=e73] [cursor=pointer]:
+            - img "Help" [ref=e74]
+          - button "g" [ref=e79] [cursor=pointer]:
+            - generic [ref=e81]: g
+      - generic [ref=e82]:
+        - navigation [ref=e83]:
+          - separator [ref=e84]
+          - generic [ref=e85]:
+            - generic [ref=e267]:
+              - link "Environment" [ref=e488] [cursor=pointer]:
+                - /url: /project/prj-d7r8p8favr4c739v4or0/environment/evm-d7r8p8favr4c739v4org
+                - img [ref=e269]
+                - generic [ref=e271]: Environment
+              - generic [ref=e272]:
+                - img [ref=e489]
+                - generic [ref=e277]: stockstracker
+            - generic [ref=e86]:
+              - list [ref=e491]:
+                - listitem [ref=e492]:
+                  - link "Events" [ref=e493] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/events
+                    - img [ref=e494]
+                    - generic [ref=e501]: Events
+                - listitem [ref=e502]:
+                  - link "Settings" [ref=e503] [cursor=pointer]:
+                    - /url: /web/srv-d7r8p8jbc2fs7388alo0/settings
+                    - img [ref=e504]
+                    - generic [ref=e507]: Settings
+              - generic [ref=e508]:
+                - generic [ref=e509]: Monitor
+                - list "Monitor" [ref=e510]:
+                  - listitem [ref=e511]:
+                    - link "Logs" [ref=e512] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/logs
+                      - img [ref=e513]
+                      - generic [ref=e518]: Logs
+                  - listitem [ref=e519]:
+                    - link "Metrics" [ref=e520] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/metrics
+                      - img [ref=e521]
+                      - generic [ref=e523]: Metrics
+              - generic [ref=e287]:
+                - generic [ref=e288]: Manage
+                - list "Manage" [ref=e289]:
+                  - listitem [ref=e524]:
+                    - link "Environment" [ref=e525] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/env
+                      - img [ref=e526]
+                      - generic [ref=e530]: Environment
+                  - listitem [ref=e531]:
+                    - link "Shell" [ref=e532] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/shell
+                      - img [ref=e533]
+                      - generic [ref=e537]:
+                        - generic [ref=e538]: Shell
+                        - status [ref=e541]:
+                          - img [ref=e542]
+                  - listitem [ref=e544]:
+                    - link "Scaling" [ref=e545] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/scaling
+                      - img [ref=e546]
+                      - generic [ref=e551]:
+                        - generic [ref=e552]: Scaling
+                        - status [ref=e555]:
+                          - img [ref=e556]
+                  - listitem [ref=e558]:
+                    - link "Previews" [ref=e559] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/previews
+                      - img [ref=e560]
+                      - generic [ref=e564]: Previews
+                  - listitem [ref=e565]:
+                    - link "Disk" [ref=e566] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/disks
+                      - img [ref=e567]
+                      - generic [ref=e572]:
+                        - generic [ref=e573]: Disk
+                        - status [ref=e576]:
+                          - img [ref=e577]
+                  - listitem [ref=e579]:
+                    - link "One-Off Jobs" [ref=e580] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/jobs
+                      - img [ref=e581]
+                      - generic [ref=e587]:
+                        - generic [ref=e588]: One-Off Jobs
+                        - status [ref=e591]:
+                          - img [ref=e592]
+          - generic [ref=e171]:
+            - button "Collapse items" [expanded] [ref=e172] [cursor=pointer]:
+              - img [ref=e173]
+            - list "Footer navigation" [ref=e175]:
+              - listitem [ref=e176]:
+                - link "Changelog" [ref=e177] [cursor=pointer]:
+                  - /url: https://render.com/changelog
+                  - img [ref=e178]
+                  - generic [ref=e183]: Changelog
+              - listitem [ref=e184]:
+                - link "Invite a friend" [ref=e185] [cursor=pointer]:
+                  - /url: /invites
+                  - img [ref=e186]
+                  - generic [ref=e188]: Invite a friend
+              - listitem [ref=e189]:
+                - button "Contact support" [ref=e190] [cursor=pointer]:
+                  - img [ref=e191]
+                  - generic [ref=e195]: Contact support
+            - link "Render Status" [ref=e197] [cursor=pointer]:
+              - /url: https://status.render.com
+              - img [ref=e198]
+              - generic [ref=e200]: Render Status
+        - generic [ref=e594]:
+          - banner [ref=e596]:
+            - generic [ref=e597]:
+              - generic [ref=e598]:
+                - img [ref=e599]
+                - generic [ref=e601]: Web Service
+              - generic [ref=e602]:
+                - heading "stockstracker Python 3 Free Upgrade your instance" [level=1] [ref=e604]:
+                  - generic [ref=e605]: stockstracker
+                  - generic [ref=e606]:
+                    - generic [ref=e607]: Python 3
+                    - link "Free" [ref=e608] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/plan
+                      - generic [ref=e609]: Free
+                    - link "Upgrade your instance" [ref=e610] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/plan
+                      - text: Upgrade your instance
+                      - img [ref=e612]
+                - generic [ref=e615]:
+                  - button "Connect" [ref=e616] [cursor=pointer]:
+                    - generic [ref=e617]: Connect
+                    - img [ref=e618]
+                  - button "Manual Deploy" [ref=e620] [cursor=pointer]:
+                    - generic [ref=e621]: Manual Deploy
+                    - img [ref=e622]
+            - generic [ref=e626]:
+              - generic [ref=e628]:
+                - generic [ref=e629]: "Service ID:"
+                - generic "Service ID:" [ref=e630]:
+                  - generic [ref=e631]: srv-d7r8p8jbc2fs7388alo0
+                  - button "Copy" [ref=e634] [cursor=pointer]:
+                    - img [ref=e635]
+              - generic [ref=e638]:
+                - img "GitHub" [ref=e640]
+                - link "Z00mer0 / stockstracker main" [ref=e642] [cursor=pointer]:
+                  - /url: https://github.com/Z00mer0/stockstracker/tree/main
+                  - generic [ref=e643]:
+                    - generic [ref=e644]: Z00mer0 / stockstracker
+                    - img [ref=e645]
+                    - generic [ref=e647]: main
+              - generic "Copy" [ref=e649]:
+                - link "https://stockstracker.onrender.com" [ref=e651] [cursor=pointer]:
+                  - /url: https://stockstracker.onrender.com
+                - button "Copy" [ref=e654] [cursor=pointer]:
+                  - img [ref=e655]
+          - main [ref=e658]:
+            - generic [ref=e659]:
+              - alert [ref=e660]:
+                - generic [ref=e662]:
+                  - img [ref=e664]
+                  - generic [ref=e668]:
+                    - generic [ref=e670]: Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+                    - link "Upgrade now" [ref=e672] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/plan
+              - button "Filter events 31" [ref=e674] [cursor=pointer]:
+                - img [ref=e676]
+                - generic [ref=e678]:
+                  - text: Filter events
+                  - generic [ref=e679]: "31"
+                - img [ref=e680]
+              - generic [ref=e682]:
+                - list [ref=e683]:
+                  - listitem [ref=e684]:
+                    - generic [ref=e685]:
+                      - img [ref=e688]
+                      - generic [ref=e690]:
+                        - generic [ref=e691]:
+                          - generic [ref=e692]:
+                            - link "Deploy" [ref=e693] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86snf57vvec73b6mul0
+                            - text: live
+                          - text: for
+                          - link "86bcc3b" [ref=e695] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/86bcc3b8dbcaf942644fdac1e108343c44717b84
+                          - text: ":"
+                          - generic [ref=e696]: "feat(vercel): add vercel.json + dynamic CORS for Vercel deploy - vercel.json: build React, proxy /api/* to Render backend - server.py: CORS_EXTRA_ORIGIN env var adds Vercel domain to allowed origins Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e697]: May 20, 2026 at 4:58 PM
+                  - listitem [ref=e698]:
+                    - generic [ref=e699]:
+                      - img [ref=e702]
+                      - generic [ref=e705]:
+                        - generic [ref=e706]:
+                          - generic [ref=e707]:
+                            - generic [ref=e708]:
+                              - link "Deploy" [ref=e709] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86snf57vvec73b6mul0
+                              - text: started
+                            - text: for
+                            - link "86bcc3b" [ref=e711] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/86bcc3b8dbcaf942644fdac1e108343c44717b84
+                            - text: ":"
+                            - generic [ref=e712]: "feat(vercel): add vercel.json + dynamic CORS for Vercel deploy - vercel.json: build React, proxy /api/* to Render backend - server.py: CORS_EXTRA_ORIGIN env var adds Vercel domain to allowed origins Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e713]: New commit via Auto-Deploy
+                        - generic [ref=e714]: May 20, 2026 at 4:57 PM
+                  - listitem [ref=e715]:
+                    - generic [ref=e716]:
+                      - img [ref=e719]
+                      - generic [ref=e721]:
+                        - generic [ref=e722]:
+                          - generic [ref=e723]:
+                            - link "Deploy" [ref=e724] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86rdojtqb8s73dgpu90
+                            - text: live
+                          - text: for
+                          - link "78d7579" [ref=e726] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/78d7579a21b3d83fb542a3991454cd6fd00d9694
+                          - text: ":"
+                          - generic [ref=e727]: "fix(auth): add X-Auth-Token header to all direct fetch() calls After adding auth guards to /api/proxy, /api/finnhub/*, and /api/dividends/upcoming, React hooks that used bare fetch() instead of the axios instance were getting 401 on every data request. Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e728]: May 20, 2026 at 3:29 PM
+                    - link "Rollback" [ref=e730] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86rdojtqb8s73dgpu90/rollback
+                      - img [ref=e732]
+                      - text: Rollback
+                  - listitem [ref=e734]:
+                    - generic [ref=e735]:
+                      - img [ref=e738]
+                      - generic [ref=e741]:
+                        - generic [ref=e742]:
+                          - generic [ref=e743]:
+                            - generic [ref=e744]:
+                              - link "Deploy" [ref=e745] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86rdojtqb8s73dgpu90
+                              - text: started
+                            - text: for
+                            - link "78d7579" [ref=e747] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/78d7579a21b3d83fb542a3991454cd6fd00d9694
+                            - text: ":"
+                            - generic [ref=e748]: "fix(auth): add X-Auth-Token header to all direct fetch() calls After adding auth guards to /api/proxy, /api/finnhub/*, and /api/dividends/upcoming, React hooks that used bare fetch() instead of the axios instance were getting 401 on every data request. Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e749]: New commit via Auto-Deploy
+                        - generic [ref=e750]: May 20, 2026 at 3:28 PM
+                  - listitem [ref=e751]:
+                    - generic [ref=e752]:
+                      - img [ref=e755]
+                      - generic [ref=e757]:
+                        - generic [ref=e758]:
+                          - generic [ref=e759]:
+                            - link "Deploy" [ref=e760] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86qoi0js32c738pt9s0
+                            - text: live
+                          - text: for
+                          - link "831e924" [ref=e762] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/831e92472521d2ed34ec91e2914e394333ef0eb9
+                          - text: ":"
+                          - generic [ref=e763]: "security: security headers — X-Content-Type-Options, X-Frame-Options, Referrer-Policy"
+                        - generic [ref=e764]: May 20, 2026 at 2:46 PM
+                    - link "Rollback" [ref=e766] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86qoi0js32c738pt9s0/rollback
+                      - img [ref=e768]
+                      - text: Rollback
+                  - listitem [ref=e770]:
+                    - generic [ref=e771]:
+                      - img [ref=e774]
+                      - generic [ref=e777]:
+                        - generic [ref=e778]:
+                          - generic [ref=e779]:
+                            - generic [ref=e780]:
+                              - link "Deploy" [ref=e781] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86qoi0js32c738pt9s0
+                              - text: started
+                            - text: for
+                            - link "831e924" [ref=e783] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/831e92472521d2ed34ec91e2914e394333ef0eb9
+                            - text: ":"
+                            - generic [ref=e784]: "security: security headers — X-Content-Type-Options, X-Frame-Options, Referrer-Policy"
+                          - generic [ref=e785]: New commit via Auto-Deploy
+                        - generic [ref=e786]: May 20, 2026 at 2:42 PM
+                  - listitem [ref=e787]:
+                    - generic [ref=e788]:
+                      - img [ref=e791]
+                      - generic [ref=e793]:
+                        - generic [ref=e794]:
+                          - generic [ref=e795]:
+                            - link "Deploy" [ref=e796] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86q4aurnols7382kj1g
+                            - text: live
+                          - text: for
+                          - link "b3312dd" [ref=e798] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/b3312dd3f5fd999a9c21588be740a2bfb814738c
+                          - text: ":"
+                          - generic [ref=e799]: "security: sanitize all user inputs — size limits, type checks, format validation server.py: - _str() helper: rejects non-strings, enforces max length per field - read_json(): hard body-size cap (auth 4KB, data 512KB), rejects non-object JSON - get_username(): rejects tokens >100 chars - /api/login: username regex [a-z0-9_-]{1,64}, password max 1024 chars - /api/register: same + display_name max 64 chars - /api/change-password: password max 1024 chars - /api/data: 512KB cap, must be JSON object (not array/string) - /api/dividends/upcoming: symbols capped at 30, format [A-Z0-9]{1,10} - /api/finnhub/*: sub-path validated (no .., safe chars only), qs max 500 chars - /api/proxy: URL length check (max 2000 chars) - ValueError propagated with message, generic Exception hidden Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e800]: May 20, 2026 at 2:01 PM
+                    - link "Rollback" [ref=e802] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86q4aurnols7382kj1g/rollback
+                      - img [ref=e804]
+                      - text: Rollback
+                  - listitem [ref=e806]:
+                    - generic [ref=e807]:
+                      - img [ref=e810]
+                      - generic [ref=e813]:
+                        - generic [ref=e814]:
+                          - generic [ref=e815]:
+                            - generic [ref=e816]:
+                              - link "Deploy" [ref=e817] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86q4aurnols7382kj1g
+                              - text: started
+                            - text: for
+                            - link "b3312dd" [ref=e819] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/b3312dd3f5fd999a9c21588be740a2bfb814738c
+                            - text: ":"
+                            - generic [ref=e820]: "security: sanitize all user inputs — size limits, type checks, format validation server.py: - _str() helper: rejects non-strings, enforces max length per field - read_json(): hard body-size cap (auth 4KB, data 512KB), rejects non-object JSON - get_username(): rejects tokens >100 chars - /api/login: username regex [a-z0-9_-]{1,64}, password max 1024 chars - /api/register: same + display_name max 64 chars - /api/change-password: password max 1024 chars - /api/data: 512KB cap, must be JSON object (not array/string) - /api/dividends/upcoming: symbols capped at 30, format [A-Z0-9]{1,10} - /api/finnhub/*: sub-path validated (no .., safe chars only), qs max 500 chars - /api/proxy: URL length check (max 2000 chars) - ValueError propagated with message, generic Exception hidden Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e821]: New commit via Auto-Deploy
+                        - generic [ref=e822]: May 20, 2026 at 1:59 PM
+                  - listitem [ref=e823]:
+                    - generic [ref=e824]:
+                      - img [ref=e827]
+                      - generic [ref=e829]:
+                        - generic [ref=e830]:
+                          - generic [ref=e831]:
+                            - link "Deploy" [ref=e832] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86pu5uq1p3s73f4f4sg
+                            - text: live
+                          - text: for
+                          - link "654c752" [ref=e834] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/654c752e4de99db5f7afc360f765840ef243e07d
+                          - text: ":"
+                          - generic [ref=e835]: "security: usuń wszystkie hardcoded API keys — Finnhub i AV przez backend proxy - server.py: /api/finnhub/* proxy — token z env FINNHUB_TOKEN - server.py: /api/alphavantage proxy — klucz z env ALPHAVANTAGE_KEY - Usunięto FINNHUB_TOKEN z: usePortfolioMetrics, useCalendarData, ScenarioLab, Watchlist, myfund.html - Usunięto AV_KEY z myfund.html - Usunięto hardcoded fallback w /api/dividends/upcoming Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e836]: May 20, 2026 at 1:47 PM
+                    - link "Rollback" [ref=e838] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86pu5uq1p3s73f4f4sg/rollback
+                      - img [ref=e840]
+                      - text: Rollback
+                  - listitem [ref=e842]:
+                    - generic [ref=e843]:
+                      - img [ref=e846]
+                      - generic [ref=e849]:
+                        - generic [ref=e850]:
+                          - generic [ref=e851]:
+                            - generic [ref=e852]:
+                              - link "Deploy" [ref=e853] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86pu5uq1p3s73f4f4sg
+                              - text: started
+                            - text: for
+                            - link "654c752" [ref=e855] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/654c752e4de99db5f7afc360f765840ef243e07d
+                            - text: ":"
+                            - generic [ref=e856]: "security: usuń wszystkie hardcoded API keys — Finnhub i AV przez backend proxy - server.py: /api/finnhub/* proxy — token z env FINNHUB_TOKEN - server.py: /api/alphavantage proxy — klucz z env ALPHAVANTAGE_KEY - Usunięto FINNHUB_TOKEN z: usePortfolioMetrics, useCalendarData, ScenarioLab, Watchlist, myfund.html - Usunięto AV_KEY z myfund.html - Usunięto hardcoded fallback w /api/dividends/upcoming Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e857]: New commit via Auto-Deploy
+                        - generic [ref=e858]: May 20, 2026 at 1:46 PM
+                  - listitem [ref=e859]:
+                    - generic [ref=e860]:
+                      - img [ref=e863]
+                      - generic [ref=e865]:
+                        - generic [ref=e866]:
+                          - generic [ref=e867]:
+                            - link "Deploy" [ref=e868] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86pf8ok1i2s73d9928g
+                            - text: live
+                          - text: for
+                          - link "b7cc9f3" [ref=e870] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/b7cc9f3b85f3b87da4e9721a2f04b94de315c05e
+                          - text: ":"
+                          - generic [ref=e871]: "feat(settings): zmiana hasła — endpoint /api/change-password + sekcja w Ustawieniach Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e872]: May 20, 2026 at 1:15 PM
+                    - link "Rollback" [ref=e874] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86pf8ok1i2s73d9928g/rollback
+                      - img [ref=e876]
+                      - text: Rollback
+                  - listitem [ref=e878]:
+                    - generic [ref=e879]:
+                      - img [ref=e882]
+                      - generic [ref=e885]:
+                        - generic [ref=e886]:
+                          - generic [ref=e887]:
+                            - generic [ref=e888]:
+                              - link "Deploy" [ref=e889] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86pf8ok1i2s73d9928g
+                              - text: started
+                            - text: for
+                            - link "b7cc9f3" [ref=e891] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/b7cc9f3b85f3b87da4e9721a2f04b94de315c05e
+                            - text: ":"
+                            - generic [ref=e892]: "feat(settings): zmiana hasła — endpoint /api/change-password + sekcja w Ustawieniach Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e893]: New commit via Auto-Deploy
+                        - generic [ref=e894]: May 20, 2026 at 1:14 PM
+                  - listitem [ref=e895]:
+                    - generic [ref=e896]:
+                      - img [ref=e899]
+                      - generic [ref=e901]:
+                        - generic [ref=e902]:
+                          - generic [ref=e903]:
+                            - link "Deploy" [ref=e904] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86p1uernols7381vlag
+                            - text: live
+                          - text: for
+                          - link "53cfe3e" [ref=e906] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/53cfe3e8d1dd0da7520f1b7b291a994e3b0c1d81
+                          - text: ":"
+                          - generic [ref=e907]: "feat(auth): zakładanie konta bezpośrednio w /app — przełącznik Logowanie/Rejestracja Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e908]: May 20, 2026 at 12:47 PM
+                    - link "Rollback" [ref=e910] [cursor=pointer]:
+                      - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86p1uernols7381vlag/rollback
+                      - img [ref=e912]
+                      - text: Rollback
+                  - listitem [ref=e914]:
+                    - generic [ref=e915]:
+                      - img [ref=e918]
+                      - generic [ref=e921]:
+                        - generic [ref=e922]:
+                          - generic [ref=e923]:
+                            - generic [ref=e924]:
+                              - link "Deploy" [ref=e925] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86p1uernols7381vlag
+                              - text: started
+                            - text: for
+                            - link "53cfe3e" [ref=e927] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/53cfe3e8d1dd0da7520f1b7b291a994e3b0c1d81
+                            - text: ":"
+                            - generic [ref=e928]: "feat(auth): zakładanie konta bezpośrednio w /app — przełącznik Logowanie/Rejestracja Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e929]: New commit via Auto-Deploy
+                        - generic [ref=e930]: May 20, 2026 at 12:46 PM
+                  - listitem [ref=e931]:
+                    - generic [ref=e932]:
+                      - img [ref=e935]
+                      - generic [ref=e937]:
+                        - generic [ref=e938]:
+                          - generic [ref=e939]:
+                            - link "Deploy" [ref=e940] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86oq8uq1p3s73f3ntig
+                            - text: live
+                          - text: for
+                          - link "5f93ae5" [ref=e942] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/5f93ae5a005831c0b2a13cd3129d1421edf1a29e
+                          - text: ":"
+                          - generic [ref=e943]: "feat(security): rate limiting na /api/login i /api/register — max 10 prób / 15 min per IP Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e944]: May 20, 2026 at 12:31 PM
+                  - listitem [ref=e945]:
+                    - generic [ref=e946]:
+                      - img [ref=e949]
+                      - generic [ref=e952]:
+                        - generic [ref=e953]:
+                          - generic [ref=e954]:
+                            - generic [ref=e955]:
+                              - link "Deploy" [ref=e956] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d86oq8uq1p3s73f3ntig
+                              - text: started
+                            - text: for
+                            - link "5f93ae5" [ref=e958] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/5f93ae5a005831c0b2a13cd3129d1421edf1a29e
+                            - text: ":"
+                            - generic [ref=e959]: "feat(security): rate limiting na /api/login i /api/register — max 10 prób / 15 min per IP Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e960]: New commit via Auto-Deploy
+                        - generic [ref=e961]: May 20, 2026 at 12:29 PM
+                  - listitem [ref=e962]:
+                    - generic [ref=e963]:
+                      - img [ref=e966]
+                      - generic [ref=e968]:
+                        - generic [ref=e969]:
+                          - generic [ref=e970]:
+                            - link "Deploy" [ref=e971] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d861anc2m8qs73fqamlg
+                            - text: live
+                          - text: for
+                          - link "a99e756" [ref=e973] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/a99e7569a6c4b6c0bb3d53cb571128920ceaf135
+                          - text: ":"
+                          - generic [ref=e974]: "fix(prices): Stooq CSV jako 4. fallback gdy Yahoo proxy zwraca 502 - usePortfolioMetrics: dodano fetchStooqPrice jako 3. fallback w fetchYahooQuote - usePortfolioMetrics: sektor=null dodany do warunku triggera Yahoo dla US stocks (fix HOOD) - usePortfolioMetrics: usunięto fetchFinnhubEarningsTs dla .WA (403 na free tier) - myfund.html: dodano fetchStooqQuote + krok 4 w fetchQuotes gdy v8/chart też nie działa Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e975]: May 19, 2026 at 9:47 AM
+                  - listitem [ref=e976]:
+                    - generic [ref=e977]:
+                      - img [ref=e980]
+                      - generic [ref=e983]:
+                        - generic [ref=e984]:
+                          - generic [ref=e985]:
+                            - generic [ref=e986]:
+                              - link "Deploy" [ref=e987] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d861anc2m8qs73fqamlg
+                              - text: started
+                            - text: for
+                            - link "a99e756" [ref=e989] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/a99e7569a6c4b6c0bb3d53cb571128920ceaf135
+                            - text: ":"
+                            - generic [ref=e990]: "fix(prices): Stooq CSV jako 4. fallback gdy Yahoo proxy zwraca 502 - usePortfolioMetrics: dodano fetchStooqPrice jako 3. fallback w fetchYahooQuote - usePortfolioMetrics: sektor=null dodany do warunku triggera Yahoo dla US stocks (fix HOOD) - usePortfolioMetrics: usunięto fetchFinnhubEarningsTs dla .WA (403 na free tier) - myfund.html: dodano fetchStooqQuote + krok 4 w fetchQuotes gdy v8/chart też nie działa Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e991]: New commit via Auto-Deploy
+                        - generic [ref=e992]: May 19, 2026 at 9:46 AM
+                  - listitem [ref=e993]:
+                    - generic [ref=e994]:
+                      - img [ref=e997]
+                      - generic [ref=e999]:
+                        - generic [ref=e1000]:
+                          - generic [ref=e1001]:
+                            - link "Deploy" [ref=e1002] [cursor=pointer]:
+                              - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d860e968bjmc73c7asm0
+                            - text: live
+                          - text: for
+                          - link "c962fb2" [ref=e1004] [cursor=pointer]:
+                            - /url: https://github.com/Z00mer0/stockstracker/commit/c962fb2309fcca0b44153bba57c748202e1ba563
+                          - text: ":"
+                          - generic [ref=e1005]: "fix(scenario-lab): expiration=all zamiast blednego dte=1-365 dte przyjmuje tylko pojedyncza liczbe wg API docs. expiration=all zwraca pelny lancuch wszystkich przyszlych dat wygasniecia. Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                        - generic [ref=e1006]: May 19, 2026 at 8:46 AM
+                  - listitem [ref=e1007]:
+                    - generic [ref=e1008]:
+                      - img [ref=e1011]
+                      - generic [ref=e1014]:
+                        - generic [ref=e1015]:
+                          - generic [ref=e1016]:
+                            - generic [ref=e1017]:
+                              - link "Deploy" [ref=e1018] [cursor=pointer]:
+                                - /url: /web/srv-d7r8p8jbc2fs7388alo0/deploys/dep-d860e968bjmc73c7asm0
+                              - text: started
+                            - text: for
+                            - link "c962fb2" [ref=e1020] [cursor=pointer]:
+                              - /url: https://github.com/Z00mer0/stockstracker/commit/c962fb2309fcca0b44153bba57c748202e1ba563
+                            - text: ":"
+                            - generic [ref=e1021]: "fix(scenario-lab): expiration=all zamiast blednego dte=1-365 dte przyjmuje tylko pojedyncza liczbe wg API docs. expiration=all zwraca pelny lancuch wszystkich przyszlych dat wygasniecia. Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+                          - generic [ref=e1022]: New commit via Auto-Deploy
+                        - generic [ref=e1023]: May 19, 2026 at 8:45 AM
+                - img "Loading..." [ref=e1025]
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic:
+                - img
+              - generic: Move
+              - img
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button:
+              - img
+  - iframe [ref=e254]:
+    

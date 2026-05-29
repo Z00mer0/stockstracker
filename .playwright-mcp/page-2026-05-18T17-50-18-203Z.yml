@@ -1,0 +1,116 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Render" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Render" [ref=e8]
+        - button "M My Workspace" [ref=e12] [cursor=pointer]:
+          - generic [ref=e13]:
+            - generic [ref=e14]: M
+            - generic "My Workspace" [ref=e15]
+            - img [ref=e16]
+      - generic [ref=e20]:
+        - navigation [ref=e21]:
+          - list [ref=e22]:
+            - listitem [ref=e23]:
+              - generic [ref=e24]:
+                - img [ref=e25]
+                - generic [ref=e30]: New Blueprint
+        - button "Search Command + K" [ref=e32] [cursor=pointer]:
+          - img [ref=e34]
+          - text: Search
+          - generic [ref=e36]:
+            - img [ref=e37]
+            - generic [ref=e39]: Command
+            - generic [ref=e40]: +
+            - generic [ref=e41]: K
+            - generic [ref=e42]: K
+      - generic [ref=e43]:
+        - button "New" [ref=e45] [cursor=pointer]:
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e49]: New
+        - button "Upgrade" [ref=e51] [cursor=pointer]:
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - generic [ref=e55]: Upgrade
+        - button "Help" [ref=e57] [cursor=pointer]:
+          - img "Help" [ref=e58]
+        - button "g" [ref=e63] [cursor=pointer]:
+          - generic [ref=e65]: g
+    - main [ref=e68]:
+      - generic [ref=e69]:
+        - heading "Create a new Web Service in My Workspace" [level=1] [ref=e70]:
+          - text: Create a new
+          - link "Web Service" [ref=e71] [cursor=pointer]:
+            - /url: https://render.com/docs/web-services
+          - text: in
+          - link "My Workspace" [ref=e72] [cursor=pointer]:
+            - /url: /w/tea-d7r8m5ugkk3c738frikg/settings
+        - generic [ref=e75]: Connect your Git repository or use an existing public repository URL.
+      - generic [ref=e77]:
+        - generic [ref=e79]:
+          - heading "Connect a repository" [level=4] [ref=e84]
+          - generic [ref=e85]:
+            - generic [ref=e87]:
+              - generic [ref=e88]: Search repositories
+              - generic [ref=e89]:
+                - img
+                - textbox "Search repositories" [active] [ref=e90]:
+                  - /placeholder: Search
+            - list [ref=e92]:
+              - listitem [ref=e93]:
+                - generic [ref=e94]:
+                  - img "GitHub" [ref=e96]
+                  - link "Z00mer0 / makler-exam-app" [ref=e98] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/makler-exam-app
+                    - generic [ref=e99]: Z00mer0 / makler-exam-app
+                  - img "Private" [ref=e100]
+                  - generic [ref=e102]:
+                    - separator [ref=e103]: •
+                    - time [ref=e104]: 16 minutes ago
+                - button "Connect" [ref=e105] [cursor=pointer]
+              - listitem [ref=e106]:
+                - generic [ref=e107]:
+                  - img "GitHub" [ref=e109]
+                  - link "Z00mer0 / stockstracker" [ref=e111] [cursor=pointer]:
+                    - /url: https://github.com/Z00mer0/stockstracker
+                    - generic [ref=e112]: Z00mer0 / stockstracker
+                  - generic [ref=e113]:
+                    - separator [ref=e114]: •
+                    - time [ref=e115]: 11 hours ago
+                - button "Connect" [ref=e116] [cursor=pointer]
+        - generic [ref=e118]:
+          - generic [ref=e121]:
+            - heading "Public Git Repository" [level=4] [ref=e123]
+            - generic [ref=e124]:
+              - text: Use a public repository by entering the URL below. Features like
+              - link "PR Previews" [ref=e125] [cursor=pointer]:
+                - /url: https://render.com/docs/service-previews#pull-request-previews-git-backed
+              - text: and
+              - link "Auto-Deploy" [ref=e126] [cursor=pointer]:
+                - /url: https://render.com/docs/deploys
+              - text: are not available if the repository has not been configured for Render.
+          - generic [ref=e128]:
+            - generic [ref=e130]:
+              - generic [ref=e131]: Repository URL
+              - textbox "Repository URL" [ref=e133]:
+                - /placeholder: https://github.com/render-examples/express-hello-world
+            - button "Continue" [disabled] [ref=e134]
+  - generic:
+    - generic:
+      - generic: "0 services selected:"
+      - generic:
+        - generic:
+          - button:
+            - generic:
+              - img
+            - generic: Move
+            - img
+    - generic:
+      - separator
+      - generic:
+        - generic:
+          - button:
+            - img

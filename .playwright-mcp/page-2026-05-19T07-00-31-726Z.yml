@@ -1,0 +1,312 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [active] [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "📅 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 📅
+        - text: Dywidendy
+      - link "🗓️ Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 🗓️
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - generic [ref=e31]:
+      - paragraph [ref=e32]: Adam
+      - button "Wyloguj →" [ref=e33] [cursor=pointer]
+  - generic [ref=e34]:
+    - banner [ref=e35]:
+      - heading "Portfel" [level=1] [ref=e248]
+      - button "☀️" [ref=e37] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - generic [ref=e42]:
+        - generic [ref=e43]: NYSE
+        - generic [ref=e45]: GPW
+        - generic [ref=e47]: LSE
+      - button "↻ Odśwież" [ref=e55] [cursor=pointer]:
+        - generic [ref=e50]: ↻
+        - generic [ref=e51]: Odśwież
+    - main [ref=e52]:
+      - generic [ref=e249]:
+        - generic [ref=e250]:
+          - generic [ref=e251]:
+            - paragraph [ref=e252]: Łączny koszt portfela
+            - paragraph [ref=e253]: 74 444,98 zł
+          - generic [ref=e254]: 10 pozycji
+        - generic [ref=e255]:
+          - generic [ref=e256]:
+            - button "Wg kosztu" [ref=e257] [cursor=pointer]
+            - button "A–Z" [ref=e258] [cursor=pointer]
+            - button "Wg ilości" [ref=e259] [cursor=pointer]
+            - button "Wg P&L" [ref=e260] [cursor=pointer]
+            - button "⬆ Import CSV" [ref=e261] [cursor=pointer]
+            - button "⚙️" [ref=e263] [cursor=pointer]
+          - table [ref=e265]:
+            - rowgroup [ref=e266]:
+              - row "Symbol Ilość Śr. Zakup Cena Teraz Zmiana Dz. Wart. Zakupu Wart. Teraz Zysk/Strata Okres MOIC Udział %" [ref=e267]:
+                - columnheader "Symbol" [ref=e268]
+                - columnheader "Ilość" [ref=e269]
+                - columnheader "Śr. Zakup" [ref=e270]
+                - columnheader "Cena Teraz" [ref=e271]
+                - columnheader "Zmiana Dz." [ref=e272]
+                - columnheader "Wart. Zakupu" [ref=e273]
+                - columnheader "Wart. Teraz" [ref=e274]
+                - columnheader "Zysk/Strata" [ref=e275]
+                - columnheader "Okres" [ref=e276]
+                - columnheader "MOIC" [ref=e277]
+                - columnheader "Udział %" [ref=e278]
+            - rowgroup [ref=e279]:
+              - row "XTB.WA XTB S.A. 174 75,01 🇵🇱 104,70 🇵🇱 +0,00% 13 051,94 zł 18 217,80 zł +5165,86 zł 7mo 1,40x 17,5%" [ref=e280]:
+                - cell "XTB.WA XTB S.A." [ref=e281] [cursor=pointer]:
+                  - generic [ref=e282]: XTB.WA
+                  - generic [ref=e283]: XTB S.A.
+                - cell "174" [ref=e284]
+                - cell "75,01 🇵🇱" [ref=e285]:
+                  - generic [ref=e286]: 75,01 🇵🇱
+                - cell "104,70 🇵🇱" [ref=e287]:
+                  - generic [ref=e288]: 104,70 🇵🇱
+                - cell "+0,00%" [ref=e289]:
+                  - generic [ref=e290]: +0,00%
+                - cell "13 051,94 zł" [ref=e291]:
+                  - generic [ref=e292]: 13 051,94 zł
+                - cell "18 217,80 zł" [ref=e293]:
+                  - generic [ref=e294]: 18 217,80 zł
+                - cell "+5165,86 zł" [ref=e295]:
+                  - generic [ref=e296]: +5165,86 zł
+                - cell "7mo" [ref=e297]
+                - cell "1,40x" [ref=e298]:
+                  - generic [ref=e299]: 1,40x
+                - cell "17,5%" [ref=e300]:
+                  - generic [ref=e304]: 17,5%
+              - row "MDV.WA Modivo S.A. 116 111,00 🇵🇱 82,50 🇵🇱 +0,00% 12 876,00 zł 9570,00 zł -3306,00 zł 9mo 0,74x 17,3%" [ref=e305]:
+                - cell "MDV.WA Modivo S.A." [ref=e306] [cursor=pointer]:
+                  - generic [ref=e307]: MDV.WA
+                  - generic [ref=e308]: Modivo S.A.
+                - cell "116" [ref=e309]
+                - cell "111,00 🇵🇱" [ref=e310]:
+                  - generic [ref=e311]: 111,00 🇵🇱
+                - cell "82,50 🇵🇱" [ref=e312]:
+                  - generic [ref=e313]: 82,50 🇵🇱
+                - cell "+0,00%" [ref=e314]:
+                  - generic [ref=e315]: +0,00%
+                - cell "12 876,00 zł" [ref=e316]:
+                  - generic [ref=e317]: 12 876,00 zł
+                - cell "9570,00 zł" [ref=e318]:
+                  - generic [ref=e319]: 9570,00 zł
+                - cell "-3306,00 zł" [ref=e320]:
+                  - generic [ref=e321]: "-3306,00 zł"
+                - cell "9mo" [ref=e322]
+                - cell "0,74x" [ref=e323]:
+                  - generic [ref=e324]: 0,74x
+                - cell "17,3%" [ref=e325]:
+                  - generic [ref=e329]: 17,3%
+              - row "HOOD Robinhood Markets, Inc. 41,2500 83,62 🇺🇸 77,15 🇺🇸 +0,01% 12 568,65 zł 11 596,17 zł -972,48 zł 2mo 0,92x 16,9%" [ref=e330]:
+                - cell "HOOD Robinhood Markets, Inc." [ref=e331] [cursor=pointer]:
+                  - generic [ref=e332]: HOOD
+                  - generic [ref=e333]: Robinhood Markets, Inc.
+                - cell "41,2500" [ref=e334]
+                - cell "83,62 🇺🇸" [ref=e335]:
+                  - generic [ref=e336]: 83,62 🇺🇸
+                - cell "77,15 🇺🇸" [ref=e337]:
+                  - generic [ref=e338]: 77,15 🇺🇸
+                - cell "+0,01%" [ref=e339]:
+                  - generic [ref=e340]: +0,01%
+                - cell "12 568,65 zł" [ref=e341]:
+                  - generic [ref=e342]: 12 568,65 zł
+                - cell "11 596,17 zł" [ref=e343]:
+                  - generic [ref=e344]: 11 596,17 zł
+                - cell "-972,48 zł" [ref=e345]:
+                  - generic [ref=e346]: "-972,48 zł"
+                - cell "2mo" [ref=e347]
+                - cell "0,92x" [ref=e348]:
+                  - generic [ref=e349]: 0,92x
+                - cell "16,9%" [ref=e350]:
+                  - generic [ref=e354]: 16,9%
+              - row "DNP.WA Dino Polska S.A. 313,2546 36,00 🇵🇱 32,33 🇵🇱 +0,00% 11 277,17 zł 10 127,52 zł -1149,64 zł 5mo 0,90x 15,1%" [ref=e355]:
+                - cell "DNP.WA Dino Polska S.A." [ref=e356] [cursor=pointer]:
+                  - generic [ref=e357]: DNP.WA
+                  - generic [ref=e358]: Dino Polska S.A.
+                - cell "313,2546" [ref=e359]
+                - cell "36,00 🇵🇱" [ref=e360]:
+                  - generic [ref=e361]: 36,00 🇵🇱
+                - cell "32,33 🇵🇱" [ref=e362]:
+                  - generic [ref=e363]: 32,33 🇵🇱
+                - cell "+0,00%" [ref=e364]:
+                  - generic [ref=e365]: +0,00%
+                - cell "11 277,17 zł" [ref=e366]:
+                  - generic [ref=e367]: 11 277,17 zł
+                - cell "10 127,52 zł" [ref=e368]:
+                  - generic [ref=e369]: 10 127,52 zł
+                - cell "-1149,64 zł" [ref=e370]:
+                  - generic [ref=e371]: "-1149,64 zł"
+                - cell "5mo" [ref=e372]
+                - cell "0,90x" [ref=e373]:
+                  - generic [ref=e374]: 0,90x
+                - cell "15,1%" [ref=e375]:
+                  - generic [ref=e379]: 15,1%
+              - row "CBF.WA Cyber_Folks S.A. 54 202,72 🇵🇱 182,90 🇵🇱 +0,00% 10 947,12 zł 9876,60 zł -1070,52 zł 3mo 0,90x 14,7%" [ref=e380]:
+                - cell "CBF.WA Cyber_Folks S.A." [ref=e381] [cursor=pointer]:
+                  - generic [ref=e382]: CBF.WA
+                  - generic [ref=e383]: Cyber_Folks S.A.
+                - cell "54" [ref=e384]
+                - cell "202,72 🇵🇱" [ref=e385]:
+                  - generic [ref=e386]: 202,72 🇵🇱
+                - cell "182,90 🇵🇱" [ref=e387]:
+                  - generic [ref=e388]: 182,90 🇵🇱
+                - cell "+0,00%" [ref=e389]:
+                  - generic [ref=e390]: +0,00%
+                - cell "10 947,12 zł" [ref=e391]:
+                  - generic [ref=e392]: 10 947,12 zł
+                - cell "9876,60 zł" [ref=e393]:
+                  - generic [ref=e394]: 9876,60 zł
+                - cell "-1070,52 zł" [ref=e395]:
+                  - generic [ref=e396]: "-1070,52 zł"
+                - cell "3mo" [ref=e397]
+                - cell "0,90x" [ref=e398]:
+                  - generic [ref=e399]: 0,90x
+                - cell "14,7%" [ref=e400]:
+                  - generic [ref=e404]: 14,7%
+              - row "KRU.WA KRUK Spólka Akcyjna 18 411,00 🇵🇱 425,00 🇵🇱 +0,00% 7398,00 zł 7650,00 zł +252,00 zł 2.0yr 1,03x 9,9%" [ref=e405]:
+                - cell "KRU.WA KRUK Spólka Akcyjna" [ref=e406] [cursor=pointer]:
+                  - generic [ref=e407]: KRU.WA
+                  - generic [ref=e408]: KRUK Spólka Akcyjna
+                - cell "18" [ref=e409]
+                - cell "411,00 🇵🇱" [ref=e410]:
+                  - generic [ref=e411]: 411,00 🇵🇱
+                - cell "425,00 🇵🇱" [ref=e412]:
+                  - generic [ref=e413]: 425,00 🇵🇱
+                - cell "+0,00%" [ref=e414]:
+                  - generic [ref=e415]: +0,00%
+                - cell "7398,00 zł" [ref=e416]:
+                  - generic [ref=e417]: 7398,00 zł
+                - cell "7650,00 zł" [ref=e418]:
+                  - generic [ref=e419]: 7650,00 zł
+                - cell "+252,00 zł" [ref=e420]:
+                  - generic [ref=e421]: +252,00 zł
+                - cell "2.0yr" [ref=e422]
+                - cell "1,03x" [ref=e423]:
+                  - generic [ref=e424]: 1,03x
+                - cell "9,9%" [ref=e425]:
+                  - generic [ref=e429]: 9,9%
+              - row "PKN.WA Orlen S.A. 50 54,31 🇵🇱 145,12 🇵🇱 +0,00% 2715,50 zł 7256,00 zł +4540,50 zł 1.3yr 2,67x 3,6%" [ref=e430]:
+                - cell "PKN.WA Orlen S.A." [ref=e431] [cursor=pointer]:
+                  - generic [ref=e432]: PKN.WA
+                  - generic [ref=e433]: Orlen S.A.
+                - cell "50" [ref=e434]
+                - cell "54,31 🇵🇱" [ref=e435]:
+                  - generic [ref=e436]: 54,31 🇵🇱
+                - cell "145,12 🇵🇱" [ref=e437]:
+                  - generic [ref=e438]: 145,12 🇵🇱
+                - cell "+0,00%" [ref=e439]:
+                  - generic [ref=e440]: +0,00%
+                - cell "2715,50 zł" [ref=e441]:
+                  - generic [ref=e442]: 2715,50 zł
+                - cell "7256,00 zł" [ref=e443]:
+                  - generic [ref=e444]: 7256,00 zł
+                - cell "+4540,50 zł" [ref=e445]:
+                  - generic [ref=e446]: +4540,50 zł
+                - cell "1.3yr" [ref=e447]
+                - cell "2,67x" [ref=e448]:
+                  - generic [ref=e449]: 2,67x
+                - cell "3,6%" [ref=e450]:
+                  - generic [ref=e454]: 3,6%
+              - row "NVDA NVIDIA Corporation 3,1000 130,88 🇺🇸 222,32 🇺🇸 -1,33% 1478,35 zł 2511,28 zł +1032,93 zł 1.1yr 1,70x 2,0%" [ref=e455]:
+                - cell "NVDA NVIDIA Corporation" [ref=e456] [cursor=pointer]:
+                  - generic [ref=e457]: NVDA
+                  - generic [ref=e458]: NVIDIA Corporation
+                - cell "3,1000" [ref=e459]
+                - cell "130,88 🇺🇸" [ref=e460]:
+                  - generic [ref=e461]: 130,88 🇺🇸
+                - cell "222,32 🇺🇸" [ref=e462]:
+                  - generic [ref=e463]: 222,32 🇺🇸
+                - cell "-1,33%" [ref=e464]:
+                  - generic [ref=e465]: "-1,33%"
+                - cell "1478,35 zł" [ref=e466]:
+                  - generic [ref=e467]: 1478,35 zł
+                - cell "2511,28 zł" [ref=e468]:
+                  - generic [ref=e469]: 2511,28 zł
+                - cell "+1032,93 zł" [ref=e470]:
+                  - generic [ref=e471]: +1032,93 zł
+                - cell "1.1yr" [ref=e472]
+                - cell "1,70x" [ref=e473]:
+                  - generic [ref=e474]: 1,70x
+                - cell "2,0%" [ref=e475]:
+                  - generic [ref=e479]: 2,0%
+              - row "VOT.WA Votum S.A. 30 41,20 🇵🇱 46,00 🇵🇱 +0,00% 1236,00 zł 1380,00 zł +144,00 zł 1.2yr 1,12x 1,7%" [ref=e480]:
+                - cell "VOT.WA Votum S.A." [ref=e481] [cursor=pointer]:
+                  - generic [ref=e482]: VOT.WA
+                  - generic [ref=e483]: Votum S.A.
+                - cell "30" [ref=e484]
+                - cell "41,20 🇵🇱" [ref=e485]:
+                  - generic [ref=e486]: 41,20 🇵🇱
+                - cell "46,00 🇵🇱" [ref=e487]:
+                  - generic [ref=e488]: 46,00 🇵🇱
+                - cell "+0,00%" [ref=e489]:
+                  - generic [ref=e490]: +0,00%
+                - cell "1236,00 zł" [ref=e491]:
+                  - generic [ref=e492]: 1236,00 zł
+                - cell "1380,00 zł" [ref=e493]:
+                  - generic [ref=e494]: 1380,00 zł
+                - cell "+144,00 zł" [ref=e495]:
+                  - generic [ref=e496]: +144,00 zł
+                - cell "1.2yr" [ref=e497]
+                - cell "1,12x" [ref=e498]:
+                  - generic [ref=e499]: 1,12x
+                - cell "1,7%" [ref=e500]:
+                  - generic [ref=e504]: 1,7%
+              - row "ALE.WA Allegro.eu S.A. 30 29,88 🇵🇱 31,84 🇵🇱 +0,00% 896,25 zł 955,05 zł +58,80 zł 26d 1,07x 1,2%" [ref=e505]:
+                - cell "ALE.WA Allegro.eu S.A." [ref=e506] [cursor=pointer]:
+                  - generic [ref=e507]: ALE.WA
+                  - generic [ref=e508]: Allegro.eu S.A.
+                - cell "30" [ref=e509]
+                - cell "29,88 🇵🇱" [ref=e510]:
+                  - generic [ref=e511]: 29,88 🇵🇱
+                - cell "31,84 🇵🇱" [ref=e512]:
+                  - generic [ref=e513]: 31,84 🇵🇱
+                - cell "+0,00%" [ref=e514]:
+                  - generic [ref=e515]: +0,00%
+                - cell "896,25 zł" [ref=e516]:
+                  - generic [ref=e517]: 896,25 zł
+                - cell "955,05 zł" [ref=e518]:
+                  - generic [ref=e519]: 955,05 zł
+                - cell "+58,80 zł" [ref=e520]:
+                  - generic [ref=e521]: +58,80 zł
+                - cell "26d" [ref=e522]
+                - cell "1,07x" [ref=e523]:
+                  - generic [ref=e524]: 1,07x
+                - cell "1,2%" [ref=e525]:
+                  - generic [ref=e529]: 1,2%

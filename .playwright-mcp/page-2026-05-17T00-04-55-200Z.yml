@@ -1,0 +1,248 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "💰 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 💰
+        - text: Dywidendy
+      - link "📅 Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 📅
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - button "Wyloguj →" [ref=e32] [cursor=pointer]
+  - generic [ref=e33]:
+    - banner [ref=e34]:
+      - heading "Historia wartości" [level=1] [ref=e35]
+      - button "☀️" [ref=e36] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+      - generic [ref=e41]:
+        - generic [ref=e42]: NYSE
+        - generic [ref=e44]: GPW
+        - generic [ref=e46]: LSE
+      - button "↻ Odśwież" [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: ↻
+        - generic [ref=e50]: Odśwież
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - paragraph [ref=e55]: Aktualna wartość
+            - paragraph [ref=e56]: 111 667 zł
+          - generic [ref=e57]:
+            - paragraph [ref=e58]: Zainwestowano
+            - paragraph [ref=e59]: 74 477 zł
+          - generic [ref=e60]:
+            - paragraph [ref=e61]: Zmiana od początku
+            - paragraph [ref=e62]: +96 664 zł
+            - paragraph [ref=e63]: +644,3%
+          - generic [ref=e64]:
+            - paragraph [ref=e65]: ATH (szczyt)
+            - paragraph [ref=e66]: 132 113 zł
+            - paragraph [ref=e67]: 06.05.2026
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - paragraph [ref=e70]: Historia wartości portfela
+            - generic [ref=e71]:
+              - button "1M" [ref=e72] [cursor=pointer]
+              - button "3M" [ref=e73] [cursor=pointer]
+              - button "6M" [ref=e74] [cursor=pointer]
+              - button "1R" [ref=e75] [cursor=pointer]
+              - button "MAX" [ref=e76] [cursor=pointer]
+          - generic [ref=e77]:
+            - generic [ref=e78]: "Benchmark:"
+            - generic [ref=e79]:
+              - button "Brak" [ref=e80] [cursor=pointer]
+              - button "S&P 500" [ref=e81] [cursor=pointer]
+              - button "WIG20" [ref=e82] [cursor=pointer]
+              - button "MSCI World" [ref=e83] [cursor=pointer]
+          - generic [ref=e84]:
+            - img [ref=e85]:
+              - generic [ref=e87]: 14 928 zł
+              - generic [ref=e89]: 44 389 zł
+              - generic [ref=e91]: 73 851 zł
+              - generic [ref=e93]: 103 312 zł
+              - generic [ref=e95]: 132 774 zł
+              - generic [ref=e98]: 26-05-02
+              - generic [ref=e99]: 26-05-04
+              - generic [ref=e100]: 26-05-06
+              - generic [ref=e101]: 26-05-08
+              - generic [ref=e102]: 26-05-10
+              - generic [ref=e103]: 26-05-12
+              - generic [ref=e104]: 26-05-14
+              - generic [ref=e105]: 26-05-16
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - img [ref=e108]
+                - text: Wartość portfela
+              - generic [ref=e109]:
+                - img [ref=e110]
+                - text: Zainwestowano
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - heading "Wszystkie snapshots" [level=2] [ref=e113]
+            - generic [ref=e114]: 15 wpisów
+          - table [ref=e116]:
+            - rowgroup [ref=e117]:
+              - row "Data Wartość Zainwestowano P&L Δ dnia" [ref=e118]:
+                - columnheader "Data" [ref=e119]
+                - columnheader "Wartość" [ref=e120]
+                - columnheader "Zainwestowano" [ref=e121]
+                - columnheader "P&L" [ref=e122]
+                - columnheader "Δ dnia" [ref=e123]
+            - rowgroup [ref=e124]:
+              - row "16.05.2026 111 667 zł — zł +111 667 zł(+0,0%) +78 zł" [ref=e125]:
+                - cell "16.05.2026" [ref=e126]
+                - cell "111 667 zł" [ref=e127]
+                - cell "— zł" [ref=e128]
+                - cell "+111 667 zł(+0,0%)" [ref=e129]:
+                  - text: +111 667 zł
+                  - generic [ref=e130]: (+0,0%)
+                - cell "+78 zł" [ref=e131]
+              - row "15.05.2026 111 589 zł — zł +111 589 zł(+0,0%) -578 zł" [ref=e132]:
+                - cell "15.05.2026" [ref=e133]
+                - cell "111 589 zł" [ref=e134]
+                - cell "— zł" [ref=e135]
+                - cell "+111 589 zł(+0,0%)" [ref=e136]:
+                  - text: +111 589 zł
+                  - generic [ref=e137]: (+0,0%)
+                - cell "-578 zł" [ref=e138]
+              - row "14.05.2026 112 167 zł — zł +112 167 zł(+0,0%) +727 zł" [ref=e139]:
+                - cell "14.05.2026" [ref=e140]
+                - cell "112 167 zł" [ref=e141]
+                - cell "— zł" [ref=e142]
+                - cell "+112 167 zł(+0,0%)" [ref=e143]:
+                  - text: +112 167 zł
+                  - generic [ref=e144]: (+0,0%)
+                - cell "+727 zł" [ref=e145]
+              - row "13.05.2026 111 440 zł — zł +111 440 zł(+0,0%) -5421 zł" [ref=e146]:
+                - cell "13.05.2026" [ref=e147]
+                - cell "111 440 zł" [ref=e148]
+                - cell "— zł" [ref=e149]
+                - cell "+111 440 zł(+0,0%)" [ref=e150]:
+                  - text: +111 440 zł
+                  - generic [ref=e151]: (+0,0%)
+                - cell "-5421 zł" [ref=e152]
+              - row "12.05.2026 116 861 zł — zł +116 861 zł(+0,0%) -832 zł" [ref=e153]:
+                - cell "12.05.2026" [ref=e154]
+                - cell "116 861 zł" [ref=e155]
+                - cell "— zł" [ref=e156]
+                - cell "+116 861 zł(+0,0%)" [ref=e157]:
+                  - text: +116 861 zł
+                  - generic [ref=e158]: (+0,0%)
+                - cell "-832 zł" [ref=e159]
+              - row "11.05.2026 117 694 zł — zł +117 694 zł(+0,0%) +1833 zł" [ref=e160]:
+                - cell "11.05.2026" [ref=e161]
+                - cell "117 694 zł" [ref=e162]
+                - cell "— zł" [ref=e163]
+                - cell "+117 694 zł(+0,0%)" [ref=e164]:
+                  - text: +117 694 zł
+                  - generic [ref=e165]: (+0,0%)
+                - cell "+1833 zł" [ref=e166]
+              - row "10.05.2026 115 861 zł — zł +115 861 zł(+0,0%) +0 zł" [ref=e167]:
+                - cell "10.05.2026" [ref=e168]
+                - cell "115 861 zł" [ref=e169]
+                - cell "— zł" [ref=e170]
+                - cell "+115 861 zł(+0,0%)" [ref=e171]:
+                  - text: +115 861 zł
+                  - generic [ref=e172]: (+0,0%)
+                - cell "+0 zł" [ref=e173]
+              - row "09.05.2026 115 860 zł — zł +115 860 zł(+0,0%) +0 zł" [ref=e174]:
+                - cell "09.05.2026" [ref=e175]
+                - cell "115 860 zł" [ref=e176]
+                - cell "— zł" [ref=e177]
+                - cell "+115 860 zł(+0,0%)" [ref=e178]:
+                  - text: +115 860 zł
+                  - generic [ref=e179]: (+0,0%)
+                - cell "+0 zł" [ref=e180]
+              - row "08.05.2026 115 860 zł — zł +115 860 zł(+0,0%) -565 zł" [ref=e181]:
+                - cell "08.05.2026" [ref=e182]
+                - cell "115 860 zł" [ref=e183]
+                - cell "— zł" [ref=e184]
+                - cell "+115 860 zł(+0,0%)" [ref=e185]:
+                  - text: +115 860 zł
+                  - generic [ref=e186]: (+0,0%)
+                - cell "-565 zł" [ref=e187]
+              - row "07.05.2026 116 425 zł — zł +116 425 zł(+0,0%) -15 688 zł" [ref=e188]:
+                - cell "07.05.2026" [ref=e189]
+                - cell "116 425 zł" [ref=e190]
+                - cell "— zł" [ref=e191]
+                - cell "+116 425 zł(+0,0%)" [ref=e192]:
+                  - text: +116 425 zł
+                  - generic [ref=e193]: (+0,0%)
+                - cell "-15 688 zł" [ref=e194]
+              - row "06.05.2026 132 113 zł — zł +132 113 zł(+0,0%) +451 zł" [ref=e195]:
+                - cell "06.05.2026" [ref=e196]
+                - cell "132 113 zł" [ref=e197]
+                - cell "— zł" [ref=e198]
+                - cell "+132 113 zł(+0,0%)" [ref=e199]:
+                  - text: +132 113 zł
+                  - generic [ref=e200]: (+0,0%)
+                - cell "+451 zł" [ref=e201]
+              - row "05.05.2026 131 662 zł — zł +131 662 zł(+0,0%) +412 zł" [ref=e202]:
+                - cell "05.05.2026" [ref=e203]
+                - cell "131 662 zł" [ref=e204]
+                - cell "— zł" [ref=e205]
+                - cell "+131 662 zł(+0,0%)" [ref=e206]:
+                  - text: +131 662 zł
+                  - generic [ref=e207]: (+0,0%)
+                - cell "+412 zł" [ref=e208]
+              - row "04.05.2026 131 250 zł — zł +131 250 zł(+0,0%) +3449 zł" [ref=e209]:
+                - cell "04.05.2026" [ref=e210]
+                - cell "131 250 zł" [ref=e211]
+                - cell "— zł" [ref=e212]
+                - cell "+131 250 zł(+0,0%)" [ref=e213]:
+                  - text: +131 250 zł
+                  - generic [ref=e214]: (+0,0%)
+                - cell "+3449 zł" [ref=e215]
+              - row "03.05.2026 127 801 zł — zł +127 801 zł(+0,0%) +112 798 zł" [ref=e216]:
+                - cell "03.05.2026" [ref=e217]
+                - cell "127 801 zł" [ref=e218]
+                - cell "— zł" [ref=e219]
+                - cell "+127 801 zł(+0,0%)" [ref=e220]:
+                  - text: +127 801 zł
+                  - generic [ref=e221]: (+0,0%)
+                - cell "+112 798 zł" [ref=e222]
+              - row "02.05.2026 15 003 zł — zł +15 003 zł(+0,0%) —" [ref=e223]:
+                - cell "02.05.2026" [ref=e224]
+                - cell "15 003 zł" [ref=e225]
+                - cell "— zł" [ref=e226]
+                - cell "+15 003 zł(+0,0%)" [ref=e227]:
+                  - text: +15 003 zł
+                  - generic [ref=e228]: (+0,0%)
+                - cell "—" [ref=e229]

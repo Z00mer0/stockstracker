@@ -1,0 +1,12 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - button "Logowanie" [ref=e6] [cursor=pointer]
+    - button "Rejestracja" [ref=e7] [cursor=pointer]
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]: Nazwa użytkownika
+      - textbox [active] [ref=e11]: d
+    - generic [ref=e12]:
+      - generic [ref=e13]: Hasło
+      - textbox [ref=e14]
+    - button "Zaloguj" [disabled] [ref=e15]

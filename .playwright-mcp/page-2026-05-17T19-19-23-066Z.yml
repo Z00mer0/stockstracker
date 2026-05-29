@@ -1,0 +1,120 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "📅 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 📅
+        - text: Dywidendy
+      - link "🗓️ Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 🗓️
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - generic [ref=e31]:
+      - paragraph [ref=e32]: Adam
+      - button "Wyloguj →" [ref=e33] [cursor=pointer]
+  - generic [ref=e34]:
+    - banner [ref=e35]:
+      - heading "Watchlist" [level=1] [ref=e36]
+      - button "☀️" [ref=e37] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - generic [ref=e42]:
+        - generic [ref=e43]: NYSE
+        - generic [ref=e45]: GPW
+        - generic [ref=e47]: LSE
+      - button "↻ Odśwież" [ref=e49] [cursor=pointer]:
+        - generic [ref=e50]: ↻
+        - generic [ref=e51]: Odśwież
+    - main [ref=e52]:
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - heading "👁 Obserwowane spółki" [level=2] [ref=e56]
+          - generic [ref=e57]:
+            - paragraph [ref=e58]: Watchlist jest pusta lub niedostępna
+            - paragraph [ref=e59]: Watchlist jest przechowywana lokalnie — otwórz główny portal, aby ją uzupełnić
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - heading "💼 Posiadane spółki" [level=2] [ref=e62]
+            - paragraph [ref=e63]: Twoje aktualne pozycje z portfela
+          - table [ref=e65]:
+            - rowgroup [ref=e66]:
+              - row "Symbol Ilość Śr. cena" [ref=e67]:
+                - columnheader "Symbol" [ref=e68]
+                - columnheader "Ilość" [ref=e69]
+                - columnheader "Śr. cena" [ref=e70]
+            - rowgroup [ref=e71]:
+              - row "XTB.WAXTB S.A. 174 75.01 PLN" [ref=e72]:
+                - cell "XTB.WAXTB S.A." [ref=e73] [cursor=pointer]
+                - cell "174" [ref=e74]
+                - cell "75.01 PLN" [ref=e75]
+              - row "HOODRobinhood Markets, Inc. 41,25 83.62 USD" [ref=e76]:
+                - cell "HOODRobinhood Markets, Inc." [ref=e77] [cursor=pointer]
+                - cell "41,25" [ref=e78]
+                - cell "83.62 USD" [ref=e79]
+              - row "ALE.WAAllegro.eu S.A. 30 29.88 PLN" [ref=e80]:
+                - cell "ALE.WAAllegro.eu S.A." [ref=e81] [cursor=pointer]
+                - cell "30" [ref=e82]
+                - cell "29.88 PLN" [ref=e83]
+              - row "NVDANVIDIA Corporation 3,1 130.88 USD" [ref=e84]:
+                - cell "NVDANVIDIA Corporation" [ref=e85] [cursor=pointer]
+                - cell "3,1" [ref=e86]
+                - cell "130.88 USD" [ref=e87]
+              - row "KRU.WAKRUK Spólka Akcyjna 18 411.00 PLN" [ref=e88]:
+                - cell "KRU.WAKRUK Spólka Akcyjna" [ref=e89] [cursor=pointer]
+                - cell "18" [ref=e90]
+                - cell "411.00 PLN" [ref=e91]
+              - row "PKN.WAOrlen S.A. 50 54.31 PLN" [ref=e92]:
+                - cell "PKN.WAOrlen S.A." [ref=e93] [cursor=pointer]
+                - cell "50" [ref=e94]
+                - cell "54.31 PLN" [ref=e95]
+              - row "CBF.WACyber_Folks S.A. 54 202.72 PLN" [ref=e96]:
+                - cell "CBF.WACyber_Folks S.A." [ref=e97] [cursor=pointer]
+                - cell "54" [ref=e98]
+                - cell "202.72 PLN" [ref=e99]
+              - row "VOT.WAVotum S.A. 30 41.20 PLN" [ref=e100]:
+                - cell "VOT.WAVotum S.A." [ref=e101] [cursor=pointer]
+                - cell "30" [ref=e102]
+                - cell "41.20 PLN" [ref=e103]
+              - row "MDV.WAModivo S.A. 116 111.00 PLN" [ref=e104]:
+                - cell "MDV.WAModivo S.A." [ref=e105] [cursor=pointer]
+                - cell "116" [ref=e106]
+                - cell "111.00 PLN" [ref=e107]
+              - row "DNP.WADino Polska S.A. 313,255 36.00 PLN" [ref=e108]:
+                - cell "DNP.WADino Polska S.A." [ref=e109] [cursor=pointer]
+                - cell "313,255" [ref=e110]
+                - cell "36.00 PLN" [ref=e111]

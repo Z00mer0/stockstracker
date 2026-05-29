@@ -2,12 +2,12 @@
 // Cached 5 min on CDN edge; avoids 5 separate client-side calls
 
 const SYMBOLS = [
-  { key: 'WIG20',   sym: 'WIG20.WA' }, // Yahoo uses WIG20.WA for Warsaw index
-  { key: 'S&P500',  sym: '^GSPC'    },
-  { key: 'NASDAQ',  sym: '^IXIC'    },
-  { key: 'DAX',     sym: '^GDAXI'   },
-  { key: 'EUR/PLN', sym: 'EURPLN=X' },
+  { key: 'WIG20',   sym: 'WIG20.WA' }, // cash — no WIG20 futures on Yahoo
+  { key: 'S&P500',  sym: 'ES=F'     }, // E-mini S&P 500 futures
+  { key: 'NASDAQ',  sym: 'NQ=F'     }, // E-mini Nasdaq-100 futures
+  { key: 'DAX',     sym: '^GDAXI'   }, // cash — FDAX=F not available on Yahoo
   { key: 'USD/PLN', sym: 'USDPLN=X' },
+  { key: 'EUR/PLN', sym: 'EURPLN=X' },
 ];
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';

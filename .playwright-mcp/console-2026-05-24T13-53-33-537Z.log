@@ -1,0 +1,3 @@
+[     862ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CtNNsmlI.js:77
+[    1038ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 0.00, positionsValue: 0.00, cashValue: 0.00, totalValue: 0.00, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-CtNNsmlI.js:77
+[    1267ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0

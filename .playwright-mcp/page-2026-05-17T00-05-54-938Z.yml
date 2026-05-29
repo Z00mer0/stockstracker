@@ -1,0 +1,106 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "💰 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 💰
+        - text: Dywidendy
+      - link "📅 Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 📅
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - button "Wyloguj →" [ref=e32] [cursor=pointer]
+  - generic [ref=e33]:
+    - banner [ref=e34]:
+      - heading "Ustawienia" [level=1] [ref=e35]
+      - button "☀️" [ref=e36] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+      - generic [ref=e41]:
+        - generic [ref=e42]: NYSE
+        - generic [ref=e44]: GPW
+        - generic [ref=e46]: LSE
+      - button "↻ Odśwież" [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: ↻
+        - generic [ref=e50]: Odśwież
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - heading "Konto" [level=2] [ref=e55]
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e58]: Zalogowany jako
+              - generic [ref=e59]: —
+            - generic [ref=e61]: API URL
+            - generic [ref=e62]:
+              - button "Odśwież dane" [ref=e63] [cursor=pointer]
+              - button "Wyloguj" [ref=e64] [cursor=pointer]
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - heading "Klucze API" [level=2] [ref=e67]
+            - paragraph [ref=e68]: Wymagane do pobierania łańcucha opcji w Scenario Lab
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - text: MarketData.app
+              - generic [ref=e72]: nie ustawiony
+            - generic [ref=e73]:
+              - textbox "Wklej klucz API…" [ref=e74]
+              - button "Zapisz" [ref=e75] [cursor=pointer]
+            - paragraph [ref=e76]: Klucz przechowywany tylko lokalnie (localStorage). Zdobądź darmowy klucz na marketdata.app.
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - heading "Import danych brokera" [level=2] [ref=e79]
+            - paragraph [ref=e80]: Importuj historię z pliku CSV eksportowanego z brokera (eToro, itp.)
+          - generic [ref=e81]:
+            - paragraph [ref=e82]: "Obsługiwane pliki: Closed Positions i Cash Operations. Format wykrywany automatycznie. Duplikaty są pomijane."
+            - button "⬆ Importuj CSV brokera" [ref=e83] [cursor=pointer]
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - heading "Kursy walut" [level=2] [ref=e86]
+            - paragraph [ref=e87]: Aktualizowane co 30 min (frankfurter.app)
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - generic [ref=e90]: USD / PLN
+              - generic [ref=e91]: 3.6520 zł
+            - generic [ref=e92]:
+              - generic [ref=e93]: EUR / PLN
+              - generic [ref=e94]: 4.2466 zł
+            - generic [ref=e95]:
+              - generic [ref=e96]: GBP / PLN
+              - generic [ref=e97]: 4.8783 zł
+        - paragraph [ref=e99]: StocksTracker React — migracja z Vanilla JS. Dane przechowywane na Render (PostgreSQL).

@@ -1,0 +1,440 @@
+- generic [ref=e2]:
+  - generic [ref=e129]:
+    - button "‹ Wróć do listy" [ref=e130] [cursor=pointer]
+    - generic [ref=e131]:
+      - heading "Rozporządzenie MF — Tryb i warunki postępowania FI (~4 pytania)" [level=1] [ref=e132]
+      - blockquote [ref=e133]:
+        - paragraph [ref=e134]:
+          - text: Rozporządzenie Ministra Finansów w sprawie trybu i warunków postępowania firm inwestycyjnych, banków państwowych prowadzących działalność maklerską, banków (art. 70 ust. 2 ustawy o obrocie) oraz banków powierniczych. Na egzaminie maklerskim pojawia się ok.
+          - strong [ref=e135]: 4 pytań
+          - text: z tego działu.
+      - separator [ref=e136]
+      - heading "1. Słowniczek (§ 2)" [level=2] [ref=e137]
+      - paragraph [ref=e138]:
+        - strong [ref=e139]: Sprzedaż łączona
+        - text: "— świadczenie przez FI, bank państwowy prowadzący działalność maklerską lub bank usług maklerskich na podstawie odrębnej umowy, jeżeli:"
+      - list [ref=e140]:
+        - listitem [ref=e141]: Każda z tych usług może być świadczona na podstawie odrębnej umowy
+        - listitem [ref=e142]: Klient ma możliwość zawarcia odrębnej umowy dotyczącej każdej z tych usług.
+      - paragraph [ref=e143]:
+        - strong [ref=e144]: Sprzedaż wiązana
+        - text: — świadczenie usług maklerskich oraz innych usług, jeżeli co najmniej jedna z tych usług nie może być świadczona przez FI, bank państwowy lub bank na podstawie odrębnej umowy.
+      - paragraph [ref=e145]:
+        - strong [ref=e146]: Sprzedaż krzyżowa
+        - text: — sprzedaż łączona lub sprzedaż wiązana.
+      - paragraph [ref=e147]:
+        - strong [ref=e148]: Zlecenie brokerskie
+        - text: — zlecenie lub oferta, a także odpowiedź na ofertę, wystawiane przez FI lub bank państwowy prowadzący działalność maklerską, wykonujące zlecenie klienta i przekazywane do miejsca wykonania w celu jego wykonania.
+      - paragraph [ref=e149]:
+        - strong [ref=e150]: Rejestr operacyjny
+        - text: "— rejestr IF i praw do otrzymania IF, które mogą być przedmiotem zlecenia sprzedaży przyjętego do wykonania przez FI przed otwarciem rejestru sesji. Liczba IF w rejestrze operacyjnym równa jest sumie:"
+      - list [ref=e151]:
+        - listitem [ref=e152]: Instrumentów zapisanych na rachunku (z wyłączeniem przedmiotów zawartych transakcji, których rozrachunek nie został jeszcze przeprowadzony)
+        - listitem [ref=e153]: Praw do otrzymania instrumentów finansowych.
+      - paragraph [ref=e154]:
+        - strong [ref=e155]: Rejestr sesji
+        - text: "— obejmuje:"
+      - list [ref=e156]:
+        - listitem [ref=e157]:
+          - text: "Rejestr IF i praw do otrzymania IF z rejestru operacyjnego:"
+          - list [ref=e158]:
+            - listitem [ref=e159]:
+              - strong [ref=e160]: Pomniejszony
+              - text: o liczbę IF i praw będących przedmiotem transakcji sprzedaży zawartych na danej sesji
+            - listitem [ref=e161]:
+              - strong [ref=e162]: Powiększony
+              - text: o liczbę praw będących przedmiotem transakcji kupna zawartych na danej sesji
+        - listitem [ref=e163]: "Wykaz środków pieniężnych: suma niezablokowanych środków pieniężnych na rachunku pieniężnym, powiększona o środki z transakcji sprzedaży na danej sesji i pomniejszona o środki przeznaczone na transakcje kupna na tej sesji."
+      - paragraph [ref=e164]:
+        - strong [ref=e165]: Miejsce wykonania
+        - text: "— w odniesieniu do wykonywania zleceń nabycia lub zbycia IF:"
+      - list [ref=e166]:
+        - listitem [ref=e167]: Rynek regulowany, ASO, OTF
+        - listitem [ref=e168]: Podmiot systematycznie internalizujący transakcje
+        - listitem [ref=e169]: FI, bank państwowy prowadzący działalność maklerską, bank lub zagraniczna FI wykonujące zlecenia nabycia lub zbycia IF
+        - listitem [ref=e170]: FI, bank państwowy, bank lub zagraniczna FI realizująca zadania związane z organizacją rynku regulowanego lub zapewniająca płynność IF
+        - listitem [ref=e171]: Podmiot prowadzący powyższą działalność w państwie niebędącym państwem członkowskim
+        - listitem [ref=e172]: Bank (art. 70 ust. 2 ustawy) realizujący zadania związane z organizacją rynku regulowanego, gdy przedmiotem są PW emitowane przez SP lub NBP.
+      - paragraph [ref=e173]: W odniesieniu do zarządzania portfelami i przyjmowania/przekazywania zleceń — podmiot wykonujący zlecenie przekazane przez FI.
+      - separator [ref=e174]
+      - heading "2. Klient profesjonalny — warunki na żądanie klienta" [level=2] [ref=e175]
+      - paragraph [ref=e176]:
+        - text: FI
+        - strong [ref=e177]: przed zawarciem umowy
+        - text: z klientem profesjonalnym informuje go o zasadach traktowania klientów profesjonalnych oraz o możliwości złożenia pisemnego żądania traktowania go jak klienta detalicznego.
+      - paragraph [ref=e178]:
+        - strong [ref=e179]: Warunek wiedzy i doświadczenia
+        - text: — FI uznaje go za zachowany, gdy podmiot spełnia
+        - strong [ref=e180]: co najmniej dwa
+        - text: "z poniższych wymogów:"
+      - list [ref=e181]:
+        - listitem [ref=e182]:
+          - text: Zawierał transakcje o wartości co najmniej
+          - strong [ref=e183]: 50 000 EUR
+          - text: każda, ze średnią częstotliwością co najmniej
+          - strong [ref=e184]: 10 transakcji na kwartał
+          - text: w ciągu ostatnich czterech kwartałów
+        - listitem [ref=e185]:
+          - text: Wartość portfela IF łącznie ze środkami pieniężnymi wynosi co najmniej
+          - strong [ref=e186]: 500 000 EUR
+        - listitem [ref=e187]:
+          - text: Pracuje lub pracował w sektorze finansowym co najmniej
+          - strong [ref=e188]: 1 rok
+          - text: na stanowisku wymagającym wiedzy o transakcjach na IF lub usługach maklerskich.
+      - paragraph [ref=e189]:
+        - text: FI
+        - strong [ref=e190]: przed uwzględnieniem
+        - text: żądania informuje klienta o zasadach żądanego traktowania.
+      - paragraph [ref=e191]:
+        - text: FI uwzględnia żądanie, jeżeli klient złożył
+        - strong [ref=e192]: pisemne oświadczenie
+        - text: o znajomości zasad traktowania klientów profesjonalnych.
+      - paragraph [ref=e193]: W przypadku powzięcia informacji o ustaniu spełniania warunków — FI podejmuje działania do zmiany statusu klienta.
+      - separator [ref=e194]
+      - heading "3. Świadczenia pieniężne i niepieniężne (zachęty)" [level=2] [ref=e195]
+      - paragraph [ref=e196]:
+        - text: Świadczenia pieniężne lub niepieniężne uznaje się za mające na celu
+        - strong [ref=e197]: podniesienie jakości usługi
+        - text: ", jeżeli:"
+      - list [ref=e198]:
+        - listitem [ref=e199]:
+          - text: "Są uzasadnione świadczeniem usługi dodatkowej lub poprawiającej jakość usługi, w szczególności poprzez:"
+          - list [ref=e200]:
+            - listitem [ref=e201]: Doradztwo inwestycyjne w sposób zależny dotyczące szerokiego zakresu IF
+            - listitem [ref=e202]: Doradztwo zależne + ocena co najmniej raz do roku, czy IF są odpowiednie dla klienta
+            - listitem [ref=e203]: Doradztwo zależne + inna wartościowa usługa dla klienta lub potencjalnego klienta
+            - listitem [ref=e204]: Zapewnienie dostępu po konkurencyjnej cenie do szerokiego zakresu IF wraz z narzędziami przynoszącymi korzyści i okresowymi sprawozdaniami
+        - listitem [ref=e205]:
+          - strong [ref=e206]: Nie przynoszą bezpośredniej korzyści
+          - text: firmie inwestycyjnej
+        - listitem [ref=e207]:
+          - text: Są uzasadnione przynoszeniem
+          - strong [ref=e208]: bieżącej lub ciągłej korzyści
+          - text: klientowi.
+      - paragraph [ref=e209]: "FI gromadzi dokumentację potwierdzającą cel świadczeń poprzez:"
+      - list [ref=e210]:
+        - listitem [ref=e211]: Prowadzenie wykazu wszystkich świadczeń pieniężnych i niepieniężnych przyjętych od osoby trzeciej
+        - listitem [ref=e212]: Rejestrowanie sposobu, w jaki te świadczenia poprawiają jakość usług
+        - listitem [ref=e213]: Rejestrowanie działań mających na celu uniknięcie negatywnego wpływu na profesjonalizm działania.
+      - paragraph [ref=e214]:
+        - text: FI ujawnia klientowi kompleksowo i zrozumiale informacje o świadczeniach
+        - strong [ref=e215]: przed rozpoczęciem
+        - text: świadczenia usługi. Gdy wysokość nie może być oszacowana — podaje sposób obliczania.
+      - paragraph [ref=e216]:
+        - text: FI
+        - strong [ref=e217]: co najmniej raz w roku
+        - text: informuje indywidualnie klientów o kwotach przyjętych lub przekazanych świadczeń.
+      - paragraph [ref=e218]:
+        - text: FI świadcząca doradztwo
+        - strong [ref=e219]: niezależne
+        - text: lub zarządzanie portfelem — niezwłocznie przekazuje klientom świadczenia pieniężne zapłacone przez osoby trzecie w związku z usługami na rzecz tego klienta.
+      - separator [ref=e220]
+      - heading "4. Informacje reklamowe i konflikt interesów" [level=2] [ref=e221]
+      - paragraph [ref=e222]:
+        - text: Gdy FI kieruje do klientów informacje w celu
+        - strong [ref=e223]: reklamy lub promocji
+        - text: wskazujące na korzyści z usługi maklerskiej — informacja musi określać
+        - strong [ref=e224]: poziom ryzyka
+        - text: .
+      - paragraph [ref=e225]:
+        - strong [ref=e226]: Przed zawarciem umowy
+        - text: FI przekazuje klientowi (na trwałym nośniku) informacje o istniejących konfliktach interesów związanych ze świadczeniem danej usługi, o ile organizacja FI nie zapewnia, że przy konflikcie interesów nie dojdzie do naruszenia interesu klienta.
+      - paragraph [ref=e227]: "W przypadku powstania konfliktu interesów:"
+      - list [ref=e228]:
+        - listitem [ref=e229]:
+          - text: FI informuje klienta
+          - strong [ref=e230]: niezwłocznie
+          - text: po jego stwierdzeniu
+        - listitem [ref=e231]: FI powstrzymuje się od świadczenia usługi do czasu wyraźnego oświadczenia klienta o kontynuacji lub rozwiązaniu umowy.
+      - separator [ref=e232]
+      - heading "5. Nieskomplikowane instrumenty finansowe" [level=2] [ref=e233]
+      - paragraph [ref=e234]:
+        - strong [ref=e235]: "Nieskomplikowanymi IF nie są w szczególności:"
+      - list [ref=e236]:
+        - listitem [ref=e237]: Dłużne PW z wbudowanym instrumentem pochodnym
+        - listitem [ref=e238]: Dłużne PW, których struktura utrudnia zrozumienie ryzyka
+        - listitem [ref=e239]: IF z wbudowanym instrumentem pochodnym.
+      - paragraph [ref=e240]:
+        - strong [ref=e241]: "Dłużne PW mające wbudowany instrument pochodny:"
+      - list [ref=e242]:
+        - listitem [ref=e243]: Obligacje zamienne i warunkowe obligacje zamienne
+        - listitem [ref=e244]: Obligacje wymienne
+        - listitem [ref=e245]: Obligacje o zmiennym nominale (z wyłączeniem obligacji ratalnych)
+        - listitem [ref=e246]: Obligacje z wbudowaną opcją kupna lub sprzedaży
+        - listitem [ref=e247]: Dłużne PW, których wartość zależy od instrumentu bazowego
+        - listitem [ref=e248]: Dłużne PW z wbudowanym kredytowym instrumentem pochodnym (stopa zwrotu zależna od instrumentu referencyjnego lub premii za ryzyko kredytowe)
+        - listitem [ref=e249]: Warranty subskrypcyjne.
+      - paragraph [ref=e250]:
+        - strong [ref=e251]: "IF z wbudowanym instrumentem finansowym:"
+      - list [ref=e252]:
+        - listitem [ref=e253]: Akcje lub certyfikaty inwestycyjne z wbudowanym instrumentem pochodnym
+        - listitem [ref=e254]: Obligacje lub inne dłużne PW z wbudowanym instrumentem pochodnym lub o strukturze utrudniającej zrozumienie ryzyka
+        - listitem [ref=e255]: Instrumenty rynku pieniężnego z wbudowanym instrumentem pochodnym lub o strukturze utrudniającej zrozumienie ryzyka, albo gdzie część lub całość wypłaty środków z tytułu wierzytelności ulega modyfikacji w zależności od zmiennych.
+      - separator [ref=e256]
+      - heading "6. Grupa docelowa — FI emitująca lub wystawiająca IF" [level=2] [ref=e257]
+      - paragraph [ref=e258]:
+        - text: FI ustanawia procedury zapewniające zgodność procesu emitowania/wystawiania IF z wymogami zarządzania konfliktami interesów (w tym polityką wynagrodzeń). Wyemitowanie IF nie może mieć negatywnego wpływu na
+        - strong [ref=e259]: grupę docelową
+        - text: ani stanowić zagrożenia dla
+        - strong [ref=e260]: stabilności rynków finansowych
+        - text: .
+      - paragraph [ref=e261]: "FI emitująca lub wystawiająca IF:"
+      - list [ref=e262]:
+        - listitem [ref=e263]:
+          - text: Dokonuje
+          - strong [ref=e264]: analizy wystąpienia ewentualnych konfliktów interesów
+        - listitem [ref=e265]: Ocenia, czy IF może stanowić zagrożenie dla prawidłowego funkcjonowania rynków
+        - listitem [ref=e266]:
+          - text: Określa
+          - strong [ref=e267]: grupę docelową
+          - text: i
+          - strong [ref=e268]: negatywną grupę docelową
+          - text: dla każdego IF
+      - paragraph [ref=e269]:
+        - strong [ref=e270]: "Przy określaniu grupy docelowej FI bierze pod uwagę:"
+      - list [ref=e271]:
+        - listitem [ref=e272]: Rodzaj klientów, do których produkt jest skierowany
+        - listitem [ref=e273]: Wiedzę i doświadczenie klientów w odniesieniu do danego IF
+        - listitem [ref=e274]: Sytuację finansową klienta — procentową wartość straty, jaką jest w stanie ponieść
+        - listitem [ref=e275]: Tolerancję ryzyka oraz zgodność wskaźnika zysku do ryzyka
+        - listitem [ref=e276]: Cele i potrzeby inwestycyjne klientów.
+      - blockquote [ref=e277]:
+        - paragraph [ref=e278]:
+          - text: Dla skomplikowanych IF — bardziej szczegółowe określenie grupy docelowej.
+          - text: Dla nieskomplikowanych i łatwo dostępnych IF — można mniej szczegółowo.
+      - paragraph [ref=e279]: "FI będąca emitentem przeprowadza:"
+      - list [ref=e280]:
+        - listitem [ref=e281]:
+          - strong [ref=e282]: Analizę scenariuszową
+          - text: IF
+        - listitem [ref=e283]:
+          - text: Analizę
+          - strong [ref=e284]: struktury kosztów i opłat
+        - listitem [ref=e285]:
+          - text: Określenie
+          - strong [ref=e286]: strategii dystrybucji
+          - text: zapewniającej dotarcie do grupy docelowej
+        - listitem [ref=e287]:
+          - strong [ref=e288]: Regularny przegląd
+          - text: emitowanych IF.
+      - paragraph [ref=e289]:
+        - strong [ref=e290]: Działania zaradcze
+        - text: "przy przekroczeniu progu rentowności lub kluczowego zdarzenia wypłacalnościowego:"
+      - list [ref=e291]:
+        - listitem [ref=e292]: Przekazanie istotnych informacji klientom lub innym FI
+        - listitem [ref=e293]: Zmiany w procesie emitowania/wystawiania lub udzielania porad
+        - listitem [ref=e294]: Wstrzymanie dalszej emisji lub wystawiania
+        - listitem [ref=e295]: Zmiana cech lub kosztów/opłat IF
+        - listitem [ref=e296]: Ustalenie odpowiedniości strategii dystrybucji i kanałów
+        - listitem [ref=e297]: Nawiązanie kontaktu z innymi FI w celu omówienia zmiany strategii
+        - listitem [ref=e298]: Rozwiązanie umowy z innymi FI
+        - listitem [ref=e299]: Poinformowanie KNF o zdarzeniu.
+      - paragraph [ref=e300]:
+        - text: Nad obowiązkami i sprawozdaniami sprawuje kontrolę
+        - strong [ref=e301]: zarząd
+        - text: . FI udostępnia sprawozdania na żądanie
+        - strong [ref=e302]: KNF
+        - text: . Funkcja zgodności monitoruje zmiany i przeprowadza okresowe przeglądy.
+      - separator [ref=e303]
+      - heading "7. Grupa docelowa — FI rekomendująca lub oferująca IF" [level=2] [ref=e304]
+      - paragraph [ref=e305]:
+        - text: FI określa grupę docelową dla danego IF
+        - strong [ref=e306]: także gdy emitent lub wystawca tego nie zrobili
+        - text: — na etapie ustalania celów biznesowych i strategii dystrybucji.
+      - paragraph [ref=e307]:
+        - text: FI
+        - strong [ref=e308]: nie oferuje, nie rekomenduje
+        - text: ani nie umożliwia nabycia/objęcia IF, jeżeli instrument nie odpowiada potrzebom i cechom jej klientów (chyba że to wyłączna inicjatywa klienta).
+      - paragraph [ref=e309]:
+        - text: FI w przypadku
+        - strong [ref=e310]: zarządzania portfelami
+        - text: może uwzględniać IF spoza grupy docelowej klienta
+        - strong [ref=e311]: do dywersyfikacji i zabezpieczania pozycji
+        - text: ", pod warunkiem że portfel jako całość jest odpowiedni dla klienta."
+      - paragraph [ref=e312]:
+        - text: FI przeprowadza
+        - strong [ref=e313]: okresowe przeglądy i aktualizacje
+        - text: rozwiązań dotyczących grupy docelowej i strategii dystrybucji.
+      - paragraph [ref=e314]:
+        - text: Gdy FI rekomenduje/oferuje IF we współpracy z innymi FI — za obowiązki odpowiada FI posiadająca
+        - strong [ref=e315]: bezpośrednią relację z klientem
+        - text: .
+      - separator [ref=e316]
+      - heading "8. Zawieranie transakcji i przyjmowanie zleceń" [level=2] [ref=e317]
+      - paragraph [ref=e318]:
+        - strong [ref=e319]: "Zlecenie klienta musi zawierać co najmniej:"
+      - list [ref=e320]:
+        - listitem [ref=e321]: Dane umożliwiające identyfikację klienta
+        - listitem [ref=e322]: Datę i czas wystawienia
+        - listitem [ref=e323]: Rodzaj i liczbę instrumentów
+        - listitem [ref=e324]: Przedmiot zlecenia
+        - listitem [ref=e325]: Określenie ceny
+        - listitem [ref=e326]: Oznaczenie terminu ważności zlecenia
+        - listitem [ref=e327]: Podpis klienta lub pełnomocnika.
+      - blockquote [ref=e328]:
+        - paragraph [ref=e329]:
+          - emphasis [ref=e330]: Nie stosuje się do zleceń składanych przez telefon.
+      - paragraph [ref=e331]:
+        - text: FI
+        - strong [ref=e332]: potwierdza
+        - text: klientowi przyjęcie zlecenia.
+      - paragraph [ref=e333]:
+        - text: Dokument może zawierać
+        - strong [ref=e334]: więcej niż 1 zlecenie
+        - text: — wtedy musi zawierać wyraźne określenie liczby zleceń.
+      - paragraph [ref=e335]:
+        - text: W zleceniu można podać
+        - strong [ref=e336]: maksymalną łączną wartość
+        - text: transakcji zamiast liczby instrumentów.
+      - paragraph [ref=e337]:
+        - text: FI wystawia zlecenie pod warunkiem, że klient posiada
+        - strong [ref=e338]: pełne pokrycie
+        - text: wartości zlecenia i kosztów.
+        - emphasis [ref=e339]: (Można odstąpić, jeżeli pozwala na to wiarygodność klienta i sytuacja finansowa.)
+      - paragraph [ref=e340]:
+        - strong [ref=e341]: "Weryfikacja pokrycia:"
+      - list [ref=e342]:
+        - listitem [ref=e343]: Rejestr sesji nie otwarty → suma niezablokowanych środków pieniężnych na rachunku pieniężnym
+        - listitem [ref=e344]: Rejestr sesji otwarty → stan niezablokowanych środków w rejestrze sesji.
+      - paragraph [ref=e345]:
+        - text: FI ponosi
+        - strong [ref=e346]: odpowiedzialność
+        - text: za dostarczenie środków pieniężnych na dzień rozrachunku transakcji kupna klienta.
+      - paragraph [ref=e347]: FI zapewnia, że klient nie wykorzysta środków pieniężnych ani IF na pokrycie zleceń w wysokości niezbędnej do rozrachunku.
+      - paragraph [ref=e348]:
+        - text: Dokonywanie zapisów po rozrachunku przez izbę rozrachunkową następuje
+        - strong [ref=e349]: nie później niż do końca dnia rozrachunku
+        - text: (z wyłączeniem derywatów).
+      - separator [ref=e350]
+      - heading "9. Transakcje derywatami" [level=2] [ref=e351]
+      - paragraph [ref=e352]:
+        - text: FI wystawia zlecenie brokerskie na transakcję terminową pod warunkiem, że klient ustanowił
+        - strong [ref=e353]: zabezpieczenie
+        - text: "w wysokości określonej przez:"
+      - list [ref=e354]:
+        - listitem [ref=e355]: FI — w regulaminie wykonywania zleceń dotyczących derywatów
+        - listitem [ref=e356]: Bank powierniczy — w regulaminie prowadzenia rachunków PW.
+      - paragraph [ref=e357]: "Przepisy stosuje się również do:"
+      - list [ref=e358]:
+        - listitem [ref=e359]: Praw majątkowych i instrumentów rynku niepublicznego, których obrót jest związany z obowiązkiem ustanowienia zabezpieczenia
+        - listitem [ref=e360]: Zagranicznych IF, których obrót związany jest z obowiązkiem ustanowienia zabezpieczenia.
+      - separator [ref=e361]
+      - heading "10. Umowy o dostarczenie IF i gwarantowanie zapłaty" [level=2] [ref=e362]
+      - paragraph [ref=e363]: "FI nieprowadząca rachunku klienta, z którym zawarła umowę o wykonywanie zleceń, zawiera z podmiotem prowadzącym rachunek:"
+      - list [ref=e364]:
+        - listitem [ref=e365]:
+          - strong [ref=e366]: Umowę o dostarczenie instrumentów finansowych
+        - listitem [ref=e367]:
+          - strong [ref=e368]: Umowę o gwarantowanie zapłaty
+          - text: (gdy chodzi o rachunek pieniężny).
+      - paragraph [ref=e369]: "Umowy te zawierają m.in.:"
+      - list [ref=e370]:
+        - listitem [ref=e371]: Tryb i warunki dostarczania IF oraz gwarantowania zapłaty
+        - listitem [ref=e372]: Sposoby i terminy dostarczenia potwierdzeń zawarcia transakcji
+        - listitem [ref=e373]: Sposób ustalenia wysokości szkody poniesionej przez FI
+        - listitem [ref=e374]: Postępowanie w przypadku opóźnienia.
+      - paragraph [ref=e375]:
+        - text: Gdy rachunek klienta prowadzony przez
+        - strong [ref=e376]: KDPW
+        - text: "lub spółkę, której KDPW przekazał czynności:"
+      - list [ref=e377]:
+        - listitem [ref=e378]: Umowy zawiera się z takim klientem
+        - listitem [ref=e379]:
+          - text: Umowa o dostarczenie IF zawiera co najmniej zobowiązanie klienta do złożenia w KDPW
+          - strong [ref=e380]: dyspozycji blokady
+          - text: IF na żądanie FI.
+      - separator [ref=e381]
+      - heading "11. Ustanawianie zabezpieczeń wierzytelności" [level=2] [ref=e382]
+      - paragraph [ref=e383]: "FI podejmuje czynności związane z ustanowieniem zabezpieczenia wierzytelności na IF wyłącznie pod warunkiem:"
+      - list [ref=e384]:
+        - listitem [ref=e385]:
+          - text: Istnienia
+          - strong [ref=e386]: nieprzedawnionej wierzytelności
+          - text: (pieniężnej lub niepieniężnej, w tym przyszłej lub warunkowej)
+        - listitem [ref=e387]: Formy zabezpieczenia i sposobu zaspokojenia odpowiadających wymogom przepisów
+        - listitem [ref=e388]:
+          - text: Przedmiotem zabezpieczenia są
+          - strong [ref=e389]: instrumenty finansowe
+          - text: .
+      - paragraph [ref=e390]:
+        - text: Odmowa — forma
+        - strong [ref=e391]: pisemna + uzasadnienie
+        - text: .
+      - paragraph [ref=e392]:
+        - strong [ref=e393]: W okresie trwania blokady
+        - text: "FI na zlecenie klienta nie może:"
+      - list [ref=e394]:
+        - listitem [ref=e395]: Znieść blokady
+        - listitem [ref=e396]: Zbyć zablokowanych IF
+        - listitem [ref=e397]: Przenieść zablokowanych IF.
+      - paragraph [ref=e398]:
+        - text: FI prowadząca rachunek z zablokowanymi IF
+        - strong [ref=e399]: przekazuje do dyspozycji klienta pożytki
+        - text: z tych instrumentów (chyba że umowa stanowi inaczej).
+      - paragraph [ref=e400]:
+        - strong [ref=e401]: "Zniesienie blokady:"
+      - list [ref=e402]:
+        - listitem [ref=e403]: Blokada bezterminowa — po złożeniu przez wierzyciela dyspozycji w formie pisemnej
+        - listitem [ref=e404]: Blokada terminowa nieodwołalna — w następującym po upływie terminu dniu
+        - listitem [ref=e405]: Dyspozycja wierzyciela.
+      - paragraph [ref=e406]:
+        - emphasis [ref=e407]: Zniesienie blokady może dotyczyć części zablokowanych instrumentów.
+      - paragraph [ref=e408]:
+        - strong [ref=e409]: Zastaw rejestrowy
+        - text: — FI dokonuje blokady po otrzymaniu dokumentów + odpis z rejestru zastawu.
+      - paragraph [ref=e410]:
+        - text: Środki ze spełnienia świadczenia z zastawionych instrumentów mogą być wypłacone wyłącznie do rąk
+        - strong [ref=e411]: zastawcy i zastawnika łącznie
+        - text: albo na żądanie jednego z nich — złożone do
+        - strong [ref=e412]: depozytu sądowego
+        - text: .
+      - separator [ref=e413]
+      - heading "12. Zarządzający — zbiorcze zlecenia" [level=2] [ref=e414]
+      - paragraph [ref=e415]:
+        - strong [ref=e416]: Zarządzający
+        - text: może wystawiać
+        - strong [ref=e417]: 1 zlecenie na rzecz klientów
+        - text: pod warunkiem, że do końca dnia, w którym dane zlecenie zostało wykonane, określi liczbę instrumentów kupowanych lub sprzedawanych dla poszczególnych klientów.
+      - paragraph [ref=e418]:
+        - strong [ref=e419]: Zarządzający
+        - text: "to:"
+      - list [ref=e420]:
+        - listitem [ref=e421]: FI świadcząca usługi zarządzania portfelami
+        - listitem [ref=e422]: TFI w zakresie zarządzania portfelami
+        - listitem [ref=e423]: TFI zarządzające zbiorczymi portfelami PW
+        - listitem [ref=e424]: Zagraniczna FI lub inne podmioty świadczące usługi zarządzania portfelami poza RP.
+      - separator [ref=e425]
+      - heading "13. Sprawozdania" [level=2] [ref=e426]
+      - table [ref=e427]:
+        - rowgroup [ref=e428]:
+          - row "Usługa Dokument" [ref=e429]:
+            - columnheader "Usługa" [ref=e430]
+            - columnheader "Dokument" [ref=e431]
+        - rowgroup [ref=e432]:
+          - row "Przyjmowanie i przekazywanie zleceń nabycia/zbycia IF Sprawozdanie (§ 144 ust. 1)" [ref=e433]:
+            - cell "Przyjmowanie i przekazywanie zleceń nabycia/zbycia IF" [ref=e434]
+            - cell "Sprawozdanie (§ 144 ust. 1)" [ref=e435]
+          - row "Doradztwo inwestycyjne Okresowe sprawozdanie (§ 145 ust. 1)" [ref=e436]:
+            - cell "Doradztwo inwestycyjne" [ref=e437]
+            - cell "Okresowe sprawozdanie (§ 145 ust. 1)" [ref=e438]
+          - row "Analizy inwestycyjne i rekomendacje o charakterze ogólnym Sprawozdanie (§ 146 ust. 1)" [ref=e439]:
+            - cell "Analizy inwestycyjne i rekomendacje o charakterze ogólnym" [ref=e440]
+            - cell "Sprawozdanie (§ 146 ust. 1)" [ref=e441]
+      - paragraph [ref=e442]:
+        - emphasis [ref=e443]: Sprawozdania mogą być w formie wystandaryzowanej.
+    - generic [ref=e444]:
+      - button "‹ Poprzedni" [ref=e445] [cursor=pointer]
+      - button "Następny ›" [ref=e446] [cursor=pointer]
+  - navigation [ref=e19]:
+    - link "📚 Materiały" [ref=e20] [cursor=pointer]:
+      - /url: /materials
+      - generic [ref=e21]: 📚
+      - generic [ref=e22]: Materiały
+    - link "✍️ Quiz" [ref=e23] [cursor=pointer]:
+      - /url: /quiz
+      - generic [ref=e24]: ✍️
+      - generic [ref=e25]: Quiz
+    - link "📊 Postęp" [ref=e26] [cursor=pointer]:
+      - /url: /progress
+      - generic [ref=e27]: 📊
+      - generic [ref=e28]: Postęp

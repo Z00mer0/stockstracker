@@ -1,0 +1,17 @@
+[   12929ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:202
+[   13018ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/portfolio:0
+[   13019ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[   13020ms] [ERROR] Access to fetch at 'https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP' from origin 'https://myfund-app.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://myfund-app.vercel.app/portfolio:0
+[   13020ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP:0
+[   13384ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0
+[   13387ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fapi.frankfurter.app%2Flatest%3Ffrom%3DUSD%26to%3DPLN%2CEUR%2CGBP:0
+[   13387ms] [WARNING] [fx] fetch failed, using fallback: HTTP 401 @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:222
+[   13388ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/data:0
+[   13389ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myfund-app.vercel.app/api/proxy?url=https%3A%2F%2Fapi.frankfurter.app%2Flatest%3Ffrom%3DUSD%26to%3DPLN%2CEUR%2CGBP:0
+[   13389ms] [WARNING] [fx] fetch failed, using fallback: HTTP 401 @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:222
+[  119994ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 34245.92, cashValue: 0.00, totalValue: 34245.92, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:262
+[  120006ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 34245.92, cashValue: 0.00, totalValue: 34245.92, unrealPLN: 0.00} @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:262
+[  120131ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 30368.90, cashValue: 0.00, totalValue: 30368.90, unrealPLN: -3877.02} @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:262
+[  120136ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 30368.90, cashValue: 0.00, totalValue: 30368.90, unrealPLN: -3877.02} @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:262
+[  120188ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 30368.90, cashValue: 0.00, totalValue: 30368.90, unrealPLN: -3877.02} @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:262
+[  120193ms] [LOG] [KPI] Total Invested vs Total Value {costBasis: 34245.92, positionsValue: 30368.90, cashValue: 0.00, totalValue: 30368.90, unrealPLN: -3877.02} @ https://myfund-app.vercel.app/assets/index-BmHk_vYG.js:262

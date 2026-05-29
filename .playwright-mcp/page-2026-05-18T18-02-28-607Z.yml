@@ -1,0 +1,6 @@
+- generic [ref=e3]:
+  - heading "Makler Exam" [level=1] [ref=e4]
+  - paragraph [ref=e5]: Wprowadź hasło aby kontynuować
+  - generic [ref=e6]:
+    - textbox "Hasło" [active] [ref=e7]
+    - button "Zaloguj" [disabled] [ref=e8] [cursor=pointer]

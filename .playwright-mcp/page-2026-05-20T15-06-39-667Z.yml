@@ -1,0 +1,160 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - alert [ref=e5]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e14]:
+          - generic [ref=e15]: Upcoming maintenance
+          - generic [ref=e16]:
+            - text: We will be upgrading critical infrastructure on May 27th, 3:00 am GMT+2 (May 27th, 1:00 am UTC). Follow our
+            - link "status page" [ref=e17] [cursor=pointer]:
+              - /url: https://status.render.com/incidents/7rdmw95g2h5q
+            - text: for updates.
+      - button "Close notification" [ref=e18] [cursor=pointer]:
+        - img [ref=e19]
+    - banner [ref=e21]:
+      - generic [ref=e22]:
+        - link "Render" [ref=e24] [cursor=pointer]:
+          - /url: /
+          - img "Render" [ref=e25]
+        - button "M My Workspace" [ref=e29] [cursor=pointer]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: M
+            - generic "My Workspace" [ref=e32]
+            - img [ref=e33]
+      - generic [ref=e37]:
+        - navigation [ref=e38]:
+          - list [ref=e39]:
+            - listitem [ref=e40]:
+              - generic [ref=e41]:
+                - img [ref=e42]
+                - generic [ref=e46]: Projects
+        - button "Search Command + K" [ref=e48] [cursor=pointer]:
+          - img [ref=e50]
+          - text: Search
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - generic [ref=e55]: Command
+            - generic [ref=e56]: +
+            - generic [ref=e57]: K
+            - generic [ref=e58]: K
+      - generic [ref=e59]:
+        - button "New" [ref=e61] [cursor=pointer]:
+          - generic [ref=e62]:
+            - img [ref=e63]
+            - generic [ref=e65]: New
+        - button "Upgrade" [ref=e67] [cursor=pointer]:
+          - generic [ref=e68]:
+            - img [ref=e69]
+            - generic [ref=e71]: Upgrade
+        - button "Help" [ref=e73] [cursor=pointer]:
+          - img "Help" [ref=e74]
+        - button "g" [ref=e79] [cursor=pointer]:
+          - generic [ref=e81]: g
+    - generic [ref=e82]:
+      - navigation [ref=e83]:
+        - separator [ref=e84]
+        - generic [ref=e86]:
+          - list [ref=e87]:
+            - listitem [ref=e88]:
+              - link "Projects" [ref=e89] [cursor=pointer]:
+                - /url: /
+                - img [ref=e90]
+                - generic [ref=e94]: Projects
+            - listitem [ref=e95]:
+              - link "Blueprints" [ref=e96] [cursor=pointer]:
+                - /url: /blueprints
+                - img [ref=e97]
+                - generic [ref=e102]: Blueprints
+            - listitem [ref=e103]:
+              - link "Environment Groups" [ref=e104] [cursor=pointer]:
+                - /url: /env-groups
+                - img [ref=e105]
+                - generic [ref=e111]: Environment Groups
+          - generic [ref=e112]:
+            - generic [ref=e113]: Integrations
+            - list "Integrations" [ref=e114]:
+              - listitem [ref=e115]:
+                - link "Observability" [ref=e116] [cursor=pointer]:
+                  - /url: /observability
+                  - img [ref=e117]
+                  - generic [ref=e119]: Observability
+              - listitem [ref=e120]:
+                - link "Webhooks" [ref=e121] [cursor=pointer]:
+                  - /url: /webhooks
+                  - img [ref=e122]
+                  - generic [ref=e126]: Webhooks
+              - listitem [ref=e127]:
+                - link "Notifications" [ref=e128] [cursor=pointer]:
+                  - /url: /notifications
+                  - img [ref=e129]
+                  - generic [ref=e139]: Notifications
+          - generic [ref=e140]:
+            - generic [ref=e141]: Networking
+            - list "Networking" [ref=e142]:
+              - listitem [ref=e143]:
+                - link "Private Links" [ref=e144] [cursor=pointer]:
+                  - /url: /private-links
+                  - img [ref=e145]
+                  - generic [ref=e147]: Private Links
+              - listitem [ref=e148]:
+                - link "Dedicated IPs New" [ref=e149] [cursor=pointer]:
+                  - /url: /dedicated-ips
+                  - img [ref=e150]
+                  - generic [ref=e152]:
+                    - generic [ref=e153]: Dedicated IPs
+                    - generic [ref=e154]: New
+          - generic [ref=e155]:
+            - generic [ref=e156]: Workspace
+            - list "Workspace" [ref=e157]:
+              - listitem [ref=e158]:
+                - link "Billing" [ref=e159] [cursor=pointer]:
+                  - /url: /w/tea-d7r8m5ugkk3c738frikg/billing
+                  - img [ref=e160]
+                  - generic [ref=e163]: Billing
+              - listitem [ref=e164]:
+                - link "Settings" [ref=e165] [cursor=pointer]:
+                  - /url: /w/tea-d7r8m5ugkk3c738frikg/settings
+                  - img [ref=e166]
+                  - generic [ref=e169]: Settings
+        - generic [ref=e171]:
+          - button "Collapse items" [expanded] [ref=e172] [cursor=pointer]:
+            - img [ref=e173]
+          - list "Footer navigation" [ref=e175]:
+            - listitem [ref=e176]:
+              - link "Changelog" [ref=e177] [cursor=pointer]:
+                - /url: https://render.com/changelog
+                - img [ref=e178]
+                - generic [ref=e183]: Changelog
+            - listitem [ref=e184]:
+              - link "Invite a friend" [ref=e185] [cursor=pointer]:
+                - /url: /invites
+                - img [ref=e186]
+                - generic [ref=e188]: Invite a friend
+            - listitem [ref=e189]:
+              - button "Contact support" [ref=e190] [cursor=pointer]:
+                - img [ref=e191]
+                - generic [ref=e195]: Contact support
+          - link "Render Status" [ref=e197] [cursor=pointer]:
+            - /url: https://status.render.com
+            - img [ref=e198]
+            - generic [ref=e200]: Render Status
+      - generic [ref=e203]:
+        - img "Loading..." [ref=e204]
+        - generic [ref=e207]: Loading...
+  - generic:
+    - generic:
+      - generic: "0 services selected:"
+      - generic:
+        - generic:
+          - button:
+            - generic:
+              - img
+            - generic: Move
+            - img
+    - generic:
+      - separator
+      - generic:
+        - generic:
+          - button:
+            - img

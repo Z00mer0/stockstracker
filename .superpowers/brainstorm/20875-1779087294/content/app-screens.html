@@ -1,0 +1,56 @@
+<h2>Ekrany aplikacji — nawigacja i struktura</h2>
+<p class="subtitle">Które ekrany chcesz uwzględnić? Zaznacz wszystkie które pasują.</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="home" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Dashboard / Strona główna</h3>
+      <p>Po zalogowaniu: kafelki "Ucz się" i "Quiz/Egzamin", ostatnie wyniki, procent opanowania materiału</p>
+    </div>
+  </div>
+  <div class="option" data-choice="study" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tryb nauki — materiały</h3>
+      <p>Lista tematów/rozdziałów do przeczytania, widok treści z nawigacją między rozdziałami</p>
+    </div>
+  </div>
+  <div class="option" data-choice="quiz" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tryb Quiz / Egzamin</h3>
+      <p>Jak w Twoim screenshocie: timer, pytania wielokrotnego wyboru, nawigacja, wyniki na końcu</p>
+    </div>
+  </div>
+  <div class="option" data-choice="stats" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Statystyki i postęp</h3>
+      <p>Historia sesji, które kategorie są najsłabsze, % opanowania, wykresy wyników w czasie</p>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:2rem;">
+  <div class="mockup">
+    <div class="mockup-header">Proponowana nawigacja (mobile bottom bar)</div>
+    <div class="mockup-body" style="padding:1rem;">
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem;">
+        <div style="background:#1e293b;border-radius:12px;padding:1rem 1.5rem;text-align:center;min-width:80px;border:1px solid #334155;">
+          <div style="font-size:1.4rem">📚</div>
+          <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px">Materiały</div>
+        </div>
+        <div style="background:#1e293b;border-radius:12px;padding:1rem 1.5rem;text-align:center;min-width:80px;border:2px solid #22c55e;">
+          <div style="font-size:1.4rem">✍️</div>
+          <div style="font-size:0.75rem;color:#22c55e;margin-top:4px;font-weight:600">Quiz</div>
+        </div>
+        <div style="background:#1e293b;border-radius:12px;padding:1rem 1.5rem;text-align:center;min-width:80px;border:1px solid #334155;">
+          <div style="font-size:1.4rem">📊</div>
+          <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px">Postęp</div>
+        </div>
+      </div>
+      <p style="color:#64748b;font-size:0.85rem;text-align:center">3 główne sekcje w dolnym pasku — optymalne pod telefon</p>
+    </div>
+  </div>
+</div>

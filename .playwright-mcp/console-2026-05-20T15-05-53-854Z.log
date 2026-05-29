@@ -1,0 +1,2 @@
+[    3204ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ https://stockstracker-mu.vercel.app/:0
+[    4844ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://stockstracker-mu.vercel.app/favicon.ico:0

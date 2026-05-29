@@ -1,0 +1,125 @@
+- generic [ref=e3]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: 📈
+      - generic [ref=e9]: StocksTracker
+    - navigation [ref=e10]:
+      - link "📊 Dashboard" [ref=e11] [cursor=pointer]:
+        - /url: /app
+        - generic [ref=e12]: 📊
+        - text: Dashboard
+      - link "💼 Portfel" [ref=e13] [cursor=pointer]:
+        - /url: /app/portfolio
+        - generic [ref=e14]: 💼
+        - text: Portfel
+      - link "📈 Historia" [ref=e15] [cursor=pointer]:
+        - /url: /app/history
+        - generic [ref=e16]: 📈
+        - text: Historia
+      - link "📋 Transakcje" [ref=e17] [cursor=pointer]:
+        - /url: /app/transactions
+        - generic [ref=e18]: 📋
+        - text: Transakcje
+      - link "📅 Dywidendy" [ref=e19] [cursor=pointer]:
+        - /url: /app/dividends
+        - generic [ref=e20]: 📅
+        - text: Dywidendy
+      - link "🗓️ Kalendarz" [ref=e21] [cursor=pointer]:
+        - /url: /app/calendar
+        - generic [ref=e22]: 🗓️
+        - text: Kalendarz
+      - link "👁 Watchlist" [ref=e23] [cursor=pointer]:
+        - /url: /app/watchlist
+        - generic [ref=e24]: 👁
+        - text: Watchlist
+      - link "🧪 Scenario Lab" [ref=e25] [cursor=pointer]:
+        - /url: /app/scenario
+        - generic [ref=e26]: 🧪
+        - text: Scenario Lab
+      - link "🔍 Atrybuacja" [ref=e27] [cursor=pointer]:
+        - /url: /app/analysis
+        - generic [ref=e28]: 🔍
+        - text: Atrybuacja
+      - link "⚙️ Ustawienia" [ref=e29] [cursor=pointer]:
+        - /url: /app/settings
+        - generic [ref=e30]: ⚙️
+        - text: Ustawienia
+    - generic [ref=e31]:
+      - paragraph [ref=e32]: Adam
+      - button "Wyloguj →" [ref=e33] [cursor=pointer]
+  - generic [ref=e34]:
+    - banner [ref=e35]:
+      - heading "Ustawienia" [level=1] [ref=e36]
+      - button "☀️" [ref=e37] [cursor=pointer]
+      - button "Ukryj wartości" [ref=e38] [cursor=pointer]:
+        - img [ref=e39]
+      - generic [ref=e42]:
+        - generic [ref=e43]: NYSE
+        - generic [ref=e45]: GPW
+        - generic [ref=e47]: LSE
+      - button "↻ Odśwież" [ref=e49] [cursor=pointer]:
+        - generic [ref=e50]: ↻
+        - generic [ref=e51]: Odśwież
+    - main [ref=e52]:
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - heading "Konto" [level=2] [ref=e56]
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Zalogowany jako
+              - generic [ref=e60]: Adam
+            - generic [ref=e62]: API URL
+            - generic [ref=e63]:
+              - button "Odśwież dane" [ref=e64] [cursor=pointer]
+              - button "Wyloguj" [ref=e65] [cursor=pointer]
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - heading "Klucze API" [level=2] [ref=e68]
+            - paragraph [ref=e69]: Wymagane do pobierania łańcucha opcji w Scenario Lab
+          - generic [ref=e71]:
+            - generic [ref=e72]:
+              - text: MarketData.app
+              - generic [ref=e73]: nie ustawiony
+            - generic [ref=e74]:
+              - textbox "Wklej klucz API…" [ref=e75]
+              - button "Zapisz" [ref=e76] [cursor=pointer]
+            - paragraph [ref=e77]: Klucz przechowywany tylko lokalnie (localStorage). Zdobądź darmowy klucz na marketdata.app.
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - heading "Podatek od dywidend" [level=2] [ref=e80]
+            - paragraph [ref=e81]: Stawka stosowana w widoku netto na stronie Dywidendy
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - generic [ref=e84]: GPW (.WA)
+              - generic [ref=e85]: 19% ryczałt (stała)
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Akcje US (USD)
+              - generic [ref=e88]:
+                - button "15% Umowa PL-US (standardowo)" [ref=e89] [cursor=pointer]:
+                  - generic [ref=e90]: 15%
+                  - generic [ref=e91]: Umowa PL-US (standardowo)
+                - button "30% Pełny withholding" [ref=e92] [cursor=pointer]:
+                  - generic [ref=e93]: 30%
+                  - generic [ref=e94]: Pełny withholding
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - heading "Import danych brokera" [level=2] [ref=e97]
+            - paragraph [ref=e98]: Importuj historię z pliku CSV eksportowanego z brokera (eToro, itp.)
+          - generic [ref=e99]:
+            - paragraph [ref=e100]: "Obsługiwane pliki: Closed Positions i Cash Operations. Format wykrywany automatycznie. Duplikaty są pomijane."
+            - button "⬆ Importuj CSV brokera" [ref=e101] [cursor=pointer]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - heading "Kursy walut" [level=2] [ref=e104]
+            - paragraph [ref=e105]: Aktualizowane co 30 min (frankfurter.app)
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - generic [ref=e108]: USD / PLN
+              - generic [ref=e109]: 3.6520 zł
+            - generic [ref=e110]:
+              - generic [ref=e111]: EUR / PLN
+              - generic [ref=e112]: 4.2466 zł
+            - generic [ref=e113]:
+              - generic [ref=e114]: GBP / PLN
+              - generic [ref=e115]: 4.8783 zł
+        - paragraph [ref=e117]: StocksTracker React — migracja z Vanilla JS. Dane przechowywane na Render (PostgreSQL).
