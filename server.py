@@ -1380,7 +1380,7 @@ async function doRecover() {
                 else:
                     _media_type = 'image/png'
                 msg = client.messages.create(
-                    model='claude-opus-4-7',
+                    model='claude-sonnet-4-6',
                     max_tokens=4096,
                     messages=[{
                         'role': 'user',
@@ -1402,8 +1402,8 @@ async function doRecover() {
             except json.JSONDecodeError:
                 self.send_json(422, {'error': 'parse_failed'}); return
             except Exception as e:
-                print(f'[financials/upload] vision error: {e}')
-                self.send_json(502, {'error': 'vision_error'}); return
+                print(f'[financials/upload] vision error: {type(e).__name__}: {e}')
+                self.send_json(502, {'error': str(e) or 'vision_error'}); return
             try:
                 with _conn() as conn, conn.cursor() as cur:
                     cur.execute("""
