@@ -67,11 +67,14 @@ function MiniChart({ data, period }) {
         </defs>
         <path d={areaPath} fill="url(#sdm-area)" />
         <path d={linePath} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinejoin="round" />
-        {dateLabels.map(({ i, date }) => (
-          <text key={i} x={xScale(i)} y={totalH - 4} fill="#64748b" fontSize={9} textAnchor="middle">
-            {date.slice(5).replace('-', '/')}
-          </text>
-        ))}
+        {dateLabels.map(({ i, date }, li) => {
+          const anchor = li === 0 ? 'start' : li === dateLabels.length - 1 ? 'end' : 'middle';
+          return (
+            <text key={i} x={xScale(i)} y={totalH - 4} fill="#64748b" fontSize={9} textAnchor={anchor}>
+              {date.slice(5).replace('-', '/')}
+            </text>
+          );
+        })}
       </svg>
     </div>
   );
