@@ -1420,6 +1420,40 @@ async function doRecover() {
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
 
+        elif path == '/api/financials/manual':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body   = self.read_json(max_size=512 * 1024)
+                symbol = str(body.get('symbol', '')).upper()
+                period = str(body.get('period', 'annual'))
+                data   = body.get('data')
+                if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
+                    self.send_json(400, {'error': 'invalid symbol'}); return
+                if period not in ('quarterly', 'annual'):
+                    self.send_json(400, {'error': 'invalid period'}); return
+                if not isinstance(data, dict) or 'periods' not in data:
+                    self.send_json(400, {'error': 'invalid data'}); return
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)}); return
+            try:
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO financials (symbol, period, data_json, source, fetched_at)
+                        VALUES (%s, %s, %s, 'manual', NOW())
+                        ON CONFLICT (symbol, period) DO UPDATE
+                            SET data_json  = EXCLUDED.data_json,
+                                source     = 'manual',
+                                fetched_at = NOW()
+                    """, (symbol, period, json.dumps(data)))
+            except Exception as e:
+                print(f'[financials/manual] db error: {e}')
+                self.send_json(500, {'error': 'db_error'}); return
+            data['source']    = 'manual'
+            data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            self.send_json(200, data)
+
         else:
             self.send_response(405); self.end_headers()
 
