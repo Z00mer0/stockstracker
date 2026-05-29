@@ -16,7 +16,8 @@ import os
 import time
 import urllib.parse
 import urllib.request
-import requests as _requests
+import urllib.error
+import http.cookiejar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -68,50 +69,71 @@ _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...
 _CAL_TTL   = 4 * 3600  # 4 hours
 
 # ── YAHOO FINANCE SESSION (crumb-based auth) ───────────────────────────────────
-_YF_SESSION     = {'crumb': None, 'session': None, 'ts': 0}
+_YF_SESSION     = {'crumb': None, 'opener': None, 'ts': 0}
 _YF_SESSION_TTL = 3600  # 1 hour
 _YF_UA          = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-_YF_HEADERS     = {
-    'User-Agent': _YF_UA,
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-}
 
-def _get_yf_session():
-    """Return (requests.Session, crumb). Refreshes if stale."""
+def _yf_open(opener, url, extra_headers=None, timeout=15):
+    headers = {'User-Agent': _YF_UA, 'Accept-Encoding': 'identity'}
+    if extra_headers:
+        headers.update(extra_headers)
+    req = urllib.request.Request(url, headers=headers)
+    with opener.open(req, timeout=timeout) as r:
+        return r.read()
+
+def _get_yf_opener():
+    """Return (opener, crumb). Refreshes session if stale."""
     now = time.time()
     if _YF_SESSION['crumb'] and now - _YF_SESSION['ts'] < _YF_SESSION_TTL:
-        return _YF_SESSION['session'], _YF_SESSION['crumb']
-    sess = _requests.Session()
-    sess.headers.update(_YF_HEADERS)
-    # seed cookies
-    try:
-        sess.get('https://finance.yahoo.com/', timeout=12)
-    except Exception:
-        pass
-    # fetch crumb
-    r = sess.get('https://query1.finance.yahoo.com/v1/test/getcrumb',
-                 headers={'Referer': 'https://finance.yahoo.com/'}, timeout=10)
-    r.raise_for_status()
-    crumb = r.text.strip()
-    _YF_SESSION.update({'crumb': crumb, 'session': sess, 'ts': now})
-    return sess, crumb
+        return _YF_SESSION['opener'], _YF_SESSION['crumb']
+    jar    = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    # Try crumb directly first (works from some IPs without prior cookie seeding)
+    crumb = None
+    for crumb_url in (
+        'https://query2.finance.yahoo.com/v1/test/getcrumb',
+        'https://query1.finance.yahoo.com/v1/test/getcrumb',
+    ):
+        try:
+            crumb = _yf_open(opener, crumb_url, {'Accept': 'text/plain, */*'}, timeout=10).decode().strip()
+            if crumb and crumb != 'null':
+                break
+            crumb = None
+        except Exception:
+            pass
+    if not crumb:
+        # Seed cookies then retry
+        for seed_url in ('https://finance.yahoo.com/', 'https://www.yahoo.com/'):
+            try:
+                _yf_open(opener, seed_url, {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                }, timeout=12)
+                break
+            except Exception:
+                pass
+        crumb = _yf_open(opener, 'https://query2.finance.yahoo.com/v1/test/getcrumb',
+                         {'Accept': 'text/plain, */*', 'Referer': 'https://finance.yahoo.com/'}, timeout=10).decode().strip()
+    _YF_SESSION.update({'crumb': crumb, 'opener': opener, 'ts': now})
+    return opener, crumb
 
 def _yf_quotesummary(symbol, modules):
     """Fetch Yahoo Finance quoteSummary with crumb auth. Returns result dict."""
     for attempt in range(2):
-        sess, crumb = _get_yf_session()
+        opener, crumb = _get_yf_opener()
         url = (
             f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
             f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
             f'&crumb={urllib.parse.quote(crumb)}'
         )
-        r = sess.get(url, headers={'Accept': 'application/json'}, timeout=20)
-        if r.status_code in (401, 403) and attempt == 0:
-            _YF_SESSION['crumb'] = None  # force refresh on retry
-            continue
-        r.raise_for_status()
-        data    = r.json()
+        try:
+            raw  = _yf_open(opener, url, {'Accept': 'application/json'}, timeout=20)
+            data = json.loads(raw)
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and attempt == 0:
+                _YF_SESSION['crumb'] = None
+                continue
+            raise
         results = data.get('quoteSummary', {}).get('result') or []
         return results[0] if results else None
 
