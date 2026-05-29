@@ -148,7 +148,7 @@ function ValuationCard({ label, value, sub }) {
   );
 }
 
-export default function FinancialsTab({ symbol }) {
+export default function FinancialsTab({ symbol, livePrice }) {
   const [period, setPeriod]         = useState('quarterly');
   const [data, setData]             = useState(null);
   const [loading, setLoading]       = useState(false);
@@ -267,7 +267,7 @@ export default function FinancialsTab({ symbol }) {
     periods.forEach((p, i) => {
       if (p.revenue && p.grossProfit) p.grossMargin = p.grossProfit / p.revenue;
       if (p.revenue && p.ebitda) p.ebitdaMargin = p.ebitda / p.revenue;
-      if (p.fcf == null && p.operatingCashFlow != null && p.capex != null)
+      if ((p.fcf == null || p.fcf === 0) && p.operatingCashFlow != null && p.capex != null)
         p.fcf = p.operatingCashFlow - Math.abs(p.capex);
       if (i > 0 && p.revenue && periods[i-1].revenue)
         p.revenueGrowthYoY = (p.revenue - periods[i-1].revenue) / Math.abs(periods[i-1].revenue);
@@ -372,8 +372,27 @@ export default function FinancialsTab({ symbol }) {
   }
 
   const periods  = data?.periods ?? [];
-  const val      = data?.valuation ?? {};
   const currency = data?.currency ?? '';
+
+  // auto-compute valuation from live price + stored shares; fall back to stored values
+  const storedVal = data?.valuation ?? {};
+  const ltmOrLast = periods.length > 0 ? periods[periods.length - 1] : null;
+  const shares = storedVal.sharesOutstanding ?? null; // raw units
+  const liveMarketCap = (livePrice && shares) ? livePrice * shares : null;
+  const liveNetDebt = (ltmOrLast?.totalDebt != null && ltmOrLast?.cashAndEquivalents != null)
+    ? ltmOrLast.totalDebt - ltmOrLast.cashAndEquivalents : null;
+  const liveEV = (liveMarketCap != null && liveNetDebt != null) ? liveMarketCap + liveNetDebt : null;
+  const val = {
+    peRatio:         liveMarketCap && ltmOrLast?.netIncome   ? liveMarketCap / ltmOrLast.netIncome   : storedVal.peRatio,
+    forwardPE:       storedVal.forwardPE,
+    evEbitda:        liveEV        && ltmOrLast?.ebitda       ? liveEV        / ltmOrLast.ebitda       : storedVal.evEbitda,
+    ps:              liveMarketCap && ltmOrLast?.revenue      ? liveMarketCap / ltmOrLast.revenue      : storedVal.ps,
+    pfcf:            liveMarketCap && ltmOrLast?.fcf          ? liveMarketCap / ltmOrLast.fcf          : storedVal.pfcf,
+    marketCap:       liveMarketCap ?? storedVal.marketCap,
+    sharesOutstanding: shares,
+    ev:              liveEV        ?? storedVal.ev,
+    netDebtLatest:   liveNetDebt   ?? storedVal.netDebtLatest,
+  };
   const sourceLabel = data
     ? `${data.source === 'yahoo' ? 'Yahoo Finance' : data.source === 'manual' ? 'CSV' : 'Screenshot'} · ${periods[0]?.label ?? ''}`
     : '';

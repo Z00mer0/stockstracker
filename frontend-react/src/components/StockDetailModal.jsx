@@ -339,7 +339,7 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
         {/* Finanse tab — lazy mount */}
         {financialsMounted && (
           <div style={{ display: activeTab === 'finanse' ? 'block' : 'none' }}>
-            <FinancialsTab symbol={item.symbol} />
+            <FinancialsTab symbol={item.symbol} livePrice={currentPrice} />
           </div>
         )}
       </div>
