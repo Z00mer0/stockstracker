@@ -16,6 +16,7 @@ import os
 import time
 import urllib.parse
 import urllib.request
+import http.cookiejar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -65,6 +66,53 @@ def _str(val, max_len: int, field: str) -> str:
 # ── CALENDAR CACHE ─────────────────────────────────────────────────────────────
 _CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
 _CAL_TTL   = 4 * 3600  # 4 hours
+
+# ── YAHOO FINANCE SESSION (crumb-based auth) ───────────────────────────────────
+_YF_SESSION     = {'crumb': None, 'opener': None, 'ts': 0}
+_YF_SESSION_TTL = 3600  # 1 hour
+_YF_UA          = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+def _get_yf_opener():
+    """Return (opener, crumb). Refreshes session if stale."""
+    now = time.time()
+    if _YF_SESSION['crumb'] and now - _YF_SESSION['ts'] < _YF_SESSION_TTL:
+        return _YF_SESSION['opener'], _YF_SESSION['crumb']
+    jar    = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    # seed cookies
+    try:
+        with opener.open(urllib.request.Request('https://fc.yahoo.com', headers={'User-Agent': _YF_UA}), timeout=8) as r:
+            r.read()
+    except Exception:
+        pass
+    # fetch crumb
+    with opener.open(urllib.request.Request('https://query1.finance.yahoo.com/v1/test/getcrumb', headers={'User-Agent': _YF_UA}), timeout=10) as r:
+        crumb = r.read().decode().strip()
+    _YF_SESSION.update({'crumb': crumb, 'opener': opener, 'ts': now})
+    return opener, crumb
+
+def _yf_quotesummary(symbol, modules):
+    """Fetch Yahoo Finance quoteSummary with crumb auth. Returns result dict."""
+    for attempt in range(2):
+        opener, crumb = _get_yf_opener()
+        url = (
+            f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+            f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
+            f'&crumb={urllib.parse.quote(crumb)}'
+        )
+        req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
+        try:
+            with opener.open(req, timeout=20) as r:
+                data = json.loads(r.read())
+            results = data.get('quoteSummary', {}).get('result') or []
+            if not results:
+                return None
+            return results[0]
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and attempt == 0:
+                _YF_SESSION['crumb'] = None  # force refresh on retry
+                continue
+            raise
 
 # ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
 _BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
@@ -291,20 +339,10 @@ def _fetch_yahoo_financials(symbol, period):
         f'cashflowStatementHistory{suffix},'
         'defaultKeyStatistics,summaryDetail'
     )
-    url = (
-        f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-        f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
-    )
-    req = urllib.request.Request(url, headers={
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'application/json',
-    })
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        data = json.loads(resp.read())
-    result_list = data.get('quoteSummary', {}).get('result') or []
-    if not result_list:
+    result = _yf_quotesummary(symbol, modules)
+    if not result:
         return None
-    return _normalize_financials(result_list[0], period)
+    return _normalize_financials(result, period)
 
 
 # Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
@@ -942,18 +980,9 @@ class Handler(SimpleHTTPRequestHandler):
             if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
                 self.send_json(400, {'error': 'invalid symbol'}); return
             try:
-                modules = 'summaryDetail,defaultKeyStatistics,calendarEvents,financialData'
-                url = (
-                    f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-                    f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
-                )
-                req = urllib.request.Request(url, headers={
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Accept': 'application/json',
-                })
-                with urllib.request.urlopen(req, timeout=15) as resp:
-                    raw = json.loads(resp.read())
-                result = (raw.get('quoteSummary', {}).get('result') or [{}])[0]
+                result = _yf_quotesummary(symbol, 'summaryDetail,defaultKeyStatistics,calendarEvents,financialData')
+                if not result:
+                    self.send_json(404, {'error': 'no_data'}); return
                 sd  = result.get('summaryDetail', {})
                 ks  = result.get('defaultKeyStatistics', {})
                 cal = result.get('calendarEvents', {})
