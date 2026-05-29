@@ -463,6 +463,12 @@ if DATABASE_URL:
                     fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     PRIMARY KEY (symbol, period)
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS stock_summaries (
+                    symbol     TEXT PRIMARY KEY,
+                    summary    TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1056,7 +1062,19 @@ class Handler(SimpleHTTPRequestHandler):
                             last = periods[-1]
                             out.setdefault('totalDebt',           last.get('totalDebt'))
                             out.setdefault('cashAndEquivalents',  last.get('cashAndEquivalents'))
-                            out.setdefault('equity',              last.get('equity'))
+                            equity = last.get('equity')
+                            out.setdefault('equity', equity)
+                            # Book per share
+                            if equity is not None and shares:
+                                out.setdefault('bookPerShare', equity / shares)
+                            # Revenue growth YoY (TTM vs prior year TTM)
+                            if period == 'quarterly' and len(periods) >= 8:
+                                prev4 = periods[-8:-4]
+                                ttm_curr = _ttm('revenue')
+                                prev_vals = [p['revenue'] for p in prev4 if p.get('revenue') is not None]
+                                ttm_prev = sum(prev_vals) if len(prev_vals) == 4 else None
+                                if ttm_curr and ttm_prev:
+                                    out.setdefault('revenueGrowthYoY', (ttm_curr - ttm_prev) / ttm_prev)
                         break
             except Exception as e:
                 print(f'[keystats/db] {symbol}: {e}')
@@ -1090,6 +1108,138 @@ class Handler(SimpleHTTPRequestHandler):
                 print(f'[keystats/yf] {symbol}: {e}')
 
             self.send_json(200, out)
+
+        elif path == '/api/financials/summary':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbol = qs.get('symbol', '').upper()
+            if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
+                self.send_json(400, {'error': 'invalid symbol'}); return
+
+            # Check 7-day cache
+            try:
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT summary FROM stock_summaries WHERE symbol=%s AND created_at > NOW() - INTERVAL '7 days'",
+                        (symbol,))
+                    row = cur.fetchone()
+                    if row:
+                        self.send_json(200, {'summary': row[0], 'cached': True}); return
+            except Exception as e:
+                print(f'[summary/cache_read] {e}')
+
+            # Gather metrics from DB for the prompt
+            m = {}
+            try:
+                with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    for period in ('quarterly', 'annual'):
+                        cur.execute("SELECT data_json FROM financials WHERE symbol=%s AND period=%s",
+                                    (symbol, period))
+                        row = cur.fetchone()
+                        if not row: continue
+                        fin = json.loads(row['data_json'])
+                        ps  = fin.get('periods', [])
+                        val = fin.get('valuation', {})
+                        m['shares'] = val.get('sharesOutstanding')
+                        if ps:
+                            last4 = ps[-4:] if period == 'quarterly' else ps[-1:]
+                            def _s(field):
+                                vs = [p[field] for p in last4 if p.get(field) is not None]
+                                return sum(vs) if vs else None
+                            m['revenue']    = _s('revenue')
+                            m['netIncome']  = _s('netIncome')
+                            m['ebitda']     = _s('ebitda')
+                            last = ps[-1]
+                            m['equity']     = last.get('equity')
+                            m['totalDebt']  = last.get('totalDebt')
+                            m['cash']       = last.get('cashAndEquivalents')
+                            # FCF
+                            fcf_vs = []
+                            for p in last4:
+                                f = p.get('fcf')
+                                if (f is None or f == 0) and p.get('operatingCashFlow') is not None and p.get('capex') is not None:
+                                    f = p['operatingCashFlow'] - abs(p['capex'])
+                                if f is not None: fcf_vs.append(f)
+                            m['fcf'] = sum(fcf_vs) if fcf_vs else None
+                            # Revenue growth YoY
+                            if period == 'quarterly' and len(ps) >= 8:
+                                prev4 = ps[-8:-4]
+                                pv = [p['revenue'] for p in prev4 if p.get('revenue') is not None]
+                                if m['revenue'] and len(pv) == 4:
+                                    m['revGrowth'] = (m['revenue'] - sum(pv)) / sum(pv)
+                        break
+            except Exception as e:
+                print(f'[summary/db] {e}')
+
+            def _b(v):
+                if v is None: return 'N/A'
+                if abs(v) >= 1e12: return f'{v/1e12:.2f} T'
+                if abs(v) >= 1e9:  return f'{v/1e9:.2f} B'
+                if abs(v) >= 1e6:  return f'{v/1e6:.2f} M'
+                return f'{v:.2f}'
+
+            lines = [f'Analiza finansowa spółki {symbol} (dane TTM/ostatni kwartał):']
+            if m.get('revenue'):    lines.append(f'- Przychody TTM: {_b(m["revenue"])}')
+            if m.get('netIncome'):  lines.append(f'- Zysk netto TTM: {_b(m["netIncome"])}')
+            if m.get('revenue') and m.get('netIncome'):
+                lines.append(f'- Marża netto: {m["netIncome"]/m["revenue"]*100:.1f}%')
+            if m.get('ebitda') and m.get('revenue'):
+                lines.append(f'- Marża EBITDA: {m["ebitda"]/m["revenue"]*100:.1f}%')
+            if m.get('fcf'):        lines.append(f'- FCF TTM: {_b(m["fcf"])}')
+            if m.get('revGrowth') is not None:
+                lines.append(f'- Wzrost przychodów r/r: {m["revGrowth"]*100:.1f}%')
+            if m.get('equity') and m.get('shares'):
+                lines.append(f'- Wartość księgowa/akcję: {m["equity"]/m["shares"]:.2f}')
+            if m.get('totalDebt') and m.get('cash'):
+                lines.append(f'- Dług netto: {_b(m["totalDebt"] - m["cash"])}')
+
+            if len(lines) == 1:
+                self.send_json(422, {'error': 'no financial data — load financials first'}); return
+
+            prompt = '\n'.join(lines) + (
+                '\n\nNapisz po polsku krótkie (3-4 zdania) obiektywne podsumowanie kondycji finansowej tej spółki. '
+                'Skup się na rentowności, wzroście i przepływach pieniężnych. Nie używaj nagłówków ani wypunktowań.'
+            )
+
+            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            if not api_key:
+                self.send_json(503, {'error': 'AI unavailable'}); return
+
+            try:
+                req_body = json.dumps({
+                    'model': 'claude-haiku-4-5-20251001',
+                    'max_tokens': 350,
+                    'messages': [{'role': 'user', 'content': prompt}]
+                }).encode()
+                req = urllib.request.Request(
+                    'https://api.anthropic.com/v1/messages',
+                    data=req_body,
+                    headers={
+                        'x-api-key': api_key,
+                        'anthropic-version': '2023-06-01',
+                        'content-type': 'application/json',
+                    },
+                    method='POST'
+                )
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    resp = json.loads(r.read())
+                text = resp['content'][0]['text']
+                try:
+                    with _conn() as conn, conn.cursor() as cur:
+                        cur.execute("""
+                            INSERT INTO stock_summaries (symbol, summary, created_at)
+                            VALUES (%s, %s, NOW())
+                            ON CONFLICT (symbol) DO UPDATE
+                            SET summary=EXCLUDED.summary, created_at=NOW()
+                        """, (symbol, text))
+                except Exception as e:
+                    print(f'[summary/cache_write] {e}')
+                self.send_json(200, {'summary': text})
+            except Exception as e:
+                print(f'[summary/anthropic] {e}')
+                self.send_json(502, {'error': 'AI request failed'})
 
         elif path == '/api/bench-pl':
             if not get_username(self):

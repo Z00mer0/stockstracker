@@ -126,6 +126,9 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
   const prevClose = chartData.length > 1 ? chartData[chartData.length - 2].price : null;
   const dayChangePct = currentPrice != null && prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : null;
+  const firstPrice = chartData.length > 0 ? chartData[0].price : null;
+  const yearChangePct = currentPrice != null && firstPrice != null && firstPrice > 0
+    ? ((currentPrice - firstPrice) / firstPrice) * 100 : null;
 
   return (
     <div
@@ -237,7 +240,7 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
         {/* Wskaźniki tab — lazy mount */}
         {wskaznikMounted && (
           <div style={{ display: activeTab === 'wskazniki' ? 'block' : 'none' }}>
-            <KeyStatsTab symbol={item.symbol} livePrice={currentPrice} currency={currency} />
+            <KeyStatsTab symbol={item.symbol} livePrice={currentPrice} currency={currency} yearChangePct={yearChangePct} />
           </div>
         )}
 
