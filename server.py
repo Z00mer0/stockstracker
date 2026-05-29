@@ -79,14 +79,26 @@ def _get_yf_opener():
         return _YF_SESSION['opener'], _YF_SESSION['crumb']
     jar    = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-    # seed cookies
+    # seed cookies from main Yahoo Finance page
     try:
-        with opener.open(urllib.request.Request('https://fc.yahoo.com', headers={'User-Agent': _YF_UA}), timeout=8) as r:
+        seed_req = urllib.request.Request('https://finance.yahoo.com/', headers={
+            'User-Agent': _YF_UA,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'identity',
+        })
+        with opener.open(seed_req, timeout=12) as r:
             r.read()
     except Exception:
         pass
     # fetch crumb
-    with opener.open(urllib.request.Request('https://query1.finance.yahoo.com/v1/test/getcrumb', headers={'User-Agent': _YF_UA}), timeout=10) as r:
+    crumb_req = urllib.request.Request('https://query1.finance.yahoo.com/v1/test/getcrumb', headers={
+        'User-Agent': _YF_UA,
+        'Referer': 'https://finance.yahoo.com/',
+        'Accept': 'text/plain, */*',
+        'Accept-Encoding': 'identity',
+    })
+    with opener.open(crumb_req, timeout=10) as r:
         crumb = r.read().decode().strip()
     _YF_SESSION.update({'crumb': crumb, 'opener': opener, 'ts': now})
     return opener, crumb
