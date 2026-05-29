@@ -933,6 +933,71 @@ class Handler(SimpleHTTPRequestHandler):
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
 
+        elif path == '/api/financials/keystats':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbol = qs.get('symbol', '').upper()
+            if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
+                self.send_json(400, {'error': 'invalid symbol'}); return
+            try:
+                modules = 'summaryDetail,defaultKeyStatistics,calendarEvents,financialData'
+                url = (
+                    f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+                    f'{urllib.parse.quote(symbol)}?modules={urllib.parse.quote(modules)}'
+                )
+                req = urllib.request.Request(url, headers={
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept': 'application/json',
+                })
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    raw = json.loads(resp.read())
+                result = (raw.get('quoteSummary', {}).get('result') or [{}])[0]
+                sd  = result.get('summaryDetail', {})
+                ks  = result.get('defaultKeyStatistics', {})
+                cal = result.get('calendarEvents', {})
+                fd  = result.get('financialData', {})
+
+                def gv(d, k):
+                    v = d.get(k)
+                    return v.get('raw') if isinstance(v, dict) else v
+
+                earnings_dates = cal.get('earnings', {}).get('earningsDate', [])
+                next_earnings = None
+                now_ts = time.time()
+                for ed in earnings_dates:
+                    ts = ed.get('raw') if isinstance(ed, dict) else ed
+                    if ts and ts > now_ts:
+                        next_earnings = ts
+                        break
+
+                data = {
+                    'fiftyTwoWeekLow':           gv(sd, 'fiftyTwoWeekLow'),
+                    'fiftyTwoWeekHigh':          gv(sd, 'fiftyTwoWeekHigh'),
+                    'beta':                      gv(sd, 'beta'),
+                    'trailingPE':               gv(sd, 'trailingPE'),
+                    'forwardPE':                gv(sd, 'forwardPE'),
+                    'dividendYield':            gv(sd, 'dividendYield'),
+                    'dividendRate':             gv(sd, 'dividendRate'),
+                    'marketCap':                gv(sd, 'marketCap'),
+                    'trailingEps':              gv(ks, 'trailingEps'),
+                    'forwardEps':               gv(ks, 'forwardEps'),
+                    'pegRatio':                 gv(ks, 'pegRatio'),
+                    'priceToBook':              gv(ks, 'priceToBook'),
+                    'sharesOutstanding':        gv(ks, 'sharesOutstanding'),
+                    'targetMeanPrice':          gv(fd, 'targetMeanPrice'),
+                    'targetLowPrice':           gv(fd, 'targetLowPrice'),
+                    'targetHighPrice':          gv(fd, 'targetHighPrice'),
+                    'numberOfAnalystOpinions':  gv(fd, 'numberOfAnalystOpinions'),
+                    'recommendationKey':        fd.get('recommendationKey'),
+                    'nextEarningsDate':         next_earnings,
+                }
+                self.send_json(200, data)
+            except Exception as e:
+                print(f'[financials/keystats] error for {symbol}: {e}')
+                self.send_json(502, {'error': 'upstream_error'})
+
         elif path == '/api/bench-pl':
             if not get_username(self):
                 self.send_json(401, {'error': 'unauthorized'}); return

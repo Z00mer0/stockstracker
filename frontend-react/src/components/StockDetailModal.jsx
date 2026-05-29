@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import FinancialsTab from './FinancialsTab';
+import KeyStatsTab from './KeyStatsTab';
 
-const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 const PERIODS = [
   { key: '1M', days: 30 },
   { key: '3M', days: 90 },
@@ -81,25 +81,21 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('3M');
-  const [qty, setQty] = useState('');
-  const [price, setPrice] = useState('');
-  const [currency, setCurrency] = useState(item.currency || (item.symbol?.endsWith('.WA') ? 'PLN' : 'USD'));
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [note, setNote] = useState('');
-  const [funding, setFunding] = useState('topup');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [currency] = useState(item.currency || (item.symbol?.endsWith('.WA') ? 'PLN' : 'USD'));
   const [activeTab, setActiveTab] = useState('wykres');
   const [financialsMounted, setFinancialsMounted] = useState(false);
+  const [wskaznikMounted, setWskaznikMounted] = useState(false);
 
   function switchTab(tab) {
     setActiveTab(tab);
     if (tab === 'finanse') setFinancialsMounted(true);
+    if (tab === 'wskazniki') setWskaznikMounted(true);
   }
 
   useEffect(() => {
     setActiveTab('wykres');
     setFinancialsMounted(false);
+    setWskaznikMounted(false);
   }, [item.symbol]);
 
   useEffect(() => {
@@ -119,7 +115,6 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
           .map((ts, i) => ({ date: new Date(ts * 1000).toISOString().slice(0, 10), price: closes[i] }))
           .filter(p => p.price != null);
         setChartData(pts);
-        if (pts.length > 0) setPrice(pts[pts.length - 1].price.toFixed(2));
       })
       .catch(() => {})
       .finally(() => setChartLoading(false));
@@ -128,24 +123,6 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
   const prevClose = chartData.length > 1 ? chartData[chartData.length - 2].price : null;
   const dayChangePct = currentPrice != null && prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : null;
-
-  const existing = existingPortfolio?.find(h => h.symbol === item.symbol);
-
-  async function handleSave() {
-    const qtyNum = parseFloat(qty);
-    const priceNum = parseFloat(price);
-    if (isNaN(qtyNum) || qtyNum <= 0) { setError('Podaj ilość akcji'); return; }
-    if (isNaN(priceNum) || priceNum <= 0) { setError('Podaj cenę zakupu'); return; }
-    setSaving(true); setError('');
-    try {
-      await onSave({ symbol: item.symbol, qty: qtyNum, price: priceNum, currency, date, note: note.trim(), funding });
-      onClose();
-    } catch (e) {
-      setError(e.message || 'Błąd zapisu');
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <div
@@ -200,7 +177,7 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, margin: '12px 20px 0', borderBottom: '1px solid var(--border)' }}>
-          {[['wykres', 'Wykres'], ['pozycja', 'Pozycja'], ['finanse', 'Finanse']].map(([k, l]) => (
+          {[['wykres', 'Wykres'], ['wskazniki', 'Wskaźniki'], ['finanse', 'Finanse']].map(([k, l]) => (
             <button
               key={k}
               onClick={() => switchTab(k)}
@@ -254,86 +231,11 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
         </div>
         )}
 
-        {/* Pozycja tab */}
-        {activeTab === 'pozycja' && (
-        <div style={{ padding: '16px 20px 20px' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Dodaj do portfela</div>
-
-          {existing && (
-            <p style={{ fontSize: 11, color: 'var(--warn)', marginBottom: 12, padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6 }}>
-              Masz już {existing.qty} szt. po śr. {existing.avgPrice} {existing.currency} — zostanie uśrednione
-            </p>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="field-label">Ilość akcji *</label>
-              <input
-                type="number" min="0" step="any" className="field-input"
-                placeholder="10" value={qty}
-                onChange={e => setQty(e.target.value)} autoFocus
-              />
-            </div>
-            <div>
-              <label className="field-label">Cena zakupu *</label>
-              <input
-                type="number" min="0" step="any" className="field-input"
-                placeholder="150.00" value={price}
-                onChange={e => setPrice(e.target.value)}
-              />
-            </div>
+        {/* Wskaźniki tab — lazy mount */}
+        {wskaznikMounted && (
+          <div style={{ display: activeTab === 'wskazniki' ? 'block' : 'none' }}>
+            <KeyStatsTab symbol={item.symbol} livePrice={currentPrice} currency={currency} />
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="field-label">Waluta</label>
-              <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="field-label">Data zakupu</label>
-              <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <label className="field-label">Notatka (opcjonalna)</label>
-            <input
-              className="field-input"
-              placeholder="np. długoterminowo…"
-              value={note} onChange={e => setNote(e.target.value)}
-            />
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label className="field-label">Źródło środków</label>
-            <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--panel-2)', borderRadius: 8 }}>
-              {[['topup', '💼 Dopłata'], ['cash', '💵 Gotówka']].map(([k, l]) => (
-                <button
-                  key={k} type="button" onClick={() => setFunding(k)}
-                  style={{
-                    flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600,
-                    border: 'none', borderRadius: 6, cursor: 'pointer',
-                    background: funding === k ? 'var(--bg-2)' : 'transparent',
-                    color: funding === k ? 'var(--text)' : 'var(--text-dim)',
-                    boxShadow: funding === k ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                >{l}</button>
-              ))}
-            </div>
-          </div>
-
-          {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-              {saving ? 'Zapisuję…' : 'Dodaj do portfela'}
-            </button>
-          </div>
-        </div>
         )}
 
         {/* Finanse tab — lazy mount */}
