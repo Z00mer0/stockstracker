@@ -179,6 +179,11 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
     ? ((livePrice - low52) / (high52 - low52)) * 100 : null;
 
   const rec = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
+  const analystUpside = livePrice && raw?.targetMeanPrice
+    ? ((raw.targetMeanPrice - livePrice) / livePrice) * 100 : null;
+  const dcfUpside = livePrice && raw?.dcfFairValue
+    ? ((raw.dcfFairValue - livePrice) / livePrice) * 100 : null;
+  const hasFundamentalValuation = analystUpside != null || dcfUpside != null;
 
   const hasValuation = peRatio || psRatio || evEbitda || pfcf || raw?.forwardPE;
   const hasProfit    = epsTtm || raw?.forwardEps;
@@ -210,6 +215,20 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {raw?.pegRatio    != null && <Row label="PEG"          value={fmt(raw.pegRatio,     { decimals: 2 })} />}
           {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLarge(liveMarketCap)} />}
           {liveEV           != null && <Row label="EV"           value={fmtLarge(liveEV)} />}
+          {(raw?.epsRevisionsUp30d != null || raw?.epsRevisionsDown30d != null) && (
+            <Row
+              label="Rewizje EPS (30d)"
+              value={`↑${raw.epsRevisionsUp30d ?? 0} ↓${raw.epsRevisionsDown30d ?? 0}`}
+              color={
+                (raw.epsRevisionsUp30d ?? 0) > (raw.epsRevisionsDown30d ?? 0) ? '#10b981' :
+                (raw.epsRevisionsDown30d ?? 0) > (raw.epsRevisionsUp30d ?? 0) ? '#f43f5e' :
+                undefined
+              }
+            />
+          )}
+          {raw?.forwardRevenueEstimate != null && (
+            <Row label="Prognoza przychodów (nast. rok)" value={fmtLarge(raw.forwardRevenueEstimate)} />
+          )}
         </Section>
       )}
 
@@ -248,6 +267,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
         <Section title="Dywidenda">
           <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmt(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} />
           {raw.dividendRate != null && <Row label="DPS" value={fmt(raw.dividendRate)} />}
+          {raw?.dividendGrowthStreak != null && raw?.dividendRate != null && (
+            <Row
+              label="Wzrost dywidendy z rzędu"
+              value={raw.dividendGrowthStreak > 0 ? `${raw.dividendGrowthStreak} lat` : '0 lat'}
+              color={raw.dividendGrowthStreak >= 5 ? '#10b981' : raw.dividendGrowthStreak >= 1 ? '#f59e0b' : undefined}
+            />
+          )}
         </Section>
       )}
 
@@ -281,6 +307,28 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {raw.numberOfAnalystOpinions != null && <Row label="Analityków" value={String(raw.numberOfAnalystOpinions)} />}
           {rec && <Row label="Rekomendacja" value={rec[0]} color={rec[1]} />}
           {raw.nextEarningsDate != null && <Row label="Nast. wyniki" value={fmtDate(raw.nextEarningsDate)} />}
+        </Section>
+      )}
+
+      {hasFundamentalValuation && (
+        <Section title="Wycena Fundamentalna">
+          {analystUpside != null && (
+            <Row
+              label="Cel analityków (śr.)"
+              value={`${fmt(raw.targetMeanPrice, { decimals: 2 })}  ${analystUpside >= 0 ? '+' : ''}${analystUpside.toFixed(1)}% ${analystUpside >= 0 ? '▲' : '▼'}`}
+              color={analystUpside >= 0 ? '#10b981' : '#f43f5e'}
+            />
+          )}
+          {dcfUpside != null && (
+            <Row
+              label="Wycena DCF"
+              value={`${fmt(raw.dcfFairValue, { decimals: 2 })}  ${dcfUpside >= 0 ? '+' : ''}${dcfUpside.toFixed(1)}% ${dcfUpside >= 0 ? '▲' : '▼'}`}
+              color={dcfUpside >= 0 ? '#10b981' : '#f43f5e'}
+            />
+          )}
+          <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 6 }}>
+            DCF: 5Y, dysk. 10%, wzrost hist., term. 3%
+          </div>
         </Section>
       )}
 
