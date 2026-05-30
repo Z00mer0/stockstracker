@@ -243,7 +243,7 @@ def _annual_label(ts):
 def _dcf_fair_value(fcf_ttm, growth_rate, shares,
                     total_debt=None, cash=None,
                     discount_rate=0.10, terminal_growth=0.03, years=5):
-    if not fcf_ttm or fcf_ttm <= 0 or not shares or shares <= 0:
+    if not fcf_ttm or fcf_ttm <= 0 or not shares or shares <= 0 or discount_rate <= terminal_growth:
         return None
     g = min(max(growth_rate or 0.0, 0.0), 0.20)
     net_debt = (total_debt or 0) - (cash or 0)
