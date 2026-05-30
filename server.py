@@ -1240,6 +1240,31 @@ class Handler(SimpleHTTPRequestHandler):
                 if abs(v) >= 1e6:  return f'{v/1e6:.2f} M'
                 return f'{v:.2f}'
 
+            # Best-effort: fetch analyst targets + forward estimates for richer prompt
+            try:
+                yf_res = _yf_quotesummary(symbol, 'financialData,earningsTrend')
+                if yf_res:
+                    def _gv2(d, k):
+                        v = d.get(k); return v.get('raw') if isinstance(v, dict) else v
+                    fd2 = yf_res.get('financialData', {})
+                    m['targetPrice'] = _gv2(fd2, 'targetMeanPrice')
+                    m['recKey']      = fd2.get('recommendationKey')
+                    trend2 = yf_res.get('earningsTrend', {}).get('trend', [])
+                    ann2   = next((t for t in trend2 if t.get('period') in ('0y', '+1y')), None)
+                    if ann2:
+                        def _rv3(d, k):
+                            v = d.get(k); return v.get('raw') if isinstance(v, dict) else v
+                        er2 = ann2.get('epsRevisions', {})
+                        m['epsUp']      = _rv3(er2, 'upLast30days')
+                        m['epsDown']    = _rv3(er2, 'downLast30days')
+                        m['fwdRevenue'] = _rv3(ann2.get('revenueEstimate', {}), 'avg')
+            except Exception:
+                pass
+
+            _rec_pl = {
+                'strong_buy': 'Silne kupno', 'buy': 'Kupno', 'hold': 'Trzymaj',
+                'underperform': 'Sprzedaj', 'sell': 'Silna sprzedaż',
+            }
             lines = [f'Analiza finansowa spółki {symbol} (dane TTM/ostatni kwartał):']
             if m.get('revenue'):    lines.append(f'- Przychody TTM: {_b(m["revenue"])}')
             if m.get('netIncome'):  lines.append(f'- Zysk netto TTM: {_b(m["netIncome"])}')
@@ -1254,13 +1279,29 @@ class Handler(SimpleHTTPRequestHandler):
                 lines.append(f'- Wartość księgowa/akcję: {m["equity"]/m["shares"]:.2f}')
             if m.get('totalDebt') and m.get('cash'):
                 lines.append(f'- Dług netto: {_b(m["totalDebt"] - m["cash"])}')
+            if m.get('targetPrice'):
+                lines.append(f'- Cel analityków (śr.): {m["targetPrice"]:.2f}')
+            if m.get('recKey'):
+                lines.append(f'- Rekomendacja: {_rec_pl.get(m["recKey"].lower(), m["recKey"])}')
+            if m.get('fwdRevenue'):
+                lines.append(f'- Prognoza przychodów nast. rok: {_b(m["fwdRevenue"])}')
+            if m.get('epsUp') is not None or m.get('epsDown') is not None:
+                lines.append(f'- Rewizje EPS 30d: ↑{m.get("epsUp") or 0} ↓{m.get("epsDown") or 0}')
+            dcf_val = _dcf_fair_value(
+                fcf_ttm=m.get('fcf'), growth_rate=m.get('revGrowth'),
+                shares=m.get('shares'), total_debt=m.get('totalDebt'), cash=m.get('cash'),
+            )
+            if dcf_val:
+                lines.append(f'- Wycena DCF (szacowana): {dcf_val:.2f}')
 
             if len(lines) == 1:
                 self.send_json(422, {'error': 'no financial data — load financials first'}); return
 
             prompt = '\n'.join(lines) + (
-                '\n\nNapisz po polsku krótkie (3-4 zdania) obiektywne podsumowanie kondycji finansowej tej spółki. '
-                'Skup się na rentowności, wzroście i przepływach pieniężnych. Nie używaj nagłówków ani wypunktowań.'
+                '\n\nNapisz po polsku podsumowanie (5-6 zdań) w stylu raportu analitycznego. '
+                'Opisz: (1) czym jest spółka i jej pozycję rynkową, (2) kluczowe wyniki i trendy finansowe, '
+                '(3) perspektywy wzrostu i wycenę w odniesieniu do rynku, (4) główne ryzyka lub szanse. '
+                'Nie używaj nagłówków ani wypunktowań. Bądź konkretny i obiektywny.'
             )
 
             api_key = os.environ.get('ANTHROPIC_API_KEY', '')
@@ -1272,7 +1313,7 @@ class Handler(SimpleHTTPRequestHandler):
                 client = _anthropic.Anthropic(api_key=api_key)
                 msg = client.messages.create(
                     model='claude-haiku-4-5-20251001',
-                    max_tokens=350,
+                    max_tokens=600,
                     messages=[{'role': 'user', 'content': prompt}]
                 )
                 text = msg.content[0].text
