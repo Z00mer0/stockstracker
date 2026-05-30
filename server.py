@@ -1129,7 +1129,7 @@ class Handler(SimpleHTTPRequestHandler):
             # 3. Best-effort Yahoo Finance (crumb) – analyst targets, forward PE, earnings
             try:
                 result = _yf_quotesummary(symbol,
-                    'defaultKeyStatistics,calendarEvents,financialData')
+                    'defaultKeyStatistics,calendarEvents,financialData,earningsTrend')
                 if result:
                     def _gv(d, k):
                         v = d.get(k); return v.get('raw') if isinstance(v, dict) else v
@@ -1151,6 +1151,19 @@ class Handler(SimpleHTTPRequestHandler):
                         if ts and ts > now_ts:
                             out.setdefault('nextEarningsDate', ts)
                             break
+                    et = result.get('earningsTrend', {})
+                    trend = et.get('trend', [])
+                    annual = next(
+                        (t for t in trend if t.get('period') in ('0y', '+1y')), None
+                    )
+                    if annual:
+                        er = annual.get('epsRevisions', {})
+                        def _rv(d, k):
+                            v = d.get(k); return v.get('raw') if isinstance(v, dict) else v
+                        out.setdefault('epsRevisionsUp30d',      _rv(er, 'upLast30days'))
+                        out.setdefault('epsRevisionsDown30d',    _rv(er, 'downLast30days'))
+                        re_ = annual.get('revenueEstimate', {})
+                        out.setdefault('forwardRevenueEstimate', _rv(re_, 'avg'))
             except Exception as e:
                 print(f'[keystats/yf] {symbol}: {e}')
 
