@@ -1045,6 +1045,27 @@ class Handler(SimpleHTTPRequestHandler):
                     out['priceToBook']      = fh.get('pbAnnual')
                 except Exception as e:
                     print(f'[keystats/finnhub] {symbol}: {e}')
+                try:
+                    div_url = (f'https://finnhub.io/api/v1/stock/dividend2?symbol='
+                               f'{urllib.parse.quote(symbol)}&token={fh_token}')
+                    req = urllib.request.Request(div_url, headers={'User-Agent': _YF_UA})
+                    with urllib.request.urlopen(req, timeout=10) as r:
+                        div_data = json.loads(r.read()).get('data', [])
+                    annual_div: dict = {}
+                    for d in div_data:
+                        yr = d.get('year')
+                        if yr:
+                            annual_div[yr] = annual_div.get(yr, 0) + (d.get('amount') or 0)
+                    years_desc = sorted(annual_div.keys(), reverse=True)
+                    streak = 0
+                    for i in range(len(years_desc) - 1):
+                        if annual_div[years_desc[i]] > annual_div[years_desc[i + 1]]:
+                            streak += 1
+                        else:
+                            break
+                    out['dividendGrowthStreak'] = streak
+                except Exception as e:
+                    print(f'[keystats/finnhub/div2] {symbol}: {e}')
 
             # 2. Stored financials from DB → send raw TTM values for frontend to compute ratios
             try:
