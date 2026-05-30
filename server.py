@@ -240,6 +240,23 @@ def _annual_label(ts):
     return str(dt.year)
 
 
+def _dcf_fair_value(fcf_ttm, growth_rate, shares,
+                    total_debt=None, cash=None,
+                    discount_rate=0.10, terminal_growth=0.03, years=5):
+    if not fcf_ttm or fcf_ttm <= 0 or not shares or shares <= 0:
+        return None
+    g = min(max(growth_rate or 0.0, 0.0), 0.20)
+    net_debt = (total_debt or 0) - (cash or 0)
+    pv, fcf = 0.0, float(fcf_ttm)
+    for i in range(1, years + 1):
+        fcf *= (1 + g)
+        pv += fcf / (1 + discount_rate) ** i
+    tv = fcf * (1 + terminal_growth) / (discount_rate - terminal_growth)
+    pv += tv / (1 + discount_rate) ** years
+    equity = pv - net_debt
+    return equity / shares if equity > 0 else None
+
+
 def _normalize_financials(result, period):
     """Normalise raw Yahoo Finance quoteSummary result into the app's financials schema."""
     suffix      = 'Quarterly' if period == 'quarterly' else ''
