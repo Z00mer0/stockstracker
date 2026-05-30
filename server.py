@@ -1117,6 +1117,15 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 print(f'[keystats/db] {symbol}: {e}')
 
+            # DCF fair value computed from step-2 data
+            out['dcfFairValue'] = _dcf_fair_value(
+                fcf_ttm=out.get('ttmFcf'),
+                growth_rate=out.get('revenueGrowthYoY'),
+                shares=out.get('sharesOutstanding'),
+                total_debt=out.get('totalDebt'),
+                cash=out.get('cashAndEquivalents'),
+            )
+
             # 3. Best-effort Yahoo Finance (crumb) – analyst targets, forward PE, earnings
             try:
                 result = _yf_quotesummary(symbol,
