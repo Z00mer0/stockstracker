@@ -1208,24 +1208,14 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(503, {'error': 'AI unavailable'}); return
 
             try:
-                req_body = json.dumps({
-                    'model': 'claude-haiku-4-5-20251001',
-                    'max_tokens': 350,
-                    'messages': [{'role': 'user', 'content': prompt}]
-                }).encode()
-                req = urllib.request.Request(
-                    'https://api.anthropic.com/v1/messages',
-                    data=req_body,
-                    headers={
-                        'x-api-key': api_key,
-                        'anthropic-version': '2023-06-01',
-                        'content-type': 'application/json',
-                    },
-                    method='POST'
+                import anthropic as _anthropic
+                client = _anthropic.Anthropic(api_key=api_key)
+                msg = client.messages.create(
+                    model='claude-haiku-4-5-20251001',
+                    max_tokens=350,
+                    messages=[{'role': 'user', 'content': prompt}]
                 )
-                with urllib.request.urlopen(req, timeout=30) as r:
-                    resp = json.loads(r.read())
-                text = resp['content'][0]['text']
+                text = msg.content[0].text
                 try:
                     with _conn() as conn, conn.cursor() as cur:
                         cur.execute("""
@@ -1238,8 +1228,8 @@ class Handler(SimpleHTTPRequestHandler):
                     print(f'[summary/cache_write] {e}')
                 self.send_json(200, {'summary': text})
             except Exception as e:
-                print(f'[summary/anthropic] {e}')
-                self.send_json(502, {'error': 'AI request failed'})
+                print(f'[summary/anthropic] {type(e).__name__}: {e}')
+                self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
 
         elif path == '/api/bench-pl':
             if not get_username(self):
