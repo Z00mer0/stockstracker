@@ -33,12 +33,12 @@ function growthColor(v) {
 }
 
 const LFL_DATA = {
-  'DNP.WA': [
-    { label: 'Q1 2026', value: 4.4 },
-    { label: 'Q4 2025', value: 6.1 },
-    { label: 'Q3 2025', value: 7.2 },
-    { label: 'Q2 2025', value: 8.5 },
-  ],
+  'DNP.WA': {
+    '2026-03-31': 0.044,
+    '2025-12-31': 0.061,
+    '2025-09-30': 0.072,
+    '2025-06-30': 0.085,
+  },
 };
 
 const RC_H = 80;
@@ -103,7 +103,9 @@ function RevenueChart({ periods, currency }) {
                 rx={1}
               />
               <text x={xC(i)} y={totalH - 5} textAnchor="middle" fontSize={8} fill="#64748b">
-                {(p.label ?? '').slice(-5)}
+                {p.date
+                  ? `Q${Math.ceil(parseInt(p.date.slice(5, 7)) / 3)} '${p.date.slice(2, 4)}`
+                  : (p.label ?? '').slice(-5)}
               </text>
             </g>
           );
@@ -123,6 +125,7 @@ const NUM_COLS = 4;
 
 function TableRow({ label, values, fmt = fmtM }) {
   const cols = values.slice(0, NUM_COLS);
+  const allEmpty = cols.every(v => v == null);
   return (
     <div style={{
       display: 'grid',
@@ -130,6 +133,7 @@ function TableRow({ label, values, fmt = fmtM }) {
       gap: 2,
       padding: '4px 10px',
       fontSize: 12,
+      opacity: allEmpty ? 0.35 : 1,
     }}>
       <span style={{ color: 'var(--text)' }}>{label}</span>
       {cols.map((v, i) => (
@@ -147,6 +151,7 @@ function TableRow({ label, values, fmt = fmtM }) {
 
 function SubRow({ label, values, fmt = fmtPct }) {
   const cols = values.slice(0, NUM_COLS);
+  const allEmpty = cols.every(v => v == null);
   return (
     <div style={{
       display: 'grid',
@@ -154,6 +159,7 @@ function SubRow({ label, values, fmt = fmtPct }) {
       gap: 2,
       padding: '2px 10px 3px',
       fontSize: 10,
+      opacity: allEmpty ? 0.35 : 1,
     }}>
       <span style={{ color: 'var(--text-faint)' }}>{label}</span>
       {cols.map((v, i) => (
@@ -643,27 +649,6 @@ export default function FinancialsTab({ symbol, livePrice }) {
           {isQuarterly && (
             <div style={{ background: 'var(--panel)', borderRadius: 8, marginBottom: 6, overflow: 'hidden' }}>
               <RevenueChart periods={periods} currency={currency} />
-              {LFL_DATA[symbol] && (
-                <div style={{ padding: '4px 10px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {LFL_DATA[symbol].map(({ label, value }) => (
-                    <div key={label} style={{
-                      background: 'var(--panel-2)', borderRadius: 6, padding: '5px 10px',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    }}>
-                      <span style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2 }}>LFL {label}</span>
-                      <span style={{
-                        fontSize: 13, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace',
-                        color: value >= 0 ? 'var(--up)' : 'var(--down)',
-                      }}>
-                        {value >= 0 ? '+' : ''}{value.toFixed(1)}%
-                      </span>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>Sprzedaż w sklepach porównywalnych (LFL)</span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -672,6 +657,9 @@ export default function FinancialsTab({ symbol, livePrice }) {
             <ColumnHeaders periods={periods} />
             <TableRow label="Przychody" values={periods.map(p => p.revenue)} />
             <SubRow label="Wzrost r/r" values={periods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
+            {LFL_DATA[symbol] && (
+              <SubRow label="Wzrost LFL (r/r)" values={periods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
+            )}
             <TableRow label="Zysk brutto" values={periods.map(p => p.grossProfit)} />
             <SubRow label="Marża brutto" values={periods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
             <TableRow label="Koszty oper." values={periods.map(p => p.operatingCost)} />

@@ -140,8 +140,9 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
   const dcfX    = dcfValue    != null ? toX(dcfValue)    : null;
   const targetX = analystTarget != null ? toX(analystTarget) : null;
 
-  const mos           = dcfValue != null ? ((dcfValue - currentPrice) / dcfValue * 100) : null;
-  const isUndervalued = mos != null && mos > 0;
+  // > 0: rynek płaci premię nad DCF; < 0: kurs poniżej DCF (margines bezp.)
+  const marketPremium = dcfValue != null ? ((currentPrice - dcfValue) / dcfValue * 100) : null;
+  const isUndervalued = marketPremium != null && marketPremium < 0;
 
   return (
     <div>
@@ -189,9 +190,12 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: -6 }}>
         <span style={{ color: 'var(--text-faint)' }}>Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%</span>
-        {mos != null && (
+        {marketPremium != null && (
           <span style={{ color: isUndervalued ? '#008751' : '#f43f5e', fontWeight: 600 }}>
-            Margines bezp.: {mos >= 0 ? '+' : ''}{mos.toFixed(1)}%
+            {isUndervalued
+              ? `Margines bezp.: ${Math.abs(marketPremium).toFixed(1)}%`
+              : `Premia rynkowa: +${marketPremium.toFixed(1)}%`
+            }
           </span>
         )}
       </div>
@@ -208,6 +212,8 @@ const PEERS_DATA = [
 function PeerComparison({ dinoPE, dinoNetMargin }) {
   const [tip, setTip] = useState(false);
   if (dinoPE == null && dinoNetMargin == null) return null;
+  const dinoMarginPct = dinoNetMargin != null ? dinoNetMargin * 100 : 0;
+  const maxMarginPct  = Math.max(dinoMarginPct, ...PEERS_DATA.map(p => p.netMargin));
   return (
     <Section title={
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -249,7 +255,12 @@ function PeerComparison({ dinoPE, dinoNetMargin }) {
               {dinoPE != null ? `${dinoPE.toFixed(1)}x` : '—'}
             </td>
             <td style={{ textAlign: 'right', padding: '5px 0', color: '#008751', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-              {dinoNetMargin != null ? `${(dinoNetMargin * 100).toFixed(1)}%` : '—'}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (dinoMarginPct / maxMarginPct) * 100 : 0}%`, background: '#008751', borderRadius: 2 }} />
+                </div>
+                {dinoNetMargin != null ? `${dinoMarginPct.toFixed(1)}%` : '—'}
+              </div>
             </td>
           </tr>
           {PEERS_DATA.map(p => (
@@ -258,7 +269,14 @@ function PeerComparison({ dinoPE, dinoNetMargin }) {
                 {p.name} <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>{p.ticker}</span>
               </td>
               <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{p.pe.toFixed(1)}x</td>
-              <td style={{ textAlign: 'right', padding: '5px 0',  color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{p.netMargin.toFixed(1)}%</td>
+              <td style={{ textAlign: 'right', padding: '5px 0', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (p.netMargin / maxMarginPct) * 100 : 0}%`, background: '#64748b', borderRadius: 2 }} />
+                  </div>
+                  {p.netMargin.toFixed(1)}%
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -272,7 +290,7 @@ function PeerComparison({ dinoPE, dinoNetMargin }) {
 function CheckItem({ label, pass, value, tooltip }) {
   const color = pass === true ? '#008751' : pass === false ? '#f43f5e' : 'var(--text-faint)';
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)', opacity: pass === null ? 0.38 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 13, color, lineHeight: 1 }}>{pass === true ? '✓' : pass === false ? '✗' : '–'}</span>
         {tooltip
@@ -373,12 +391,12 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
     ? ((livePrice - low52) / (high52 - low52)) * 100 : null;
 
   const rec           = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
-  const analystUpside = livePrice && raw?.targetMeanPrice
+  const analystUpside    = livePrice && raw?.targetMeanPrice
     ? ((raw.targetMeanPrice - livePrice) / livePrice) * 100 : null;
-  const dcfUpside     = livePrice && raw?.dcfFairValue
-    ? ((raw.dcfFairValue - livePrice) / livePrice) * 100 : null;
+  const dcfMarketPremium = livePrice && raw?.dcfFairValue
+    ? ((livePrice - raw.dcfFairValue) / raw.dcfFairValue) * 100 : null;
 
-  const hasFundamentalValuation = analystUpside != null || dcfUpside != null;
+  const hasFundamentalValuation = analystUpside != null || dcfMarketPremium != null;
   const hasValuation    = peRatio || psRatio || evEbitda || pfcf || raw?.forwardPE;
   const hasProfit       = epsTtm || raw?.forwardEps;
   const hasDividend     = raw?.dividendYield != null || raw?.dividendRate != null;
@@ -516,11 +534,11 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
               color={analystUpside >= 0 ? '#10b981' : '#f43f5e'}
             />
           )}
-          {dcfUpside != null && (
+          {dcfMarketPremium != null && (
             <Row
               label="Wycena DCF"
-              value={`${fmt(raw.dcfFairValue, { decimals: 2 })}  ${dcfUpside >= 0 ? '+' : ''}${dcfUpside.toFixed(1)}% ${dcfUpside >= 0 ? '▲' : '▼'}`}
-              color={dcfUpside >= 0 ? '#10b981' : '#f43f5e'}
+              value={fmt(raw.dcfFairValue, { decimals: 2 })}
+              color={dcfMarketPremium <= 0 ? '#008751' : '#f43f5e'}
             />
           )}
         </Section>
