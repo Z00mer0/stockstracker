@@ -24,37 +24,69 @@ function fmtDate(ts) {
 }
 
 const REC_LABEL = {
-  'strong_buy':   ['Silny kupno', '#10b981'],
-  'buy':          ['Kupno',       '#34d399'],
-  'hold':         ['Trzymaj',     '#f59e0b'],
-  'underperform': ['Sprzedaj',    '#f43f5e'],
-  'sell':         ['Silna sprzedaż', '#ef4444'],
+  'strong_buy':   ['Silny kupno',      '#10b981'],
+  'buy':          ['Kupno',            '#34d399'],
+  'hold':         ['Trzymaj',          '#f59e0b'],
+  'underperform': ['Sprzedaj',         '#f43f5e'],
+  'sell':         ['Silna sprzedaż',   '#ef4444'],
 };
 
-function Row({ label, value, color }) {
+// ─── Tooltip ────────────────────────────────────────────────────────────────
+function Tooltip({ text, children }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span
+      style={{ position: 'relative', cursor: 'help', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: 0,
+          background: '#1e293b', color: '#94a3b8',
+          fontSize: 10, lineHeight: 1.5, padding: '6px 10px', borderRadius: 6,
+          width: 220, zIndex: 200, border: '1px solid #334155',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.35)', pointerEvents: 'none',
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
+// ─── Row ─────────────────────────────────────────────────────────────────────
+function Row({ label, value, color, tooltip }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{label}</span>
+      {tooltip
+        ? <Tooltip text={tooltip}><span style={{ fontSize: 12, color: 'var(--text-dim)', borderBottom: '1px dashed rgba(100,116,139,0.35)', paddingBottom: 1 }}>{label}</span></Tooltip>
+        : <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{label}</span>
+      }
       <span style={{ fontSize: 12, fontWeight: 600, color: color || 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>{value}</span>
     </div>
   );
 }
 
+// ─── Section ─────────────────────────────────────────────────────────────────
 function Section({ title, children }) {
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{title}</div>
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+        {title}
+      </div>
       {children}
     </div>
   );
 }
 
-function scoreColor(score) {
-  if (score >= 7) return '#10b981';
-  if (score >= 5) return '#f59e0b';
+// ─── Health bar ───────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 7) return '#10b981';
+  if (s >= 5) return '#f59e0b';
   return '#f43f5e';
 }
-
 function HealthBar({ label, score }) {
   const color = scoreColor(score);
   return (
@@ -70,50 +102,226 @@ function HealthBar({ label, score }) {
   );
 }
 
+// ─── Score functions ──────────────────────────────────────────────────────────
 function growthScore(g) {
   if (g == null) return null;
-  if (g > 0.20) return 10;
-  if (g > 0.15) return 9;
-  if (g > 0.10) return 8;
-  if (g > 0.07) return 7;
-  if (g > 0.05) return 6;
-  if (g > 0.02) return 5;
-  if (g > 0)    return 4;
-  if (g > -0.05) return 3;
-  if (g > -0.10) return 2;
+  if (g > 0.20) return 10; if (g > 0.15) return 9; if (g > 0.10) return 8;
+  if (g > 0.07) return 7;  if (g > 0.05) return 6; if (g > 0.02) return 5;
+  if (g > 0)    return 4;  if (g > -0.05) return 3; if (g > -0.10) return 2;
   return 1;
 }
-
-function profitScore(margin) {
-  if (margin == null) return null;
-  if (margin > 0.25) return 10;
-  if (margin > 0.20) return 9;
-  if (margin > 0.15) return 8;
-  if (margin > 0.10) return 7;
-  if (margin > 0.07) return 6;
-  if (margin > 0.05) return 5;
-  if (margin > 0.03) return 4;
-  if (margin > 0)    return 3;
-  if (margin > -0.05) return 2;
+function profitScore(m) {
+  if (m == null) return null;
+  if (m > 0.25) return 10; if (m > 0.20) return 9; if (m > 0.15) return 8;
+  if (m > 0.10) return 7;  if (m > 0.07) return 6; if (m > 0.05) return 5;
+  if (m > 0.03) return 4;  if (m > 0)    return 3; if (m > -0.05) return 2;
   return 1;
 }
-
-function cashFlowScore(margin) {
-  if (margin == null) return null;
-  if (margin > 0.20) return 10;
-  if (margin > 0.15) return 9;
-  if (margin > 0.10) return 8;
-  if (margin > 0.07) return 7;
-  if (margin > 0.05) return 6;
-  if (margin > 0.03) return 5;
-  if (margin > 0.01) return 4;
-  if (margin > 0)    return 3;
+function cashFlowScore(m) {
+  if (m == null) return null;
+  if (m > 0.20) return 10; if (m > 0.15) return 9; if (m > 0.10) return 8;
+  if (m > 0.07) return 7;  if (m > 0.05) return 6; if (m > 0.03) return 5;
+  if (m > 0.01) return 4;  if (m > 0)    return 3;
   return 2;
 }
 
+// ─── Valuation Gauge ─────────────────────────────────────────────────────────
+function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
+  if (!currentPrice) return null;
+  const vals = [currentPrice, dcfValue, analystTarget].filter(v => v != null);
+  if (vals.length < 2) return null;
+
+  const minVal = Math.min(...vals) * 0.88;
+  const maxVal = Math.max(...vals) * 1.12;
+  const range  = maxVal - minVal || 1;
+  const toX    = v => ((v - minVal) / range) * 100;
+
+  const priceX  = toX(currentPrice);
+  const dcfX    = dcfValue    != null ? toX(dcfValue)    : null;
+  const targetX = analystTarget != null ? toX(analystTarget) : null;
+
+  const mos           = dcfValue != null ? ((dcfValue - currentPrice) / dcfValue * 100) : null;
+  const isUndervalued = mos != null && mos > 0;
+
+  return (
+    <div>
+      <div style={{ position: 'relative', height: 6, borderRadius: 3, background: 'var(--panel-2)', margin: '26px 0 30px' }}>
+
+        {/* shaded zone DCF ↔ price */}
+        {dcfX != null && (
+          <div style={{
+            position: 'absolute', top: 0, height: '100%',
+            left: `${Math.min(dcfX, priceX)}%`,
+            width: `${Math.abs(priceX - dcfX)}%`,
+            background: isUndervalued ? 'rgba(0,135,81,0.25)' : 'rgba(244,63,94,0.18)',
+            borderRadius: 2,
+          }} />
+        )}
+
+        {/* DCF marker — green triangle */}
+        {dcfX != null && (
+          <div style={{ position: 'absolute', top: '50%', left: `${dcfX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
+            <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: '9px solid #008751' }} />
+            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#008751', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+              DCF {dcfValue.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        )}
+
+        {/* current price — white circle */}
+        <div style={{ position: 'absolute', top: '50%', left: `${priceX}%`, transform: 'translate(-50%, -50%)', zIndex: 4 }}>
+          <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--text)', border: '2px solid var(--panel)' }} />
+          <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: 'var(--text)', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+            {currentPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        {/* analyst target — amber bar */}
+        {targetX != null && (
+          <div style={{ position: 'absolute', top: '50%', left: `${targetX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
+            <div style={{ width: 2, height: 14, background: '#f59e0b', marginLeft: -1 }} />
+            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#f59e0b', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+              TP {analystTarget.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: -6 }}>
+        <span style={{ color: 'var(--text-faint)' }}>Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%</span>
+        {mos != null && (
+          <span style={{ color: isUndervalued ? '#008751' : '#f43f5e', fontWeight: 600 }}>
+            Margines bezp.: {mos >= 0 ? '+' : ''}{mos.toFixed(1)}%
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Peer Comparison ─────────────────────────────────────────────────────────
+const PEERS_DATA = [
+  { name: 'Jeronimo Martins', ticker: 'JMT.LS', pe: 17.2, netMargin: 2.1 },
+  { name: 'Eurocash',         ticker: 'EUR.WA', pe: 11.8, netMargin: 0.7 },
+];
+
+function PeerComparison({ dinoPE, dinoNetMargin }) {
+  const [tip, setTip] = useState(false);
+  if (dinoPE == null && dinoNetMargin == null) return null;
+  return (
+    <Section title={
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        Porównanie sektorowe
+        <span
+          style={{ fontSize: 11, color: 'var(--text-faint)', cursor: 'help', position: 'relative' }}
+          onMouseEnter={() => setTip(true)}
+          onMouseLeave={() => setTip(false)}
+        >
+          ⓘ
+          {tip && (
+            <div style={{
+              position: 'absolute', bottom: 'calc(100% + 6px)', left: 0,
+              background: '#1e293b', color: '#94a3b8', fontSize: 10, lineHeight: 1.5,
+              padding: '6px 10px', borderRadius: 6, width: 240, zIndex: 200,
+              border: '1px solid #334155', boxShadow: '0 4px 16px rgba(0,0,0,0.35)', pointerEvents: 'none',
+            }}>
+              <strong style={{ color: '#e2e8f0' }}>Premia za wzrost</strong><br/>
+              Dino handluje z premią do konkurencji ze względu na wyższe tempo wzrostu (~12–15% przychodów rocznie) i wyższe marże. Inwestorzy płacą więcej za spółkę z wyraźną trajektorią wzrostu.
+            </div>
+          )}
+        </span>
+      </span>
+    }>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left',  color: 'var(--text-faint)', fontWeight: 500, padding: '3px 0 5px', borderBottom: '1px solid var(--border)' }}>Spółka</th>
+            <th style={{ textAlign: 'right', color: 'var(--text-faint)', fontWeight: 500, padding: '3px 8px 5px', borderBottom: '1px solid var(--border)' }}>C/Z</th>
+            <th style={{ textAlign: 'right', color: 'var(--text-faint)', fontWeight: 500, padding: '3px 0 5px', borderBottom: '1px solid var(--border)' }}>Marża netto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style={{ background: 'rgba(0,135,81,0.06)' }}>
+            <td style={{ padding: '5px 0', color: 'var(--text)', fontWeight: 600 }}>
+              Dino <span style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 400 }}>DNP.WA</span>
+            </td>
+            <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+              {dinoPE != null ? `${dinoPE.toFixed(1)}x` : '—'}
+            </td>
+            <td style={{ textAlign: 'right', padding: '5px 0', color: '#008751', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+              {dinoNetMargin != null ? `${(dinoNetMargin * 100).toFixed(1)}%` : '—'}
+            </td>
+          </tr>
+          {PEERS_DATA.map(p => (
+            <tr key={p.ticker}>
+              <td style={{ padding: '5px 0', color: 'var(--text-dim)' }}>
+                {p.name} <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>{p.ticker}</span>
+              </td>
+              <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{p.pe.toFixed(1)}x</td>
+              <td style={{ textAlign: 'right', padding: '5px 0',  color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{p.netMargin.toFixed(1)}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 5 }}>Dane konkurencji: maj 2026 · szacunkowe</div>
+    </Section>
+  );
+}
+
+// ─── Investment Checklist ─────────────────────────────────────────────────────
+function CheckItem({ label, pass, value, tooltip }) {
+  const color = pass === true ? '#008751' : pass === false ? '#f43f5e' : 'var(--text-faint)';
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, color, lineHeight: 1 }}>{pass === true ? '✓' : pass === false ? '✗' : '–'}</span>
+        {tooltip
+          ? <Tooltip text={tooltip}><span style={{ fontSize: 12, color: 'var(--text-dim)', borderBottom: '1px dashed rgba(100,116,139,0.35)', paddingBottom: 1 }}>{label}</span></Tooltip>
+          : <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{label}</span>
+        }
+      </div>
+      <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color, fontWeight: 600 }}>{value ?? '—'}</span>
+    </div>
+  );
+}
+
+function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
+  const checks = [
+    {
+      label: 'C/P < 1,0',
+      pass: psRatio != null ? psRatio < 1.0 : null,
+      value: psRatio != null ? `${psRatio.toFixed(2)}x` : null,
+      tooltip: 'Cena/Przychody (Price/Sales). C/P < 1 oznacza że płacisz mniej niż 1 PLN za każdy 1 PLN przychodów. Dla spółek wzrostowych wyższe wartości są normą — sprawdź tempo wzrostu.',
+    },
+    {
+      label: 'ROIC > 20%',
+      pass: roic != null ? roic > 20 : null,
+      value: roic != null ? `${roic.toFixed(1)}%` : null,
+      tooltip: 'Return on Invested Capital — zwrot z zainwestowanego kapitału. Obliczany jako Zysk netto / (Kapitał własny + Dług netto). ROIC > 15% to oznaka przewagi konkurencyjnej.',
+    },
+    {
+      label: 'Dług netto / EBITDA < 2,0',
+      pass: netDebtEbitda != null ? netDebtEbitda < 2.0 : null,
+      value: netDebtEbitda != null ? `${netDebtEbitda.toFixed(2)}x` : null,
+      tooltip: 'Ile lat potrzeba na spłatę długu z zysku operacyjnego (EBITDA). Poniżej 2x — komfortowe. Powyżej 4x — sygnał ostrzegawczy. Wartość ujemna = gotówka netto.',
+    },
+  ];
+
+  const passCount = checks.filter(c => c.pass === true).length;
+  const total     = checks.filter(c => c.pass !== null).length;
+
+  return (
+    <Section title={`Sygnały inwestycyjne ${total > 0 ? `(${passCount}/${total})` : ''}`}>
+      {checks.map((c, i) => <CheckItem key={i} {...c} />)}
+    </Section>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
-  const [raw, setRaw] = useState(null);
+  const [raw, setRaw]       = useState(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     if (!symbol) return;
     setLoading(true);
@@ -147,6 +355,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const netMargin = raw?.ttmNetIncome && raw?.ttmRevenue ? raw.ttmNetIncome / raw.ttmRevenue : null;
   const fcfMargin = raw?.ttmFcf       && raw?.ttmRevenue ? raw.ttmFcf       / raw.ttmRevenue : null;
 
+  // ROIC = Net Income / (Equity + Net Debt)
+  const roic = raw?.ttmNetIncome && raw?.equity != null && netDebt != null && (raw.equity + netDebt) > 0
+    ? (raw.ttmNetIncome / (raw.equity + netDebt)) * 100 : null;
+
+  const netDebtEbitda = netDebt != null && raw?.ttmEbitda && raw.ttmEbitda > 0
+    ? netDebt / raw.ttmEbitda : null;
+
   const gScore  = growthScore(raw?.revenueGrowthYoY);
   const pScore  = profitScore(netMargin);
   const cfScore = cashFlowScore(fcfMargin);
@@ -157,19 +372,20 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const pct52  = livePrice != null && low52 != null && high52 != null && high52 > low52
     ? ((livePrice - low52) / (high52 - low52)) * 100 : null;
 
-  const rec = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
+  const rec           = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
   const analystUpside = livePrice && raw?.targetMeanPrice
     ? ((raw.targetMeanPrice - livePrice) / livePrice) * 100 : null;
-  const dcfUpside = livePrice && raw?.dcfFairValue
+  const dcfUpside     = livePrice && raw?.dcfFairValue
     ? ((raw.dcfFairValue - livePrice) / livePrice) * 100 : null;
-  const hasFundamentalValuation = analystUpside != null || dcfUpside != null;
 
-  const hasValuation = peRatio || psRatio || evEbitda || pfcf || raw?.forwardPE;
-  const hasProfit    = epsTtm || raw?.forwardEps;
-  const hasDividend  = raw?.dividendYield != null || raw?.dividendRate != null;
-  const has52W       = low52 != null || high52 != null;
-  const hasAnalysts  = raw?.targetMeanPrice != null || rec || raw?.nextEarningsDate;
+  const hasFundamentalValuation = analystUpside != null || dcfUpside != null;
+  const hasValuation    = peRatio || psRatio || evEbitda || pfcf || raw?.forwardPE;
+  const hasProfit       = epsTtm || raw?.forwardEps;
+  const hasDividend     = raw?.dividendYield != null || raw?.dividendRate != null;
+  const has52W          = low52 != null || high52 != null;
+  const hasAnalysts     = raw?.targetMeanPrice != null || rec || raw?.nextEarningsDate;
   const hasFundamentals = raw?.ttmRevenue || raw?.bookPerShare || fcfYield != null;
+  const hasChecklist    = psRatio != null || roic != null || netDebtEbitda != null;
 
   if (!hasValuation && !has52W && !hasAnalysts && !hasDividend && !hasProfit && !hasFundamentals) {
     return (
@@ -184,25 +400,22 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasValuation && (
         <Section title="Wycena">
-          {peRatio  != null && <Row label="C/Z (TTM)"     value={fmt(peRatio,  { decimals: 1, suffix: 'x' })} />}
-          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmt(raw.forwardPE, { decimals: 1, suffix: 'x' })} />}
-          {psRatio  != null && <Row label="C/P"           value={fmt(psRatio,  { decimals: 1, suffix: 'x' })} />}
-          {evEbitda != null && <Row label="EV/EBITDA"     value={fmt(evEbitda, { decimals: 1, suffix: 'x' })} />}
-          {pfcf     != null && <Row label="C/FCF"         value={fmt(pfcf,     { decimals: 1, suffix: 'x' })} />}
-          {fcfYield != null && <Row label="FCF Yield"     value={fmt(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} />}
-          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmt(raw.priceToBook,  { decimals: 2, suffix: 'x' })} />}
-          {raw?.pegRatio    != null && <Row label="PEG"          value={fmt(raw.pegRatio,     { decimals: 2 })} />}
+          {peRatio   != null && <Row label="C/Z (TTM)"     value={fmt(peRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Zysk (P/E). Ile płacisz za 1 PLN zysku netto. Mediana historyczna ~15x. Wysokie P/E = oczekiwania wzrostu lub przeszacowanie." />}
+          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmt(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip="Cena do prognozowanego zysku na następne 12 miesięcy. Niższy od TTM = oczekiwany wzrost zysku." />}
+          {psRatio   != null && <Row label="C/P"           value={fmt(psRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Przychody (Price/Sales). Ile płacisz za 1 PLN przychodów. C/P < 1 = tanie, ale sprawdź marże. Dla retailerów typowe 0,3–1,5x." />}
+          {evEbitda  != null && <Row label="EV/EBITDA"     value={fmt(evEbitda, { decimals: 1, suffix: 'x' })} tooltip="Wartość przedsiębiorstwa / EBITDA. Neutralny wobec struktury kapitału — porównywalny między spółkami z różnym poziomem długu. < 10x = tanie." />}
+          {pfcf      != null && <Row label="C/FCF"         value={fmt(pfcf,     { decimals: 1, suffix: 'x' })} tooltip="Cena/Wolne Przepływy Pieniężne. FCF = gotówka po capexie. Dla spółek z wysokim capexem (jak Dino) może być wysoki — sprawdź C/Z jako alternatywę." />}
+          {fcfYield  != null && <Row label="FCF Yield"     value={fmt(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip="FCF / Kapitalizacja rynkowa. Odwrotność C/FCF. Powyżej 5% = atrakcyjne. To ile gotówki spółka generuje na każde 100 PLN kapitalizacji." />}
+          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmt(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip="Cena/Wartość księgowa. P/B < 1 = akcja tańsza niż wartość aktywów netto. Wysoki P/B = silna marka lub dźwignia operacyjna." />}
+          {raw?.pegRatio    != null && <Row label="PEG"          value={fmt(raw.pegRatio,    { decimals: 2 })} tooltip="PEG = C/Z ÷ stopa wzrostu EPS. PEG < 1 = akcja tania względem wzrostu. Uwzględnia przyszły wzrost przy wycenie." />}
           {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLarge(liveMarketCap)} />}
-          {liveEV           != null && <Row label="EV"           value={fmtLarge(liveEV)} />}
+          {liveEV           != null && <Row label="EV"           value={fmtLarge(liveEV)} tooltip="Enterprise Value = Kapitalizacja + Dług netto. Pełna cena przejęcia spółki. Używany w EV/EBITDA." />}
           {(raw?.epsRevisionsUp30d != null || raw?.epsRevisionsDown30d != null) && (
             <Row
               label="Rewizje EPS (30d)"
               value={`↑${raw.epsRevisionsUp30d ?? 0} ↓${raw.epsRevisionsDown30d ?? 0}`}
-              color={
-                (raw.epsRevisionsUp30d ?? 0) > (raw.epsRevisionsDown30d ?? 0) ? '#10b981' :
-                (raw.epsRevisionsDown30d ?? 0) > (raw.epsRevisionsUp30d ?? 0) ? '#f43f5e' :
-                undefined
-              }
+              color={(raw.epsRevisionsUp30d ?? 0) > (raw.epsRevisionsDown30d ?? 0) ? '#10b981' : (raw.epsRevisionsDown30d ?? 0) > (raw.epsRevisionsUp30d ?? 0) ? '#f43f5e' : undefined}
+              tooltip="Ile analityków podwyższyło (↑) lub obniżyło (↓) prognozy EPS w ostatnich 30 dniach. Pozytywny sygnał gdy wzrostów jest więcej."
             />
           )}
           {raw?.forwardRevenueEstimate != null && (
@@ -213,7 +426,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasFundamentals && (
         <Section title="Fundamenty">
-          {raw?.ttmRevenue    != null && (
+          {raw?.ttmRevenue != null && (
             <Row
               label={raw?.revenueGrowthYoY != null
                 ? `Przychody TTM (${raw.revenueGrowthYoY >= 0 ? '+' : ''}${(raw.revenueGrowthYoY * 100).toFixed(1)}% r/r)`
@@ -222,16 +435,16 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
               color={raw?.revenueGrowthYoY != null ? (raw.revenueGrowthYoY >= 0 ? '#10b981' : '#f43f5e') : undefined}
             />
           )}
-          {raw?.bookPerShare  != null && <Row label="Wartość księgowa/akcję" value={fmt(raw.bookPerShare, { decimals: 2 })} />}
-          {netMargin          != null && <Row label="Marża netto"            value={fmt(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} />}
+          {raw?.bookPerShare != null && <Row label="Wartość księgowa/akcję" value={fmt(raw.bookPerShare, { decimals: 2 })} />}
+          {netMargin         != null && <Row label="Marża netto" value={fmt(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip="Zysk netto / Przychody. Ile zostaje po wszystkich kosztach z każdego 1 PLN sprzedaży. Dla retailerów typowe 1–5%." />}
         </Section>
       )}
 
       {(hasProfit || raw?.beta != null || yearChangePct != null) && (
         <Section title="Zysk / Ryzyko">
-          {epsTtm          != null && <Row label="EPS (TTM)"       value={fmt(epsTtm, { decimals: 2 })} />}
-          {raw?.forwardEps != null && <Row label="EPS (forward)"   value={fmt(raw.forwardEps, { decimals: 2 })} />}
-          {raw?.beta       != null && <Row label="Beta"            value={fmt(raw.beta, { decimals: 2 })} />}
+          {epsTtm          != null && <Row label="EPS (TTM)"     value={fmt(epsTtm, { decimals: 2 })} tooltip="Zysk na akcję za ostatnie 12 miesięcy. Używany do obliczenia C/Z. Rosnący EPS = dobry znak." />}
+          {raw?.forwardEps != null && <Row label="EPS (forward)" value={fmt(raw.forwardEps, { decimals: 2 })} tooltip="Prognozowany zysk na akcję na następne 12 miesięcy (konsensus analityków)." />}
+          {raw?.beta       != null && <Row label="Beta"          value={fmt(raw.beta, { decimals: 2 })} tooltip="Zmienność akcji względem rynku. Beta = 1 = ruch jak rynek. Beta > 1 = bardziej zmienne. Beta < 1 = defensywna." />}
           {yearChangePct   != null && (
             <Row
               label="Zmiana 1 rok"
@@ -244,8 +457,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasDividend && (
         <Section title="Dywidenda">
-          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmt(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} />
-          {raw.dividendRate != null && <Row label="DPS" value={fmt(raw.dividendRate)} />}
+          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmt(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip="Roczna dywidenda / cena akcji. Dochód pasywny z akcji. Powyżej 4% = atrakcyjne, ale sprawdź czy spółka nie płaci więcej niż zarabia." />
+          {raw.dividendRate != null && <Row label="DPS" value={fmt(raw.dividendRate)} tooltip="Dywidenda na akcję (Dividend Per Share) za ostatnie 12 miesięcy." />}
           {raw?.dividendGrowthStreak != null && raw?.dividendRate != null && (
             <Row
               label="Wzrost dywidendy z rzędu"
@@ -291,6 +504,11 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasFundamentalValuation && (
         <Section title="Wycena Fundamentalna">
+          <ValuationGauge
+            currentPrice={livePrice}
+            dcfValue={raw?.dcfFairValue}
+            analystTarget={raw?.targetMeanPrice}
+          />
           {analystUpside != null && (
             <Row
               label="Cel analityków (śr.)"
@@ -305,10 +523,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
               color={dcfUpside >= 0 ? '#10b981' : '#f43f5e'}
             />
           )}
-          <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 6 }}>
-            Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%
-          </div>
         </Section>
+      )}
+
+      <PeerComparison dinoPE={peRatio} dinoNetMargin={netMargin} />
+
+      {hasChecklist && (
+        <InvestmentChecklist psRatio={psRatio} roic={roic} netDebtEbitda={netDebtEbitda} />
       )}
 
       {hasHealth && (
