@@ -24,14 +24,34 @@ function fmtDate(ts) {
 }
 
 const REC_LABEL = {
-  'strong_buy':   ['Silny kupno',      '#10b981'],
-  'buy':          ['Kupno',            '#34d399'],
-  'hold':         ['Trzymaj',          '#f59e0b'],
-  'underperform': ['Sprzedaj',         '#f43f5e'],
-  'sell':         ['Silna sprzedaż',   '#ef4444'],
+  'strong_buy':   ['Silny kupno',    '#10b981'],
+  'buy':          ['Kupno',          '#34d399'],
+  'hold':         ['Trzymaj',        '#f59e0b'],
+  'underperform': ['Sprzedaj',       '#f43f5e'],
+  'sell':         ['Silna sprzedaż', '#ef4444'],
 };
 
-// ─── Tooltip ────────────────────────────────────────────────────────────────
+// Hardcoded per-symbol overrides for metrics unavailable via keystats API
+const HARDCODED_METRICS = {
+  'DNP.WA': {
+    roic:          20.2,
+    netDebtEbitda:  0.8,
+    roe:           30.0,
+    assetTurnover:  2.8,
+    leverageRatio:  2.2,
+  },
+};
+
+const GROWTH_DRIVERS = {
+  'DNP.WA': {
+    openings:     '~300 sklepów / rok',
+    reinvestment: '~100% OCF',
+  },
+};
+
+const COMPOUNDER_TOOLTIP = 'Niski wskaźnik wynika z 100% reinwestycji gotówki operacyjnej w budowę nowych marketów i centrów logistycznych (model compoundera). Spółka nie akumuluje gotówki — natychmiast alokuje ją z wysoką stopą zwrotu (ROIC ~20%).';
+
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
 function Tooltip({ text, children }) {
   const [show, setShow] = useState(false);
   return (
@@ -87,12 +107,20 @@ function scoreColor(s) {
   if (s >= 5) return '#f59e0b';
   return '#f43f5e';
 }
-function HealthBar({ label, score }) {
+
+function HealthBar({ label, score, tooltip }) {
   const color = scoreColor(score);
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{label}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {label}
+          {tooltip && (
+            <Tooltip text={tooltip}>
+              <span style={{ fontSize: 10, color: 'var(--text-faint)', lineHeight: 1 }}>ⓘ</span>
+            </Tooltip>
+          )}
+        </span>
         <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'JetBrains Mono, monospace' }}>{score.toFixed(1)} / 10</span>
       </div>
       <div style={{ height: 4, borderRadius: 2, background: 'var(--panel-2)' }}>
@@ -125,6 +153,86 @@ function cashFlowScore(m) {
   return 2;
 }
 
+// ─── Growth Drivers ───────────────────────────────────────────────────────────
+function GrowthDrivers({ symbol, roic }) {
+  const drivers = GROWTH_DRIVERS[symbol];
+  if (!drivers) return null;
+  const items = [
+    { label: 'Otwarcia sklepów',   value: drivers.openings },
+    { label: 'Stopa reinwestycji', value: drivers.reinvestment },
+    { label: 'ROIC',               value: roic != null ? `${roic.toFixed(1)}%` : '—', highlight: true },
+  ];
+  return (
+    <Section title="Dynamika Rozwoju">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        {items.map(({ label, value, highlight }) => (
+          <div key={label} style={{ background: 'var(--panel-2)', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: highlight ? '#008751' : 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+// ─── DuPont Analysis ─────────────────────────────────────────────────────────
+function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
+  if (netMargin == null && roe == null) return null;
+  const fmtM = v => v != null ? `${(v * 100).toFixed(1)}%` : '—';
+  const fmtX = v => v != null ? `${v.toFixed(1)}x` : '—';
+  const boxes = [
+    {
+      label: 'Marża netto',
+      value: fmtM(netMargin),
+      color: '#10b981',
+      tooltip: 'Zysk netto / Przychody. Efektywność operacyjna po wszystkich kosztach.',
+    },
+    {
+      label: 'Obrót aktywami',
+      value: fmtX(assetTurnover),
+      color: 'var(--accent)',
+      tooltip: 'Przychody / Aktywa ogółem. Jak efektywnie spółka obraca majątkiem by generować sprzedaż.',
+    },
+    {
+      label: 'Dźwignia fin.',
+      value: fmtX(leverage),
+      color: '#f59e0b',
+      tooltip: 'Aktywa ogółem / Kapitał własny. Poziom finansowania długiem. Niska dźwignia = bezpieczny bilans.',
+    },
+  ];
+  return (
+    <Section title="Analiza DuPont (ROE)">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+        {boxes.map((box, i) => (
+          <React.Fragment key={i}>
+            <div style={{ flex: 1, background: 'var(--panel-2)', borderRadius: 8, padding: '7px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 8, color: 'var(--text-faint)', marginBottom: 3, lineHeight: 1.2 }}>{box.label}</div>
+              <Tooltip text={box.tooltip}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: box.color, fontFamily: 'JetBrains Mono, monospace', borderBottom: '1px dashed rgba(100,116,139,0.3)', paddingBottom: 1, cursor: 'help' }}>
+                  {box.value}
+                </span>
+              </Tooltip>
+            </div>
+            <span style={{ fontSize: 14, color: 'var(--text-faint)', flexShrink: 0, userSelect: 'none' }}>×</span>
+          </React.Fragment>
+        ))}
+        <span style={{ fontSize: 14, color: 'var(--text-faint)', flexShrink: 0, userSelect: 'none' }}>=</span>
+        <div style={{
+          flex: 1, background: 'rgba(0,135,81,0.08)', border: '1px solid rgba(0,135,81,0.22)',
+          borderRadius: 8, padding: '7px 6px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 8, color: 'var(--text-faint)', marginBottom: 3 }}>ROE</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#008751', fontFamily: 'JetBrains Mono, monospace' }}>
+            {roe != null ? `${roe.toFixed(1)}%` : '—'}
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize: 9, color: 'var(--text-faint)' }}>Model DuPont (3-czynnikowy) · ROE = Marża × Obrót × Dźwignia</div>
+    </Section>
+  );
+}
+
 // ─── Valuation Gauge ─────────────────────────────────────────────────────────
 function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
   if (!currentPrice) return null;
@@ -137,18 +245,15 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
   const toX    = v => ((v - minVal) / range) * 100;
 
   const priceX  = toX(currentPrice);
-  const dcfX    = dcfValue    != null ? toX(dcfValue)    : null;
+  const dcfX    = dcfValue      != null ? toX(dcfValue)      : null;
   const targetX = analystTarget != null ? toX(analystTarget) : null;
 
-  // > 0: rynek płaci premię nad DCF; < 0: kurs poniżej DCF (margines bezp.)
   const marketPremium = dcfValue != null ? ((currentPrice - dcfValue) / dcfValue * 100) : null;
   const isUndervalued = marketPremium != null && marketPremium < 0;
 
   return (
     <div>
       <div style={{ position: 'relative', height: 6, borderRadius: 3, background: 'var(--panel-2)', margin: '26px 0 30px' }}>
-
-        {/* shaded zone DCF ↔ price */}
         {dcfX != null && (
           <div style={{
             position: 'absolute', top: 0, height: '100%',
@@ -158,8 +263,6 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
             borderRadius: 2,
           }} />
         )}
-
-        {/* DCF marker — green triangle */}
         {dcfX != null && (
           <div style={{ position: 'absolute', top: '50%', left: `${dcfX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
             <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: '9px solid #008751' }} />
@@ -168,16 +271,12 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
             </div>
           </div>
         )}
-
-        {/* current price — white circle */}
         <div style={{ position: 'absolute', top: '50%', left: `${priceX}%`, transform: 'translate(-50%, -50%)', zIndex: 4 }}>
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--text)', border: '2px solid var(--panel)' }} />
           <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: 'var(--text)', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
             {currentPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
-
-        {/* analyst target — amber bar */}
         {targetX != null && (
           <div style={{ position: 'absolute', top: '50%', left: `${targetX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
             <div style={{ width: 2, height: 14, background: '#f59e0b', marginLeft: -1 }} />
@@ -187,7 +286,6 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
           </div>
         )}
       </div>
-
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: -6 }}>
         <span style={{ color: 'var(--text-faint)' }}>Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%</span>
         {marketPremium != null && (
@@ -337,7 +435,7 @@ function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
-  const [raw, setRaw]       = useState(null);
+  const [raw, setRaw]         = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -357,6 +455,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
     <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>Ładowanie wskaźników…</div>
   );
 
+  const hm = HARDCODED_METRICS[symbol] ?? {};
+
   const shares        = raw?.sharesOutstanding ?? null;
   const liveMarketCap = livePrice && shares ? livePrice * shares : null;
   const netDebt       = (raw?.totalDebt != null && raw?.cashAndEquivalents != null)
@@ -367,22 +467,34 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const psRatio  = liveMarketCap && raw?.ttmRevenue    ? liveMarketCap / raw.ttmRevenue    : null;
   const evEbitda = liveEV        && raw?.ttmEbitda     ? liveEV        / raw.ttmEbitda     : null;
   const pfcf     = liveMarketCap && raw?.ttmFcf        ? liveMarketCap / raw.ttmFcf        : null;
-  const epsTtm   = raw?.ttmNetIncome && shares         ? raw.ttmNetIncome / shares          : null;
+  const epsTtm   = raw?.ttmNetIncome && shares         ? raw.ttmNetIncome / shares         : null;
   const fcfYield = liveMarketCap && raw?.ttmFcf        ? (raw.ttmFcf / liveMarketCap) * 100 : null;
 
   const netMargin = raw?.ttmNetIncome && raw?.ttmRevenue ? raw.ttmNetIncome / raw.ttmRevenue : null;
   const fcfMargin = raw?.ttmFcf       && raw?.ttmRevenue ? raw.ttmFcf       / raw.ttmRevenue : null;
 
-  // ROIC = Net Income / (Equity + Net Debt)
-  const roic = raw?.ttmNetIncome && raw?.equity != null && netDebt != null && (raw.equity + netDebt) > 0
+  // ROIC — computed first, fall back to hardcoded
+  const roicComputed = raw?.ttmNetIncome && raw?.equity != null && netDebt != null && (raw.equity + netDebt) > 0
     ? (raw.ttmNetIncome / (raw.equity + netDebt)) * 100 : null;
+  const roic = roicComputed ?? hm.roic ?? null;
 
-  const netDebtEbitda = netDebt != null && raw?.ttmEbitda && raw.ttmEbitda > 0
+  // Net Debt / EBITDA — computed first, fall back to hardcoded
+  const netDebtEbitdaComputed = netDebt != null && raw?.ttmEbitda && raw.ttmEbitda > 0
     ? netDebt / raw.ttmEbitda : null;
+  const netDebtEbitda = netDebtEbitdaComputed ?? hm.netDebtEbitda ?? null;
 
-  const gScore  = growthScore(raw?.revenueGrowthYoY);
-  const pScore  = profitScore(netMargin);
-  const cfScore = cashFlowScore(fcfMargin);
+  // DuPont components
+  const roeComputed   = raw?.ttmNetIncome && raw?.equity && raw.equity > 0
+    ? (raw.ttmNetIncome / raw.equity) * 100 : null;
+  const roe           = roeComputed ?? hm.roe ?? null;
+  const assetTurnover = hm.assetTurnover ?? null;
+  const leverageRatio = hm.leverageRatio ?? null;
+
+  const isCompounder = !!GROWTH_DRIVERS[symbol];
+
+  const gScore    = growthScore(raw?.revenueGrowthYoY);
+  const pScore    = profitScore(netMargin);
+  const cfScore   = cashFlowScore(fcfMargin);
   const hasHealth = gScore != null || pScore != null || cfScore != null;
 
   const low52  = raw?.fiftyTwoWeekLow;
@@ -390,7 +502,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const pct52  = livePrice != null && low52 != null && high52 != null && high52 > low52
     ? ((livePrice - low52) / (high52 - low52)) * 100 : null;
 
-  const rec           = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
+  const rec              = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
   const analystUpside    = livePrice && raw?.targetMeanPrice
     ? ((raw.targetMeanPrice - livePrice) / livePrice) * 100 : null;
   const dcfMarketPremium = livePrice && raw?.dcfFairValue
@@ -404,6 +516,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const hasAnalysts     = raw?.targetMeanPrice != null || rec || raw?.nextEarningsDate;
   const hasFundamentals = raw?.ttmRevenue || raw?.bookPerShare || fcfYield != null;
   const hasChecklist    = psRatio != null || roic != null || netDebtEbitda != null;
+  const hasDuPont       = netMargin != null || roe != null;
 
   if (!hasValuation && !has52W && !hasAnalysts && !hasDividend && !hasProfit && !hasFundamentals) {
     return (
@@ -418,12 +531,12 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasValuation && (
         <Section title="Wycena">
-          {peRatio   != null && <Row label="C/Z (TTM)"     value={fmt(peRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Zysk (P/E). Ile płacisz za 1 PLN zysku netto. Mediana historyczna ~15x. Wysokie P/E = oczekiwania wzrostu lub przeszacowanie." />}
+          {peRatio        != null && <Row label="C/Z (TTM)"     value={fmt(peRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Zysk (P/E). Ile płacisz za 1 PLN zysku netto. Mediana historyczna ~15x. Wysokie P/E = oczekiwania wzrostu lub przeszacowanie." />}
           {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmt(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip="Cena do prognozowanego zysku na następne 12 miesięcy. Niższy od TTM = oczekiwany wzrost zysku." />}
-          {psRatio   != null && <Row label="C/P"           value={fmt(psRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Przychody (Price/Sales). Ile płacisz za 1 PLN przychodów. C/P < 1 = tanie, ale sprawdź marże. Dla retailerów typowe 0,3–1,5x." />}
-          {evEbitda  != null && <Row label="EV/EBITDA"     value={fmt(evEbitda, { decimals: 1, suffix: 'x' })} tooltip="Wartość przedsiębiorstwa / EBITDA. Neutralny wobec struktury kapitału — porównywalny między spółkami z różnym poziomem długu. < 10x = tanie." />}
-          {pfcf      != null && <Row label="C/FCF"         value={fmt(pfcf,     { decimals: 1, suffix: 'x' })} tooltip="Cena/Wolne Przepływy Pieniężne. FCF = gotówka po capexie. Dla spółek z wysokim capexem (jak Dino) może być wysoki — sprawdź C/Z jako alternatywę." />}
-          {fcfYield  != null && <Row label="FCF Yield"     value={fmt(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip="FCF / Kapitalizacja rynkowa. Odwrotność C/FCF. Powyżej 5% = atrakcyjne. To ile gotówki spółka generuje na każde 100 PLN kapitalizacji." />}
+          {psRatio        != null && <Row label="C/P"           value={fmt(psRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Przychody (Price/Sales). Ile płacisz za 1 PLN przychodów. C/P < 1 = tanie, ale sprawdź marże. Dla retailerów typowe 0,3–1,5x." />}
+          {evEbitda       != null && <Row label="EV/EBITDA"     value={fmt(evEbitda, { decimals: 1, suffix: 'x' })} tooltip="Wartość przedsiębiorstwa / EBITDA. Neutralny wobec struktury kapitału — porównywalny między spółkami z różnym poziomem długu. < 10x = tanie." />}
+          {pfcf           != null && <Row label="C/FCF"         value={fmt(pfcf,     { decimals: 1, suffix: 'x' })} tooltip="Cena/Wolne Przepływy Pieniężne. FCF = gotówka po capexie. Dla spółek z wysokim capexem (jak Dino) może być wysoki — sprawdź C/Z jako alternatywę." />}
+          {fcfYield       != null && <Row label="FCF Yield"     value={fmt(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip="FCF / Kapitalizacja rynkowa. Odwrotność C/FCF. Powyżej 5% = atrakcyjne. To ile gotówki spółka generuje na każde 100 PLN kapitalizacji." />}
           {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmt(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip="Cena/Wartość księgowa. P/B < 1 = akcja tańsza niż wartość aktywów netto. Wysoki P/B = silna marka lub dźwignia operacyjna." />}
           {raw?.pegRatio    != null && <Row label="PEG"          value={fmt(raw.pegRatio,    { decimals: 2 })} tooltip="PEG = C/Z ÷ stopa wzrostu EPS. PEG < 1 = akcja tania względem wzrostu. Uwzględnia przyszły wzrost przy wycenie." />}
           {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLarge(liveMarketCap)} />}
@@ -454,9 +567,11 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
             />
           )}
           {raw?.bookPerShare != null && <Row label="Wartość księgowa/akcję" value={fmt(raw.bookPerShare, { decimals: 2 })} />}
-          {netMargin         != null && <Row label="Marża netto" value={fmt(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip="Zysk netto / Przychody. Ile zostaje po wszystkich kosztach z każdego 1 PLN sprzedaży. Dla retailerów typowe 1–5%." />}
+          {netMargin != null && <Row label="Marża netto" value={fmt(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip="Zysk netto / Przychody. Ile zostaje po wszystkich kosztach z każdego 1 PLN sprzedaży. Dla retailerów typowe 1–5%." />}
         </Section>
       )}
+
+      <GrowthDrivers symbol={symbol} roic={roic} />
 
       {(hasProfit || raw?.beta != null || yearChangePct != null) && (
         <Section title="Zysk / Ryzyko">
@@ -550,11 +665,20 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
         <InvestmentChecklist psRatio={psRatio} roic={roic} netDebtEbitda={netDebtEbitda} />
       )}
 
+      {hasDuPont && (
+        <DuPontAnalysis
+          netMargin={netMargin}
+          assetTurnover={assetTurnover}
+          leverage={leverageRatio}
+          roe={roe}
+        />
+      )}
+
       {hasHealth && (
         <Section title="Kondycja finansowa">
           {gScore  != null && <HealthBar label="Wzrost"        score={gScore} />}
-          {pScore  != null && <HealthBar label="Rentowność"    score={pScore} />}
-          {cfScore != null && <HealthBar label="Przepływy FCF" score={cfScore} />}
+          {pScore  != null && <HealthBar label="Rentowność"    score={pScore}  tooltip={isCompounder ? COMPOUNDER_TOOLTIP : undefined} />}
+          {cfScore != null && <HealthBar label="Przepływy FCF" score={cfScore} tooltip={isCompounder ? COMPOUNDER_TOOLTIP : undefined} />}
         </Section>
       )}
 
