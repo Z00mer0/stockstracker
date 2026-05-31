@@ -8,10 +8,10 @@ const PERIODS = [
   { key: '6M', days: 180 },
   { key: '1R', days: 365 },
 ];
-const CM = { top: 8, right: 8, bottom: 22, left: 8 };
+const CM = { top: 8, right: 8, bottom: 22, left: 40 };
 const CHART_H = 150;
 
-function MiniChart({ data, period, currency = 'USD' }) {
+function MiniChart({ data, period }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
 
@@ -39,6 +39,9 @@ function MiniChart({ data, period, currency = 'USD' }) {
   const maxP = Math.max(...prices);
   const range = maxP - minP || 1;
   const pad = range * 0.1;
+  const yMin = minP - pad;
+  const yMax = maxP + pad;
+  const yTicks = [0, 1, 2, 3].map(i => yMin + (i / 3) * (yMax - yMin));
 
   const xScale = i => CM.left + (i / (filtered.length - 1)) * chartW;
   const yScale = v => CM.top + CHART_H - ((v - minP + pad) / (range + pad * 2)) * CHART_H;
@@ -65,20 +68,25 @@ function MiniChart({ data, period, currency = 'USD' }) {
             <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
           </linearGradient>
         </defs>
+        {yTicks.map((v, i) => {
+          const y = yScale(v);
+          return (
+            <g key={i}>
+              <line x1={CM.left} y1={y} x2={CM.left + chartW} y2={y}
+                    stroke="#1f2937" strokeOpacity={0.5} strokeWidth={1} />
+              <text x={CM.left - 6} y={y + 3} fill="#64748b" fontSize={9}
+                    textAnchor="end" fontFamily="JetBrains Mono, monospace">
+                {v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </text>
+            </g>
+          );
+        })}
         <path d={areaPath} fill="url(#sdm-area)" />
         <path d={linePath} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinejoin="round" />
         {filtered.length > 1 && (() => {
           const lx = xScale(filtered.length - 1);
           const ly = yScale(filtered[filtered.length - 1].price);
-          const priceStr = filtered[filtered.length - 1].price.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          return (
-            <>
-              <circle cx={lx} cy={ly} r={3} fill={lineColor} />
-              <text x={lx - 6} y={ly - 6} fill={lineColor} fontSize={9} textAnchor="end" fontFamily="JetBrains Mono, monospace">
-                {priceStr} {currency}
-              </text>
-            </>
-          );
+          return <circle cx={lx} cy={ly} r={3} fill={lineColor} />;
         })()}
         {dateLabels.map(({ i, date }, li) => {
           const anchor = li === 0 ? 'start' : li === dateLabels.length - 1 ? 'end' : 'middle';
@@ -225,7 +233,7 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
             </div>
           ) : chartData.length >= 2 ? (
             <>
-              <MiniChart data={chartData} period={chartPeriod} currency={currency} />
+              <MiniChart data={chartData} period={chartPeriod} />
               <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                 {PERIODS.map(p => (
                   <button
