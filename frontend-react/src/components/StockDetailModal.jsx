@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import FinancialsTab from './FinancialsTab';
 import KeyStatsTab from './KeyStatsTab';
+import SummaryTab from './SummaryTab';
 
 const PERIODS = [
   { key: '1M', days: 30 },
@@ -122,17 +123,20 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
   const [activeTab, setActiveTab] = useState('wykres');
   const [financialsMounted, setFinancialsMounted] = useState(false);
   const [wskaznikMounted, setWskaznikMounted] = useState(false);
+  const [summaryMounted, setSummaryMounted] = useState(false);
 
   function switchTab(tab) {
     setActiveTab(tab);
     if (tab === 'finanse') setFinancialsMounted(true);
     if (tab === 'wskazniki') setWskaznikMounted(true);
+    if (tab === 'ai') setSummaryMounted(true);
   }
 
   useEffect(() => {
     setActiveTab('wykres');
     setFinancialsMounted(false);
     setWskaznikMounted(false);
+    setSummaryMounted(false);
   }, [item.symbol]);
 
   useEffect(() => {
@@ -217,7 +221,7 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, margin: '12px 20px 0', borderBottom: '1px solid var(--border)' }}>
-          {[['wykres', 'Wykres'], ['wskazniki', 'Wskaźniki'], ['finanse', 'Finanse']].map(([k, l]) => (
+          {[['wykres', 'Wykres'], ['wskazniki', 'Wskaźniki'], ['finanse', 'Finanse'], ['ai', 'AI']].map(([k, l]) => (
             <button
               key={k}
               onClick={() => switchTab(k)}
@@ -282,6 +286,13 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
         {financialsMounted && (
           <div style={{ display: activeTab === 'finanse' ? 'block' : 'none' }}>
             <FinancialsTab symbol={item.symbol} livePrice={currentPrice} />
+          </div>
+        )}
+
+        {/* AI tab — lazy mount */}
+        {summaryMounted && (
+          <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }}>
+            <SummaryTab symbol={item.symbol} livePrice={currentPrice} />
           </div>
         )}
       </div>

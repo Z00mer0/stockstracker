@@ -114,16 +114,10 @@ function cashFlowScore(margin) {
 export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const [raw, setRaw] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summaryError, setSummaryError] = useState(null);
-
   useEffect(() => {
     if (!symbol) return;
     setLoading(true);
     setRaw(null);
-    setSummary(null);
-    setSummaryError(null);
     fetch(`/api/financials/keystats?symbol=${encodeURIComponent(symbol)}`, {
       headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
     })
@@ -132,21 +126,6 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [symbol]);
-
-  function fetchSummary() {
-    setSummaryLoading(true);
-    setSummaryError(null);
-    fetch(`/api/financials/summary?symbol=${encodeURIComponent(symbol)}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
-    })
-      .then(r => r.json())
-      .then(json => {
-        if (json.summary) setSummary(json.summary);
-        else setSummaryError(json.error || 'Brak danych finansowych — załaduj dane w zakładce Finanse');
-      })
-      .catch(() => setSummaryError('Błąd połączenia z serwerem'))
-      .finally(() => setSummaryLoading(false));
-  }
 
   if (loading) return (
     <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>Ładowanie wskaźników…</div>
@@ -339,43 +318,6 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {cfScore != null && <HealthBar label="Przepływy FCF" score={cfScore} />}
         </Section>
       )}
-
-      <Section title="Podsumowanie AI">
-        {summary ? (
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6, padding: '4px 0' }}>
-            {summary}
-            <span
-              style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}
-              onClick={fetchSummary}
-            >
-              Odśwież
-            </span>
-          </div>
-        ) : (
-          <div style={{ padding: '4px 0' }}>
-            <button
-              onClick={fetchSummary}
-              disabled={summaryLoading}
-              style={{
-                fontSize: 12, padding: '6px 14px', borderRadius: 6,
-                background: 'var(--accent)', color: '#fff', border: 'none',
-                cursor: summaryLoading ? 'default' : 'pointer',
-                opacity: summaryLoading ? 0.6 : 1,
-              }}
-            >
-              {summaryLoading ? 'Generuję…' : 'Generuj podsumowanie'}
-            </button>
-            {summaryError && (
-              <div style={{ fontSize: 11, color: '#f43f5e', marginTop: 6 }}>{summaryError}</div>
-            )}
-            {!summaryError && (
-              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>
-                Claude AI · cache 7 dni
-              </div>
-            )}
-          </div>
-        )}
-      </Section>
 
     </div>
   );
