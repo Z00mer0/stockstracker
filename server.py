@@ -1312,7 +1312,7 @@ class Handler(SimpleHTTPRequestHandler):
                 import anthropic as _anthropic
                 client = _anthropic.Anthropic(api_key=api_key)
                 msg = client.messages.create(
-                    model='claude-sonnet-4-6',
+                    model='claude-3-haiku-20240307',
                     max_tokens=600,
                     messages=[{'role': 'user', 'content': prompt}]
                 )
