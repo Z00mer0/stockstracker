@@ -11,7 +11,7 @@ const PERIODS = [
 const CM = { top: 8, right: 8, bottom: 22, left: 8 };
 const CHART_H = 150;
 
-function MiniChart({ data, period }) {
+function MiniChart({ data, period, currency = 'USD' }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
 
@@ -67,6 +67,19 @@ function MiniChart({ data, period }) {
         </defs>
         <path d={areaPath} fill="url(#sdm-area)" />
         <path d={linePath} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinejoin="round" />
+        {filtered.length > 1 && (() => {
+          const lx = xScale(filtered.length - 1);
+          const ly = yScale(filtered[filtered.length - 1].price);
+          const priceStr = filtered[filtered.length - 1].price.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          return (
+            <>
+              <circle cx={lx} cy={ly} r={3} fill={lineColor} />
+              <text x={lx - 6} y={ly - 6} fill={lineColor} fontSize={9} textAnchor="end" fontFamily="JetBrains Mono, monospace">
+                {priceStr} {currency}
+              </text>
+            </>
+          );
+        })()}
         {dateLabels.map(({ i, date }, li) => {
           const anchor = li === 0 ? 'start' : li === dateLabels.length - 1 ? 'end' : 'middle';
           return (
@@ -212,7 +225,7 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
             </div>
           ) : chartData.length >= 2 ? (
             <>
-              <MiniChart data={chartData} period={chartPeriod} />
+              <MiniChart data={chartData} period={chartPeriod} currency={currency} />
               <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                 {PERIODS.map(p => (
                   <button
