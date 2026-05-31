@@ -41,7 +41,15 @@ function MiniChart({ data, period }) {
   const pad = range * 0.1;
   const yMin = minP - pad;
   const yMax = maxP + pad;
-  const yTicks = [0, 1, 2, 3].map(i => yMin + (i / 3) * (yMax - yMin));
+  const rawStep = (yMax - yMin) / 4;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const normalized = rawStep / magnitude;
+  const niceStep = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  const step = niceStep * magnitude;
+  const niceMin = Math.floor(yMin / step) * step;
+  const yTicks = Array.from({ length: 10 }, (_, i) => niceMin + i * step)
+    .filter(v => v >= yMin && v <= yMax);
+  const yDecimals = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
 
   const xScale = i => CM.left + (i / (filtered.length - 1)) * chartW;
   const yScale = v => CM.top + CHART_H - ((v - minP + pad) / (range + pad * 2)) * CHART_H;
@@ -55,9 +63,14 @@ function MiniChart({ data, period }) {
   const lineColor = isUp ? '#10b981' : '#f43f5e';
 
   const labelStep = Math.max(1, Math.floor(filtered.length / 5));
+  const MIN_LABEL_GAP = 36;
   const dateLabels = filtered
     .map((d, i) => ({ i, date: d.date }))
-    .filter((_, i) => i % labelStep === 0 || i === filtered.length - 1);
+    .filter((_, i) => i % labelStep === 0 || i === filtered.length - 1)
+    .filter((dl, li, arr) => {
+      if (li === arr.length - 1) return true;
+      return xScale(arr[li + 1].i) - xScale(dl.i) >= MIN_LABEL_GAP;
+    });
 
   return (
     <div ref={containerRef} style={{ width: '100%' }}>
@@ -76,7 +89,7 @@ function MiniChart({ data, period }) {
                     stroke="#1f2937" strokeOpacity={0.5} strokeWidth={1} />
               <text x={CM.left - 6} y={y + 3} fill="#64748b" fontSize={9}
                     textAnchor="end" fontFamily="JetBrains Mono, monospace">
-                {v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {v.toLocaleString('pl-PL', { minimumFractionDigits: yDecimals, maximumFractionDigits: yDecimals })}
               </text>
             </g>
           );
