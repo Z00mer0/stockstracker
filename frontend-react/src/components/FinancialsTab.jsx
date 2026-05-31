@@ -32,6 +32,92 @@ function growthColor(v) {
   return v >= 0 ? 'var(--up)' : 'var(--down)';
 }
 
+const LFL_DATA = {
+  'DNP.WA': [
+    { label: 'Q1 2026', value: 4.4 },
+    { label: 'Q4 2025', value: 6.1 },
+    { label: 'Q3 2025', value: 7.2 },
+    { label: 'Q2 2025', value: 8.5 },
+  ],
+};
+
+const RC_H = 80;
+const RC_MT = 8;
+const RC_MB = 20;
+const RC_ML = 8;
+const RC_MR = 8;
+
+function RevenueChart({ periods, currency }) {
+  const containerRef = useRef(null);
+  const [chartWidth, setChartWidth] = useState(380);
+
+  useEffect(() => {
+    const obs = new ResizeObserver(([e]) => setChartWidth(Math.floor(e.contentRect.width)));
+    if (containerRef.current) obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  const pts = periods.filter(p => p.revenue != null).slice(-8);
+  if (pts.length < 2) return null;
+
+  const revenues = pts.map(p => p.revenue);
+  const maxRev = Math.max(...revenues);
+  const baseline = Math.min(...revenues) * 0.85;
+  const range = maxRev - baseline || 1;
+
+  const innerW = chartWidth - RC_ML - RC_MR;
+  const totalH = RC_H + RC_MT + RC_MB;
+  const barSlot = innerW / pts.length;
+  const barPad = barSlot * 0.18;
+
+  const yS = v => RC_MT + RC_H - ((v - baseline) / range) * RC_H;
+  const xC = i => RC_ML + (i + 0.5) * barSlot;
+
+  // linear regression
+  const n = pts.length;
+  const sumX = revenues.reduce((a, _, i) => a + i, 0);
+  const sumY = revenues.reduce((a, v) => a + v, 0);
+  const sumXY = revenues.reduce((a, v, i) => a + i * v, 0);
+  const sumX2 = revenues.reduce((a, _, i) => a + i * i, 0);
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', padding: '8px 10px 4px' }}>
+      <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 2 }}>
+        Przychody kwartalne · mln {currency}
+      </div>
+      <svg width={chartWidth} height={totalH}>
+        {pts.map((p, i) => {
+          const barTop = yS(p.revenue);
+          const barBot = RC_MT + RC_H;
+          return (
+            <g key={i}>
+              <rect
+                x={RC_ML + i * barSlot + barPad}
+                y={barTop}
+                width={barSlot - barPad * 2}
+                height={barBot - barTop}
+                fill="var(--accent)"
+                fillOpacity={0.45}
+                rx={1}
+              />
+              <text x={xC(i)} y={totalH - 5} textAnchor="middle" fontSize={8} fill="#64748b">
+                {(p.label ?? '').slice(-5)}
+              </text>
+            </g>
+          );
+        })}
+        <line
+          x1={xC(0)} y1={yS(intercept)}
+          x2={xC(n - 1)} y2={yS(slope * (n - 1) + intercept)}
+          stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4,3"
+        />
+      </svg>
+    </div>
+  );
+}
+
 const COL_W = '110px';
 const NUM_COLS = 4;
 
@@ -553,6 +639,34 @@ export default function FinancialsTab({ symbol, livePrice }) {
       {/* Data tables */}
       {data && periods.length > 0 && (
         <>
+          {/* Revenue chart + LFL KPI */}
+          {isQuarterly && (
+            <div style={{ background: 'var(--panel)', borderRadius: 8, marginBottom: 6, overflow: 'hidden' }}>
+              <RevenueChart periods={periods} currency={currency} />
+              {LFL_DATA[symbol] && (
+                <div style={{ padding: '4px 10px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {LFL_DATA[symbol].map(({ label, value }) => (
+                    <div key={label} style={{
+                      background: 'var(--panel-2)', borderRadius: 6, padding: '5px 10px',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2 }}>LFL {label}</span>
+                      <span style={{
+                        fontSize: 13, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace',
+                        color: value >= 0 ? 'var(--up)' : 'var(--down)',
+                      }}>
+                        {value >= 0 ? '+' : ''}{value.toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>Sprzedaż w sklepach porównywalnych (LFL)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* RZiS */}
           <Accordion title="Rachunek Zysków i Strat" unit={`mln ${currency}`} defaultOpen={true}>
             <ColumnHeaders periods={periods} />
