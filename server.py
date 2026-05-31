@@ -1312,7 +1312,7 @@ class Handler(SimpleHTTPRequestHandler):
                 import anthropic as _anthropic
                 client = _anthropic.Anthropic(api_key=api_key)
                 msg = client.messages.create(
-                    model='claude-3-haiku-20240307',
+                    model='claude-sonnet-4-6',
                     max_tokens=600,
                     messages=[{'role': 'user', 'content': prompt}]
                 )
@@ -1329,8 +1329,12 @@ class Handler(SimpleHTTPRequestHandler):
                     print(f'[summary/cache_write] {e}')
                 self.send_json(200, {'summary': text})
             except Exception as e:
-                print(f'[summary/anthropic] {type(e).__name__}: {e}')
-                self.send_json(502, {'error': f'AI request failed: {type(e).__name__}: {str(e)[:300]}'})
+                err_str = str(e)
+                print(f'[summary/anthropic] {type(e).__name__}: {err_str}')
+                if 'credit balance' in err_str or 'billing' in err_str.lower():
+                    self.send_json(402, {'error': 'Brak kredytów Anthropic — doładuj konto na console.anthropic.com'})
+                else:
+                    self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
 
         elif path == '/api/bench-pl':
             if not get_username(self):
