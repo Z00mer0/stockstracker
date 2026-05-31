@@ -8,7 +8,7 @@ const PERIODS = [
   { key: '6M', days: 180 },
   { key: '1R', days: 365 },
 ];
-const CM = { top: 8, right: 8, bottom: 22, left: 40 };
+const CM = { top: 8, right: 8, bottom: 22, left: 56 };
 const CHART_H = 150;
 
 function MiniChart({ data, period }) {
