@@ -327,7 +327,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
             />
           )}
           <div style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 6 }}>
-            DCF: 5Y, dysk. 10%, wzrost hist., term. 3%
+            Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%
           </div>
         </Section>
       )}
