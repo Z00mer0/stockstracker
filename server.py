@@ -1330,7 +1330,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(200, {'summary': text})
             except Exception as e:
                 print(f'[summary/anthropic] {type(e).__name__}: {e}')
-                self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
+                self.send_json(502, {'error': f'AI request failed: {type(e).__name__}: {str(e)[:300]}'})
 
         elif path == '/api/bench-pl':
             if not get_username(self):
