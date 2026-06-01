@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { AppContext } from '../../context/AppContext';
 
 const DOMAIN_MAP = {
   // GPW
@@ -12,7 +13,7 @@ const DOMAIN_MAP = {
   'MDV.WA': 'modivo.com',
   'MRB.WA': 'mirbud.pl',
   'DIA.WA': 'diagnostyka.pl',
-  'ELT.WA': 'eltel.pl',
+  'ELT.WA': 'elektrotim.pl',
   'PKN.WA': 'orlen.pl',
   'PKO.WA': 'pkobp.pl',
   'PZU.WA': 'pzu.pl',
@@ -49,8 +50,11 @@ const DOMAIN_MAP = {
 
 export default function TickerLogo({ symbol = '', size }) {
   const [imgErr, setImgErr] = useState(false);
+  const ctx = useContext(AppContext);
+  const logoMap = ctx?.logoMap ?? {};
+
   const chars = symbol.replace(/\.(WA|US|UK)$/i, '').slice(0, 2).toUpperCase();
-  const domain = DOMAIN_MAP[symbol] ?? null;
+  const domain = DOMAIN_MAP[symbol] ?? logoMap[symbol] ?? null;
   const cls = size === 'lg' ? 'ticker-logo ticker-logo-lg' : 'ticker-logo';
   const px = typeof size === 'number' ? size : size === 'lg' ? 56 : 32;
   const sizeStyle = typeof size === 'number' ? { width: px, height: px } : undefined;

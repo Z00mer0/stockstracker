@@ -392,6 +392,7 @@ if _env.exists():
             os.environ.setdefault(_k.strip(), _v.strip())
 
 SESSIONS     = {}
+_logo_cache  = {}  # symbol → domain (in-memory, populated by /api/logos)
 PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -868,6 +869,47 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(200, load_watchlist(username))
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/logos':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            raw = qs.get('symbols', '')
+            symbols = [s.strip().upper() for s in raw.split(',')
+                       if s.strip() and re.fullmatch(r'[A-Z0-9.\-]{1,15}', s.strip())][:30]
+            logos = {}
+            uncached = [s for s in symbols if s not in _logo_cache]
+            if uncached:
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                def _fetch_logo(sym):
+                    try:
+                        res = _yf_quotesummary(sym, 'assetProfile')
+                        if res:
+                            website = (res.get('assetProfile') or {}).get('website', '')
+                            if website:
+                                netloc = urllib.parse.urlparse(website).netloc
+                                if netloc.startswith('www.'):
+                                    netloc = netloc[4:]
+                                _logo_cache[sym] = netloc
+                                return sym, netloc
+                    except Exception as e:
+                        print(f'[logos] {sym}: {e}')
+                    _logo_cache[sym] = None
+                    return sym, None
+                with ThreadPoolExecutor(max_workers=6) as ex:
+                    futs = {ex.submit(_fetch_logo, s): s for s in uncached}
+                    for f in as_completed(futs, timeout=15):
+                        try:
+                            sym, domain = f.result()
+                            if domain:
+                                logos[sym] = domain
+                        except Exception:
+                            pass
+            for s in symbols:
+                if s in _logo_cache and _logo_cache[s]:
+                    logos.setdefault(s, _logo_cache[s])
+            self.send_json(200, logos)
 
         elif path == '/api/portfolios':
             username = get_username(self)

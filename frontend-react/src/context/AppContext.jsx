@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../hooks/useApi';
 
-const AppContext = createContext(null);
+export const AppContext = createContext(null);
 
 const TOKEN_KEY  = 'myfund_auth_token';
 const FX_CACHE_KEY = 'myfund_fx_rates';
@@ -42,6 +42,7 @@ export function AppProvider({ children }) {
   const [loading, setLoading]       = useState(() => !!localStorage.getItem(TOKEN_KEY));
   const [error, setError]           = useState(null);
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
+  const [logoMap, setLogoMap]       = useState({});
   const writeInProgressRef          = useRef(false);
 
   const ACTIVE_PORTFOLIO_KEY = 'myfund_active_portfolio';
@@ -102,6 +103,19 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (token) fetchData();
   }, [token, activePortfolioId, fetchData]);
+
+  // Fetch company logos for all portfolio symbols after data loads
+  useEffect(() => {
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    if (!token || !holdings.length) return;
+    const symbols = [...new Set(holdings.map(h => h.symbol))];
+    const missing = symbols.filter(s => !(s in logoMap));
+    if (!missing.length) return;
+    api.get(`/api/logos?symbols=${missing.join(',')}`)
+      .then(res => setLogoMap(prev => ({ ...prev, ...res.data })))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawData, token]);
 
   function switchPortfolio(id) {
     localStorage.setItem(ACTIVE_PORTFOLIO_KEY, id);
@@ -435,6 +449,7 @@ export function AppProvider({ children }) {
     updatePortfolio,
     deletePortfolio,
     canWrite,
+    logoMap,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
