@@ -122,7 +122,9 @@ function AllocationChart({ positions }) {
     }, {});
   })();
 
-  const labels = Object.keys(grouped);
+  const allLabels = Object.keys(grouped);
+  const totalVal = allLabels.reduce((s, k) => s + grouped[k], 0);
+  const labels = allLabels.filter(k => totalVal > 0 && (grouped[k] / totalVal * 100) >= 0.05);
   const data = {
     labels,
     datasets: [{
@@ -169,7 +171,7 @@ function AllocationChart({ positions }) {
         ))}
       </div>
     }>
-      <div style={{ padding: '0 20px 16px', maxWidth: 360, margin: '0 auto' }}>
+      <div style={{ padding: '16px 20px 16px', maxWidth: 360, margin: '0 auto' }}>
         <Doughnut data={data} options={options} />
       </div>
       {tab === 'stocks' && (
@@ -539,7 +541,7 @@ export default function Dashboard() {
 
       {/* Top movers today */}
       {(topMovers.gainers.length > 0 || topMovers.losers.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 14 }}>
           {[
             { title: 'Najlepsze dziś', rows: topMovers.gainers, color: 'var(--up)' },
             { title: 'Najsłabsze dziś', rows: topMovers.losers, color: 'var(--down)' },
