@@ -173,7 +173,7 @@ function AllocationChart({ positions }) {
         <Doughnut data={data} options={options} />
       </div>
       {tab === 'stocks' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', marginTop: 8, justifyContent: 'center', paddingBottom: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', marginTop: 8, justifyContent: 'center', paddingBottom: 16, padding: '0 8px 16px' }}>
           {labels.map((sym, i) => {
             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
             const pct = total > 0 ? ((grouped[sym] / total) * 100).toFixed(1) : '0';
@@ -481,7 +481,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
         <KpiCard
           label="Wartość portfela"
           value={`${fmt(kpi.totalValue)} ${currLabel}`}
@@ -539,7 +539,7 @@ export default function Dashboard() {
 
       {/* Top movers today */}
       {(topMovers.gainers.length > 0 || topMovers.losers.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
           {[
             { title: 'Najlepsze dziś', rows: topMovers.gainers, color: 'var(--up)' },
             { title: 'Najsłabsze dziś', rows: topMovers.losers, color: 'var(--down)' },
@@ -630,7 +630,9 @@ export default function Dashboard() {
                         {pos.symbol}
                       </span>
                       {pos.name && pos.name !== pos.symbol && (
-                        <span style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 400 }}>{pos.name}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 400 }} className="hidden sm:inline">
+                          {pos.name}
+                        </span>
                       )}
                     </td>
                     {cols.map(key => (
