@@ -291,17 +291,21 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         <EyeIcon closed={isPrivate} />
       </button>
 
-      {/* Bell — hidden on mobile to save space */}
+      {/* Calendar / earnings shortcut */}
       {!isMobile && (
-        <div style={{ position: 'relative' }}>
-          <button style={iconBtn} title="Powiadomienia" aria-label="Powiadomienia">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-          </button>
-          <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: 'var(--down)', border: '1.5px solid var(--bg-2)', pointerEvents: 'none' }} />
-        </div>
+        <button
+          style={iconBtn}
+          onClick={() => navigate('/calendar')}
+          title="Kalendarz wyników"
+          aria-label="Kalendarz wyników"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </button>
       )}
 
       {/* Add transaction CTA */}
