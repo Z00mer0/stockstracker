@@ -190,6 +190,28 @@ export default function Portfolio() {
     });
   }, [enriched, sortBy]);
 
+  function handleExportCsv() {
+    const headers = ['Symbol', 'Ilość', 'Śr. zakup', 'Waluta', 'Cena', 'Wart. zakupu (PLN)', 'Wart. teraz (PLN)', 'Zysk/Strata (PLN)', 'Zysk/Strata (%)', 'Zmiana dz. (%)'];
+    const rows = sorted.map(p => [
+      p.symbol,
+      p.qty ?? '',
+      p.avgPrice ?? '',
+      p.currency ?? '',
+      p.price ?? '',
+      p.costPLN != null ? p.costPLN.toFixed(2) : '',
+      p.valuePLN != null ? p.valuePLN.toFixed(2) : '',
+      p.plPLN != null ? p.plPLN.toFixed(2) : '',
+      p.costPLN > 0 && p.plPLN != null ? ((p.plPLN / p.costPLN) * 100).toFixed(2) : '',
+      p.dailyChg != null ? p.dailyChg.toFixed(2) : '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `portfel_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
@@ -249,6 +271,14 @@ export default function Portfolio() {
           ))}
           <div style={{ flex: '0 0 8px' }} />
           {metricsLoading && <Spinner size="sm" />}
+          <button
+            onClick={handleExportCsv}
+            className="btn"
+            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+            title="Eksportuj portfel jako CSV"
+          >
+            ⬇ Eksport CSV
+          </button>
           <button
             onClick={() => setShowImport(true)}
             className="btn"

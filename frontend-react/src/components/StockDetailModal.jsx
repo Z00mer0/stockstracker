@@ -195,6 +195,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const [financialsMounted, setFinancialsMounted] = useState(false);
   const [wskaznikMounted, setWskaznikMounted] = useState(false);
   const [summaryMounted, setSummaryMounted] = useState(false);
+  const [note, setNote] = useState(() => localStorage.getItem(`myfund_note_${item.symbol}`) || '');
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -210,6 +211,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
     setSummaryMounted(false);
     setBenchSymbol(null);
     setBenchData([]);
+    setNote(localStorage.getItem(`myfund_note_${item.symbol}`) || '');
   }, [item.symbol]);
 
   useEffect(() => {
@@ -350,7 +352,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, margin: '12px 20px 0', borderBottom: '1px solid var(--border)' }}>
-          {[['wykres', 'Wykres'], ['wskazniki', 'Wskaźniki'], ['finanse', 'Finanse'], ['ai', 'AI']].map(([k, l]) => (
+          {[['wykres', 'Wykres'], ['wskazniki', 'Wskaźniki'], ['finanse', 'Finanse'], ['ai', 'AI'], ['notatki', note ? '📝 Notatki' : 'Notatki']].map(([k, l]) => (
             <button
               key={k}
               onClick={() => switchTab(k)}
@@ -445,6 +447,36 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         {summaryMounted && (
           <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }}>
             <SummaryTab symbol={item.symbol} livePrice={currentPrice} />
+          </div>
+        )}
+
+        {activeTab === 'notatki' && (
+          <div style={{ padding: '16px 20px 20px' }}>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>
+              Teza inwestycyjna, cel cenowy, powód zakupu — zapisywane lokalnie na tym urządzeniu.
+            </p>
+            <textarea
+              value={note}
+              onChange={e => { setNote(e.target.value); localStorage.setItem(`myfund_note_${item.symbol}`, e.target.value); }}
+              placeholder={`Notatki do ${item.symbol}…`}
+              style={{
+                width: '100%', minHeight: 160, padding: '10px 12px',
+                background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8,
+                color: 'var(--text)', fontSize: 13, lineHeight: 1.6, resize: 'vertical',
+                fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none',
+              }}
+              autoFocus
+            />
+            {note && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <button
+                  onClick={() => { setNote(''); localStorage.removeItem(`myfund_note_${item.symbol}`); }}
+                  style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  Wyczyść notatkę
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

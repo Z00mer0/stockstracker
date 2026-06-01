@@ -1174,6 +1174,16 @@ class Handler(SimpleHTTPRequestHandler):
                     out.setdefault('forwardPE',               _gv(ks, 'forwardPE'))
                     out.setdefault('forwardEps',              _gv(ks, 'forwardEps'))
                     out.setdefault('pegRatio',                _gv(ks, 'pegRatio'))
+                    out.setdefault('payoutRatio',             _gv(ks, 'payoutRatio'))
+                    ex_div = ks.get('exDividendDate')
+                    if isinstance(ex_div, dict):
+                        out.setdefault('exDividendDate', ex_div.get('fmt'))
+                    elif ex_div:
+                        import datetime
+                        try:
+                            out.setdefault('exDividendDate', datetime.date.fromtimestamp(ex_div).isoformat())
+                        except Exception:
+                            pass
                     out.setdefault('targetMeanPrice',         _gv(fd, 'targetMeanPrice'))
                     out.setdefault('targetLowPrice',          _gv(fd, 'targetLowPrice'))
                     out.setdefault('targetHighPrice',         _gv(fd, 'targetHighPrice'))

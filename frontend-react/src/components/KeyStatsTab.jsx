@@ -591,6 +591,21 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
         <Section title="Dywidenda">
           <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmt(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip="Roczna dywidenda / cena akcji. Dochód pasywny z akcji. Powyżej 4% = atrakcyjne, ale sprawdź czy spółka nie płaci więcej niż zarabia." />
           {raw.dividendRate != null && <Row label="DPS" value={fmt(raw.dividendRate)} tooltip="Dywidenda na akcję (Dividend Per Share) za ostatnie 12 miesięcy." />}
+          {raw?.payoutRatio != null && (
+            <Row
+              label="Payout Ratio"
+              value={`${(raw.payoutRatio * 100).toFixed(0)}%`}
+              color={raw.payoutRatio > 1 ? '#f43f5e' : raw.payoutRatio > 0.7 ? '#f59e0b' : '#10b981'}
+              tooltip="Udział dywidendy w zysku netto. > 100% = spółka płaci więcej niż zarabia (niezrównoważone). < 70% = bezpieczny poziom."
+            />
+          )}
+          {raw?.exDividendDate && (
+            <Row
+              label="Data ex-dividend"
+              value={new Date(raw.exDividendDate).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })}
+              tooltip="Ostatni dzień, w którym trzeba posiadać akcje, aby otrzymać kolejną dywidendę."
+            />
+          )}
           {raw?.dividendGrowthStreak != null && raw?.dividendRate != null && (
             <Row
               label="Wzrost dywidendy z rzędu"
