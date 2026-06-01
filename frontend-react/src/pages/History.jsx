@@ -143,7 +143,7 @@ export default function History() {
         {[
           { label: 'Wartość (filtr)', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(filteredLast?.total)}</span>, sub: null },
           { label: 'Zysk/strata', value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
-          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: null },
+          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? `min. 90 dni (${days} dni historii)` : null },
           { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(ath?.total)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
         ].map(({ label, value, sub }) => (
           <div key={label} className="kpi-card">

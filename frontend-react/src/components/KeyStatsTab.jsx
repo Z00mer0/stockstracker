@@ -248,8 +248,8 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
   const dcfX    = dcfValue      != null ? toX(dcfValue)      : null;
   const targetX = analystTarget != null ? toX(analystTarget) : null;
 
-  const marketPremium = dcfValue != null ? ((currentPrice - dcfValue) / dcfValue * 100) : null;
-  const isUndervalued = marketPremium != null && marketPremium < 0;
+  const dcfUpside = dcfValue != null ? ((dcfValue - currentPrice) / currentPrice * 100) : null;
+  const isUndervalued = dcfUpside != null && dcfUpside > 0;
 
   return (
     <div>
@@ -288,12 +288,9 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: -6 }}>
         <span style={{ color: 'var(--text-faint)' }}>Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%</span>
-        {marketPremium != null && (
+        {dcfUpside != null && (
           <span style={{ color: isUndervalued ? '#008751' : '#f43f5e', fontWeight: 600 }}>
-            {isUndervalued
-              ? `Margines bezp.: ${Math.abs(marketPremium).toFixed(1)}%`
-              : `Premia rynkowa: +${marketPremium.toFixed(1)}%`
-            }
+            {`Potencjał DCF: ${dcfUpside >= 0 ? '+' : ''}${dcfUpside.toFixed(1)}%`}
           </span>
         )}
       </div>
@@ -505,10 +502,10 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const rec              = raw?.recommendationKey ? REC_LABEL[raw.recommendationKey.toLowerCase()] : null;
   const analystUpside    = livePrice && raw?.targetMeanPrice
     ? ((raw.targetMeanPrice - livePrice) / livePrice) * 100 : null;
-  const dcfMarketPremium = livePrice && raw?.dcfFairValue
-    ? ((livePrice - raw.dcfFairValue) / raw.dcfFairValue) * 100 : null;
+  const dcfUpside = livePrice && raw?.dcfFairValue
+    ? ((raw.dcfFairValue - livePrice) / livePrice) * 100 : null;
 
-  const hasFundamentalValuation = analystUpside != null || dcfMarketPremium != null;
+  const hasFundamentalValuation = analystUpside != null || dcfUpside != null;
   const hasValuation    = peRatio || psRatio || evEbitda || pfcf || raw?.forwardPE;
   const hasProfit       = epsTtm || raw?.forwardEps;
   const hasDividend     = raw?.dividendYield != null || raw?.dividendRate != null;
@@ -649,11 +646,11 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
               color={analystUpside >= 0 ? '#10b981' : '#f43f5e'}
             />
           )}
-          {dcfMarketPremium != null && (
+          {dcfUpside != null && (
             <Row
               label="Wycena DCF"
               value={fmt(raw.dcfFairValue, { decimals: 2 })}
-              color={dcfMarketPremium <= 0 ? '#008751' : '#f43f5e'}
+              color={dcfUpside >= 0 ? '#008751' : '#f43f5e'}
             />
           )}
         </Section>

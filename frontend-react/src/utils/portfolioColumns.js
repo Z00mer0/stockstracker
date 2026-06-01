@@ -17,10 +17,10 @@ export const COLUMN_DEFS = [
 ];
 
 export const DEFAULT_COLS = [
-  'qty', 'avgPrice', 'price', 'dailyChg', 'costPLN', 'valuePLN', 'plPLN', 'period', 'moic',
+  'qty', 'price', 'dailyChg', 'valuePLN', 'plPLN',
 ];
 
-const LS_KEY = 'portfolio_col_config';
+const LS_KEY = 'portfolio_col_config_v2';
 
 export function loadColumnConfig() {
   try {

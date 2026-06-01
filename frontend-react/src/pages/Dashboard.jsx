@@ -323,6 +323,12 @@ export default function Dashboard() {
     [portfolio, fxRates, enrichPosition]
   );
 
+  const topMovers = useMemo(() => {
+    const withChg = allPositions.filter(p => p.dailyChg != null);
+    const sorted = [...withChg].sort((a, b) => b.dailyChg - a.dailyChg);
+    return { gainers: sorted.slice(0, 3), losers: sorted.slice(-3).reverse() };
+  }, [allPositions]);
+
   // ── KPI — real-time values from live positions, not stale snapshots ────────
   const kpi = useMemo(() => {
     // Transaction-derived (no live price needed)
@@ -385,7 +391,7 @@ export default function Dashboard() {
   }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
 
   // ── Portfolio IRR — requires ≥30 days of history ──────────────────────────
-  const { portfolioIrr, irrMissingSymbols } = useMemo(() => {
+  const { portfolioIrr, irrMissingSymbols, irrDaySpan } = useMemo(() => {
     const symbolsWithBuy = new Set(
       transactions.filter(t => t.type === 'BUY').map(t => t.symbol)
     );
@@ -403,20 +409,20 @@ export default function Dashboard() {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    if (!cashflows.length) return { portfolioIrr: null, irrMissingSymbols: missingSymbols };
+    if (!cashflows.length) return { portfolioIrr: null, irrMissingSymbols: missingSymbols, irrDaySpan: 0 };
 
     // Require at least 30 days of history — shorter periods give misleading annualized rates
     const daySpan = Math.round((Date.now() - new Date(cashflows[0].date).getTime()) / 86400000);
-    if (daySpan < 30) return { portfolioIrr: null, irrMissingSymbols: missingSymbols };
+    if (daySpan < 30) return { portfolioIrr: null, irrMissingSymbols: missingSymbols, irrDaySpan: daySpan };
 
     // Only include positions with documented BUY transactions to avoid inflating IRR
     const terminalValue = allPositions
       .filter(p => symbolsWithBuy.has(p.symbol))
       .reduce((s, p) => s + (p.valuePLN ?? 0), 0);
-    if (terminalValue <= 0) return { portfolioIrr: null, irrMissingSymbols: missingSymbols }; // prices not loaded yet
+    if (terminalValue <= 0) return { portfolioIrr: null, irrMissingSymbols: missingSymbols, irrDaySpan: daySpan }; // prices not loaded yet
 
     cashflows.push({ amount: terminalValue, date: new Date().toISOString().slice(0, 10) });
-    return { portfolioIrr: xirr(cashflows), irrMissingSymbols: missingSymbols };
+    return { portfolioIrr: xirr(cashflows), irrMissingSymbols: missingSymbols, irrDaySpan: daySpan };
   }, [transactions, fxRates, allPositions]);
 
   // ── Snapshot — only save when real prices are loaded ─────────────────────
@@ -502,7 +508,7 @@ export default function Dashboard() {
               ? irrMissingSymbols.length > 0
                 ? `bez ${irrMissingSymbols.join(', ')} (brak BUY)`
                 : 'ważona roczna stopa zwrotu'
-              : '< 30 dni historii'
+              : `min. 30 dni (${irrDaySpan} dni historii)`
           }
           trend={portfolioIrr}
           isPrivate={false}
@@ -515,6 +521,46 @@ export default function Dashboard() {
       {/* Alokacja */}
       {allPositions.length > 0 && (
         <AllocationChart positions={allPositions} />
+      )}
+
+      {/* Top movers today */}
+      {(topMovers.gainers.length > 0 || topMovers.losers.length > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {[
+            { title: 'Najlepsze dziś', rows: topMovers.gainers, color: 'var(--up)' },
+            { title: 'Najsłabsze dziś', rows: topMovers.losers, color: 'var(--down)' },
+          ].map(({ title, rows, color }) => (
+            <Card key={title} title={title}>
+              {rows.length === 0
+                ? <p style={{ padding: '4px 0', fontSize: 12, color: 'var(--text-faint)' }}>Brak danych</p>
+                : rows.map(pos => {
+                  const dayPLN = pos.valuePLN != null ? pos.valuePLN * pos.dailyChg / 100 : null;
+                  return (
+                    <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TickerLogo symbol={pos.symbol} size={28} />
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</div>
+                          {pos.name && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{pos.name.slice(0, 20)}</div>}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color, fontFamily: 'JetBrains Mono, monospace' }}>
+                          {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg.toFixed(2)}%
+                        </div>
+                        {dayPLN != null && (
+                          <div style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {dayPLN >= 0 ? '+' : ''}{fmt(dayPLN)} zł
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              }
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Sparkline historii */}

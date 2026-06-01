@@ -87,7 +87,7 @@ function RiskSection({ snapshots }) {
   const [betaLoading, setBetaLoading] = useState(false);
 
   useEffect(() => {
-    if (values.length < 10 || daySpan < 14) return;
+    if (values.length < 10 || daySpan < 45) return;
     const ctrl = new AbortController();
     setBetaLoading(true);
     const dates = sorted.map(s => s.date);
@@ -120,7 +120,22 @@ function RiskSection({ snapshots }) {
   const sharpe = calcSharpe(values);
   const sortino = calcSortino(values);
 
-  if (values.length < 10 || daySpan < 14) return null;
+  const MIN_DAYS = 45;
+  if (values.length < 10 || daySpan < MIN_DAYS) {
+    if (daySpan > 0) {
+      return (
+        <Card title="Analiza ryzyka">
+          <div className="card-body">
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
+              Za krótka historia do obliczeń statystycznych — potrzeba min. {MIN_DAYS} dni snapshotów (masz {daySpan} {daySpan === 1 ? 'dzień' : 'dni'}).
+              Metryki pojawią się automatycznie gdy portfel będzie aktywny wystarczająco długo.
+            </p>
+          </div>
+        </Card>
+      );
+    }
+    return null;
+  }
 
   return (
     <Card title="Analiza ryzyka">
