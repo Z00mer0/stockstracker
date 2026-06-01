@@ -137,10 +137,9 @@ function AllocationChart({ positions }) {
     responsive: true,
     maintainAspectRatio: true,
     plugins: {
-      legend: {
-        position: 'right',
-        labels: { color: '#8a929d', font: { size: 11 }, boxWidth: 12, padding: 10 },
-      },
+      legend: tab === 'stocks'
+        ? { display: false }
+        : { position: 'right', labels: { color: '#8a929d', font: { size: 11 }, boxWidth: 12, padding: 10 } },
       tooltip: {
         callbacks: {
           label: (ctx) => {
@@ -173,6 +172,21 @@ function AllocationChart({ positions }) {
       <div style={{ padding: '0 20px 16px', maxWidth: 360, margin: '0 auto' }}>
         <Doughnut data={data} options={options} />
       </div>
+      {tab === 'stocks' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', marginTop: 8, justifyContent: 'center', paddingBottom: 16 }}>
+          {labels.map((sym, i) => {
+            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+            const pct = total > 0 ? ((grouped[sym] / total) * 100).toFixed(1) : '0';
+            return (
+              <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-dim)' }}>
+                <TickerLogo symbol={sym} size={18} />
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>{sym.replace('.WA', '')}</span>
+                <span style={{ color: 'var(--text-faint)' }}>{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }
