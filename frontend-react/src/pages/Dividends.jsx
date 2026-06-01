@@ -205,7 +205,7 @@ export default function Dividends() {
       </div>
 
       {/* ── Netto / Brutto toggle ── */}
-      <div className="card flex items-center justify-between" style={{ padding: '12px 20px' }}>
+      <div className="card flex items-center justify-between flex-wrap gap-3" style={{ padding: '12px 20px' }}>
         <div>
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Tryb wyświetlania kwot</p>
           <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>

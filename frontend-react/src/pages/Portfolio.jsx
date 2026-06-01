@@ -242,7 +242,7 @@ export default function Portfolio() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
+      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
         <div>
           <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-dim)' }}>Łączny koszt portfela</p>
           <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{fmt(totalCostPLN)} zł</p>

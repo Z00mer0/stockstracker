@@ -151,7 +151,7 @@ export default function Calendar() {
       {/* Month grid */}
       <Card style={{ padding: '1.25rem' }}>
         {/* Header: navigation */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
           <div className="flex items-center gap-2">
             <button
               onClick={prevMonth}

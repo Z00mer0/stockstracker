@@ -88,6 +88,8 @@ body.privacy-mode .privacy-blur { filter: blur(6px); user-select: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
 }

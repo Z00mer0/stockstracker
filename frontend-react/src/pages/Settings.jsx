@@ -171,7 +171,7 @@ function SnapshotManagerSection() {
           <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
             {isEditing ? `Edytujesz snapshot: ${fmtDate(editingDate)}` : 'Dodaj nowy snapshot'}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 8 }}>
             <div>
               <label className="field-label">Data</label>
               <input
