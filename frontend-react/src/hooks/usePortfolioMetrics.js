@@ -116,7 +116,7 @@ const WA_SECTOR_MAP = {
   'BNP.WA':  'Financial Services',
   'MRB.WA':  'Real Estate',
   'DIA.WA':  'Healthcare',
-  'PXM.WA':  'Consumer Cyclical',
+  'PXM.WA':  'Industrials',
   'S2B.WA':  'Technology',
   'CBF.WA':  'Technology',
   'ELT.WA':  'Technology',
