@@ -483,6 +483,11 @@ if DATABASE_URL:
                     summary    TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_watchlist (
+                    username   TEXT PRIMARY KEY,
+                    items_json TEXT NOT NULL DEFAULT '[]'
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -604,6 +609,19 @@ if DATABASE_URL:
                 cur.execute("INSERT INTO portfolio_cash (portfolio_id, currency, amount) VALUES (%s,%s,%s)",
                             (portfolio_id, cur_code, amount))
 
+    def load_watchlist(username):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT items_json FROM user_watchlist WHERE username=%s", (username,))
+            row = cur.fetchone()
+        return json.loads(row[0]) if row else []
+
+    def save_watchlist(username, items):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("""
+                INSERT INTO user_watchlist (username, items_json) VALUES (%s, %s)
+                ON CONFLICT (username) DO UPDATE SET items_json = EXCLUDED.items_json
+            """, (username, json.dumps(items, ensure_ascii=False)))
+
     _init_db()
 
 else:
@@ -672,6 +690,19 @@ else:
     def save_portfolio_data(portfolio_id, data):
         f = BASE / f'pdata_{portfolio_id}.json'
         f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    def load_watchlist(username):
+        f = BASE / f'watchlist_{username}.json'
+        if f.exists():
+            try:
+                return json.loads(f.read_text(encoding='utf-8'))
+            except Exception:
+                return []
+        return []
+
+    def save_watchlist(username, items):
+        f = BASE / f'watchlist_{username}.json'
+        f.write_text(json.dumps(items, ensure_ascii=False), encoding='utf-8')
 
 
 def migrate_user_to_portfolios(username):
@@ -828,6 +859,15 @@ class Handler(SimpleHTTPRequestHandler):
                 {'username': u, 'display_name': v['display_name']}
                 for u, v in users.items()
             ])
+
+        elif path == '/api/watchlist':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                self.send_json(200, load_watchlist(username))
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
 
         elif path == '/api/portfolios':
             username = get_username(self)
@@ -1624,6 +1664,23 @@ async function doRecover() {
                 self.send_json(400, {'ok': False, 'error': str(e)})
             except Exception as e:
                 self.send_json(400, {'ok': False, 'error': 'Bad request'})
+
+        elif path == '/api/watchlist':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=256 * 1024)
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            items = body if isinstance(body, list) else body.get('items', [])
+            if not isinstance(items, list):
+                self.send_json(400, {'error': 'expected list'}); return
+            try:
+                save_watchlist(username, items)
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
 
         elif path == '/api/portfolios':
             # POST /api/portfolios — create new portfolio

@@ -10,6 +10,21 @@ import TickerLogo from '../components/shared/TickerLogo';
 const WATCH_KEY = 'myfund_watchlist';
 function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
 
+async function apiLoadWatchlist() {
+  const r = await fetch('/api/watchlist', { headers: authHeader(), signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function apiSaveWatchlist(items) {
+  await fetch('/api/watchlist', {
+    method: 'POST',
+    headers: { ...authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+    signal: AbortSignal.timeout(8000),
+  });
+}
+
 async function fetchLivePrice(sym) {
   try {
     const q = await fetch(`/api/finnhub/v1/quote?symbol=${sym}`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json());
@@ -71,8 +86,27 @@ export default function Watchlist() {
   const [alertTarget, setAlertTarget] = useState(null);
   const [livePrices, setLivePrices] = useState({});
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => { setWatchItems(loadWatchlist()); }, []);
+  useEffect(() => {
+    const token = localStorage.getItem('myfund_auth_token');
+    if (token) {
+      apiLoadWatchlist()
+        .then(data => { if (Array.isArray(data)) setWatchItems(data); else setWatchItems(loadWatchlist()); })
+        .catch(() => setWatchItems(loadWatchlist()))
+        .finally(() => setInitialized(true));
+    } else {
+      setWatchItems(loadWatchlist());
+      setInitialized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!initialized) return;
+    saveWatchlist(watchItems);
+    const token = localStorage.getItem('myfund_auth_token');
+    if (token) apiSaveWatchlist(watchItems).catch(() => {});
+  }, [watchItems, initialized]);
 
   useEffect(() => {
     if (!watchItems.length) return;
@@ -86,11 +120,11 @@ export default function Watchlist() {
   }, [watchItems.length]);
 
   function addAlert(itemId, alert) {
-    setWatchItems(prev => { const u = prev.map(w => w.id === itemId ? { ...w, alerts: [...(w.alerts ?? []), alert] } : w); saveWatchlist(u); return u; });
+    setWatchItems(prev => prev.map(w => w.id === itemId ? { ...w, alerts: [...(w.alerts ?? []), alert] } : w));
     setAlertTarget(null);
   }
   function removeAlert(itemId, alertId) {
-    setWatchItems(prev => { const u = prev.map(w => w.id === itemId ? { ...w, alerts: (w.alerts ?? []).filter(a => a.id !== alertId) } : w); saveWatchlist(u); return u; });
+    setWatchItems(prev => prev.map(w => w.id === itemId ? { ...w, alerts: (w.alerts ?? []).filter(a => a.id !== alertId) } : w));
   }
 
   return (
@@ -102,7 +136,7 @@ export default function Watchlist() {
         {!watchItems.length ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
             <p>Watchlist jest pusta.</p>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Spółki obserwowane przechowywane są lokalnie.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Spółki obserwowane synchronizowane są z serwerem.</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

@@ -687,6 +687,11 @@ export default function FinancialsTab({ symbol, livePrice }) {
             <ColumnHeaders periods={periods} />
             <TableRow label="CFO (oper.)" values={periods.map(p => p.operatingCashFlow)} />
             <TableRow label="CAPEX / Inwest." values={periods.map(p => p.capex)} />
+            <SubRow label="Stopa Reinwest." values={periods.map(p =>
+              p.capex != null && p.operatingCashFlow != null && Math.abs(p.operatingCashFlow) > 0
+                ? Math.abs(p.capex) / Math.abs(p.operatingCashFlow)
+                : null
+            )} fmt={v => v == null ? '—' : (v * 100).toFixed(0) + '%'} />
             <TableRow label="Finansowanie" values={periods.map(p => p.cashFromFinancing)} />
             <TableRow label="FCF" values={periods.map(p => p.fcf)} />
             <TableRow label="Skup akcji" values={periods.map(p => p.shareRepurchases)} />

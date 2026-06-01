@@ -86,8 +86,10 @@ function RiskSection({ snapshots }) {
   const [beta, setBeta] = useState(null);
   const [betaLoading, setBetaLoading] = useState(false);
 
+  const MIN_SESSIONS = 60;
+
   useEffect(() => {
-    if (values.length < 10 || daySpan < 45) return;
+    if (values.length < MIN_SESSIONS) return;
     const ctrl = new AbortController();
     setBetaLoading(true);
     const dates = sorted.map(s => s.date);
@@ -120,14 +122,13 @@ function RiskSection({ snapshots }) {
   const sharpe = calcSharpe(values);
   const sortino = calcSortino(values);
 
-  const MIN_DAYS = 45;
-  if (values.length < 10 || daySpan < MIN_DAYS) {
+  if (values.length < 10 || daySpan < 30) {
     if (daySpan > 0) {
       return (
         <Card title="Analiza ryzyka">
           <div className="card-body">
             <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
-              Za krótka historia do obliczeń statystycznych — potrzeba min. {MIN_DAYS} dni snapshotów (masz {daySpan} {daySpan === 1 ? 'dzień' : 'dni'}).
+              Za krótka historia do obliczeń statystycznych — potrzeba min. 30 dni snapshotów (masz {daySpan} {daySpan === 1 ? 'dzień' : 'dni'}).
               Metryki pojawią się automatycznie gdy portfel będzie aktywny wystarczająco długo.
             </p>
           </div>
@@ -136,6 +137,7 @@ function RiskSection({ snapshots }) {
     }
     return null;
   }
+  const hasEnoughSessions = values.length >= MIN_SESSIONS;
 
   return (
     <Card title="Analiza ryzyka">
@@ -143,16 +145,19 @@ function RiskSection({ snapshots }) {
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>Na podstawie historii snapshotów portfela</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
           {[
-            { label: 'Zmienność (rok.)', value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: 'Odch. std. × √252' },
+            { label: 'Zmienność (rok.)', value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: 'Odch. std. × √252', needsSessions: true },
             { label: 'Max Drawdown', value: maxDD > 0 ? maxDD : null, fmt: v => `-${v.toFixed(1)}%`, color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: 'Największy spadek' },
             { label: 'Sharpe Ratio', value: sharpe, fmt: v => v.toFixed(2), color: sharpe >= 1 ? 'var(--up)' : sharpe < 0 ? 'var(--down)' : 'var(--text)', sub: 'Zwrot/ryzyko (RF=4.5%)' },
             { label: 'Sortino Ratio', value: sortino, fmt: v => v.toFixed(2), color: sortino >= 1 ? 'var(--up)' : sortino < 0 ? 'var(--down)' : 'var(--text)', sub: 'Jak Sharpe, tylko dół' },
-            { label: 'Beta (S&P 500)', value: betaLoading ? null : beta, fmt: v => v.toFixed(2), color: 'var(--text)', sub: 'Korelacja z rynkiem US' },
+            { label: 'Beta (S&P 500)', value: betaLoading ? null : beta, fmt: v => v.toFixed(2), color: 'var(--text)', sub: 'Korelacja z rynkiem US', needsSessions: true },
           ].map(m => (
             <div key={m.label} className="kpi-card">
               <div className="kpi-label">{m.label}</div>
-              <div className="kpi-value" style={{ fontSize: 22, color: m.value != null ? m.color : 'var(--text-faint)' }}>
-                {betaLoading && m.label.includes('Beta') ? <span style={{ fontSize: 12 }}>ładowanie…</span> : m.value != null ? m.fmt(m.value) : '—'}
+              <div className="kpi-value" style={{ fontSize: 22, color: m.needsSessions && !hasEnoughSessions ? 'var(--text-faint)' : m.value != null ? m.color : 'var(--text-faint)' }}>
+                {m.needsSessions && !hasEnoughSessions
+                  ? <span style={{ fontSize: 10, lineHeight: 1.3 }}>Oczekiwanie<br/>na dane<br/>({values.length}/{MIN_SESSIONS})</span>
+                  : betaLoading && m.label.includes('Beta') ? <span style={{ fontSize: 12 }}>ładowanie…</span>
+                  : m.value != null ? m.fmt(m.value) : '—'}
               </div>
               <div className="kpi-sub">{m.sub}</div>
             </div>

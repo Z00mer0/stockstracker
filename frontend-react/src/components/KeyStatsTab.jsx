@@ -248,8 +248,8 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
   const dcfX    = dcfValue      != null ? toX(dcfValue)      : null;
   const targetX = analystTarget != null ? toX(analystTarget) : null;
 
-  const dcfUpside = dcfValue != null ? ((dcfValue - currentPrice) / currentPrice * 100) : null;
-  const isUndervalued = dcfUpside != null && dcfUpside > 0;
+  const dcfPremium = dcfValue != null ? ((currentPrice - dcfValue) / dcfValue * 100) : null;
+  const isUndervalued = dcfPremium != null && dcfPremium < 0;
 
   return (
     <div>
@@ -288,9 +288,11 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: -6 }}>
         <span style={{ color: 'var(--text-faint)' }}>Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%</span>
-        {dcfUpside != null && (
+        {dcfPremium != null && (
           <span style={{ color: isUndervalued ? '#008751' : '#f43f5e', fontWeight: 600 }}>
-            {`Potencjał DCF: ${dcfUpside >= 0 ? '+' : ''}${dcfUpside.toFixed(1)}%`}
+            {dcfPremium < 0
+              ? `Dyskonto: ${dcfPremium.toFixed(1)}%`
+              : `Premia rynkowa: +${dcfPremium.toFixed(1)}%`}
           </span>
         )}
       </div>
@@ -503,7 +505,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const analystUpside    = livePrice && raw?.targetMeanPrice
     ? ((raw.targetMeanPrice - livePrice) / livePrice) * 100 : null;
   const dcfUpside = livePrice && raw?.dcfFairValue
-    ? ((raw.dcfFairValue - livePrice) / livePrice) * 100 : null;
+    ? ((livePrice - raw.dcfFairValue) / raw.dcfFairValue) * 100 : null;
 
   const hasFundamentalValuation = analystUpside != null || dcfUpside != null;
   const hasValuation    = peRatio || psRatio || evEbitda || pfcf || raw?.forwardPE;
@@ -650,7 +652,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
             <Row
               label="Wycena DCF"
               value={fmt(raw.dcfFairValue, { decimals: 2 })}
-              color={dcfUpside >= 0 ? '#008751' : '#f43f5e'}
+              color={dcfUpside <= 0 ? '#008751' : '#f43f5e'}
             />
           )}
         </Section>

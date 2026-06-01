@@ -178,6 +178,7 @@ export default function Portfolio() {
   );
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
+  const totalValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
 
   const sorted = useMemo(() => {
     return [...enriched].sort((a, b) => {
@@ -499,6 +500,7 @@ export default function Portfolio() {
         <StockDetailModal
           item={selectedItem}
           existingPortfolio={portfolio}
+          totalPortfolioValue={totalValuePLN}
           onSave={async (data) => { await addPosition(data); refresh(); }}
           onClose={() => setSelectedItem(null)}
         />

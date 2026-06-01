@@ -183,7 +183,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
   );
 }
 
-export default function StockDetailModal({ item, existingPortfolio, onSave, onClose }) {
+export default function StockDetailModal({ item, existingPortfolio, totalPortfolioValue = 0, onSave, onClose }) {
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('3M');
@@ -330,6 +330,9 @@ export default function StockDetailModal({ item, existingPortfolio, onSave, onCl
               {item.qty.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 4 })} akcji
               {item.avgPrice != null && (
                 <> · śr. {item.avgPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}</>
+              )}
+              {item.valuePLN != null && totalPortfolioValue > 0 && (
+                <> · {((item.valuePLN / totalPortfolioValue) * 100).toFixed(1)}% portfela</>
               )}
             </span>
             {item.plPLN != null && (
