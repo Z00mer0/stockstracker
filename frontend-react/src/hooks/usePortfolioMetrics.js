@@ -103,7 +103,7 @@ const WA_SECTOR_MAP = {
   'KGH.WA':  'Basic Materials',
   'JSW.WA':  'Basic Materials',
   'CPS.WA':  'Technology',
-  'MDV.WA':  'Healthcare',
+  'MDV.WA':  'Consumer Cyclical',
   'OPL.WA':  'Communication Services',
   'MBK.WA':  'Financial Services',
   'PCO.WA':  'Technology',
