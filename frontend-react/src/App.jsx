@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { ChartProvider } from './context/ChartContext';
 import Layout from './components/layout/Layout';
-import LoginForm from './components/LoginForm';
+import AuthGate from './components/auth/AuthGate';
 
 import Dashboard    from './pages/Dashboard';
 import Portfolio    from './pages/Portfolio';
@@ -20,7 +20,7 @@ function AppRoutes() {
   const { isAuthenticated, login } = useApp();
 
   if (!isAuthenticated) {
-    return <LoginForm onLogin={login} />;
+    return <AuthGate onLogin={login} />;
   }
 
   return (

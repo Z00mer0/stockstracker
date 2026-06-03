@@ -24,6 +24,10 @@
   --warn:          #ffb020;
   --info:          #7c9eff;
   --radius:        10px;
+  --radius-sm:     6px;
+  --radius-lg:     14px;
+  --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:     'JetBrains Mono', 'Fira Mono', monospace;
 }
 
 [data-theme="light"] {
@@ -76,6 +80,20 @@ body {
 
 /* ── Privacy ── */
 body.privacy-mode .privacy-blur { filter: blur(6px); user-select: none; }
+
+/* ── Dot status (pulsing live indicator, terminal auth) ── */
+.dot-status {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--up);
+  animation: dot-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
 
 /* ── Card ── */
 .card {
