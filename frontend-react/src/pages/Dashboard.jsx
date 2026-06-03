@@ -561,7 +561,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color, fontFamily: 'JetBrains Mono, monospace' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'JetBrains Mono, monospace' }}>
                           {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg.toFixed(2)}%
                         </div>
                         {dayPLN != null && (
