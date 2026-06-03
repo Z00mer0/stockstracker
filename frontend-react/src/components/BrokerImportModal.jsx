@@ -269,7 +269,15 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
 
   function handleDrop(e) { e.preventDefault(); handleFiles(e.dataTransfer.files); }
 
-  const allNewTxs = results.flatMap(r => r.transactions);
+  // Intra-batch dedup: when both sheets are uploaded, same trade appears in both
+  const allNewTxsRaw = results.flatMap(r => r.transactions);
+  const batchKeys = new Set();
+  const allNewTxs = allNewTxsRaw.filter(tx => {
+    const k = `${tx.symbol}_${tx.date}_${tx.type}_${tx.price}`;
+    if (batchKeys.has(k)) return false;
+    batchKeys.add(k);
+    return true;
+  });
   const preview = allNewTxs.length > 0 ? computePortfolioPreview(allNewTxs, existingPortfolio, existingCash) : null;
   const existingBrokerIds = new Set(existingTransactions.map(t => t.brokerPositionId).filter(Boolean));
   const existingKeys = new Set(existingTransactions.map(t => `${t.symbol}_${t.date}_${t.type}_${t.price}`));

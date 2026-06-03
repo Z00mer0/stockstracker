@@ -323,8 +323,10 @@ export function AppProvider({ children }) {
             ? newHoldings.filter((_, i) => i !== idx)
             : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
         }
-        // Add sale proceeds to cash
-        newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
+        // Add sale proceeds to cash (skip historical closed-position SELLs — cash already in account)
+        if (!tx.fromClosedPosition) {
+          newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
+        }
       }
     }
 
