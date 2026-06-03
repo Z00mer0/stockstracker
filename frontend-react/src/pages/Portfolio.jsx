@@ -114,7 +114,7 @@ function renderCell(key, pos, fxRates) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, rawData, loading, fxRates, saveHoldings, saveTransactions, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
+  const { portfolio, transactions, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
   const [showImport, setShowImport]   = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
   const [addSymbol, setAddSymbol]     = useState('');
@@ -130,14 +130,7 @@ export default function Portfolio() {
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
     if (!sym || sym === oldSymbol) { setEditTicker(null); return; }
-    const newHoldings = (rawData?.portfolio?.holdings ?? []).map(h =>
-      h.symbol === oldSymbol ? { ...h, symbol: sym } : h
-    );
-    const newTxs = (rawData?.transactions ?? []).map(t =>
-      t.symbol === oldSymbol ? { ...t, symbol: sym } : t
-    );
-    await saveHoldings(newHoldings);
-    await saveTransactions(newTxs);
+    await renameSymbol(oldSymbol, sym);
     setEditTicker(null);
     setToast(`${oldSymbol} → ${sym}`);
     refresh();
