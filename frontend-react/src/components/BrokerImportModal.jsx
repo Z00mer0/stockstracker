@@ -32,6 +32,12 @@ function parseDate(val) {
     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
   }
   const str = String(val).trim();
+  // col() stringifies numeric Excel serial dates — detect and parse them
+  const serial = parseFloat(str);
+  if (!isNaN(serial) && serial > 40000 && serial < 60000 && str === String(serial)) {
+    const d = XLSX.SSF.parse_date_code(serial);
+    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
   // XTB exports DD/MM/YYYY or DD-MM-YYYY — reorder to ISO YYYY-MM-DD
   const dmyMatch = str.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
   if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
