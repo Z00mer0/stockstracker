@@ -106,7 +106,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
   const existing = existingPortfolio.find(h => h.symbol === symbol.trim().toUpperCase());
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
           Dodaj spółkę do portfela

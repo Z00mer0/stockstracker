@@ -50,7 +50,7 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

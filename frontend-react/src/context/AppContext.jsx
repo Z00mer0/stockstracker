@@ -72,6 +72,18 @@ export function AppProvider({ children }) {
     setDisplayName('');
   }
 
+  // Auto-logout on any 401 from write operations (e.g. backend session cleared after restart)
+  useEffect(() => {
+    const id = api.interceptors.response.use(
+      r => r,
+      err => {
+        if (err.response?.status === 401) logout();
+        return Promise.reject(err);
+      }
+    );
+    return () => api.interceptors.response.eject(id);
+  }, []);
+
   const fetchData = useCallback(async () => {
     if (!token) return;
     if (writeInProgressRef.current) return;

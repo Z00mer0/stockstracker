@@ -43,7 +43,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
           Sprzedaj {holding?.symbol}

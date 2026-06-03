@@ -38,7 +38,7 @@ export default function NewPortfolioModal({ onClose }) {
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
           Nowy portfel
