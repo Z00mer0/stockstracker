@@ -15,7 +15,7 @@ const BENCH_OPTS = [
   { key: null,       label: 'Brak' },
   { key: '^GSPC',    label: 'S&P 500' },
   { key: '^IXIC',    label: 'NASDAQ' },
-  { key: 'PL:WIG20', label: 'WIG20' },
+  { key: '^WIG20',   label: 'WIG20' },
 ];
 const CM = { top: 8, right: 8, bottom: 22, left: 56 };
 const CHART_H = 150;
@@ -175,7 +175,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
           const anchor = li === 0 ? 'start' : li === dateLabels.length - 1 ? 'end' : 'middle';
           return (
             <text key={i} x={xScale(i)} y={totalH - 4} fill="#64748b" fontSize={9} textAnchor={anchor}>
-              {date.slice(5).replace('-', '/')}
+              {date.slice(5).split('-').reverse().join('.')}
             </text>
           );
         })}
