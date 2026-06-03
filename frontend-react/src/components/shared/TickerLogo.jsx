@@ -9,7 +9,7 @@ const DOMAIN_MAP = {
   'ALE.WA': 'allegro.pl',
   'PXM.WA': 'polimex.pl',
   'CBF.WA': 'cyberfolks.pl',
-  'S2B.WA': 'syn2bio.com',
+  'S2B.WA': 'syn2bio.pl',
   'MDV.WA': 'eobuwie.pl',
   'MRB.WA': 'mirbud.pl',
   'DIA.WA': 'diagnostyka.pl',
