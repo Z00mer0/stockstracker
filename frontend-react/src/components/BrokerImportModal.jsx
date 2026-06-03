@@ -128,7 +128,8 @@ function parseBrokerRows(rows) {
       // Extract qty and price from comment: "OPEN BUY 3 @ 102.20" or "OPEN SELL 5 @ 99.50"
       let qty = null;
       let price = Math.abs(amount);
-      const commentMatch = comment.match(/(?:BUY|SELL)\s+([\d.]+)\s*@\s*([\d.]+)/i);
+      // "CLOSE BUY 2/6 @ 30.220" — the /6 denominator is optional
+      const commentMatch = comment.match(/(?:BUY|SELL)\s+([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
       if (commentMatch) {
         qty   = parseFloat(commentMatch[1]);
         price = parseFloat(commentMatch[2]);
