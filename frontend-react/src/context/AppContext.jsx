@@ -179,9 +179,24 @@ export function AppProvider({ children }) {
   }
 
   async function renameSymbol(oldSymbol, newSymbol) {
-    const newHoldings = (rawData?.portfolio?.holdings ?? []).map(h =>
-      h.symbol === oldSymbol ? { ...h, symbol: newSymbol } : h
-    );
+    const holdings = rawData?.portfolio?.holdings ?? [];
+    const src = holdings.find(h => h.symbol === oldSymbol);
+    const dst = holdings.find(h => h.symbol === newSymbol);
+
+    let newHoldings;
+    if (src && dst) {
+      // Target already exists — merge: weighted avg price, summed qty
+      const mergedQty = dst.qty + src.qty;
+      const mergedAvg = (dst.qty * dst.avgPrice + src.qty * src.avgPrice) / mergedQty;
+      newHoldings = holdings
+        .filter(h => h.symbol !== oldSymbol)
+        .map(h => h.symbol === newSymbol ? { ...h, qty: mergedQty, avgPrice: mergedAvg } : h);
+    } else {
+      newHoldings = holdings.map(h =>
+        h.symbol === oldSymbol ? { ...h, symbol: newSymbol } : h
+      );
+    }
+
     const newTxs = (rawData?.transactions ?? []).map(t =>
       t.symbol === oldSymbol ? { ...t, symbol: newSymbol } : t
     );
