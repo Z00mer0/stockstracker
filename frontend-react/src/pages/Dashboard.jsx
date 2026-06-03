@@ -548,11 +548,11 @@ export default function Dashboard() {
           ].map(({ title, rows, color }) => (
             <Card key={title} title={title}>
               {rows.length === 0
-                ? <p style={{ padding: '4px 0', fontSize: 12, color: 'var(--text-faint)' }}>Brak danych</p>
+                ? <p style={{ padding: '4px 16px', fontSize: 12, color: 'var(--text-faint)' }}>Brak danych</p>
                 : rows.map(pos => {
                   const dayPLN = pos.valuePLN != null ? pos.valuePLN * pos.dailyChg / 100 : null;
                   return (
-                    <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderBottom: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <TickerLogo symbol={pos.symbol} size={28} />
                         <div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import FinancialsTab from './FinancialsTab';
 import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
+import TickerLogo from './shared/TickerLogo';
 
 const PERIODS = [
   { key: '1M', days: 30 },
@@ -295,11 +296,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         {/* Stock header */}
         <div style={{ padding: '18px 20px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{
-              width: 38, height: 38, borderRadius: 8, background: 'var(--panel-2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-            }}>{item.symbol?.slice(0, 2)}</span>
+            <TickerLogo symbol={item.symbol} size={38} />
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{item.symbol}</div>
               {item.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{item.name}</div>}
