@@ -3,7 +3,7 @@ import { AppContext } from '../../context/AppContext';
 
 const DOMAIN_MAP = {
   // GPW
-  'DNP.WA': 'dino.pl',
+  'DNP.WA': 'marketdino.pl',
   'XTB.WA': 'xtb.com',
   'CDR.WA': 'cdprojekt.com',
   'ALE.WA': 'allegro.pl',
