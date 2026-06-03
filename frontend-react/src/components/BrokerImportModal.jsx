@@ -31,8 +31,15 @@ function parseDate(val) {
     const d = XLSX.SSF.parse_date_code(val);
     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
   }
-  const str = String(val);
+  const str = String(val).trim();
+  // XTB exports DD/MM/YYYY or DD-MM-YYYY — reorder to ISO YYYY-MM-DD
+  const dmyMatch = str.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+  if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
   return str.slice(0, 10).replace(/\//g, '-');
+}
+
+function normalizeSymbol(sym) {
+  return String(sym).replace(/\.PL$/i, '.WA');
 }
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
@@ -79,10 +86,11 @@ function parseBrokerRows(rows) {
 
       const currency = /\.(WA|PL)$/i.test(ticker) ? 'PLN' : 'USD';
 
-      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: ticker.toUpperCase(), qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId, fromClosedPosition: true });
+      const normalizedTicker = normalizeSymbol(ticker.toUpperCase());
+      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: normalizedTicker, qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId, fromClosedPosition: true });
 
       if (!isNaN(closePrice) && closeDate) {
-        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: ticker.toUpperCase(), qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, brokerPositionId: positionId + '_close', fromClosedPosition: true });
+        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: normalizedTicker, qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, brokerPositionId: positionId + '_close', fromClosedPosition: true });
       }
 
     } else if (isCashOperations) {
@@ -123,7 +131,7 @@ function parseBrokerRows(rows) {
       transactions.push({
         id: genId(),
         type: txType,
-        symbol: symbol.toUpperCase(),
+        symbol: normalizeSymbol(symbol.toUpperCase()),
         qty: txType === 'CASH' ? null : (qty ?? Math.abs(amount)),
         price,
         currency: 'PLN',
@@ -272,7 +280,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
       await onSave(deduped);
       setSaved(true);
     } catch (e) {
-      setError(e.message || 'Błąd zapisu');
+      setError(e.response?.data?.error ?? e.message ?? 'Błąd zapisu');
     } finally {
       setSaving(false);
     }
