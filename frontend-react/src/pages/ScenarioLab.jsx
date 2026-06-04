@@ -683,7 +683,7 @@ function RunwayCalculator() {
     if (ratio >= 1) {
       isEternal = true;
     } else {
-      totalMonths = Math.floor(Math.log(1 - ratio) / Math.log(1 + rm));
+      totalMonths = Math.floor(-Math.log(1 - ratio) / Math.log(1 + rm));
     }
   }
 
