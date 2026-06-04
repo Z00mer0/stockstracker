@@ -576,8 +576,13 @@ if DATABASE_URL:
             snapshots_inv = {r['date']: float(r['invested']) for r in snaps_rows if r['invested'] is not None}
             cur.execute("SELECT currency, amount FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
             cash = {r['currency']: float(r['amount']) for r in cur.fetchall()}
+            cur.execute("SELECT id, name, category, value, currency, note, updated_at FROM portfolio_other_assets WHERE portfolio_id=%s", (portfolio_id,))
+            other_assets = [{'id': r['id'], 'name': r['name'], 'category': r['category'],
+                             'value': float(r['value']), 'currency': r['currency'],
+                             'note': r['note'], 'updatedAt': r['updated_at']} for r in cur.fetchall()]
         return {'portfolio': {'holdings': holdings}, 'transactions': transactions,
-                'snapshots': snapshots, 'snapshotsInvested': snapshots_inv, 'cash': cash}
+                'snapshots': snapshots, 'snapshotsInvested': snapshots_inv, 'cash': cash,
+                'otherAssets': other_assets}
 
     def save_portfolio_data(portfolio_id, data):
         holdings = data.get('portfolio', {}).get('holdings', [])
@@ -617,6 +622,13 @@ if DATABASE_URL:
             for cur_code, amount in cash.items():
                 cur.execute("INSERT INTO portfolio_cash (portfolio_id, currency, amount) VALUES (%s,%s,%s)",
                             (portfolio_id, cur_code, amount))
+            other_assets = data.get('otherAssets', [])
+            cur.execute("DELETE FROM portfolio_other_assets WHERE portfolio_id=%s", (portfolio_id,))
+            for a in other_assets:
+                cur.execute("""INSERT INTO portfolio_other_assets (id, portfolio_id, name, category, value, currency, note, updated_at)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                            (a.get('id', secrets.token_hex(8)), portfolio_id, a.get('name',''), a.get('category','Inne'),
+                             a.get('value', 0), a.get('currency','PLN'), a.get('note',''), a.get('updatedAt','')))
 
     def load_watchlist(username):
         with _conn() as c, c.cursor() as cur:
