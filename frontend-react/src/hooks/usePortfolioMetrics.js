@@ -235,8 +235,9 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
   useEffect(() => {
     if (!portfolio.length) return;
 
+    const cacheKey = `${CACHE_KEY}_${symbolsKey}`;
     try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
       if (cached?.ts && Date.now() - cached.ts < CACHE_TTL) {
         setMarketData(cached.data);
         return;
@@ -262,9 +263,9 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
           const retry = await fetchAllMetrics(failed);
           const merged = { ...data, ...retry };
           setMarketData(merged);
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: merged }));
+          localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: merged }));
         } else {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+          localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
         }
       })
       .finally(() => setMetricsLoading(false));
