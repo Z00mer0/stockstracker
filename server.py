@@ -1574,42 +1574,40 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            qs  = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
-            raw = qs.get('symbols', '')
-            wa_syms = [s.strip().upper() for s in raw.split(',') if s.strip().upper().endswith('.WA')][:8]
-            if not wa_syms:
-                self.send_json(200, {'items': []}); return
-            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
-            if not api_key:
-                self.send_json(503, {'error': 'AI unavailable'}); return
-            cache_key = ','.join(sorted(wa_syms))
-            cached = _ESPI_CACHE.get(cache_key)
-            if cached and time.time() - cached['ts'] < 3600:
-                self.send_json(200, cached['data']); return
-            import urllib.request as _ur
-            import concurrent.futures as _cf
-            def _fetch_yf_news(sym):
-                url = (f'https://query1.finance.yahoo.com/v1/finance/search'
-                       f'?q={sym}&newsCount=8&quotesCount=0&lang=pl-PL&region=PL')
-                req = _ur.Request(url, headers={
-                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:125.0)',
-                    'Accept': 'application/json',
-                })
-                try:
-                    with _ur.urlopen(req, timeout=8) as r:
-                        data = json.loads(r.read().decode())
-                    return [n['title'] for n in data.get('news', []) if n.get('title')][:5]
-                except Exception as e:
-                    print(f'[espi/yf] {sym}: {e}')
-                    return []
-            # Fetch all news in parallel
-            with _cf.ThreadPoolExecutor(max_workers=8) as ex:
-                news_map = dict(zip(wa_syms, ex.map(_fetch_yf_news, wa_syms)))
-            # Single batched Claude call for all companies
-            syms_with_news = [(s, news_map[s]) for s in wa_syms if news_map[s]]
-            summaries = {}
-            if syms_with_news:
-                try:
+            try:
+                qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+                raw = qs.get('symbols', '')
+                wa_syms = [s.strip().upper() for s in raw.split(',') if s.strip().upper().endswith('.WA')][:8]
+                if not wa_syms:
+                    self.send_json(200, {'items': []}); return
+                api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+                if not api_key:
+                    self.send_json(503, {'error': 'AI unavailable'}); return
+                cache_key = ','.join(sorted(wa_syms))
+                cached = _ESPI_CACHE.get(cache_key)
+                if cached and time.time() - cached['ts'] < 3600:
+                    self.send_json(200, cached['data']); return
+                import concurrent.futures as _cf
+                def _fetch_yf_news(sym):
+                    url = (f'https://query1.finance.yahoo.com/v1/finance/search'
+                           f'?q={sym}&newsCount=5&quotesCount=0&lang=pl-PL&region=PL')
+                    req = urllib.request.Request(url, headers={
+                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:125.0)',
+                        'Accept': 'application/json',
+                    })
+                    try:
+                        with urllib.request.urlopen(req, timeout=8) as r:
+                            data = json.loads(r.read().decode())
+                        return [n['title'] for n in data.get('news', []) if n.get('title')][:5]
+                    except Exception as e:
+                        print(f'[espi/yf] {sym}: {e}')
+                        return []
+                with _cf.ThreadPoolExecutor(max_workers=8) as ex:
+                    news_list = list(ex.map(_fetch_yf_news, wa_syms))
+                news_map = dict(zip(wa_syms, news_list))
+                syms_with_news = [(s, news_map[s]) for s in wa_syms if news_map[s]]
+                summaries = {}
+                if syms_with_news:
                     import anthropic as _a
                     client = _a.Anthropic(api_key=api_key)
                     prompt_parts = []
@@ -1619,36 +1617,37 @@ class Handler(SimpleHTTPRequestHandler):
                     prompt = (
                         'Jesteś analitykiem finansowym GPW. Poniżej informacje prasowe dla kilku spółek.\n'
                         'Dla KAŻDEJ spółki napisz DOKŁADNIE 2 zdania po polsku: kluczowe fakty i ryzyko/szansa dla inwestora.\n'
-                        'Format odpowiedzi — każda spółka w osobnej linii zaczynającej się od tickera:\n'
+                        'Format odpowiedzi — każda spółka w osobnej linii:\n'
                         'TICKER: [treść]\n\n'
                         + '\n\n'.join(prompt_parts)
                     )
                     msg = client.messages.create(
                         model='claude-sonnet-4-6',
-                        max_tokens=600,
+                        max_tokens=800,
                         messages=[{'role': 'user', 'content': prompt}],
                     )
                     for line in msg.content[0].text.strip().splitlines():
                         if ':' in line:
                             ticker, _, text = line.partition(':')
                             ticker = ticker.strip().upper()
-                            # match with or without .WA suffix
                             for s in wa_syms:
                                 if s == ticker or s.replace('.WA', '') == ticker:
                                     summaries[s] = text.strip()
                                     break
-                except Exception as e:
-                    print(f'[espi/ai/batch] {e}')
-            items = [
-                {'symbol': s, 'headlines': news_map[s], 'summary': summaries.get(s)}
-                for s in wa_syms
-            ]
-            result = {
-                'items': items,
-                'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            }
-            _ESPI_CACHE[cache_key] = {'ts': time.time(), 'data': result}
-            self.send_json(200, result)
+                items = [
+                    {'symbol': s, 'headlines': news_map.get(s, []), 'summary': summaries.get(s)}
+                    for s in wa_syms
+                ]
+                result = {
+                    'items': items,
+                    'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                }
+                _ESPI_CACHE[cache_key] = {'ts': time.time(), 'data': result}
+                self.send_json(200, result)
+            except Exception as _top_e:
+                import traceback
+                print(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
+                self.send_json(500, {'error': str(_top_e)})
 
         elif path in ('/', '/index.html', '/myfund.html'):
             content = (BASE / 'myfund.html').read_bytes()
