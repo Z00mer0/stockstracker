@@ -1627,7 +1627,6 @@ class Handler(SimpleHTTPRequestHandler):
                         model='claude-sonnet-4-6',
                         max_tokens=600,
                         messages=[{'role': 'user', 'content': prompt}],
-                        timeout=25,
                     )
                     for line in msg.content[0].text.strip().splitlines():
                         if ':' in line:
