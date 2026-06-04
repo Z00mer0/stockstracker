@@ -24,16 +24,38 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   const [note, setNote]         = useState('');
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
+  const [editingPL, setEditingPL] = useState(false);
+  const [manualPL, setManualPL]   = useState('');
+
+  const q   = parseFloat(qty);
+  const p   = parseFloat(price);
+  const avg = holding?.avgPrice;
+  const calcPL = (!isNaN(q) && q > 0 && !isNaN(p) && p > 0 && avg)
+    ? (p - avg) * q
+    : null;
+
+  function startEditPL() {
+    if (calcPL != null && manualPL === '') setManualPL(calcPL.toFixed(2));
+    setEditingPL(true);
+  }
+
+  function resetPL() {
+    setManualPL('');
+    setEditingPL(false);
+  }
+
+  const effectivePL = editingPL && manualPL !== '' ? parseFloat(manualPL) : calcPL;
 
   async function handleSave() {
-    const q = parseFloat(qty);
-    const p = parseFloat(price);
     if (isNaN(q) || q <= 0) { setError('Podaj ilość'); return; }
     if (q > (holding?.qty ?? 0)) { setError(`Masz tylko ${holding.qty} szt.`); return; }
     if (isNaN(p) || p <= 0) { setError('Podaj cenę sprzedaży'); return; }
     setSaving(true); setError('');
     try {
-      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim() });
+      const overridePL = (editingPL && manualPL !== '' && !isNaN(parseFloat(manualPL)))
+        ? parseFloat(manualPL)
+        : undefined;
+      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL });
       onClose();
     } catch (e) {
       setError(e.message || 'Błąd zapisu');
@@ -88,7 +110,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
           </div>
         </div>
 
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 12 }}>
           <label className="field-label">Notatka (opcjonalna)</label>
           <input
             className="field-input"
@@ -98,26 +120,48 @@ export default function SellStockModal({ holding, onSave, onClose }) {
           />
         </div>
 
-        {(() => {
-          const q = parseFloat(qty);
-          const p = parseFloat(price);
-          const avg = holding?.avgPrice;
-          if (!isNaN(q) && q > 0 && !isNaN(p) && p > 0 && avg) {
-            const pl = (p - avg) * q;
-            const plPct = ((p - avg) / avg) * 100;
-            const color = pl >= 0 ? 'var(--up)' : 'var(--down)';
-            return (
-              <div style={{ background: 'var(--bg-3)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12 }}>
-                <span style={{ color: 'var(--text-faint)' }}>Szacowany wynik: </span>
-                <span style={{ color, fontWeight: 600 }}>
-                  {pl >= 0 ? '+' : ''}{pl.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
-                  {' '}({plPct >= 0 ? '+' : ''}{plPct.toFixed(2)}%)
-                </span>
+        {calcPL != null && (
+          <div style={{ background: 'var(--bg-3)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12 }}>
+            {editingPL ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>Wynik (ręczny):</span>
+                <input
+                  type="number" step="any"
+                  className="field-input"
+                  style={{ flex: 1, padding: '3px 8px', fontSize: 12 }}
+                  value={manualPL}
+                  onChange={e => setManualPL(e.target.value)}
+                  autoFocus
+                />
+                <span style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{currency}</span>
+                <button
+                  onClick={resetPL}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 11, padding: '2px 4px', whiteSpace: 'nowrap' }}
+                  title="Przywróć kalkulowany"
+                >
+                  ↺ auto
+                </button>
               </div>
-            );
-          }
-          return null;
-        })()}
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <span style={{ color: 'var(--text-faint)' }}>Szacowany wynik: </span>
+                  <span style={{ color: effectivePL >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
+                    {effectivePL >= 0 ? '+' : ''}{effectivePL.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                    {' '}({(((p - avg) / avg) * 100).toFixed(2)}%)
+                  </span>
+                </div>
+                <button
+                  onClick={startEditPL}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 11, padding: '2px 6px' }}
+                  title="Edytuj zysk/stratę"
+                >
+                  ✎ edytuj
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 

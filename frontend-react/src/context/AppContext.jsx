@@ -240,7 +240,7 @@ export function AppProvider({ children }) {
     await api.post(dataUrl, updated);
   }
 
-  async function sellPosition({ symbol, qty, price, currency, date, note }) {
+  async function sellPosition({ symbol, qty, price, currency, date, note, overridePL }) {
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
     const existing = holdings.find(h => h.symbol === symbol);
@@ -256,6 +256,7 @@ export function AppProvider({ children }) {
         id: Math.random().toString(36).slice(2, 10),
         type: 'SELL', symbol, qty, price, currency, date, note,
         costBasis: existing.avgPrice,
+        ...(overridePL != null ? { overridePL } : {}),
       }],
     };
     setRawData(updated);

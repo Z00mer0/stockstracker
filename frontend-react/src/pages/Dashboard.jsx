@@ -351,9 +351,11 @@ export default function Dashboard() {
     const realizedPLN = transactions
       .filter(t => t.type === 'SELL')
       .reduce((sum, tx) => {
-        const rate      = toPlnRate(tx.currency, fxRates);
-        const costBasis = tx.costBasis ?? tx.avgPrice ?? tx.price;
-        return sum + (tx.price - costBasis) * tx.qty * rate;
+        const rate = toPlnRate(tx.currency, fxRates);
+        const pl   = tx.overridePL != null
+          ? tx.overridePL
+          : (tx.price - (tx.costBasis ?? tx.avgPrice ?? tx.price)) * tx.qty;
+        return sum + pl * rate;
       }, 0);
 
     const dividendsPLN = transactions
