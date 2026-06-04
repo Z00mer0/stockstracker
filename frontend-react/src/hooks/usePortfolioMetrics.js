@@ -92,10 +92,8 @@ async function fetchYahooQuote(sym) {
 // ── CoinGecko crypto prices ───────────────────────────────────────────────────
 async function fetchCryptoPrice(symbol) {
   try {
-    const base = import.meta.env.VITE_API_URL ?? '';
-    const res = await fetch(`${base}/api/crypto-price?symbols=${encodeURIComponent(symbol)}`, {
-      signal: AbortSignal.timeout(8000),
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
+    const res = await fetch(`/api/crypto-price?symbols=${encodeURIComponent(symbol)}`, {
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const data = await res.json();
