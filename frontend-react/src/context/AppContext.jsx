@@ -255,6 +255,7 @@ export function AppProvider({ children }) {
       transactions: [...transactions, {
         id: Math.random().toString(36).slice(2, 10),
         type: 'SELL', symbol, qty, price, currency, date, note,
+        costBasis: existing.avgPrice,
       }],
     };
     setRawData(updated);

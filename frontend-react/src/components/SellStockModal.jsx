@@ -98,6 +98,27 @@ export default function SellStockModal({ holding, onSave, onClose }) {
           />
         </div>
 
+        {(() => {
+          const q = parseFloat(qty);
+          const p = parseFloat(price);
+          const avg = holding?.avgPrice;
+          if (!isNaN(q) && q > 0 && !isNaN(p) && p > 0 && avg) {
+            const pl = (p - avg) * q;
+            const plPct = ((p - avg) / avg) * 100;
+            const color = pl >= 0 ? 'var(--up)' : 'var(--down)';
+            return (
+              <div style={{ background: 'var(--bg-3)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12 }}>
+                <span style={{ color: 'var(--text-faint)' }}>Szacowany wynik: </span>
+                <span style={{ color, fontWeight: 600 }}>
+                  {pl >= 0 ? '+' : ''}{pl.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                  {' '}({plPct >= 0 ? '+' : ''}{plPct.toFixed(2)}%)
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 10 }}>
