@@ -656,6 +656,169 @@ export default function ScenarioLab() {
           </Card>
         </div>
       )}
+
+      <RunwayCalculator />
+    </div>
+  );
+}
+
+function RunwayCalculator() {
+  const [capital,    setCapital]    = useState(500000);
+  const [monthly,    setMonthly]    = useState(5000);
+  const [returnPct,  setReturnPct]  = useState(5);
+  const [inflation,  setInflation]  = useState(3);
+
+  const fmt = (n) => n.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+
+  const r  = (1 + returnPct / 100) / (1 + inflation / 100) - 1;
+  const rm = Math.pow(1 + r, 1 / 12) - 1;
+
+  let totalMonths = null;
+  let isEternal   = false;
+
+  if (rm <= 0) {
+    totalMonths = monthly > 0 ? Math.floor(capital / monthly) : Infinity;
+  } else {
+    const ratio = capital * rm / monthly;
+    if (ratio >= 1) {
+      isEternal = true;
+    } else {
+      totalMonths = Math.floor(Math.log(1 - ratio) / Math.log(1 + rm));
+    }
+  }
+
+  const years  = isEternal ? null : Math.floor(totalMonths / 12);
+  const months = isEternal ? null : totalMonths % 12;
+
+  const capitalAfterYears = (N) => {
+    if (rm === 0) return capital - monthly * 12 * N;
+    return capital * Math.pow(1 + rm, 12 * N) - monthly * (Math.pow(1 + rm, 12 * N) - 1) / rm;
+  };
+
+  const milestones = [5, 10, 20, 30];
+
+  const mainColor = isEternal
+    ? 'var(--up)'
+    : years >= 20
+      ? 'var(--up)'
+      : years >= 10
+        ? 'var(--warn)'
+        : 'var(--down)';
+
+  return (
+    <div style={{
+      border: '1px solid var(--border)',
+      background: 'var(--bg-2)',
+      borderRadius: 12,
+      padding: 24,
+    }}>
+      <div className="text-lg font-bold" style={{ color: 'var(--text)', marginBottom: 16 }}>
+        Runway Majątkowy — na ile wystarczy kapitał?
+      </div>
+
+      {/* Inputs 2x2 grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div className="flex flex-col gap-1">
+          <label className="field-label">Kapitał (PLN)</label>
+          <input
+            type="number"
+            className="field-input"
+            value={capital}
+            min="0"
+            step="10000"
+            onChange={e => setCapital(parseFloat(e.target.value) || 0)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="field-label">Wydatki/miesiąc (PLN)</label>
+          <input
+            type="number"
+            className="field-input"
+            value={monthly}
+            min="0"
+            step="100"
+            onChange={e => setMonthly(parseFloat(e.target.value) || 0)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="field-label">Stopa zwrotu (%/rok)</label>
+          <input
+            type="number"
+            className="field-input"
+            value={returnPct}
+            min="0"
+            max="100"
+            step="0.5"
+            onChange={e => setReturnPct(parseFloat(e.target.value) || 0)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="field-label">Inflacja (%/rok)</label>
+          <input
+            type="number"
+            className="field-input"
+            value={inflation}
+            min="0"
+            max="50"
+            step="0.5"
+            onChange={e => setInflation(parseFloat(e.target.value) || 0)}
+          />
+        </div>
+      </div>
+
+      {/* Separator */}
+      <div style={{ borderTop: '1px solid var(--border)', marginBottom: 20 }} />
+
+      {/* Main result */}
+      <div style={{ marginBottom: 20 }}>
+        {isEternal ? (
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--up)' }}>
+            ♾️ Portfel samofinansujący — pasywny dochód pokrywa wydatki
+          </div>
+        ) : (
+          <div style={{ fontSize: 32, fontWeight: 800, color: mainColor, fontVariantNumeric: 'tabular-nums' }}>
+            {years} lat {months} mies.
+          </div>
+        )}
+        {!isEternal && (
+          <div className="text-xs" style={{ color: 'var(--text-dim)', marginTop: 4 }}>
+            realna stopa zwrotu: {(r * 100).toFixed(2)}% / rok &nbsp;·&nbsp; miesięcznie: {(rm * 100).toFixed(3)}%
+          </div>
+        )}
+      </div>
+
+      {/* Milestones table */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>Rok</th>
+            <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>Pozostały kapitał</th>
+            <th style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {milestones.map(yr => {
+            const k = capitalAfterYears(yr);
+            const exhausted = !isEternal && totalMonths != null && yr * 12 > totalMonths;
+            const remaining = exhausted ? 0 : k;
+            const ratio = remaining / capital;
+            const dot = exhausted || remaining <= 0
+              ? '🔴'
+              : ratio >= 0.5
+                ? '🟢'
+                : '🟡';
+            return (
+              <tr key={yr} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '7px 8px', color: 'var(--text)' }}>{yr}</td>
+                <td style={{ padding: '7px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
+                  {exhausted || remaining <= 0 ? '—' : fmt(remaining) + ' zł'}
+                </td>
+                <td style={{ padding: '7px 8px', textAlign: 'center' }}>{dot}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
