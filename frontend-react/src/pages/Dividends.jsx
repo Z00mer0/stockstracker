@@ -50,6 +50,22 @@ export default function Dividends() {
   const [yocMap, setYocMap]         = useState({});
   const [yocLoading, setYocLoading] = useState(false);
 
+  const [fireGoal, setFireGoal] = useState(() => {
+    const v = localStorage.getItem('myfund_fire_goal_monthly');
+    return v ? parseFloat(v) : null;
+  });
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+
+  function saveGoal() {
+    const v = parseFloat(goalInput);
+    if (!isNaN(v) && v > 0) {
+      setFireGoal(v);
+      localStorage.setItem('myfund_fire_goal_monthly', String(v));
+    }
+    setEditingGoal(false);
+  }
+
   useEffect(() => {
     if (!portfolio.length) return;
     let cancelled = false;
@@ -203,6 +219,91 @@ export default function Dividends() {
           </p>
         </div>
       </div>
+
+      {/* ── FIRE Goal Tracker ── */}
+      {(() => {
+        const monthlyPLN = annualDivPLN / 12;
+        const pct = fireGoal ? (monthlyPLN / fireGoal) * 100 : 0;
+        const barPct = Math.min(pct, 100);
+        const barColor = pct >= 100 ? 'var(--accent)' : pct >= 50 ? 'var(--up)' : 'var(--warn)';
+        const textColor = barColor;
+
+        if (editingGoal) {
+          return (
+            <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Ustaw miesięczny cel dywidendowy (PLN/mies.)</p>
+              <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
+                <input
+                  type="number"
+                  min="1"
+                  value={goalInput}
+                  onChange={e => setGoalInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveGoal(); if (e.key === 'Escape') setEditingGoal(false); }}
+                  placeholder="np. 3000"
+                  autoFocus
+                  style={{ fontSize: 15, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', width: 160 }}
+                />
+                <button onClick={saveGoal} className="btn btn-primary" style={{ fontSize: 13 }}>Zapisz</button>
+                <button onClick={() => setEditingGoal(false)} style={{ fontSize: 13, background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>Anuluj</button>
+              </div>
+            </div>
+          );
+        }
+
+        if (!fireGoal) {
+          return (
+            <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                Ustaw miesięczny cel dywidendowy aby śledzić postęp do niezależności finansowej
+              </p>
+              <button
+                onClick={() => { setGoalInput(''); setEditingGoal(true); }}
+                className="btn btn-primary"
+                style={{ fontSize: 13, whiteSpace: 'nowrap' }}
+              >Ustaw cel</button>
+            </div>
+          );
+        }
+
+        return (
+          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Cel pasywnego dochodu
+              </p>
+              <button
+                onClick={() => { setGoalInput(String(fireGoal)); setEditingGoal(true); }}
+                style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer' }}
+              >Zmień cel</button>
+            </div>
+            <div className="flex items-center gap-2" style={{ marginBottom: 10, fontSize: 13, color: 'var(--text-dim)', flexWrap: 'wrap' }}>
+              <span>
+                <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)', fontSize: 15 }}>{fmt(monthlyPLN)} zł/mies.</span>
+              </span>
+              <span style={{ color: 'var(--text-faint)' }}>→</span>
+              <span>
+                cel: <span style={{ fontWeight: 600, color: 'var(--text)' }}><span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0)}</span> zł/mies.</span>
+              </span>
+            </div>
+            <div style={{ height: 10, borderRadius: 6, background: 'var(--border)', overflow: 'hidden', marginBottom: 10 }}>
+              <div style={{ height: '100%', width: `${barPct}%`, background: barColor, borderRadius: 6, transition: 'width 0.4s ease' }} />
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Pokrywasz{' '}
+              <span style={{ fontSize: 17, fontWeight: 700, color: textColor }}>
+                {fmt(pct, 1)}%
+              </span>
+              {' '}miesięcznego celu{' '}
+              (<span className={isPrivate ? 'privacy-blur' : ''}>{fmt(monthlyPLN)} zł</span> z <span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0)} zł</span>)
+            </p>
+            {pct >= 100 && (
+              <p style={{ marginTop: 8, fontSize: 13, color: 'var(--up)', fontWeight: 600 }}>
+                🎯 Cel osiągnięty! Twój portfel generuje pasywny dochód wystarczający na pokrycie celu.
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Netto / Brutto toggle ── */}
       <div className="card flex items-center justify-between flex-wrap gap-3" style={{ padding: '12px 20px' }}>
