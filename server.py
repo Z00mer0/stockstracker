@@ -400,6 +400,7 @@ if _env.exists():
             os.environ.setdefault(_k.strip(), _v.strip())
 
 SESSIONS     = {}
+_ESPI_CACHE  = {}   # { cache_key: {'ts': float, 'data': dict} }
 _logo_cache  = {}  # symbol → domain (in-memory, populated by /api/logos)
 PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -1568,6 +1569,66 @@ class Handler(SimpleHTTPRequestHandler):
                     print(f'[dividends] {symbol}: {e}')
 
             self.send_json(200, results)
+
+        elif path == '/api/espi-digest':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            raw = query_params.get('symbols', '')
+            wa_syms = [s.strip().upper() for s in raw.split(',') if s.strip().upper().endswith('.WA')][:8]
+            if not wa_syms:
+                self.send_json(200, {'items': []}); return
+            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            if not api_key:
+                self.send_json(503, {'error': 'AI unavailable'}); return
+            cache_key = ','.join(sorted(wa_syms))
+            cached = _ESPI_CACHE.get(cache_key)
+            if cached and time.time() - cached['ts'] < 3600:
+                self.send_json(200, cached['data']); return
+            import urllib.request as _ur
+            def _fetch_yf_news(sym):
+                url = (f'https://query1.finance.yahoo.com/v1/finance/search'
+                       f'?q={sym}&newsCount=8&quotesCount=0&lang=pl-PL&region=PL')
+                req = _ur.Request(url, headers={
+                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:125.0)',
+                    'Accept': 'application/json',
+                })
+                try:
+                    with _ur.urlopen(req, timeout=8) as r:
+                        data = json.loads(r.read().decode())
+                    return [n['title'] for n in data.get('news', []) if n.get('title')][:8]
+                except Exception as e:
+                    print(f'[espi/yf] {sym}: {e}')
+                    return []
+            def _summarise(sym, headlines):
+                text = '\n'.join(f'• {h}' for h in headlines)
+                try:
+                    import anthropic as _a
+                    client = _a.Anthropic(api_key=api_key)
+                    msg = client.messages.create(
+                        model='claude-sonnet-4-6',
+                        max_tokens=280,
+                        messages=[{'role': 'user', 'content':
+                            f'Jesteś analitykiem finansowym GPW. Oto ostatnie informacje prasowe dla spółki {sym}:\n\n{text}\n\n'
+                            f'Napisz DOKŁADNIE 3 zdania po polsku: krytyczne, konkretne podsumowanie. '
+                            f'Zaznacz najważniejsze ryzyka lub szanse dla inwestora. Nie używaj nagłówków.'
+                        }]
+                    )
+                    return msg.content[0].text.strip()
+                except Exception as e:
+                    print(f'[espi/ai] {sym}: {e}')
+                    return None
+            items = []
+            for sym in wa_syms:
+                headlines = _fetch_yf_news(sym)
+                summary   = _summarise(sym, headlines) if headlines else None
+                items.append({'symbol': sym, 'headlines': headlines, 'summary': summary})
+            result = {
+                'items': items,
+                'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
+            _ESPI_CACHE[cache_key] = {'ts': time.time(), 'data': result}
+            self.send_json(200, result)
 
         elif path in ('/', '/index.html', '/myfund.html'):
             content = (BASE / 'myfund.html').read_bytes()
