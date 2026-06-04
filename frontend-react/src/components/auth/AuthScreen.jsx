@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import "./auth.css";
 
 /* ---------- password strength (0–4) ---------- */
@@ -36,7 +36,16 @@ export default function AuthScreen({
   const [remember, setRemember]   = useState(true);
   const [loading, setLoading]     = useState(false);
   const [serverError, setServerError] = useState(null);
+  const [wig20, setWig20]             = useState(null);
   const uid = useId();
+
+  useEffect(() => {
+    const base = import.meta.env.VITE_API_URL ?? '';
+    fetch(`${base}/api/wig20-quote`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.changePct != null) setWig20(d); })
+      .catch(() => {});
+  }, []);
 
   const isReg     = mode === "register";
   const strength  = useMemo(() => scorePassword(pw), [pw]);
@@ -86,7 +95,16 @@ export default function AuthScreen({
         {isTerm && (
           <div className="auth-status">
             <span className="live"><span className="dot-status" />Sesja otwarta</span>
-            <span className="tk mono"><span className="sym">WIG20</span><span className="up">▲ 0.84%</span></span>
+            <span className="tk mono">
+              <span className="sym">WIG20</span>
+              {wig20 ? (
+                <span style={{ color: wig20.changePct >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                  {wig20.changePct >= 0 ? '▲' : '▼'} {Math.abs(wig20.changePct).toFixed(2)}%
+                </span>
+              ) : (
+                <span>—</span>
+              )}
+            </span>
           </div>
         )}
 

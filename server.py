@@ -137,6 +137,10 @@ def _yf_quotesummary(symbol, modules):
         results = data.get('quoteSummary', {}).get('result') or []
         return results[0] if results else None
 
+# ── WIG20 QUOTE CACHE (public, used on login screen) ──────────────────────────
+_WIG20_QUOTE_CACHE = {}   # { 'wig20': {'data': {...}, 'ts': float} }
+_WIG20_QUOTE_TTL   = 300  # 5 minutes
+
 # ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
 _BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
 _BENCH_PL_TTL   = 6 * 3600   # 6 hours
@@ -1422,6 +1426,32 @@ class Handler(SimpleHTTPRequestHandler):
                     self.send_json(402, {'error': 'Brak kredytów Anthropic — doładuj konto na console.anthropic.com'})
                 else:
                     self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
+
+        elif path == '/api/wig20-quote':
+            # Public endpoint — no auth required (used on login screen)
+            now = time.time()
+            entry = _WIG20_QUOTE_CACHE.get('wig20')
+            if entry and now - entry['ts'] < _WIG20_QUOTE_TTL:
+                self.send_json(200, entry['data'])
+            else:
+                try:
+                    url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EWIG20?interval=1d&range=2d'
+                    req = urllib.request.Request(url, headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'application/json',
+                    })
+                    with urllib.request.urlopen(req, timeout=8) as resp:
+                        body = json.loads(resp.read())
+                    meta   = body['chart']['result'][0]['meta']
+                    price  = meta.get('regularMarketPrice', 0)
+                    prev   = meta.get('chartPreviousClose') or meta.get('previousClose') or price
+                    pct    = round((price - prev) / prev * 100, 2) if prev else 0
+                    payload = {'price': round(price, 2), 'changePct': pct}
+                    _WIG20_QUOTE_CACHE['wig20'] = {'data': payload, 'ts': now}
+                    self.send_json(200, payload)
+                except Exception as e:
+                    print(f'[wig20-quote] {e}')
+                    self.send_json(502, {'error': 'upstream failed'})
 
         elif path == '/api/bench-pl':
             if not get_username(self):
