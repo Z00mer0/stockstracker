@@ -1619,11 +1619,13 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as e:
                     print(f'[espi/ai] {sym}: {e}')
                     return None
-            items = []
-            for sym in wa_syms:
+            def _process_sym(sym):
                 headlines = _fetch_yf_news(sym)
                 summary   = _summarise(sym, headlines) if headlines else None
-                items.append({'symbol': sym, 'headlines': headlines, 'summary': summary})
+                return {'symbol': sym, 'headlines': headlines, 'summary': summary}
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=6) as ex:
+                items = list(ex.map(_process_sym, wa_syms))
             result = {
                 'items': items,
                 'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
