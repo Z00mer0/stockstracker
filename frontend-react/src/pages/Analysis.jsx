@@ -195,6 +195,9 @@ function RebalanceSection({ enriched, totalValue }) {
   const hasTargets = Object.keys(targets).length > 0;
   const totalTargetPct = Object.values(targets).reduce((s, v) => s + (v || 0), 0);
 
+  // Price map from enriched positions
+  const priceMap = Object.fromEntries(enriched.map(p => [p.symbol, p.price ?? null]));
+
   // Suggestions: only when targets are set AND total target = 100
   const suggestions = hasTargets && Math.abs(totalTargetPct - 100) < 1
     ? positions
@@ -209,6 +212,26 @@ function RebalanceSection({ enriched, totalValue }) {
         .filter(Boolean)
         .sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev))
     : [];
+
+  // Orders enriched with action, price, shares
+  const orders = suggestions.map(s => ({
+    ...s,
+    action: s.dev > 0 ? 'SPRZEDAJ' : 'KUP',
+    price: priceMap[s.symbol],
+    shares: priceMap[s.symbol] ? Math.round(s.amt / priceMap[s.symbol]) : null,
+  }));
+
+  function exportOrdersCsv(ordersToExport) {
+    const header = 'Ticker,Akcja,Kwota PLN,Szac. akcji,Cena/szt. PLN\n';
+    const rows = ordersToExport.map(o =>
+      `${o.symbol},${o.action},${o.amt.toFixed(2)},${o.shares ?? ''},${o.price?.toFixed(2) ?? ''}`
+    ).join('\n');
+    const blob = new Blob(['﻿' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'rebalance-orders.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   function openEdit() {
     const draft = {};
@@ -293,18 +316,37 @@ function RebalanceSection({ enriched, totalValue }) {
           );
         })}
 
-        {/* Suggestions */}
-        {suggestions.length > 0 && (
-          <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Sugestie rebalansowania</p>
-            {suggestions.map(s => (
-              <div key={s.symbol} style={{ fontSize: 12, color: 'var(--text)' }}>
-                {s.dev > 0
-                  ? <span>🔻 Ogranicz <strong style={{ color: 'var(--down)' }}>{s.symbol}</strong>: sprzedaj lub unikaj dokupowania ~{fmtLocal(s.amt)} zł</span>
-                  : <span>🟢 Dokup <strong style={{ color: 'var(--up)' }}>{s.symbol}</strong>: ~{fmtLocal(s.amt)} zł</span>
-                }
-              </div>
-            ))}
+        {/* Orders table */}
+        {orders.length > 0 && (
+          <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Lista Zleceń Egzekucyjnych</p>
+              <button className="btn" style={{ fontSize: 11 }} onClick={() => exportOrdersCsv(orders)}>📥 Pobierz CSV</button>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Akcja</th>
+                    <th className="right">≈ Kwota PLN</th>
+                    <th className="right">≈ Akcji</th>
+                    <th className="right">Cena/szt.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => (
+                    <tr key={o.symbol} style={{ color: o.action === 'KUP' ? 'var(--up)' : 'var(--down)' }}>
+                      <td style={{ fontWeight: 700 }}>{o.symbol}</td>
+                      <td>{o.action === 'KUP' ? '🟢 KUP' : '🔻 SPRZEDAJ'}</td>
+                      <td className="right mono">{fmtLocal(o.amt)} zł</td>
+                      <td className="right mono">{o.shares ?? '—'}</td>
+                      <td className="right mono">{o.price != null ? `${fmtLocal(o.price, 2)} zł` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
