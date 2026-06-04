@@ -1574,7 +1574,8 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            raw = query_params.get('symbols', '')
+            qs  = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            raw = qs.get('symbols', '')
             wa_syms = [s.strip().upper() for s in raw.split(',') if s.strip().upper().endswith('.WA')][:8]
             if not wa_syms:
                 self.send_json(200, {'items': []}); return
