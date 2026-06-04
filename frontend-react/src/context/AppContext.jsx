@@ -458,6 +458,36 @@ export function AppProvider({ children }) {
     await api.post(dataUrl, updated);
   }
 
+  async function addOtherAsset({ name, category, value: val, currency, note }) {
+    const assets = rawData?.otherAssets ?? [];
+    const newAsset = {
+      id: Math.random().toString(36).slice(2, 10),
+      name, category, value: parseFloat(val), currency,
+      note: note || '',
+      updatedAt: new Date().toISOString().slice(0, 10),
+    };
+    const updated = { ...rawData, otherAssets: [...assets, newAsset] };
+    setRawData(updated);
+    await api.post(dataUrl, updated);
+  }
+
+  async function editOtherAsset(id, changes) {
+    const assets = rawData?.otherAssets ?? [];
+    const updated = {
+      ...rawData,
+      otherAssets: assets.map(a => a.id === id ? { ...a, ...changes, updatedAt: new Date().toISOString().slice(0, 10) } : a),
+    };
+    setRawData(updated);
+    await api.post(dataUrl, updated);
+  }
+
+  async function deleteOtherAsset(id) {
+    const assets = rawData?.otherAssets ?? [];
+    const updated = { ...rawData, otherAssets: assets.filter(a => a.id !== id) };
+    setRawData(updated);
+    await api.post(dataUrl, updated);
+  }
+
   const value = {
     isAuthenticated: !!token,
     displayName,
@@ -467,6 +497,7 @@ export function AppProvider({ children }) {
     transactions: rawData?.transactions ?? [],
     snapshots,
     cash:         rawData?.cash ?? {},
+    otherAssets:  rawData?.otherAssets ?? [],
     loading,
     error,
     refresh: fetchData,
@@ -495,6 +526,9 @@ export function AppProvider({ children }) {
     deletePortfolio,
     canWrite,
     logoMap,
+    addOtherAsset,
+    editOtherAsset,
+    deleteOtherAsset,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -631,6 +631,185 @@ export default function Portfolio() {
           {toast}
         </div>
       )}
+      <OtherAssetsSection />
+    </div>
+  );
+}
+
+const ASSET_CATEGORIES = {
+  real_estate: { label: 'Nieruchomość', icon: '🏠' },
+  metals:      { label: 'Metale szlachetne', icon: '🥇' },
+  savings:     { label: 'Oszczędności/Lokata', icon: '🏦' },
+  vehicle:     { label: 'Pojazd', icon: '🚗' },
+  other:       { label: 'Inne', icon: '📦' },
+};
+const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
+
+function OtherAssetModal({ initial, onSave, onClose }) {
+  const [name, setName]         = useState(initial?.name ?? '');
+  const [category, setCategory] = useState(initial?.category ?? 'other');
+  const [value, setValue]       = useState(initial?.value ?? '');
+  const [currency, setCurrency] = useState(initial?.currency ?? 'PLN');
+  const [note, setNote]         = useState(initial?.note ?? '');
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
+
+  async function handleSave() {
+    if (!name.trim()) { setError('Podaj nazwę'); return; }
+    const v = parseFloat(value);
+    if (isNaN(v) || v < 0) { setError('Podaj wartość'); return; }
+    setSaving(true);
+    try {
+      await onSave({ name: name.trim(), category, value: v, currency, note: note.trim() });
+      onClose();
+    } catch(e) {
+      setError(e.message || 'Błąd zapisu');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+          {initial ? 'Edytuj aktywo' : 'Dodaj inne aktywo'}
+        </h2>
+        <div style={{ marginBottom: 12 }}>
+          <label className="field-label">Nazwa *</label>
+          <input className="field-input" placeholder="np. Mieszkanie Warszawa" value={name} onChange={e => setName(e.target.value)} autoFocus />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label className="field-label">Kategoria</label>
+          <select className="field-input" value={category} onChange={e => setCategory(e.target.value)}>
+            {Object.entries(ASSET_CATEGORIES).map(([k, { label, icon }]) => (
+              <option key={k} value={k}>{icon} {label}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label className="field-label">Wartość *</label>
+            <input type="number" min="0" step="any" className="field-input" value={value} onChange={e => setValue(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Waluta</label>
+            <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
+              {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label className="field-label">Notatka (opcjonalna)</label>
+          <input className="field-input" value={note} onChange={e => setNote(e.target.value)} placeholder="np. wartość rynkowa szacunkowa" />
+        </div>
+        {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
+            {saving ? 'Zapisuję…' : 'Zapisz'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OtherAssetsSection() {
+  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates } = useApp();
+  const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const totalPLN = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
+
+  function fmt(n) {
+    return n.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  if (!otherAssets.length && !showModal) {
+    return (
+      <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>Inne aktywa</p>
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>Nieruchomości, lokaty, złoto, pojazdy — wyceniane ręcznie</p>
+        </div>
+        <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 12 }}>+ Dodaj</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Inne aktywa</span>
+          {totalPLN > 0 && (
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmt(totalPLN)} zł łącznie</span>
+          )}
+        </div>
+        <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ Dodaj</button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Nazwa</th>
+              <th>Kategoria</th>
+              <th className="right">Wartość</th>
+              <th className="right">≈ PLN</th>
+              <th>Notatka</th>
+              <th>Ost. aktualizacja</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {otherAssets.map(a => {
+              const cat = ASSET_CATEGORIES[a.category] ?? ASSET_CATEGORIES.other;
+              const plnVal = (a.value || 0) * (fxRates[a.currency] ?? 1);
+              return (
+                <tr key={a.id}>
+                  <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cat.icon} {a.name}</td>
+                  <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{cat.label}</td>
+                  <td className="right mono" style={{ color: 'var(--text)' }}>{fmt(a.value)} {a.currency}</td>
+                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(plnVal)} zł</td>
+                  <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.note || '—'}</td>
+                  <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.updatedAt || '—'}</td>
+                  <td className="right" style={{ whiteSpace: 'nowrap' }}>
+                    <button
+                      onClick={() => { setEditTarget(a); setShowModal(true); }}
+                      style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer', marginRight: 8 }}
+                    >Edytuj</button>
+                    <button
+                      onClick={() => setConfirmDel(a)}
+                      style={{ fontSize: 11, color: 'var(--down)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >Usuń</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {showModal && (
+        <OtherAssetModal
+          initial={editTarget}
+          onSave={async (data) => {
+            if (editTarget) await editOtherAsset(editTarget.id, data);
+            else await addOtherAsset(data);
+          }}
+          onClose={() => { setShowModal(false); setEditTarget(null); }}
+        />
+      )}
+      {confirmDel && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, maxWidth: 320, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <p style={{ fontWeight: 600, marginBottom: 8 }}>Usuń "{confirmDel.name}"?</p>
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <button onClick={() => setConfirmDel(null)} className="btn" style={{ flex: 1 }}>Anuluj</button>
+              <button onClick={async () => { await deleteOtherAsset(confirmDel.id); setConfirmDel(null); }} className="btn btn-danger" style={{ flex: 1 }}>Usuń</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -311,7 +311,7 @@ function CashSection({ cash, fxRates, saveCash }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, saveCash, invested, saveSnapshot, displayName, displayCurrency } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, displayName, displayCurrency } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
@@ -373,9 +373,10 @@ export default function Dashboard() {
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
     // Live values — use real-time position prices, fall back to cost for unpriced positions
-    const positionsValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? p.costPLN ?? 0), 0);
-    const cashValue      = Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
-    const totalValue     = positionsValue + cashValue;
+    const positionsValue   = allPositions.reduce((s, p) => s + (p.valuePLN ?? p.costPLN ?? 0), 0);
+    const cashValue        = Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
+    const otherAssetsValue = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
+    const totalValue       = positionsValue + cashValue + otherAssetsValue;
 
     // Unrealized P&L: sum of per-position P&L (null if price unknown → 0)
     const costBasis  = invested ?? 0; // = sum(qty * avgPrice * fx) for current holdings
