@@ -141,6 +141,10 @@ def _yf_quotesummary(symbol, modules):
 _WIG20_QUOTE_CACHE = {}   # { 'wig20': {'data': {...}, 'ts': float} }
 _WIG20_QUOTE_TTL   = 300  # 5 minutes
 
+# ── CRYPTO PRICE CACHE ─────────────────────────────────────────────────────────
+_CRYPTO_CACHE = {}   # { 'bitcoin,ethereum': {'data': {...}, 'ts': float} }
+_CRYPTO_TTL   = 300  # 5 minutes
+
 # ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
 _BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
 _BENCH_PL_TTL   = 6 * 3600   # 6 hours
@@ -1452,6 +1456,56 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as e:
                     print(f'[wig20-quote] {e}')
                     self.send_json(502, {'error': 'upstream failed'})
+
+        elif path == '/api/crypto-price':
+            # Public endpoint — no auth required
+            qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            raw_syms = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()]
+            _COINGECKO_IDS = {
+                'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana', 'BNB': 'binancecoin',
+                'XRP': 'ripple', 'ADA': 'cardano', 'DOGE': 'dogecoin', 'MATIC': 'matic-network',
+                'DOT': 'polkadot', 'SHIB': 'shiba-inu', 'AVAX': 'avalanche-2', 'LINK': 'chainlink',
+                'UNI': 'uniswap', 'LTC': 'litecoin', 'BCH': 'bitcoin-cash', 'ATOM': 'cosmos',
+                'XLM': 'stellar', 'NEAR': 'near', 'APT': 'aptos', 'ARB': 'arbitrum',
+                'OP': 'optimism', 'INJ': 'injective-protocol', 'SUI': 'sui', 'TRX': 'tron',
+                'TON': 'the-open-network', 'PEPE': 'pepe', 'WIF': 'dogwifcoin',
+            }
+            # Map symbols to CoinGecko IDs; skip unknowns
+            sym_to_id = {s: _COINGECKO_IDS[s] for s in raw_syms if s in _COINGECKO_IDS}
+            if not sym_to_id:
+                self.send_json(200, {}); return
+            ids_str = ','.join(sym_to_id.values())
+            # Cache check
+            cache_entry = _CRYPTO_CACHE.get(ids_str)
+            if cache_entry and time.time() - cache_entry['ts'] < _CRYPTO_TTL:
+                self.send_json(200, cache_entry['data']); return
+            try:
+                url = (f'https://api.coingecko.com/api/v3/simple/price'
+                       f'?ids={urllib.parse.quote(ids_str)}'
+                       f'&vs_currencies=usd,pln,eur&include_24hr_change=true')
+                req = urllib.request.Request(url, headers={
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept': 'application/json',
+                })
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    cg_data = json.loads(resp.read())
+                # Build id→symbol reverse map
+                id_to_sym = {v: k for k, v in sym_to_id.items()}
+                result = {}
+                for cg_id, vals in cg_data.items():
+                    sym = id_to_sym.get(cg_id)
+                    if sym:
+                        result[sym] = {
+                            'usd':      vals.get('usd'),
+                            'pln':      vals.get('pln'),
+                            'eur':      vals.get('eur'),
+                            'change24h': vals.get('usd_24h_change'),
+                        }
+                _CRYPTO_CACHE[ids_str] = {'data': result, 'ts': time.time()}
+                self.send_json(200, result)
+            except Exception as e:
+                print(f'[crypto-price] {e}')
+                self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/bench-pl':
             if not get_username(self):

@@ -263,7 +263,7 @@ export function AppProvider({ children }) {
     await api.post(dataUrl, updated);
   }
 
-  async function addPosition({ symbol, qty, price, currency, date, note, funding }) {
+  async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType }) {
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
     const cash = rawData?.cash ?? {};
@@ -287,6 +287,7 @@ export function AppProvider({ children }) {
         currency,
         date,
         name: '',
+        ...(assetType ? { assetType } : {}),
       }];
     }
 

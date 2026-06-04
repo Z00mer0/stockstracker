@@ -89,6 +89,26 @@ async function fetchYahooQuote(sym) {
   }
 }
 
+// ── CoinGecko crypto prices ───────────────────────────────────────────────────
+async function fetchCryptoPrice(symbol) {
+  try {
+    const base = import.meta.env.VITE_API_URL ?? '';
+    const res = await fetch(`${base}/api/crypto-price?symbols=${encodeURIComponent(symbol)}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const entry = data[symbol.toUpperCase()];
+    if (!entry) return null;
+    return {
+      price:    entry.usd ?? null,
+      dailyChg: entry.change24h ?? null,
+      pe: null, peFwd: null, pb: null, sector: 'Cryptocurrency',
+    };
+  } catch { return null; }
+}
+
 // ── Hardcoded sectors for GPW (.WA) — Yahoo Finance v7 returns 401 for PL tickers ──
 const WA_SECTOR_MAP = {
   'XTB.WA':  'Financial Services',
@@ -200,6 +220,12 @@ async function fetchAllMetrics(symbols) {
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
+const CRYPTO_SYMBOLS = new Set([
+  'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','SHIB',
+  'AVAX','LINK','UNI','LTC','BCH','ATOM','XLM','NEAR','APT','ARB',
+  'OP','INJ','SUI','TRX','TON','PEPE','WIF',
+]);
+
 export function usePortfolioMetrics(portfolio, transactions, fxRates) {
   const [marketData, setMarketData] = useState({});
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -217,13 +243,20 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       }
     } catch {}
 
-    const symbols = [...new Set(portfolio.map(p => p.symbol))];
+    const allSymbols = [...new Set(portfolio.map(p => p.symbol))];
+    const cryptoSet = new Set(portfolio.filter(p => p.assetType === 'crypto' || CRYPTO_SYMBOLS.has(p.symbol)).map(p => p.symbol));
+    const regularSymbols = allSymbols.filter(s => !cryptoSet.has(s));
+    const cryptoSymbols  = allSymbols.filter(s => cryptoSet.has(s));
     setMetricsLoading(true);
-    fetchAllMetrics(symbols)
-      .then(async data => {
+    Promise.all([
+      regularSymbols.length > 0 ? fetchAllMetrics(regularSymbols) : Promise.resolve({}),
+      ...cryptoSymbols.map(s => fetchCryptoPrice(s).then(m => ({ [s]: m ?? { price: null, dailyChg: null, pe: null, peFwd: null, pb: null, sector: 'Cryptocurrency' } }))),
+    ]).then(async ([regularData, ...cryptoResults]) => {
+        const cryptoData = Object.assign({}, ...cryptoResults);
+        const data = { ...regularData, ...cryptoData };
         setMarketData(data);
-        // Retry only symbols with temporary failures (skip notFound — they don't exist)
-        const failed = symbols.filter(s => !data[s]?.price && !data[s]?.notFound);
+        // Retry only regular symbols with temporary failures (skip notFound — they don't exist)
+        const failed = regularSymbols.filter(s => !data[s]?.price && !data[s]?.notFound);
         if (failed.length > 0) {
           await new Promise(r => setTimeout(r, 5000)); // 5s — enough for Render to wake
           const retry = await fetchAllMetrics(failed);
