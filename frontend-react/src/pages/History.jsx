@@ -23,6 +23,27 @@ function fmtDate(iso) {
   return `${d}.${m}.${y}`;
 }
 
+function calcMDD(snapshots) {
+  if (snapshots.length < 2) return null;
+  let peak = -Infinity, peakDate = null;
+  let maxDD = 0, ddStart = null, ddEnd = null;
+  for (const s of snapshots) {
+    if ((s.total ?? 0) > peak) {
+      peak = s.total;
+      peakDate = s.date;
+    }
+    if (peak > 0) {
+      const dd = (peak - (s.total ?? 0)) / peak * 100;
+      if (dd > maxDD) {
+        maxDD = dd;
+        ddStart = peakDate;
+        ddEnd = s.date;
+      }
+    }
+  }
+  return maxDD > 0 ? { pct: maxDD, from: ddStart, to: ddEnd } : null;
+}
+
 const PERIODS = [
   { key: '1M',  label: '1M',  days: 30  },
   { key: '3M',  label: '3M',  days: 90  },
@@ -88,6 +109,8 @@ export default function History() {
     [sorted]
   );
 
+  const mdd = useMemo(() => calcMDD(filtered), [filtered]);
+
   useEffect(() => {
     if (!benchmark) { setBenchData([]); return; }
     setBenchLoading(true);
@@ -145,6 +168,13 @@ export default function History() {
           { label: 'Zysk/strata', value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
           { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? `min. 90 dni (${days} dni historii)` : null },
           { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(ath?.total)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
+          {
+            label: 'Max Drawdown',
+            value: mdd
+              ? <span style={{ color: mdd.pct > 25 ? 'var(--down)' : mdd.pct > 10 ? 'var(--warn)' : 'var(--up)' }}>-{mdd.pct.toFixed(1)}%</span>
+              : <span style={{ color: 'var(--text-faint)' }}>—</span>,
+            sub: mdd ? `${fmtDate(mdd.from)} → ${fmtDate(mdd.to)}` : 'brak danych',
+          },
         ].map(({ label, value, sub }) => (
           <div key={label} className="kpi-card">
             <div className="kpi-label">{label}</div>
