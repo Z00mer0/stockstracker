@@ -552,9 +552,10 @@ if DATABASE_URL:
 
     def load_portfolio_data(portfolio_id):
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT id, symbol, qty, avg_price, currency FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
+            cur.execute("SELECT id, symbol, qty, avg_price, currency, asset_type FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
             holdings = [{'id': r['id'], 'symbol': r['symbol'], 'qty': float(r['qty']),
-                         'avgPrice': float(r['avg_price']), 'currency': r['currency'], 'name': ''} for r in cur.fetchall()]
+                         'avgPrice': float(r['avg_price']), 'currency': r['currency'], 'name': '',
+                         **({'assetType': r['asset_type']} if r['asset_type'] else {})} for r in cur.fetchall()]
             cur.execute("""SELECT id, type, symbol, qty, price, currency, date::text, note, broker_position_id, extra_json
                            FROM portfolio_transactions WHERE portfolio_id=%s ORDER BY date""", (portfolio_id,))
             transactions = []
@@ -594,11 +595,11 @@ if DATABASE_URL:
             cur.execute("DELETE FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
             for h in holdings:
                 hid = h.get('id') or secrets.token_hex(8)
-                cur.execute("""INSERT INTO portfolio_holdings (id, portfolio_id, symbol, qty, avg_price, currency)
-                               VALUES (%s, %s, %s, %s, %s, %s)
+                cur.execute("""INSERT INTO portfolio_holdings (id, portfolio_id, symbol, qty, avg_price, currency, asset_type)
+                               VALUES (%s, %s, %s, %s, %s, %s, %s)
                                ON CONFLICT (portfolio_id, symbol) DO UPDATE
-                               SET qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price, currency=EXCLUDED.currency""",
-                            (hid, portfolio_id, h['symbol'], h.get('qty', 0), h.get('avgPrice', 0), h.get('currency', 'PLN')))
+                               SET qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price, currency=EXCLUDED.currency, asset_type=EXCLUDED.asset_type""",
+                            (hid, portfolio_id, h['symbol'], h.get('qty', 0), h.get('avgPrice', 0), h.get('currency', 'PLN'), h.get('assetType', '')))
             cur.execute("DELETE FROM portfolio_transactions WHERE portfolio_id=%s", (portfolio_id,))
             for tx in transactions:
                 extra = {k: v for k, v in tx.items()
