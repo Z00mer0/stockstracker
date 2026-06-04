@@ -1587,6 +1587,7 @@ class Handler(SimpleHTTPRequestHandler):
             if cached and time.time() - cached['ts'] < 3600:
                 self.send_json(200, cached['data']); return
             import urllib.request as _ur
+            import concurrent.futures as _cf
             def _fetch_yf_news(sym):
                 url = (f'https://query1.finance.yahoo.com/v1/finance/search'
                        f'?q={sym}&newsCount=8&quotesCount=0&lang=pl-PL&region=PL')
@@ -1597,35 +1598,52 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     with _ur.urlopen(req, timeout=8) as r:
                         data = json.loads(r.read().decode())
-                    return [n['title'] for n in data.get('news', []) if n.get('title')][:8]
+                    return [n['title'] for n in data.get('news', []) if n.get('title')][:5]
                 except Exception as e:
                     print(f'[espi/yf] {sym}: {e}')
                     return []
-            def _summarise(sym, headlines):
-                text = '\n'.join(f'• {h}' for h in headlines)
+            # Fetch all news in parallel
+            with _cf.ThreadPoolExecutor(max_workers=8) as ex:
+                news_map = dict(zip(wa_syms, ex.map(_fetch_yf_news, wa_syms)))
+            # Single batched Claude call for all companies
+            syms_with_news = [(s, news_map[s]) for s in wa_syms if news_map[s]]
+            summaries = {}
+            if syms_with_news:
                 try:
                     import anthropic as _a
                     client = _a.Anthropic(api_key=api_key)
+                    prompt_parts = []
+                    for sym, hl in syms_with_news:
+                        bullet = '\n'.join(f'• {h}' for h in hl)
+                        prompt_parts.append(f'## {sym}\n{bullet}')
+                    prompt = (
+                        'Jesteś analitykiem finansowym GPW. Poniżej informacje prasowe dla kilku spółek.\n'
+                        'Dla KAŻDEJ spółki napisz DOKŁADNIE 2 zdania po polsku: kluczowe fakty i ryzyko/szansa dla inwestora.\n'
+                        'Format odpowiedzi — każda spółka w osobnej linii zaczynającej się od tickera:\n'
+                        'TICKER: [treść]\n\n'
+                        + '\n\n'.join(prompt_parts)
+                    )
                     msg = client.messages.create(
                         model='claude-sonnet-4-6',
-                        max_tokens=280,
-                        messages=[{'role': 'user', 'content':
-                            f'Jesteś analitykiem finansowym GPW. Oto ostatnie informacje prasowe dla spółki {sym}:\n\n{text}\n\n'
-                            f'Napisz DOKŁADNIE 3 zdania po polsku: krytyczne, konkretne podsumowanie. '
-                            f'Zaznacz najważniejsze ryzyka lub szanse dla inwestora. Nie używaj nagłówków.'
-                        }]
+                        max_tokens=600,
+                        messages=[{'role': 'user', 'content': prompt}],
+                        timeout=25,
                     )
-                    return msg.content[0].text.strip()
+                    for line in msg.content[0].text.strip().splitlines():
+                        if ':' in line:
+                            ticker, _, text = line.partition(':')
+                            ticker = ticker.strip().upper()
+                            # match with or without .WA suffix
+                            for s in wa_syms:
+                                if s == ticker or s.replace('.WA', '') == ticker:
+                                    summaries[s] = text.strip()
+                                    break
                 except Exception as e:
-                    print(f'[espi/ai] {sym}: {e}')
-                    return None
-            def _process_sym(sym):
-                headlines = _fetch_yf_news(sym)
-                summary   = _summarise(sym, headlines) if headlines else None
-                return {'symbol': sym, 'headlines': headlines, 'summary': summary}
-            import concurrent.futures as _cf
-            with _cf.ThreadPoolExecutor(max_workers=6) as ex:
-                items = list(ex.map(_process_sym, wa_syms))
+                    print(f'[espi/ai/batch] {e}')
+            items = [
+                {'symbol': s, 'headlines': news_map[s], 'summary': summaries.get(s)}
+                for s in wa_syms
+            ]
             result = {
                 'items': items,
                 'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
