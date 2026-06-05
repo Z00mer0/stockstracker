@@ -111,6 +111,100 @@ function isWatched(symbol) {
   return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]').includes(symbol);
 }
 
+const NOTES_KEY = 'myfund_position_notes';
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); } catch { return {}; }
+}
+function saveNotes(data) {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(data));
+}
+
+const ALERTS_KEY = 'myfund_price_alerts';
+function loadAlerts() {
+  try { return JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveAlerts(list) {
+  localStorage.setItem(ALERTS_KEY, JSON.stringify(list));
+}
+
+function NoteEditor({ symbol, initial, onSave, onCancel }) {
+  const [draft, setDraft] = useState(initial);
+  return (
+    <div style={{ padding: '8px 16px 12px', background: 'var(--panel-2)' }}>
+      <textarea
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        placeholder={`Notatka do ${symbol}…`}
+        style={{
+          width: '100%', minHeight: 80, resize: 'vertical',
+          background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+          color: 'var(--text)', fontSize: 12, padding: '6px 10px',
+          outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+        }}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+        <button
+          onClick={() => { setDraft(initial); onCancel(); }}
+          style={{ fontSize: 11, padding: '3px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
+        >Anuluj</button>
+        <button
+          onClick={() => onSave(draft)}
+          style={{ fontSize: 11, padding: '3px 12px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'white', cursor: 'pointer', fontWeight: 600 }}
+        >Zapisz</button>
+      </div>
+    </div>
+  );
+}
+
+function SetAlertModal({ symbol, currentPrice, onSave, onClose }) {
+  const [target, setTarget] = useState(currentPrice != null ? String(Number(currentPrice).toFixed(2)) : '');
+  const [dir, setDir] = useState(currentPrice != null ? 'above' : 'above');
+
+  function handleSave() {
+    const t = parseFloat(target);
+    if (isNaN(t) || t <= 0) return;
+    onSave({ symbol, target: t, direction: dir });
+    onClose();
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+         onClick={onClose}>
+      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 320, boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}
+           onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Alert cenowy — {symbol}</h2>
+        {currentPrice != null && (
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Cena teraz: {Number(currentPrice).toFixed(2)}</p>
+        )}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Cena docelowa</label>
+          <input type="number" min="0" step="any" autoFocus
+            value={target} onChange={e => setTarget(e.target.value)}
+            style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Kierunek</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[['above', '▲ Powyżej'], ['below', '▼ Poniżej']].map(([val, label]) => (
+              <button key={val} onClick={() => setDir(val)}
+                style={{ flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: dir === val ? 'var(--accent)' : 'var(--border)', color: dir === val ? '#fff' : 'var(--text-dim)' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>Anuluj</button>
+          <button onClick={handleSave} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', fontWeight: 600 }}>Zapisz alert</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function fmt(n, decimals = 2) {
   if (n == null || isNaN(n)) return '—';
   return n.toLocaleString('pl-PL', {
@@ -122,7 +216,7 @@ function fmt(n, decimals = 2) {
 const CUR_FLAG = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 const COL_LABEL = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
-function renderCell(key, pos, fxRates) {
+function renderCell(key, pos, fxRates, divBySymbol) {
   const flag = CUR_FLAG[pos.currency] ?? pos.currency;
   switch (key) {
     case 'qty':
@@ -188,13 +282,23 @@ function renderCell(key, pos, fxRates) {
       return pos.pb != null
         ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pb, 2)}</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
+    case 'divYoc': {
+      const totalDiv = divBySymbol[pos.symbol] ?? 0;
+      if (!totalDiv) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
+      const yoc = pos.costPLN > 0 ? (totalDiv / pos.costPLN) * 100 : null;
+      return (
+        <span style={{ color: 'var(--warn)', fontWeight: 600 }}>
+          {fmt(totalDiv, 0)} zł{yoc != null ? <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.75 }}>({fmt(yoc, 1)}%)</span> : null}
+        </span>
+      );
+    }
     default:
       return <span style={{ color: 'var(--text-faint)' }}>—</span>;
   }
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
   const [showImport, setShowImport]   = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
   const [showAddCrypto, setShowAddCrypto] = useState(false);
@@ -207,6 +311,12 @@ export default function Portfolio() {
   const [toast, setToast]             = useState('');
   const [editTicker, setEditTicker]   = useState(null); // { oldSymbol, value }
   const [selectedItem, setSelectedItem] = useState(null);
+  const [notes, setNotes]             = useState(loadNotes);
+  const [noteEditing, setNoteEditing] = useState(null);
+  const [alerts, setAlerts] = useState(loadAlerts);
+  const [alertTarget, setAlertTarget] = useState(null); // { symbol, price }
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef(null);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -235,11 +345,57 @@ export default function Portfolio() {
     const t = setTimeout(() => setToast(''), 2500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    if (!alerts.length || !enriched.length) return;
+    const triggered = [];
+    const remaining = alerts.filter(a => {
+      const pos = enriched.find(p => p.symbol === a.symbol);
+      if (!pos?.price) return true;
+      const hit = a.direction === 'above' ? pos.price >= a.target : pos.price <= a.target;
+      if (hit) triggered.push({ ...a, price: pos.price });
+      return !hit;
+    });
+    if (!triggered.length) return;
+    saveAlerts(remaining);
+    setAlerts(remaining);
+    for (const a of triggered) {
+      const msg = `${a.symbol} osiągnął ${a.price.toFixed(2)} (alert: ${a.direction === 'above' ? '≥' : '≤'} ${a.target})`;
+      if (Notification.permission === 'granted') {
+        new Notification('Alert cenowy', { body: msg, icon: '/favicon.ico' });
+      } else {
+        setToast(msg);
+      }
+    }
+  }, [enriched]);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    function handler(e) { if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) setShowExportMenu(false); }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showExportMenu]);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [cols, setCols] = useState(loadColumnConfig);
 
   const { enrichPosition, metricsLoading } = usePortfolioMetrics(portfolio, transactions, fxRates);
+
+  const divBySymbol = useMemo(() => {
+    const map = {};
+    for (const t of transactions) {
+      const type = t.type?.toUpperCase();
+      if (type !== 'DIV' && type !== 'DIVIDEND') continue;
+      const sym = t.symbol;
+      if (!sym) continue;
+      // amount = qty * price (if qty present), else just price
+      const amount = t.qty != null && t.qty > 0
+        ? (t.qty * (t.price ?? 0))
+        : (t.price ?? 0);
+      map[sym] = (map[sym] ?? 0) + amount;
+    }
+    return map;
+  }, [transactions]);
 
   function handleColChange(newCols) {
     setCols(newCols);
@@ -284,6 +440,39 @@ export default function Portfolio() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `portfel_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleExportTransactions() {
+    const headers = ['Data', 'Typ', 'Symbol', 'Ilość', 'Cena', 'Waluta', 'Notatka'];
+    const rows = transactions.map(t => [
+      t.date ?? '',
+      t.type ?? '',
+      t.symbol ?? '',
+      t.qty != null ? t.qty : '',
+      t.price != null ? t.price : '',
+      t.currency ?? '',
+      t.note ?? '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `transakcje_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleExportSnapshots() {
+    const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];
+    const rows = snapshots
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(s => [s.date, s.total ?? '', s.invested ?? '']);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `historia_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -378,14 +567,35 @@ export default function Portfolio() {
           ))}
           <div style={{ flex: '0 0 8px' }} />
           {metricsLoading && <Spinner size="sm" />}
-          <button
-            onClick={handleExportCsv}
-            className="btn"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
-            title="Eksportuj portfel jako CSV"
-          >
-            ⬇ Eksport CSV
-          </button>
+          <div style={{ position: 'relative', flexShrink: 0 }} ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu(v => !v)}
+              className="btn"
+              style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              ⬇ Eksport CSV
+            </button>
+            {showExportMenu && (
+              <div style={{
+                position: 'absolute', top: '110%', left: 0, zIndex: 30,
+                background: 'var(--panel)', border: '1px solid var(--border)',
+                borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                minWidth: 180, padding: '4px 0', fontSize: 13,
+              }}>
+                {[
+                  { label: 'Pozycje', fn: handleExportCsv },
+                  { label: 'Transakcje', fn: handleExportTransactions },
+                  { label: 'Historia snapshotów', fn: handleExportSnapshots },
+                ].map(({ label, fn }) => (
+                  <button key={label} onClick={() => { fn(); setShowExportMenu(false); }}
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >{label}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => setShowImport(true)}
             className="btn"
@@ -429,7 +639,8 @@ export default function Portfolio() {
                 const share = totalCostPLN > 0 ? ((pos.costPLN ?? 0) / totalCostPLN) * 100 : 0;
                 const menuOpen = menuSym === pos.symbol;
                 return (
-                  <tr key={pos.id ?? pos.symbol}>
+                  <React.Fragment key={pos.id ?? pos.symbol}>
+                  <tr>
                     <td
                       style={{ cursor: 'pointer', position: 'sticky', left: 0, zIndex: 1, background: 'var(--panel)' }}
                       onClick={() => setSelectedItem(pos)}
@@ -440,6 +651,12 @@ export default function Portfolio() {
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</span>
+                            {notes[pos.symbol]?.text && (
+                              <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>📝</span>
+                            )}
+                            {alerts.some(a => a.symbol === pos.symbol) && (
+                              <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>🔔</span>
+                            )}
                             {pos.notFound && (
                               editTicker?.oldSymbol === pos.symbol ? (
                                 <form
@@ -479,7 +696,7 @@ export default function Portfolio() {
                     </td>
                     {cols.map(key => (
                       <td key={key} className="right mono">
-                        {renderCell(key, pos, fxRates)}
+                        {renderCell(key, pos, fxRates, divBySymbol)}
                       </td>
                     ))}
                     <td className="right mono">
@@ -523,7 +740,9 @@ export default function Portfolio() {
                             { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
                             { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
                             { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
+                            { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
                             null,
+                            { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
                             { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
                           ].map((item, i) =>
                             item === null ? (
@@ -551,6 +770,26 @@ export default function Portfolio() {
                       )}
                     </td>
                   </tr>
+                  {noteEditing === pos.symbol && (
+                    <tr key={`${pos.id ?? pos.symbol}-note`}>
+                      <td colSpan={cols.length + 3} style={{ padding: 0 }}>
+                        <NoteEditor
+                          symbol={pos.symbol}
+                          initial={notes[pos.symbol]?.text || ''}
+                          onSave={(text) => {
+                            const updated = text.trim()
+                              ? { ...notes, [pos.symbol]: { text: text.trim(), updatedAt: new Date().toISOString() } }
+                              : (() => { const n = { ...notes }; delete n[pos.symbol]; return n; })();
+                            setNotes(updated);
+                            saveNotes(updated);
+                            setNoteEditing(null);
+                          }}
+                          onCancel={() => setNoteEditing(null)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -664,6 +903,22 @@ export default function Portfolio() {
         }}>
           {toast}
         </div>
+      )}
+      {alertTarget && (
+        <SetAlertModal
+          symbol={alertTarget.symbol}
+          currentPrice={alertTarget.price}
+          onSave={(alert) => {
+            if (Notification.permission === 'default') {
+              Notification.requestPermission();
+            }
+            const updated = [...alerts, { ...alert, id: Math.random().toString(36).slice(2, 10) }];
+            setAlerts(updated);
+            saveAlerts(updated);
+            setToast(`Alert dla ${alert.symbol} ustawiony`);
+          }}
+          onClose={() => setAlertTarget(null)}
+        />
       )}
       <OtherAssetsSection />
     </div>

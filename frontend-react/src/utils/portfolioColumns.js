@@ -14,6 +14,7 @@ export const COLUMN_DEFS = [
   { key: 'pe',       label: 'P/E' },
   { key: 'peFwd',    label: 'P/E FWD' },
   { key: 'pb',       label: 'P/B' },
+  { key: 'divYoc',   label: 'Dywidendy' },
 ];
 
 export const DEFAULT_COLS = [

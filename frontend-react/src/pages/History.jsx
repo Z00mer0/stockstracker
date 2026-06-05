@@ -146,6 +146,17 @@ export default function History() {
     }
   }, [benchmark]);
 
+  function handleExportHistory() {
+    const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];
+    const rows = sorted.map(s => [s.date, s.total ?? '', s.invested ?? '']);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `historia_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (loading && !snapshots.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
@@ -222,7 +233,8 @@ export default function History() {
       {/* Tabela */}
       <Card title={period === 'MAX' ? 'Wszystkie snapshots' : `Snapshots — ostatnie ${PERIODS.find(p => p.key === period)?.label}`}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{filtered.length} wpisów</span>
+          <button onClick={handleExportHistory} className="btn" style={{ fontSize: 11 }}>⬇ Eksport CSV</button>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 8, alignSelf: 'center' }}>{filtered.length} wpisów</span>
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
