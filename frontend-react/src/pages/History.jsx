@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import HistoryChart from '../components/HistoryChart';
 import ReturnRateChart from '../components/ReturnRateChart';
+import RollingReturnsChart from '../components/RollingReturnsChart';
 import Spinner from '../components/shared/Spinner';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Card from '../components/shared/Card';
@@ -213,6 +214,11 @@ export default function History() {
         />
       </Card>
 
+      {/* Rolling Returns */}
+      <Card title="Rolling Returns — kroczące stopy zwrotu">
+        <RollingReturnsChart data={sorted} />
+      </Card>
+
       {/* Tabela */}
       <Card title={period === 'MAX' ? 'Wszystkie snapshots' : `Snapshots — ostatnie ${PERIODS.find(p => p.key === period)?.label}`}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
@@ -233,8 +239,8 @@ export default function History() {
               {(() => {
                 const rows = [...filtered].reverse();
                 return rows.map((s, i) => {
-                  const pl      = (s.total ?? 0) - (s.invested ?? 0);
-                  const pct     = s.invested > 0 ? (pl / s.invested) * 100 : 0;
+                  const pl      = s.invested != null ? (s.total ?? 0) - s.invested : null;
+                  const pct     = s.invested > 0 && pl != null ? (pl / s.invested) * 100 : null;
                   const prev    = rows[i + 1];
                   const delta   = prev != null ? (s.total ?? 0) - (prev.total ?? 0) : null;
                   const deltaUp = delta != null && delta >= 0;
@@ -247,9 +253,8 @@ export default function History() {
                         fontWeight: 600,
                       }}>{fmt(s.total)} zł</td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(s.invested)} zł</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
-                        {pl >= 0 ? '+' : ''}{fmt(pl)} zł
-                        <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl == null ? 'var(--text-faint)' : pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
+                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(pl)} zł<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span></>}
                       </td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
                         {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta)} zł`}
