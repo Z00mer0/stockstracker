@@ -1608,32 +1608,35 @@ class Handler(SimpleHTTPRequestHandler):
                 syms_with_news = [(s, news_map[s]) for s in wa_syms if news_map[s]]
                 summaries = {}
                 if syms_with_news:
-                    import anthropic as _a
-                    client = _a.Anthropic(api_key=api_key)
-                    prompt_parts = []
-                    for sym, hl in syms_with_news:
-                        bullet = '\n'.join(f'• {h}' for h in hl)
-                        prompt_parts.append(f'## {sym}\n{bullet}')
-                    prompt = (
-                        'Jesteś analitykiem finansowym GPW. Poniżej informacje prasowe dla kilku spółek.\n'
-                        'Dla KAŻDEJ spółki napisz DOKŁADNIE 2 zdania po polsku: kluczowe fakty i ryzyko/szansa dla inwestora.\n'
-                        'Format odpowiedzi — każda spółka w osobnej linii:\n'
-                        'TICKER: [treść]\n\n'
-                        + '\n\n'.join(prompt_parts)
-                    )
-                    msg = client.messages.create(
-                        model='claude-sonnet-4-6',
-                        max_tokens=800,
-                        messages=[{'role': 'user', 'content': prompt}],
-                    )
-                    for line in msg.content[0].text.strip().splitlines():
-                        if ':' in line:
-                            ticker, _, text = line.partition(':')
-                            ticker = ticker.strip().upper()
-                            for s in wa_syms:
-                                if s == ticker or s.replace('.WA', '') == ticker:
-                                    summaries[s] = text.strip()
-                                    break
+                    try:
+                        import anthropic as _a
+                        client = _a.Anthropic(api_key=api_key)
+                        prompt_parts = []
+                        for sym, hl in syms_with_news:
+                            bullet = '\n'.join(f'• {h}' for h in hl)
+                            prompt_parts.append(f'## {sym}\n{bullet}')
+                        prompt = (
+                            'Jesteś analitykiem finansowym GPW. Poniżej informacje prasowe dla kilku spółek.\n'
+                            'Dla KAŻDEJ spółki napisz DOKŁADNIE 2 zdania po polsku: kluczowe fakty i ryzyko/szansa dla inwestora.\n'
+                            'Format odpowiedzi — każda spółka w osobnej linii:\n'
+                            'TICKER: [treść]\n\n'
+                            + '\n\n'.join(prompt_parts)
+                        )
+                        msg = client.messages.create(
+                            model='claude-sonnet-4-6',
+                            max_tokens=800,
+                            messages=[{'role': 'user', 'content': prompt}],
+                        )
+                        for line in msg.content[0].text.strip().splitlines():
+                            if ':' in line:
+                                ticker, _, text = line.partition(':')
+                                ticker = ticker.strip().upper()
+                                for s in wa_syms:
+                                    if s == ticker or s.replace('.WA', '') == ticker:
+                                        summaries[s] = text.strip()
+                                        break
+                    except Exception as _ai_e:
+                        print(f'[espi/ai] {_ai_e}')
                 items = [
                     {'symbol': s, 'headlines': news_map.get(s, []), 'summary': summaries.get(s)}
                     for s in wa_syms
@@ -1899,7 +1902,10 @@ async function doRecover() {
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
             try:
-                body = self.read_json(max_size=256 * 1024)
+                length = int(self.headers.get('Content-Length', 0))
+                if length > 256 * 1024:
+                    self.send_json(400, {'error': 'body too large'}); return
+                body = json.loads(self.rfile.read(max(0, length)))
             except (ValueError, json.JSONDecodeError) as e:
                 self.send_json(400, {'error': str(e)}); return
             items = body if isinstance(body, list) else body.get('items', [])
