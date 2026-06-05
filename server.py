@@ -498,6 +498,11 @@ if DATABASE_URL:
                     username   TEXT PRIMARY KEY,
                     items_json TEXT NOT NULL DEFAULT '[]'
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_insights (
+                    username     TEXT PRIMARY KEY,
+                    insights_json TEXT NOT NULL DEFAULT '{}'
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -645,6 +650,19 @@ if DATABASE_URL:
                 ON CONFLICT (username) DO UPDATE SET items_json = EXCLUDED.items_json
             """, (username, json.dumps(items, ensure_ascii=False)))
 
+    def load_insights(username):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT insights_json FROM user_insights WHERE username=%s", (username,))
+            row = cur.fetchone()
+        return json.loads(row[0]) if row else {}
+
+    def save_insights(username, data):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("""
+                INSERT INTO user_insights (username, insights_json) VALUES (%s, %s)
+                ON CONFLICT (username) DO UPDATE SET insights_json = EXCLUDED.insights_json
+            """, (username, json.dumps(data, ensure_ascii=False)))
+
     _init_db()
 
 else:
@@ -726,6 +744,19 @@ else:
     def save_watchlist(username, items):
         f = BASE / f'watchlist_{username}.json'
         f.write_text(json.dumps(items, ensure_ascii=False), encoding='utf-8')
+
+    def load_insights(username):
+        f = BASE / f'insights_{username}.json'
+        if f.exists():
+            try:
+                return json.loads(f.read_text(encoding='utf-8'))
+            except Exception:
+                return {}
+        return {}
+
+    def save_insights(username, data):
+        f = BASE / f'insights_{username}.json'
+        f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
 
 
 def migrate_user_to_portfolios(username):
@@ -889,6 +920,15 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             try:
                 self.send_json(200, load_watchlist(username))
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/insights':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                self.send_json(200, load_insights(username))
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
@@ -1912,6 +1952,22 @@ async function doRecover() {
                 self.send_json(400, {'error': 'expected list'}); return
             try:
                 save_watchlist(username, items)
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/insights':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=512 * 1024)
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            if not isinstance(body, dict):
+                self.send_json(400, {'error': 'expected object'}); return
+            try:
+                save_insights(username, body)
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
