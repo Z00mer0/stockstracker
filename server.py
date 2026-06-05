@@ -1243,7 +1243,6 @@ class Handler(SimpleHTTPRequestHandler):
                     if isinstance(ex_div, dict):
                         out.setdefault('exDividendDate', ex_div.get('fmt'))
                     elif ex_div:
-                        import datetime
                         try:
                             out.setdefault('exDividendDate', datetime.date.fromtimestamp(ex_div).isoformat())
                         except Exception:
