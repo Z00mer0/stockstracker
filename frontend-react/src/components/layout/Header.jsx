@@ -16,16 +16,57 @@ function isEuropeDST() {
   return now >= lastSunMarch && now < lastSunOct;
 }
 
+function isUsDST() {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  // Second Sunday of March (starts at >= Mar 8)
+  const secondSunMar = new Date(Date.UTC(y, 2, 8));
+  while (secondSunMar.getUTCDay() !== 0) secondSunMar.setUTCDate(secondSunMar.getUTCDate() + 1);
+  // First Sunday of November
+  const firstSunNov = new Date(Date.UTC(y, 10, 1));
+  while (firstSunNov.getUTCDay() !== 0) firstSunNov.setUTCDate(firstSunNov.getUTCDate() + 1);
+  return now >= secondSunMar && now < firstSunNov;
+}
+
+const GPW_HOLIDAYS = new Set([
+  '2025-01-01','2025-01-06','2025-04-18','2025-04-21','2025-05-01',
+  '2025-06-19','2025-08-15','2025-11-11','2025-12-24','2025-12-25','2025-12-26','2025-12-31',
+  '2026-01-01','2026-01-06','2026-04-03','2026-04-06','2026-05-01',
+  '2026-06-04','2026-11-11','2026-12-24','2026-12-25','2026-12-31',
+  '2027-01-01','2027-01-06','2027-03-26','2027-03-29','2027-05-03',
+  '2027-05-27','2027-11-01','2027-11-11','2027-12-24','2027-12-31',
+]);
+
+const NYSE_HOLIDAYS = new Set([
+  '2025-01-01','2025-01-20','2025-02-17','2025-04-18','2025-05-26',
+  '2025-06-19','2025-07-04','2025-09-01','2025-11-27','2025-12-25',
+  '2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25',
+  '2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+  '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31',
+  '2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24',
+]);
+
+const LSE_HOLIDAYS = new Set([
+  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26',
+  '2025-08-25','2025-12-25','2025-12-26',
+  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25',
+  '2026-08-31','2026-12-25','2026-12-28',
+  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31',
+  '2027-08-30','2027-12-27','2027-12-28',
+]);
+
 function getMarketStatuses() {
   const now = new Date();
   const day = now.getUTCDay();
   const t = now.getUTCHours() * 60 + now.getUTCMinutes();
   const isWd = day >= 1 && day <= 5;
-  const dst = isEuropeDST();
+  const euDst = isEuropeDST();
+  const usDst = isUsDST();
+  const d = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
   return [
-    { label: 'GPW',  open: isWd && t >= (dst ? 420 : 480) && t < (dst ? 905 : 965) },
-    { label: 'NYSE', open: isWd && t >= 870 && t < 1260 },
-    { label: 'LSE',  open: isWd && t >= (dst ? 420 : 480) && t < (dst ? 930 : 990) },
+    { label: 'GPW',  open: isWd && !GPW_HOLIDAYS.has(d)  && t >= (euDst ? 420 : 480) && t < (euDst ? 905 : 965) },
+    { label: 'NYSE', open: isWd && !NYSE_HOLIDAYS.has(d) && t >= (usDst ? 810 : 870) && t < (usDst ? 1200 : 1260) },
+    { label: 'LSE',  open: isWd && !LSE_HOLIDAYS.has(d)  && t >= (euDst ? 420 : 480) && t < (euDst ? 930 : 990) },
   ];
 }
 

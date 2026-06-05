@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
+import { useFxBreakdown } from '../hooks/useFxBreakdown';
 import Spinner from '../components/shared/Spinner';
 import Card from '../components/shared/Card';
 
@@ -371,6 +372,139 @@ const _SECTOR_PE = {
   'Basic Materials': 16, 'Utilities': 18, 'Financial': 15,
 };
 
+const FIRE_KEY = 'myfund_fire_settings';
+function loadFireSettings() {
+  try { return JSON.parse(localStorage.getItem(FIRE_KEY) || '{}'); } catch { return {}; }
+}
+
+function FireSection({ totalValue }) {
+  const saved = loadFireSettings();
+  const [expenses, setExpenses] = useState(saved.expenses ?? '');
+  const [savings,  setSavings]  = useState(saved.savings  ?? '');
+  const [annReturn, setAnnReturn] = useState(saved.annReturn ?? 7);
+  const [infl,      setInfl]      = useState(saved.infl      ?? 3);
+
+  useEffect(() => {
+    localStorage.setItem(FIRE_KEY, JSON.stringify({ expenses, savings, annReturn, infl }));
+  }, [expenses, savings, annReturn, infl]);
+
+  const monthlyExp = parseFloat(expenses) || 0;
+  const monthlySav = parseFloat(savings)  || 0;
+  const realReturn = (1 + annReturn / 100) / (1 + infl / 100) - 1;
+  const target = monthlyExp * 12 * 25;
+  const progress = target > 0 ? Math.min((totalValue / target) * 100, 100) : 0;
+  const monthlyPassive = totalValue > 0 ? (totalValue * 0.04) / 12 : 0;
+
+  let yearsToFire = null;
+  if (target > 0 && totalValue >= 0) {
+    if (totalValue >= target) {
+      yearsToFire = 0;
+    } else {
+      const mr = Math.pow(1 + realReturn, 1 / 12) - 1;
+      let lo = 0, hi = 1200;
+      while (lo < hi - 1) {
+        const mid = Math.floor((lo + hi) / 2);
+        const fv = totalValue * Math.pow(1 + mr, mid) +
+          (mr > 0.000001
+            ? monthlySav * (Math.pow(1 + mr, mid) - 1) / mr
+            : monthlySav * mid);
+        if (fv >= target) hi = mid; else lo = mid;
+      }
+      yearsToFire = hi <= 1199 ? hi / 12 : null;
+    }
+  }
+
+  const fireYear = yearsToFire != null
+    ? new Date().getFullYear() + Math.ceil(yearsToFire)
+    : null;
+
+  const inputStyle = {
+    background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+    color: 'var(--text)', fontSize: 13, padding: '6px 10px', width: '100%',
+    outline: 'none',
+  };
+  const labelStyle = { fontSize: 11, color: 'var(--text-faint)', marginBottom: 4, display: 'block' };
+
+  return (
+    <Card title="FIRE Calculator — kiedy możesz przejść na emeryturę?">
+      <div className="card-body">
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>
+          Reguła 4% — cel = 25× roczne wydatki. Obliczenia używają realnej stopy zwrotu (nominalny − inflacja).
+        </p>
+
+        {/* Inputs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+          <div>
+            <label style={labelStyle}>Miesięczne wydatki (PLN)</label>
+            <input style={inputStyle} type="number" min="0" step="100"
+              value={expenses} onChange={e => setExpenses(e.target.value)}
+              placeholder="np. 5000" />
+          </div>
+          <div>
+            <label style={labelStyle}>Miesięczne oszczędności (PLN)</label>
+            <input style={inputStyle} type="number" min="0" step="100"
+              value={savings} onChange={e => setSavings(e.target.value)}
+              placeholder="np. 2000" />
+          </div>
+          <div>
+            <label style={labelStyle}>Oczekiwana stopa zwrotu: {annReturn}%</label>
+            <input type="range" min="2" max="15" step="0.5" value={annReturn}
+              onChange={e => setAnnReturn(parseFloat(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--accent)' }} />
+          </div>
+          <div>
+            <label style={labelStyle}>Inflacja: {infl}%</label>
+            <input type="range" min="0" max="10" step="0.5" value={infl}
+              onChange={e => setInfl(parseFloat(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--accent)' }} />
+          </div>
+        </div>
+
+        {monthlyExp > 0 ? (
+          <>
+            {/* KPIs */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
+              {[
+                { label: 'Cel FIRE (PLN)',       value: fmt(target),                color: 'var(--text)' },
+                { label: 'Obecny portfel',        value: fmt(totalValue),             color: 'var(--text)' },
+                { label: 'Postęp',                value: `${fmt(progress, 1)}%`,      color: progress >= 100 ? 'var(--up)' : 'var(--accent)' },
+                { label: 'Rok FIRE',              value: fireYear ?? '> 100 lat',     color: fireYear ? 'var(--up)' : 'var(--text-faint)' },
+                { label: 'Do emerytury',          value: yearsToFire == null ? '—' : yearsToFire === 0 ? 'Już teraz!' : `${fmt(yearsToFire, 1)} lat`, color: yearsToFire === 0 ? 'var(--up)' : 'var(--text)' },
+                { label: 'Pasywny dochód/mies.', value: `${fmt(monthlyPassive)} zł`, color: monthlyPassive >= monthlyExp ? 'var(--up)' : 'var(--text-dim)' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="kpi-card">
+                  <div className="kpi-label">{label}</div>
+                  <div className="kpi-value" style={{ fontSize: 18, color }}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Progress bar */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-faint)', marginBottom: 6 }}>
+                <span>0</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{fmt(progress, 1)}% do celu</span>
+                <span>{fmt(target)} zł</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 4, background: 'var(--panel-2)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 4, transition: 'width 0.4s',
+                  width: `${progress}%`,
+                  background: progress >= 100 ? 'var(--up)' : 'linear-gradient(90deg, var(--accent), #818cf8)',
+                }} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic' }}>
+            Wpisz miesięczne wydatki aby zobaczyć obliczenia FIRE.
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function SmartInsightsSection({ enrichedPositions }) {
   const valid = enrichedPositions.filter(p => p.valuePLN != null && p.costPLN > 0);
   if (valid.length === 0) return null;
@@ -581,6 +715,8 @@ export default function Analysis() {
     [portfolio, fxRates, enrichPosition]
   );
 
+  const { breakdown: fxBreakdown, fxLoading } = useFxBreakdown(enriched, transactions, fxRates);
+
   const totalValue = enriched.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
 
   const withReturn = enriched
@@ -704,6 +840,16 @@ export default function Analysis() {
         </div>
       </Card>
 
+      {/* Dekompozycja zwrotów walutowych */}
+      <FxBreakdownSection
+        enriched={enriched}
+        breakdown={fxBreakdown}
+        loading={fxLoading}
+        isPrivate={isPrivate}
+      />
+
+      <FireSection totalValue={totalValue} />
+
       <SmartInsightsSection
         enrichedPositions={enriched.map(p => ({
           ...p,
@@ -712,6 +858,84 @@ export default function Analysis() {
         }))}
       />
     </div>
+  );
+}
+
+function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
+  const fxPositions = enriched.filter(p => p.currency && p.currency !== 'PLN' && p.price != null);
+
+  if (!fxPositions.length) return null;
+
+  function fmtPct(v) {
+    if (v == null || isNaN(v)) return '—';
+    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+  }
+  function fmtFx(v) {
+    if (v == null) return '—';
+    return v.toFixed(4);
+  }
+  function pctColor(v) {
+    if (v == null) return 'var(--text-faint)';
+    return v >= 0 ? 'var(--up)' : 'var(--down)';
+  }
+
+  return (
+    <Card title="Dekompozycja zwrotu walutowego">
+      <div className="card-body">
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>
+          Ile zwrotu pochodzi z samego aktywa, a ile z ruchu kursu waluty (kurs zakupu z NBP)
+        </p>
+        {loading && (
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 8 }}>
+            ⏳ Pobieranie historycznych kursów NBP…
+          </p>
+        )}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Waluta</th>
+                <th className="right">Kurs zakupu</th>
+                <th className="right">Kurs obecny</th>
+                <th className="right">Zwrot aktywa</th>
+                <th className="right">Wpływ FX</th>
+                <th className="right">Łączny PLN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fxPositions.map(pos => {
+                const bd = breakdown[pos.symbol];
+                return (
+                  <tr key={pos.symbol}>
+                    <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
+                    <td style={{ color: 'var(--text-dim)' }}>{pos.currency}</td>
+                    <td className="right mono" style={{ color: 'var(--text-dim)' }}>
+                      {bd ? fmtFx(bd.purchaseFx) : loading ? '…' : '—'}
+                    </td>
+                    <td className="right mono" style={{ color: 'var(--text-dim)' }}>
+                      {bd ? fmtFx(bd.currentFx) : '—'}
+                    </td>
+                    <td className="right mono" style={{ color: bd ? pctColor(bd.assetReturn) : 'var(--text-faint)', fontWeight: 600 }}>
+                      {bd ? fmtPct(bd.assetReturn) : loading ? '…' : '—'}
+                    </td>
+                    <td className="right mono" style={{ color: bd ? pctColor(bd.fxReturn) : 'var(--text-faint)', fontWeight: 600 }}>
+                      {bd ? fmtPct(bd.fxReturn) : loading ? '…' : '—'}
+                    </td>
+                    <td className="right mono" style={{ color: bd ? pctColor(bd.totalReturn) : 'var(--text-faint)', fontWeight: 700 }}>
+                      {bd ? fmtPct(bd.totalReturn) : loading ? '…' : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 10, lineHeight: 1.5 }}>
+          Łączny PLN ≈ (1 + Zwrot aktywa) × (1 + Wpływ FX) − 1. Kursy historyczne: NBP (tabela A).
+        </p>
+      </div>
+    </Card>
   );
 }
 

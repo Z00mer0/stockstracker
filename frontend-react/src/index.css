@@ -90,6 +90,7 @@ body.privacy-mode .privacy-blur { filter: blur(6px); user-select: none; }
   animation: dot-pulse 1.6s ease-in-out infinite;
   flex-shrink: 0;
 }
+.dot-status.closed { background: var(--text-faint); animation: none; }
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.35; }

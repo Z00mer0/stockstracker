@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/api/quotes", "destination": "/api/quotes" },
     { "source": "/api/crypto-price", "destination": "/api/crypto-price" },
+    { "source": "/api/splits", "destination": "/api/splits" },
     { "source": "/api/:path*", "destination": "https://stockstracker.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

@@ -16,6 +16,7 @@ export const NAV_ITEMS = [
   { to: '/watchlist',    icon: ic(<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>), label: 'Watchlist' },
   { to: '/scenario',     icon: ic(<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>), label: 'Scenario Lab' },
   { to: '/analysis',     icon: ic(<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>), label: 'Atrybucja' },
+  { to: '/ai',           icon: ic(<><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M12 8v4l3 3"/></>), label: 'AI Insights' },
 ];
 
 export const NAV_BOTTOM = [

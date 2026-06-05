@@ -12,6 +12,7 @@ import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
+import { useSplitDetector } from '../hooks/useSplitDetector';
 import {
   COLUMN_DEFS, loadColumnConfig, saveColumnConfig,
 } from '../utils/portfolioColumns';
@@ -218,6 +219,7 @@ export default function Portfolio() {
   const menuRef = useRef(null);
 
   const { addDividend } = useDividendEvents(portfolio.map(p => p.symbol));
+  const { alerts: splitAlerts, dismissAlert } = useSplitDetector(portfolio, transactions);
 
   useEffect(() => {
     if (!menuSym) return;
@@ -314,6 +316,38 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-4">
+      {/* Split alerts */}
+      {splitAlerts.map(alert => (
+        <div key={alert.key} style={{
+          padding: '12px 16px',
+          borderRadius: 10,
+          background: 'rgba(234,179,8,0.08)',
+          border: '1px solid rgba(234,179,8,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>{alert.symbol}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Split {alert.ratio} wykryty {alert.date} — sprawdź czy ilość akcji ({alert.qty}) jest już po splicie
+            </span>
+          </div>
+          <button
+            onClick={() => dismissAlert(alert.key)}
+            style={{
+              fontSize: 11, padding: '3px 10px', borderRadius: 6,
+              background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.4)',
+              color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            Rozumiem
+          </button>
+        </div>
+      ))}
+
       {/* Summary */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
         <div>

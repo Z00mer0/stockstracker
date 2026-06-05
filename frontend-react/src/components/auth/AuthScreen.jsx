@@ -1,6 +1,32 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import "./auth.css";
 
+/* ---------- GPW session status ---------- */
+const GPW_HOLIDAYS = new Set([
+  // 2025
+  '2025-01-01','2025-01-06','2025-04-18','2025-04-21','2025-05-01',
+  '2025-06-19','2025-08-15','2025-11-11','2025-12-24','2025-12-25','2025-12-26','2025-12-31',
+  // 2026
+  '2026-01-01','2026-01-06','2026-04-03','2026-04-06','2026-05-01',
+  '2026-06-04','2026-11-11','2026-12-24','2026-12-25','2026-12-31',
+  // 2027
+  '2027-01-01','2027-01-06','2027-03-26','2027-03-29','2027-05-03',
+  '2027-05-27','2027-11-01','2027-11-11','2027-12-24','2027-12-31',
+]);
+
+function isGpwSessionOpen() {
+  const now = new Date();
+  const waw = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
+  const year  = waw.getFullYear();
+  const month = String(waw.getMonth() + 1).padStart(2, '0');
+  const day   = String(waw.getDate()).padStart(2, '0');
+  const dow   = waw.getDay(); // 0=Sun, 6=Sat
+  const mins  = waw.getHours() * 60 + waw.getMinutes();
+  if (dow === 0 || dow === 6) return false;
+  if (GPW_HOLIDAYS.has(`${year}-${month}-${day}`)) return false;
+  return mins >= 9 * 60 && mins <= 17 * 60 + 5;
+}
+
 /* ---------- password strength (0–4) ---------- */
 function scorePassword(pw) {
   if (!pw) return 0;
@@ -77,7 +103,8 @@ export default function AuthScreen({
     setServerError(null);
   }
 
-  const isTerm = variant === "terminal";
+  const isTerm     = variant === "terminal";
+  const sessionOpen = isGpwSessionOpen();
 
   return (
     <div className={`auth-stage ${isTerm ? "v-term" : "v-clean"}`}>
@@ -94,7 +121,10 @@ export default function AuthScreen({
         {/* terminal status strip */}
         {isTerm && (
           <div className="auth-status">
-            <span className="live"><span className="dot-status" />Sesja otwarta</span>
+            <span className="live">
+              <span className={`dot-status${sessionOpen ? '' : ' closed'}`} />
+              {sessionOpen ? 'Sesja otwarta' : 'Sesja zamknięta'}
+            </span>
             <span className="tk mono">
               <span className="sym">WIG20</span>
               {wig20 ? (
