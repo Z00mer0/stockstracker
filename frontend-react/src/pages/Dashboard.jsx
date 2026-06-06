@@ -12,6 +12,12 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import KpiPro from '../components/shared/KpiPro';
+import InsightStrip from '../components/shared/InsightStrip';
+import StackedAllocation from '../components/shared/StackedAllocation';
+import WinnersLosers from '../components/shared/WinnersLosers';
+import SegmentedControl from '../components/shared/SegmentedControl';
+import HistoryChart from '../components/HistoryChart';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 function xirr(cashflows) {
@@ -316,6 +322,7 @@ export default function Dashboard() {
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const [cols] = useState(loadColumnConfig);
+  const [tf, setTf] = useState('MAX');
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
@@ -471,193 +478,180 @@ export default function Dashboard() {
     return { pln, pct };
   }, [allPositions, kpi.totalValue]);
 
+  const snapshotsFiltered = useMemo(() => {
+    const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+    if (tf === 'MAX') return sorted;
+    const days = { '1T': 7, '1M': 30, '3M': 90, '6M': 180, '1R': 365 }[tf] || 30;
+    const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    return sorted.filter(s => s.date >= cutoff);
+  }, [snapshots, tf]);
+
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
 
+  const fmtVal = (n, d = 0) => n == null || isNaN(n)
+    ? '—'
+    : n.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  const dayChipVal = dailyChange.pct != null
+    ? (dailyChange.pct >= 0 ? '+' : '') + fmtVal(dailyChange.pct, 2) + '%'
+    : null;
+  const unrealChipVal = kpi.unrealPct != null
+    ? (kpi.unrealPct >= 0 ? '+' : '') + fmtVal(kpi.unrealPct, 2) + '%'
+    : null;
+  const irrChipVal = portfolioIrr != null
+    ? (portfolioIrr * 100).toFixed(1) + '%/r'
+    : null;
+
+  const TF_OPTIONS = ['1T', '1M', '3M', '6M', '1R', 'MAX'];
+
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <div className="page-header">
+    <div>
+      {/* page-head */}
+      <div className="page-header" style={{ marginBottom: 18 }}>
         <div>
           <h1 className="page-title">Witaj, {displayName ?? 'Inwestorze'}</h1>
-          <p className="page-sub">{new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="page-sub">
+            {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
         </div>
       </div>
 
-      {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
-        <KpiCard
-          label="Wartość portfela"
-          value={`${fmt(kpi.totalValue)} ${currLabel}`}
-          isPrivate={isPrivate}
-        />
-        <KpiCard
-          label="Unrealized P&L"
-          value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmt(kpi.unrealPLN)} ${currLabel}`}
-          sub={`${kpi.unrealPct >= 0 ? '+' : ''}${fmt(kpi.unrealPct)}%${!kpi.pricesLoaded ? ' (ceny ładuję…)' : ''}`}
-          trend={kpi.unrealPLN}
-          isPrivate={isPrivate}
-        />
-        <KpiCard
-          label="Realized P&L"
-          value={`${kpi.realizedPLN >= 0 ? '+' : ''}${fmt(kpi.realizedPLN)} ${currLabel}`}
-          sub={kpi.totalROI != null ? `Total ROI: ${kpi.totalROI >= 0 ? '+' : ''}${fmt(kpi.totalROI, 1)}%` : undefined}
-          trend={kpi.realizedPLN}
-          isPrivate={isPrivate}
-        />
-        <KpiCard
-          label="Roczna Dywidenda"
-          value={`${fmt(kpi.annualDivPLN)} ${currLabel}`}
-          sub="ostatnie 12 miesięcy"
-          isPrivate={isPrivate}
-        />
-        <KpiCard
-          label="Zmiana dzienna"
-          value={`${dailyChange.pln >= 0 ? '+' : ''}${fmt(dailyChange.pln)} ${currLabel}`}
-          sub={dailyChange.pct != null ? `${dailyChange.pct >= 0 ? '+' : ''}${fmt(dailyChange.pct, 2)}%` : undefined}
-          trend={dailyChange.pln}
-          isPrivate={isPrivate}
-        />
-        <KpiCard
-          label="IRR portfela"
-          value={portfolioIrr != null ? (portfolioIrr * 100).toFixed(1) + '%' : 'N/A'}
-          sub={
-            portfolioIrr != null
-              ? irrMissingSymbols.length > 0
-                ? `bez ${irrMissingSymbols.join(', ')} (brak BUY)`
-                : 'ważona roczna stopa zwrotu'
-              : `min. 30 dni (${irrDaySpan} dni historii)`
-          }
-          trend={portfolioIrr}
-          isPrivate={false}
-        />
-      </div>
-
-      {/* Gotówka */}
-      <CashSection cash={cash} fxRates={fxRates} saveCash={saveCash} />
-
-      {/* Alokacja */}
+      {/* InsightStrip */}
       {allPositions.length > 0 && (
-        <AllocationChart positions={allPositions} />
+        <InsightStrip positions={allPositions} dailyChangePLN={dailyChange.pln} />
       )}
 
-      {/* Top movers today */}
-      {(topMovers.gainers.length > 0 || topMovers.losers.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 14 }}>
-          {[
-            { title: 'Najlepsze dziś', rows: topMovers.gainers, color: 'var(--up)' },
-            { title: 'Najsłabsze dziś', rows: topMovers.losers, color: 'var(--down)' },
-          ].map(({ title, rows, color }) => (
-            <Card key={title} title={title}>
-              {rows.length === 0
-                ? <p style={{ padding: '4px 16px', fontSize: 12, color: 'var(--text-faint)' }}>Brak danych</p>
-                : rows.map(pos => {
-                  const dayPLN = pos.valuePLN != null ? pos.valuePLN * pos.dailyChg / 100 : null;
-                  return (
-                    <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <TickerLogo symbol={pos.symbol} size={28} />
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</div>
-                          {pos.name && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{pos.name.slice(0, 20)}</div>}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'JetBrains Mono, monospace' }}>
-                          {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg.toFixed(2)}%
-                        </div>
-                        {dayPLN != null && (
-                          <div style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'JetBrains Mono, monospace' }}>
-                            {dayPLN >= 0 ? '+' : ''}{fmt(dayPLN)} zł
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              }
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* KPI grid */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 18 }}>
+        <KpiPro
+          hero
+          label="Wartość portfela"
+          value={`${fmtVal(kpi.totalValue)} ${currLabel}`}
+          chip={dayChipVal}
+          chipUp={dailyChange.pln >= 0}
+          sub="dziś"
+          spark={kpi.sparkValues.slice(-24)}
+          sparkUp={dailyChange.pln >= 0}
+          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+        />
+        <KpiPro
+          label="Zysk / strata"
+          tone={kpi.unrealPLN >= 0 ? 'up' : 'down'}
+          value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmtVal(kpi.unrealPLN)} ${currLabel}`}
+          chip={unrealChipVal}
+          chipUp={kpi.unrealPLN >= 0}
+          sub="niezrealizowany"
+          spark={kpi.sparkValues.slice(-24)}
+          sparkUp={kpi.unrealPLN >= 0}
+          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>}
+        />
+        <KpiPro
+          label="Dywidendy YTD"
+          value={`${fmtVal(kpi.annualDivPLN)} ${currLabel}`}
+          sub={nextDividend ? `następna: ${nextDividend.symbol}` : 'ostatnie 12 mies.'}
+          spark={kpi.sparkValues.slice(-24)}
+          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>}
+        />
+        <KpiPro
+          label="Wolne środki"
+          value={`${fmtVal(kpi.cashValue)} ${currLabel}`}
+          chip={irrChipVal}
+          chipUp={portfolioIrr != null && portfolioIrr >= 0}
+          sub="konto · PLN"
+          spark={kpi.sparkValues.slice(-24)}
+          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>}
+        />
+      </div>
 
-      {/* Sparkline historii */}
-      {kpi.sparkValues.length > 1 && (
-        <Card title="Historia wartości portfela" actions={
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{kpi.sparkValues.length} punktów</span>
-        }>
-          <div style={{ padding: '0 20px 16px' }}>
-            <Sparkline data={kpi.sparkValues} width={800} height={80} />
-            {nextDividend && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
-                <span style={{ color: 'var(--text-faint)' }}>Najbliższa dywidenda:</span>
-                <span style={{ fontWeight: 700, color: 'var(--warn)' }}>{nextDividend.symbol}</span>
-                <span style={{ color: 'var(--text-dim)' }}>{nextDividend.date}</span>
-                {nextDividend.amount != null && (
-                  <span style={{ color: 'var(--text-faint)' }}>
-                    {nextDividend.amount.toFixed(4)} {nextDividend.currency ?? ''}
-                  </span>
-                )}
-                <span style={{ color: 'var(--text-faint)', marginLeft: 'auto' }}>{nextDividend.isManual ? '✍️ ręczne' : '🤖 auto'}</span>
+      {/* Chart + Top movers */}
+      <div className="detail-grid" style={{ gridTemplateColumns: '1fr 380px', gap: 16, marginBottom: 18 }}>
+        <div className="card chart-card">
+          <div style={{ padding: '18px 20px 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
+                Wartość portfela · {tf}
               </div>
-            )}
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                {fmtVal(kpi.totalValue)} {currLabel}
+              </div>
+            </div>
+            <SegmentedControl
+              options={TF_OPTIONS}
+              value={tf}
+              onChange={setTf}
+            />
           </div>
-        </Card>
-      )}
+          <div style={{ padding: '4px 12px 18px' }}>
+            {snapshotsFiltered.length >= 2
+              ? <HistoryChart data={snapshotsFiltered} />
+              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>Za mało danych historycznych</div>
+            }
+          </div>
+        </div>
 
-      {/* Top pozycje */}
-      {topPositions.length > 0 && (
-        <Card title="Największe pozycje (wg kosztu)">
-          <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th className="text-left">Symbol</th>
-                  {cols.map(key => (
-                    <th key={key} className="text-right whitespace-nowrap">
-                      {COL_LABEL_DASH[key] ?? key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {topPositions.map((pos) => (
-                  <tr key={pos.id ?? pos.symbol}>
-                    <td
-                      className="cursor-pointer"
-                      onClick={() => openChart(pos.symbol)}
-                      title={`Otwórz wykres ${pos.symbol}`}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                    >
-                      <TickerLogo symbol={pos.symbol} />
-                      <span style={{ color: 'var(--info)', fontWeight: 700 }} className="hover:underline">
-                        {pos.symbol}
-                      </span>
-                      {pos.name && pos.name !== pos.symbol && (
-                        <span style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 400 }} className="hidden sm:inline">
-                          {pos.name}
-                        </span>
-                      )}
-                    </td>
-                    {cols.map(key => (
-                      <td key={key} className="text-right whitespace-nowrap">
-                        {renderCellDash(key, pos, isPrivate)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="card">
+          <div className="card-head">
+            <div className="card-title">Top ruchy dzisiaj</div>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span className="dot-status" />
+              live
+            </span>
           </div>
-        </Card>
+          <div>
+            {[...topMovers.gainers, ...topMovers.losers].length === 0
+              ? <p style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-faint)' }}>Brak danych</p>
+              : [...topMovers.gainers, ...topMovers.losers].map(pos => (
+                <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
+                  <TickerLogo symbol={pos.symbol} size={28} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
+                    {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
+                  </div>
+                  <div style={{ textAlign: 'right', minWidth: 58 }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                      {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
+                    </div>
+                    {pos.price != null && (
+                      <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmt(pos.price)}</div>
+                    )}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+
+      {/* Allocation + Winners/Losers */}
+      {allPositions.length > 0 && (
+        <div className="detail-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 18 }}>
+          <div className="card">
+            <div className="card-head">
+              <div className="card-title">Alokacja sektorowa</div>
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              <StackedAllocation positions={allPositions} totalValue={kpi.positionsValue} />
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head">
+              <div className="card-title">Wygrani i przegrani</div>
+              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>zwrot %</span>
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              <WinnersLosers positions={allPositions} />
+            </div>
+          </div>
+        </div>
       )}
 
       {!portfolio.length && !loading && (
         <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-faint)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
           <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak danych portfela</p>
-          <p style={{ fontSize: 14, marginTop: 4 }}>Dodaj pozycje w głównym portalu StocksTracker</p>
+          <p style={{ fontSize: 14, marginTop: 4 }}>Dodaj pozycje w zakładce Portfel</p>
         </div>
       )}
     </div>
