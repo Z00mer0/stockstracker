@@ -900,7 +900,10 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split('?')[0]
 
-        if path == '/api/calendar':
+        if path == '/api/health':
+            self.send_json(200, {'status': 'ok'}); return
+
+        elif path == '/api/calendar':
             qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             week = qs.get('week', 'thisweek')
             if week not in ('thisweek', 'nextweek'):
