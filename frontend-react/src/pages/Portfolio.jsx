@@ -348,29 +348,6 @@ export default function Portfolio() {
   }, [toast]);
 
   useEffect(() => {
-    if (!alerts.length || !enriched.length) return;
-    const triggered = [];
-    const remaining = alerts.filter(a => {
-      const pos = enriched.find(p => p.symbol === a.symbol);
-      if (!pos?.price) return true;
-      const hit = a.direction === 'above' ? pos.price >= a.target : pos.price <= a.target;
-      if (hit) triggered.push({ ...a, price: pos.price });
-      return !hit;
-    });
-    if (!triggered.length) return;
-    saveAlerts(remaining);
-    setAlerts(remaining);
-    for (const a of triggered) {
-      const msg = `${a.symbol} osiągnął ${a.price.toFixed(2)} (alert: ${a.direction === 'above' ? '≥' : '≤'} ${a.target})`;
-      if (Notification.permission === 'granted') {
-        new Notification('Alert cenowy', { body: msg, icon: '/favicon.ico' });
-      } else {
-        setToast(msg);
-      }
-    }
-  }, [enriched]);
-
-  useEffect(() => {
     if (!showExportMenu) return;
     function handler(e) { if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) setShowExportMenu(false); }
     document.addEventListener('mousedown', handler);
@@ -408,6 +385,29 @@ export default function Portfolio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [portfolio, fxRates, enrichPosition]
   );
+
+  useEffect(() => {
+    if (!alerts.length || !enriched.length) return;
+    const triggered = [];
+    const remaining = alerts.filter(a => {
+      const pos = enriched.find(p => p.symbol === a.symbol);
+      if (!pos?.price) return true;
+      const hit = a.direction === 'above' ? pos.price >= a.target : pos.price <= a.target;
+      if (hit) triggered.push({ ...a, price: pos.price });
+      return !hit;
+    });
+    if (!triggered.length) return;
+    saveAlerts(remaining);
+    setAlerts(remaining);
+    for (const a of triggered) {
+      const msg = `${a.symbol} osiągnął ${a.price.toFixed(2)} (alert: ${a.direction === 'above' ? '≥' : '≤'} ${a.target})`;
+      if (Notification.permission === 'granted') {
+        new Notification('Alert cenowy', { body: msg, icon: '/favicon.ico' });
+      } else {
+        setToast(msg);
+      }
+    }
+  }, [enriched, alerts]);
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
   const totalValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
