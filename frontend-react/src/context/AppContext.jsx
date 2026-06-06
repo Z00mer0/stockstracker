@@ -54,6 +54,7 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     loadFxRates().then(setFxRates);
+    fetch('/api/keepalive').catch(() => {});
   }, []);
 
   function login(newToken, name) {
