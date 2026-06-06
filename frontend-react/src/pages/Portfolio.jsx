@@ -19,6 +19,7 @@ import {
 import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import Card from '../components/shared/Card';
+import * as XLSX from 'xlsx';
 
 const CRYPTO_OPTIONS = [
   'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','AVAX',
@@ -476,6 +477,48 @@ export default function Portfolio() {
     URL.revokeObjectURL(url);
   }
 
+  function handleExportXlsPositions() {
+    const headers = ['Symbol', 'Ilość', 'Śr. zakup', 'Waluta', 'Cena', 'Wart. zakupu (PLN)', 'Wart. teraz (PLN)', 'Zysk/Strata (PLN)', 'Zysk/Strata (%)', 'Zmiana dz. (%)'];
+    const rows = sorted.map(p => [
+      p.symbol, p.qty ?? '', p.avgPrice ?? '', p.currency ?? '', p.price ?? '',
+      p.costPLN != null ? parseFloat(p.costPLN.toFixed(2)) : '',
+      p.valuePLN != null ? parseFloat(p.valuePLN.toFixed(2)) : '',
+      p.plPLN != null ? parseFloat(p.plPLN.toFixed(2)) : '',
+      p.costPLN > 0 && p.plPLN != null ? parseFloat(((p.plPLN / p.costPLN) * 100).toFixed(2)) : '',
+      p.dailyChg != null ? parseFloat(p.dailyChg.toFixed(2)) : '',
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Portfel');
+    XLSX.writeFile(wb, `portfel_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  function handleExportXlsTransactions() {
+    const headers = ['Data', 'Typ', 'Symbol', 'Ilość', 'Cena', 'Waluta', 'Notatka'];
+    const rows = transactions.map(t => [
+      t.date ?? '', t.type ?? '', t.symbol ?? '',
+      t.qty != null ? t.qty : '',
+      t.price != null ? t.price : '',
+      t.currency ?? '', t.note ?? '',
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transakcje');
+    XLSX.writeFile(wb, `transakcje_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  function handleExportXlsSnapshots() {
+    const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];
+    const rows = snapshots
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(s => [s.date, s.total ?? '', s.invested ?? '']);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Historia');
+    XLSX.writeFile(wb, `historia_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
@@ -580,12 +623,15 @@ export default function Portfolio() {
                 position: 'absolute', top: '110%', left: 0, zIndex: 30,
                 background: 'var(--panel)', border: '1px solid var(--border)',
                 borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                minWidth: 180, padding: '4px 0', fontSize: 13,
+                minWidth: 200, padding: '4px 0', fontSize: 13,
               }}>
                 {[
-                  { label: 'Pozycje', fn: handleExportCsv },
-                  { label: 'Transakcje', fn: handleExportTransactions },
-                  { label: 'Historia snapshotów', fn: handleExportSnapshots },
+                  { label: 'Pozycje (CSV)', fn: handleExportCsv },
+                  { label: 'Pozycje (Excel)', fn: handleExportXlsPositions },
+                  { label: 'Transakcje (CSV)', fn: handleExportTransactions },
+                  { label: 'Transakcje (Excel)', fn: handleExportXlsTransactions },
+                  { label: 'Historia (CSV)', fn: handleExportSnapshots },
+                  { label: 'Historia (Excel)', fn: handleExportXlsSnapshots },
                 ].map(({ label, fn }) => (
                   <button key={label} onClick={() => { fn(); setShowExportMenu(false); }}
                     style={{ width: '100%', textAlign: 'left', padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)' }}

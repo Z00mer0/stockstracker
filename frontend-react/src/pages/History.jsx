@@ -54,12 +54,42 @@ const PERIODS = [
 ];
 
 const BENCHMARKS = [
-  { key: null,        label: 'Brak' },
-  { key: '^GSPC',     label: 'S&P 500' },
-  { key: '^IXIC',     label: 'NASDAQ' },
-  { key: 'URTH',      label: 'MSCI World' },
-  { key: 'PL:WIG20',  label: 'WIG20' },
+  { key: null,           label: 'Brak' },
+  { key: '^GSPC',        label: 'S&P 500' },
+  { key: '^IXIC',        label: 'NASDAQ' },
+  { key: 'URTH',         label: 'MSCI World' },
+  { key: 'PL:WIG20',     label: 'WIG20' },
+  { key: 'SYNTH:CPI_PL', label: 'Inflacja PL' },
+  { key: 'SYNTH:LOK5',   label: 'Lokata 5%' },
 ];
+
+// Polish annual CPI from GUS (average YoY %)
+const PL_CPI_ANNUAL = {
+  2018: 1.6, 2019: 2.3, 2020: 3.4, 2021: 5.1,
+  2022: 14.4, 2023: 11.4, 2024: 3.6, 2025: 5.2,
+};
+
+function generateSynthBench(key, startDate, endDate) {
+  const start = new Date(startDate);
+  const end   = new Date(endDate);
+  const pts   = [];
+  let price   = 1000;
+  const d     = new Date(start);
+  while (d <= end) {
+    pts.push({ date: d.toISOString().slice(0, 10), price });
+    const year  = d.getFullYear();
+    let annRate;
+    if (key === 'SYNTH:CPI_PL') {
+      annRate = (PL_CPI_ANNUAL[year] ?? PL_CPI_ANNUAL[2025]) / 100;
+    } else {
+      // SYNTH:LOK5 — fixed 5% per year
+      annRate = 0.05;
+    }
+    price *= Math.pow(1 + annRate, 1 / 365);
+    d.setDate(d.getDate() + 1);
+  }
+  return pts;
+}
 
 export default function History() {
   const { snapshots, loading, invested } = useApp();
@@ -117,7 +147,13 @@ export default function History() {
     setBenchLoading(true);
     const authHeader = { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
 
-    if (benchmark.startsWith('PL:')) {
+    if (benchmark.startsWith('SYNTH:')) {
+      // Synthetic benchmarks — generated locally, no fetch needed
+      const startDate = sorted.length ? sorted[0].date : new Date(Date.now() - 5 * 365 * 86400000).toISOString().slice(0, 10);
+      const endDate   = new Date().toISOString().slice(0, 10);
+      setBenchData(generateSynthBench(benchmark, startDate, endDate));
+      setBenchLoading(false);
+    } else if (benchmark.startsWith('PL:')) {
       const sym = benchmark.slice(3);
       fetch(`/api/bench-pl?s=${sym}`, { signal: AbortSignal.timeout(15000), headers: authHeader })
         .then(r => r.json())
@@ -144,7 +180,7 @@ export default function History() {
         .catch(() => setBenchData([]))
         .finally(() => setBenchLoading(false));
     }
-  }, [benchmark]);
+  }, [benchmark, sorted]);
 
   function handleExportHistory() {
     const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];

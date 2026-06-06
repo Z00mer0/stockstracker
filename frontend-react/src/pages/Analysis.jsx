@@ -704,6 +704,130 @@ function SmartInsightsSection({ enrichedPositions }) {
   );
 }
 
+const SECTOR_PL = {
+  'Technology': 'Technologia',
+  'Financial Services': 'Finanse',
+  'Healthcare': 'Ochrona zdrowia',
+  'Consumer Cyclical': 'Konsumpcja cykliczna',
+  'Consumer Defensive': 'Konsumpcja defensywna',
+  'Industrials': 'Przemysł',
+  'Basic Materials': 'Surowce',
+  'Energy': 'Energia',
+  'Utilities': 'Usługi komunalne',
+  'Real Estate': 'Nieruchomości',
+  'Communication Services': 'Komunikacja',
+};
+
+const SECTOR_COLORS = [
+  '#6366f1','#22c55e','#f59e0b','#3b82f6','#ec4899',
+  '#14b8a6','#f97316','#8b5cf6','#ef4444','#06b6d4','#84cc16',
+];
+
+function SectorAnalysisSection({ enriched, totalValue }) {
+  const [view, setView] = useState('sector'); // 'sector' | 'industry'
+
+  const positions = enriched.filter(p => p.valuePLN != null && p.valuePLN > 0);
+  const total = totalValue || positions.reduce((s, p) => s + p.valuePLN, 0);
+
+  const grouped = useMemo(() => {
+    const map = {};
+    for (const p of positions) {
+      const key = view === 'sector'
+        ? (p.sector || 'Inne')
+        : (p.industry || p.sector || 'Inne');
+      if (!map[key]) map[key] = { name: key, valuePLN: 0, plPLN: 0, positions: [] };
+      map[key].valuePLN += p.valuePLN;
+      map[key].plPLN   += p.plPLN ?? 0;
+      map[key].positions.push(p.symbol);
+    }
+    return Object.values(map).sort((a, b) => b.valuePLN - a.valuePLN);
+  }, [positions, view]);
+
+  if (!positions.length) return null;
+  const hasSectorData = positions.some(p => p.sector);
+  if (!hasSectorData) return null;
+
+  function fmt(n, d = 0) {
+    if (n == null || isNaN(n)) return '—';
+    return n.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
+  return (
+    <Card title="Analiza sektorowa i branżowa" actions={
+      <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+        {[['sector', 'Sektor'], ['industry', 'Branża']].map(([k, label]) => (
+          <button key={k} onClick={() => setView(k)} style={{
+            padding: '3px 12px', fontSize: 11, fontWeight: 600,
+            background: view === k ? 'var(--accent)' : 'var(--panel)',
+            color: view === k ? '#fff' : 'var(--text-dim)',
+            border: 'none', cursor: 'pointer',
+          }}>{label}</button>
+        ))}
+      </div>
+    }>
+      <div className="card-body">
+        {/* Bar chart */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+          {grouped.map((g, i) => {
+            const pct = total > 0 ? (g.valuePLN / total) * 100 : 0;
+            const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
+            const label = SECTOR_PL[g.name] || g.name;
+            return (
+              <div key={g.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>{label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{fmt(pct, 1)}%</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Detail table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{view === 'sector' ? 'Sektor' : 'Branża'}</th>
+                <th className="right">Wartość</th>
+                <th className="right">Udział</th>
+                <th className="right">Zysk/strata</th>
+                <th>Spółki</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grouped.map((g, i) => {
+                const pct   = total > 0 ? (g.valuePLN / total) * 100 : 0;
+                const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
+                const label = SECTOR_PL[g.name] || g.name;
+                return (
+                  <tr key={g.name}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+                      </div>
+                    </td>
+                    <td className="right mono" style={{ fontWeight: 600 }}>{fmt(g.valuePLN)} zł</td>
+                    <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(pct, 1)}%</td>
+                    <td className="right mono" style={{ color: g.plPLN >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
+                      {g.plPLN >= 0 ? '+' : ''}{fmt(g.plPLN)} zł
+                    </td>
+                    <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{g.positions.join(', ')}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function Analysis() {
   const { portfolio, transactions, fxRates, loading, snapshots } = useApp();
   const { isPrivate } = usePrivacy();
@@ -847,6 +971,8 @@ export default function Analysis() {
         loading={fxLoading}
         isPrivate={isPrivate}
       />
+
+      <SectorAnalysisSection enriched={enriched} totalValue={totalValue} />
 
       <FireSection totalValue={totalValue} />
 
