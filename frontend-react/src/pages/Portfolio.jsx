@@ -321,6 +321,8 @@ export default function Portfolio() {
   const [alertTarget, setAlertTarget] = useState(null); // { symbol, price }
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef(null);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const filterMenuRef = useRef(null);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -356,10 +358,18 @@ export default function Portfolio() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showExportMenu]);
+
+  useEffect(() => {
+    if (!showFilterMenu) return;
+    function handler(e) { if (filterMenuRef.current && !filterMenuRef.current.contains(e.target)) setShowFilterMenu(false); }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showFilterMenu]);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [tfPortfolio, setTfPortfolio] = useState('MAX');
   const [filterChip, setFilterChip] = useState('all');
+  const [filterGpw, setFilterGpw] = useState(false);
   const [grouped, setGrouped] = useState(false);
   const [cols, setCols] = useState(loadColumnConfig);
 
@@ -444,11 +454,12 @@ export default function Portfolio() {
   }, [enriched, sortBy]);
 
   const filteredSorted = useMemo(() => {
-    if (filterChip === 'win')  return sorted.filter(p => (p.plPLN ?? 0) >= 0);
-    if (filterChip === 'lose') return sorted.filter(p => (p.plPLN ?? 0) < 0);
-    if (filterChip === 'gpw')  return sorted.filter(p => p.symbol?.endsWith('.WA'));
-    return sorted;
-  }, [sorted, filterChip]);
+    let base = sorted;
+    if (filterChip === 'win')  base = base.filter(p => (p.plPLN ?? 0) >= 0);
+    if (filterChip === 'lose') base = base.filter(p => (p.plPLN ?? 0) < 0);
+    if (filterGpw)             base = base.filter(p => p.symbol?.endsWith('.WA'));
+    return base;
+  }, [sorted, filterChip, filterGpw]);
 
   const filteredCostPLN = filteredSorted.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
 
@@ -871,29 +882,100 @@ export default function Portfolio() {
       <div className="card" style={{ overflow: 'visible' }}>
         {/* Toolbar */}
         <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {/* Filter chips */}
-          {[
-            ['all',  'Wszystkie', null],
-            ['win',  'Zyskowne',  'var(--up)'],
-            ['lose', 'Stratne',   'var(--down)'],
-            ['gpw',  'GPW',       null],
-          ].map(([id, lbl, c]) => (
-            <button
-              key={id}
-              className={'chip-filter' + (filterChip === id ? ' active' : '')}
-              onClick={() => setFilterChip(id)}
-            >
-              {c && <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: 'inline-block', marginRight: 4 }} />}
-              {lbl}
-            </button>
-          ))}
-          <button
-            className={'chip-filter' + (grouped ? ' active' : '')}
-            onClick={() => setGrouped(g => !g)}
-            style={{ marginLeft: 4 }}
-          >
-            Sektory
-          </button>
+          {/* Filter dropdown */}
+          {(() => {
+            const activeCount = (filterChip !== 'all' ? 1 : 0) + (filterGpw ? 1 : 0) + (grouped ? 1 : 0);
+            return (
+              <div style={{ position: 'relative', flexShrink: 0 }} ref={filterMenuRef}>
+                <button
+                  className={'chip-filter' + (activeCount > 0 ? ' active' : '')}
+                  onClick={() => setShowFilterMenu(v => !v)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                  Filtry
+                  {activeCount > 0 && (
+                    <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '0 5px', lineHeight: '16px', minWidth: 16, textAlign: 'center' }}>
+                      {activeCount}
+                    </span>
+                  )}
+                </button>
+                {showFilterMenu && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 40,
+                    background: 'var(--panel)', border: '1px solid var(--border)',
+                    borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                    minWidth: 190, padding: '6px 0',
+                  }}>
+                    <div style={{ padding: '4px 12px 6px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Zysk / strata</div>
+                    {[
+                      ['all',  'Wszystkie',  null],
+                      ['win',  'Zyskowne',   'var(--up)'],
+                      ['lose', 'Stratne',    'var(--down)'],
+                    ].map(([id, lbl, c]) => (
+                      <button key={id} onClick={() => setFilterChip(id)} style={{
+                        width: '100%', textAlign: 'left', padding: '7px 14px',
+                        display: 'flex', alignItems: 'center', gap: 9,
+                        background: filterChip === id ? 'var(--panel-2)' : 'transparent',
+                        border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13,
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                        onMouseLeave={e => e.currentTarget.style.background = filterChip === id ? 'var(--panel-2)' : 'transparent'}
+                      >
+                        <span style={{ width: 14, textAlign: 'center', fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{filterChip === id ? '✓' : ''}</span>
+                        {c && <span style={{ width: 8, height: 8, borderRadius: 2, background: c, flexShrink: 0 }} />}
+                        {lbl}
+                      </button>
+                    ))}
+                    <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                    <div style={{ padding: '4px 12px 6px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Giełda</div>
+                    <button onClick={() => setFilterGpw(v => !v)} style={{
+                      width: '100%', textAlign: 'left', padding: '7px 14px',
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      background: filterGpw ? 'var(--panel-2)' : 'transparent',
+                      border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13,
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = filterGpw ? 'var(--panel-2)' : 'transparent'}
+                    >
+                      <span style={{ width: 14, textAlign: 'center', fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{filterGpw ? '✓' : ''}</span>
+                      Tylko GPW
+                    </button>
+                    <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                    <div style={{ padding: '4px 12px 6px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Widok</div>
+                    <button onClick={() => setGrouped(v => !v)} style={{
+                      width: '100%', textAlign: 'left', padding: '7px 14px',
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      background: grouped ? 'var(--panel-2)' : 'transparent',
+                      border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13,
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = grouped ? 'var(--panel-2)' : 'transparent'}
+                    >
+                      <span style={{ width: 14, textAlign: 'center', fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{grouped ? '✓' : ''}</span>
+                      Grupuj sektorami
+                    </button>
+                    {activeCount > 0 && (
+                      <>
+                        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                        <button onClick={() => { setFilterChip('all'); setFilterGpw(false); setGrouped(false); setShowFilterMenu(false); }} style={{
+                          width: '100%', textAlign: 'left', padding: '7px 14px',
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          color: 'var(--text-faint)', fontSize: 12,
+                          display: 'flex', alignItems: 'center', gap: 9,
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ width: 14 }} />Wyczyść filtry
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <div style={{ flex: '0 0 8px' }} />
           {[
             ['cost',   'Wg kosztu'],
