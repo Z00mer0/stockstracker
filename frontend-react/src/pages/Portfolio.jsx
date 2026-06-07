@@ -20,6 +20,9 @@ import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import Card from '../components/shared/Card';
 import * as XLSX from 'xlsx';
+import HistoryChart from '../components/HistoryChart';
+import StackedAllocation from '../components/shared/StackedAllocation';
+import SegmentedControl from '../components/shared/SegmentedControl';
 
 const CRYPTO_OPTIONS = [
   'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','AVAX',
@@ -355,6 +358,7 @@ export default function Portfolio() {
   }, [showExportMenu]);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
+  const [tfPortfolio, setTfPortfolio] = useState('MAX');
   const [cols, setCols] = useState(loadColumnConfig);
 
   const { enrichPosition, metricsLoading } = usePortfolioMetrics(portfolio, transactions, fxRates);
@@ -411,6 +415,21 @@ export default function Portfolio() {
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
   const totalValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
+
+  const dailyChangePLN = enriched.reduce((sum, pos) => {
+    if (pos.valuePLN != null && pos.dailyChg != null) {
+      return sum + pos.valuePLN * pos.dailyChg / 100;
+    }
+    return sum;
+  }, 0);
+
+  const snapshotsSorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  const snapshotsForPortfolio = (() => {
+    if (tfPortfolio === 'MAX') return snapshotsSorted;
+    const days = { '1T': 7, '1M': 30, '3M': 90, '6M': 180, '1R': 365 }[tfPortfolio] || 30;
+    const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    return snapshotsSorted.filter(s => s.date >= cutoff);
+  })();
 
   const sorted = useMemo(() => {
     return [...enriched].sort((a, b) => {
@@ -580,13 +599,76 @@ export default function Portfolio() {
         </div>
       ))}
 
-      {/* Summary */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
-        <div>
-          <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-dim)' }}>Łączny koszt portfela</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{fmt(totalCostPLN)} zł</p>
+      {/* Chart + rail */}
+      <div className="detail-grid" style={{ gridTemplateColumns: '1fr 340px', gap: 16, marginBottom: 16 }}>
+        <div className="card">
+          <div style={{ padding: '18px 20px 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
+                Wartość portfela
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                {fmt(totalValuePLN)} zł
+              </div>
+              {dailyChangePLN !== 0 && (
+                <div style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
+                  {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN)} zł dziś
+                </div>
+              )}
+            </div>
+            <SegmentedControl
+              options={['1T', '1M', '3M', '6M', '1R', 'MAX']}
+              value={tfPortfolio}
+              onChange={setTfPortfolio}
+            />
+          </div>
+          <div style={{ padding: '4px 12px 18px' }}>
+            {snapshotsForPortfolio.length >= 2
+              ? <HistoryChart data={snapshotsForPortfolio} />
+              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>Za mało danych historycznych</div>
+            }
+          </div>
         </div>
-        <div className="text-sm" style={{ color: 'var(--text-dim)', textAlign: 'right' }}>{portfolio.length} pozycji</div>
+
+        <div className="hero-side">
+          <div className="card">
+            <div className="card-head">
+              <div className="card-title">Statystyki</div>
+            </div>
+            <div style={{ padding: '4px 20px 4px' }}>
+              <div className="rail-stats">
+                <div className="rail-stat">
+                  <span className="rs-lbl">Koszt zakupu</span>
+                  <span className="rs-val">{fmt(totalCostPLN)} zł</span>
+                </div>
+                <div className="rail-stat">
+                  <span className="rs-lbl">Wynik dnia</span>
+                  <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                    {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN)} zł
+                  </span>
+                </div>
+                <div className="rail-stat">
+                  <span className="rs-lbl">Beta portfela</span>
+                  <span className="rs-val" style={{ color: 'var(--text-faint)' }}>N/A</span>
+                </div>
+                <div className="rail-stat">
+                  <span className="rs-lbl">Pozycji</span>
+                  <span className="rs-val">{portfolio.length}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {enriched.length > 0 && (
+            <div className="card" style={{ flex: 1 }}>
+              <div className="card-head">
+                <div className="card-title">Alokacja</div>
+              </div>
+              <div style={{ padding: '16px 20px' }}>
+                <StackedAllocation positions={enriched} totalValue={totalValuePLN} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
