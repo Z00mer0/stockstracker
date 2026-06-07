@@ -323,6 +323,10 @@ export default function Portfolio() {
   const exportMenuRef = useRef(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterMenuRef = useRef(null);
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const sortMenuRef = useRef(null);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const addMenuRef = useRef(null);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -365,6 +369,20 @@ export default function Portfolio() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showFilterMenu]);
+
+  useEffect(() => {
+    if (!showSortMenu) return;
+    function handler(e) { if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) setShowSortMenu(false); }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSortMenu]);
+
+  useEffect(() => {
+    if (!showAddMenu) return;
+    function handler(e) { if (addMenuRef.current && !addMenuRef.current.contains(e.target)) setShowAddMenu(false); }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAddMenu]);
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [tfPortfolio, setTfPortfolio] = useState('MAX');
@@ -881,134 +899,98 @@ export default function Portfolio() {
       {/* Table */}
       <div className="card" style={{ overflow: 'visible' }}>
         {/* Toolbar */}
-        <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {/* Filter dropdown */}
+        <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', overflow: 'visible' }}>
+
+          {/* ── Filtry ── */}
           {(() => {
             const activeCount = (filterChip !== 'all' ? 1 : 0) + (filterGpw ? 1 : 0) + (grouped ? 1 : 0);
+            const DD_STYLE = { position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 200, padding: '6px 0' };
+            const rowStyle = (active) => ({ width: '100%', textAlign: 'left', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 9, background: active ? 'var(--panel-2)' : 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 });
+            const hdr = { padding: '5px 14px 4px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 };
+            const check = (on) => <span style={{ width: 14, textAlign: 'center', fontSize: 11, color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>{on ? '✓' : ''}</span>;
             return (
               <div style={{ position: 'relative', flexShrink: 0 }} ref={filterMenuRef}>
-                <button
-                  className={'chip-filter' + (activeCount > 0 ? ' active' : '')}
-                  onClick={() => setShowFilterMenu(v => !v)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                >
+                <button className={'btn' + (activeCount > 0 ? ' btn-primary' : '')} onClick={() => setShowFilterMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
                   Filtry
-                  {activeCount > 0 && (
-                    <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '0 5px', lineHeight: '16px', minWidth: 16, textAlign: 'center' }}>
-                      {activeCount}
-                    </span>
-                  )}
+                  {activeCount > 0 && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 8, fontSize: 10, fontWeight: 700, padding: '0 5px', lineHeight: '16px' }}>{activeCount}</span>}
                 </button>
                 {showFilterMenu && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 40,
-                    background: 'var(--panel)', border: '1px solid var(--border)',
-                    borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-                    minWidth: 190, padding: '6px 0',
-                  }}>
-                    <div style={{ padding: '4px 12px 6px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Zysk / strata</div>
-                    {[
-                      ['all',  'Wszystkie',  null],
-                      ['win',  'Zyskowne',   'var(--up)'],
-                      ['lose', 'Stratne',    'var(--down)'],
-                    ].map(([id, lbl, c]) => (
-                      <button key={id} onClick={() => setFilterChip(id)} style={{
-                        width: '100%', textAlign: 'left', padding: '7px 14px',
-                        display: 'flex', alignItems: 'center', gap: 9,
-                        background: filterChip === id ? 'var(--panel-2)' : 'transparent',
-                        border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13,
-                      }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                        onMouseLeave={e => e.currentTarget.style.background = filterChip === id ? 'var(--panel-2)' : 'transparent'}
-                      >
-                        <span style={{ width: 14, textAlign: 'center', fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{filterChip === id ? '✓' : ''}</span>
-                        {c && <span style={{ width: 8, height: 8, borderRadius: 2, background: c, flexShrink: 0 }} />}
-                        {lbl}
+                  <div style={DD_STYLE}>
+                    <div style={hdr}>Zysk / strata</div>
+                    {[['all','Wszystkie',null],['win','Zyskowne','var(--up)'],['lose','Stratne','var(--down)']].map(([id,lbl,c]) => (
+                      <button key={id} style={rowStyle(filterChip===id)} onClick={() => setFilterChip(id)}
+                        onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=filterChip===id?'var(--panel-2)':'transparent'}>
+                        {check(filterChip===id)}{c&&<span style={{width:8,height:8,borderRadius:2,background:c,flexShrink:0}}/>}{lbl}
                       </button>
                     ))}
                     <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                    <div style={{ padding: '4px 12px 6px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Giełda</div>
-                    <button onClick={() => setFilterGpw(v => !v)} style={{
-                      width: '100%', textAlign: 'left', padding: '7px 14px',
-                      display: 'flex', alignItems: 'center', gap: 9,
-                      background: filterGpw ? 'var(--panel-2)' : 'transparent',
-                      border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13,
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                      onMouseLeave={e => e.currentTarget.style.background = filterGpw ? 'var(--panel-2)' : 'transparent'}
-                    >
-                      <span style={{ width: 14, textAlign: 'center', fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{filterGpw ? '✓' : ''}</span>
-                      Tylko GPW
+                    <div style={hdr}>Giełda</div>
+                    <button style={rowStyle(filterGpw)} onClick={() => setFilterGpw(v=>!v)}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=filterGpw?'var(--panel-2)':'transparent'}>
+                      {check(filterGpw)}Tylko GPW
                     </button>
                     <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                    <div style={{ padding: '4px 12px 6px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Widok</div>
-                    <button onClick={() => setGrouped(v => !v)} style={{
-                      width: '100%', textAlign: 'left', padding: '7px 14px',
-                      display: 'flex', alignItems: 'center', gap: 9,
-                      background: grouped ? 'var(--panel-2)' : 'transparent',
-                      border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13,
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                      onMouseLeave={e => e.currentTarget.style.background = grouped ? 'var(--panel-2)' : 'transparent'}
-                    >
-                      <span style={{ width: 14, textAlign: 'center', fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{grouped ? '✓' : ''}</span>
-                      Grupuj sektorami
+                    <div style={hdr}>Widok</div>
+                    <button style={rowStyle(grouped)} onClick={() => setGrouped(v=>!v)}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=grouped?'var(--panel-2)':'transparent'}>
+                      {check(grouped)}Grupuj sektorami
                     </button>
-                    {activeCount > 0 && (
-                      <>
-                        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                        <button onClick={() => { setFilterChip('all'); setFilterGpw(false); setGrouped(false); setShowFilterMenu(false); }} style={{
-                          width: '100%', textAlign: 'left', padding: '7px 14px',
-                          background: 'transparent', border: 'none', cursor: 'pointer',
-                          color: 'var(--text-faint)', fontSize: 12,
-                          display: 'flex', alignItems: 'center', gap: 9,
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <span style={{ width: 14 }} />Wyczyść filtry
-                        </button>
-                      </>
-                    )}
+                    {activeCount > 0 && <>
+                      <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                      <button style={{ ...rowStyle(false), color: 'var(--text-faint)', fontSize: 12 }}
+                        onClick={() => { setFilterChip('all'); setFilterGpw(false); setGrouped(false); setShowFilterMenu(false); }}
+                        onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        {check(false)}Wyczyść filtry
+                      </button>
+                    </>}
                   </div>
                 )}
               </div>
             );
           })()}
-          <div style={{ flex: '0 0 8px' }} />
-          {[
-            ['cost',   'Wg kosztu'],
-            ['symbol', 'A–Z'],
-            ['qty',    'Wg ilości'],
-            ['pl',     'Wg P&L'],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setSortBy(key)}
-              className={sortBy === key ? 'btn btn-primary' : 'btn'}
-              style={{ fontSize: 12, padding: '4px 12px', flexShrink: 0 }}
-            >
-              {label}
-            </button>
-          ))}
-          <div style={{ flex: '0 0 8px' }} />
+
+          {/* ── Sortuj ── */}
+          {(() => {
+            const SORT_LABELS = { cost: 'Wg kosztu', symbol: 'A–Z', qty: 'Wg ilości', pl: 'Wg P&L' };
+            const DD_STYLE = { position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 180, padding: '6px 0' };
+            const rowStyle = (active) => ({ width: '100%', textAlign: 'left', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 9, background: active ? 'var(--panel-2)' : 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 });
+            return (
+              <div style={{ position: 'relative', flexShrink: 0 }} ref={sortMenuRef}>
+                <button className="btn" onClick={() => setShowSortMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+                  {SORT_LABELS[sortBy]}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {showSortMenu && (
+                  <div style={DD_STYLE}>
+                    {Object.entries(SORT_LABELS).map(([key, lbl]) => (
+                      <button key={key} style={rowStyle(sortBy===key)}
+                        onClick={() => { setSortBy(key); setShowSortMenu(false); }}
+                        onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=sortBy===key?'var(--panel-2)':'transparent'}>
+                        <span style={{ width: 14, textAlign: 'center', fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{sortBy===key?'✓':''}</span>
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <div style={{ flex: 1 }} />
           {metricsLoading && <Spinner size="sm" />}
+
+          {/* ── Eksport / Import ── */}
           <div style={{ position: 'relative', flexShrink: 0 }} ref={exportMenuRef}>
-            <button
-              onClick={() => setShowExportMenu(v => !v)}
-              className="btn"
-              style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              ⬇ Eksport CSV
+            <button className="btn" onClick={() => setShowExportMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Eksport / Import
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             {showExportMenu && (
-              <div style={{
-                position: 'absolute', top: '110%', left: 0, zIndex: 30,
-                background: 'var(--panel)', border: '1px solid var(--border)',
-                borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                minWidth: 200, padding: '4px 0', fontSize: 13,
-              }}>
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 210, padding: '6px 0' }}>
+                <div style={{ padding: '5px 14px 4px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Eksport</div>
                 {[
                   { label: 'Pozycje (CSV)', fn: handleExportCsv },
                   { label: 'Pozycje (Excel)', fn: handleExportXlsPositions },
@@ -1018,35 +1000,43 @@ export default function Portfolio() {
                   { label: 'Historia (Excel)', fn: handleExportXlsSnapshots },
                 ].map(({ label, fn }) => (
                   <button key={label} onClick={() => { fn(); setShowExportMenu(false); }}
-                    style={{ width: '100%', textAlign: 'left', padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 }}
+                    onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}
                   >{label}</button>
+                ))}
+                <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                <div style={{ padding: '5px 14px 4px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Import</div>
+                <button onClick={() => { setShowImport(true); setShowExportMenu(false); }}
+                  style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 }}
+                  onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                >Import CSV / Excel</button>
+              </div>
+            )}
+          </div>
+
+          {/* ── + Dodaj ── */}
+          <div style={{ position: 'relative', flexShrink: 0 }} ref={addMenuRef}>
+            <button className="btn btn-primary" onClick={() => setShowAddMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              + Dodaj
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {showAddMenu && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 180, padding: '6px 0' }}>
+                {[
+                  { icon: '📈', label: 'Akcje / ETF', action: () => { setShowAdd(true); setShowAddMenu(false); } },
+                  { icon: '₿', label: 'Kryptowaluty', action: () => { setShowAddCrypto(true); setShowAddMenu(false); } },
+                ].map(item => (
+                  <button key={item.label} onClick={item.action}
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 }}
+                    onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                  >
+                    <span style={{ fontSize: 15 }}>{item.icon}</span>{item.label}
+                  </button>
                 ))}
               </div>
             )}
           </div>
-          <button
-            onClick={() => setShowImport(true)}
-            className="btn"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
-          >
-            ⬆ Import CSV
-          </button>
-          <button
-            onClick={() => setShowAddCrypto(true)}
-            className="btn"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
-          >
-            ₿ Dodaj krypto
-          </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="btn btn-primary"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
-          >
-            + Dodaj spółkę
-          </button>
+
           <ColumnPicker cols={cols} onChange={handleColChange} />
         </div>
 
