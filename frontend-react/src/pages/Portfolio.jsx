@@ -450,6 +450,8 @@ export default function Portfolio() {
     return sorted;
   }, [sorted, filterChip]);
 
+  const filteredCostPLN = filteredSorted.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
+
   const groupedPositions = useMemo(() => {
     if (!grouped) return null;
     const bySector = {};
@@ -478,7 +480,7 @@ export default function Portfolio() {
   };
 
   function renderPositionRow(pos) {
-    const share = totalCostPLN > 0 ? ((pos.costPLN ?? 0) / totalCostPLN) * 100 : 0;
+    const share = filteredCostPLN > 0 ? ((pos.costPLN ?? 0) / filteredCostPLN) * 100 : 0;
     const menuOpen = menuSym === pos.symbol;
     return (
       <React.Fragment key={pos.id ?? pos.symbol}>
