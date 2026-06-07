@@ -359,6 +359,8 @@ export default function Portfolio() {
   const { openChart } = useChart();
   const [sortBy, setSortBy] = useState('cost');
   const [tfPortfolio, setTfPortfolio] = useState('MAX');
+  const [filterChip, setFilterChip] = useState('all');
+  const [grouped, setGrouped] = useState(false);
   const [cols, setCols] = useState(loadColumnConfig);
 
   const { enrichPosition, metricsLoading } = usePortfolioMetrics(portfolio, transactions, fxRates);
@@ -440,6 +442,198 @@ export default function Portfolio() {
       return 0;
     });
   }, [enriched, sortBy]);
+
+  const filteredSorted = useMemo(() => {
+    if (filterChip === 'win')  return sorted.filter(p => (p.plPLN ?? 0) >= 0);
+    if (filterChip === 'lose') return sorted.filter(p => (p.plPLN ?? 0) < 0);
+    if (filterChip === 'gpw')  return sorted.filter(p => p.symbol?.endsWith('.WA'));
+    return sorted;
+  }, [sorted, filterChip]);
+
+  const groupedPositions = useMemo(() => {
+    if (!grouped) return null;
+    const bySector = {};
+    filteredSorted.forEach(p => {
+      const sec = p.sector || 'Inne';
+      (bySector[sec] = bySector[sec] || []).push(p);
+    });
+    return Object.entries(bySector).sort((a, b) =>
+      b[1].reduce((s, p) => s + (p.valuePLN ?? 0), 0) - a[1].reduce((s, p) => s + (p.valuePLN ?? 0), 0)
+    );
+  }, [filteredSorted, grouped]);
+
+  const SECTOR_COLORS_P = {
+    Technology: '#7c9eff', Tech: '#7c9eff',
+    Gaming: '#a78bfa', Energy: '#ffb020',
+    'Consumer Cyclical': '#34d399', Retail: '#34d399',
+    'Consumer Defensive': '#34d399',
+    Auto: '#ff4d6d', Automotive: '#ff4d6d',
+    Finance: '#22d3ee', Financials: '#22d3ee', 'Financial Services': '#22d3ee',
+    Healthcare: '#f472b6', Health: '#f472b6',
+    'Basic Materials': '#fb923c', Construction: '#fb923c',
+    Food: '#facc15', 'Consumer Staples': '#facc15',
+    Communication: '#60a5fa', 'Communication Services': '#60a5fa',
+    Utilities: '#a3e635', 'Real Estate': '#f87171',
+    Industrials: '#fbbf24', Inne: '#8a929d',
+  };
+
+  function renderPositionRow(pos) {
+    const share = totalCostPLN > 0 ? ((pos.costPLN ?? 0) / totalCostPLN) * 100 : 0;
+    const menuOpen = menuSym === pos.symbol;
+    return (
+      <React.Fragment key={pos.id ?? pos.symbol}>
+      <tr>
+        <td
+          style={{ cursor: 'pointer', position: 'sticky', left: 0, zIndex: 1, background: 'var(--panel)' }}
+          onClick={() => setSelectedItem(pos)}
+          title={`Otwórz szczegóły ${pos.symbol}`}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <TickerLogo symbol={pos.symbol} />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</span>
+                {notes[pos.symbol]?.text && (
+                  <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>📝</span>
+                )}
+                {alerts.some(a => a.symbol === pos.symbol) && (
+                  <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>🔔</span>
+                )}
+                {pos.notFound && (
+                  editTicker?.oldSymbol === pos.symbol ? (
+                    <form
+                      onSubmit={e => { e.preventDefault(); e.stopPropagation(); handleTickerRename(pos.symbol, editTicker.value); }}
+                      onClick={e => e.stopPropagation()}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <input
+                        autoFocus
+                        value={editTicker.value}
+                        onChange={e => setEditTicker(t => ({ ...t, value: e.target.value.toUpperCase() }))}
+                        onKeyDown={e => e.key === 'Escape' && setEditTicker(null)}
+                        style={{
+                          width: 90, padding: '2px 6px', fontSize: 12,
+                          background: 'var(--panel-2)', border: '1px solid var(--accent)',
+                          borderRadius: 5, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace',
+                          outline: 'none',
+                        }}
+                      />
+                      <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 14, padding: '0 2px' }}>✓</button>
+                      <button type="button" onClick={() => setEditTicker(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 14, padding: '0 2px' }}>✕</button>
+                    </form>
+                  ) : (
+                    <span
+                      title="Nie znaleziono notowań — kliknij aby zmienić ticker"
+                      onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: pos.symbol }); }}
+                      style={{ fontSize: 12, color: 'var(--down)', cursor: 'pointer' }}
+                    >⚠</span>
+                  )
+                )}
+              </div>
+              {pos.name && pos.name !== pos.symbol && (
+                <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{pos.name}</div>
+              )}
+            </div>
+          </div>
+        </td>
+        {cols.map(key => (
+          <td key={key} className="right mono">
+            {renderCell(key, pos, fxRates, divBySymbol)}
+          </td>
+        ))}
+        <td className="right mono">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+            <div style={{ width: 64, height: 6, background: 'var(--panel-2)', borderRadius: 9999, overflow: 'hidden' }}>
+              <div
+                style={{ height: '100%', background: 'var(--info)', borderRadius: 9999, width: `${Math.min(share, 100)}%` }}
+              />
+            </div>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 40, textAlign: 'right' }}>{fmt(share, 1)}%</span>
+          </div>
+        </td>
+        {/* ⋯ action menu */}
+        <td style={{ padding: '12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setMenuSym(menuOpen ? null : pos.symbol)}
+            style={{
+              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 8, color: 'var(--text-faint)', background: 'transparent',
+              border: 'none', cursor: 'pointer', fontSize: 16, transition: 'color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--panel-2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <div
+              ref={menuRef}
+              style={{
+                position: 'absolute', right: 0, top: 36, zIndex: 30,
+                background: 'var(--panel)', border: '1px solid var(--border)',
+                borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                width: 176, padding: '4px 0', fontSize: 14,
+              }}
+            >
+              {[
+                { icon: '+', label: 'Kup więcej', action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
+                { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
+                { icon: '✏', label: 'Edytuj pozycję', action: () => { setEditTarget(pos); setMenuSym(null); } },
+                { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
+                { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
+                { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
+                { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
+                null,
+                { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
+                { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
+              ].map((item, i) =>
+                item === null ? (
+                  <div key={i} style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                ) : (
+                  <button
+                    key={item.label}
+                    onClick={item.action}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '8px 16px',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      color: item.danger ? 'var(--down)' : 'var(--text)',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-2)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </td>
+      </tr>
+      {noteEditing === pos.symbol && (
+        <tr key={`${pos.id ?? pos.symbol}-note`}>
+          <td colSpan={cols.length + 3} style={{ padding: 0 }}>
+            <NoteEditor
+              symbol={pos.symbol}
+              initial={notes[pos.symbol]?.text || ''}
+              onSave={(text) => {
+                const updated = text.trim()
+                  ? { ...notes, [pos.symbol]: { text: text.trim(), updatedAt: new Date().toISOString() } }
+                  : (() => { const n = { ...notes }; delete n[pos.symbol]; return n; })();
+                setNotes(updated);
+                saveNotes(updated);
+                setNoteEditing(null);
+              }}
+              onCancel={() => setNoteEditing(null)}
+            />
+          </td>
+        </tr>
+      )}
+      </React.Fragment>
+    );
+  }
 
   function handleExportCsv() {
     const headers = ['Symbol', 'Ilość', 'Śr. zakup', 'Waluta', 'Cena', 'Wart. zakupu (PLN)', 'Wart. teraz (PLN)', 'Zysk/Strata (PLN)', 'Zysk/Strata (%)', 'Zmiana dz. (%)'];
@@ -675,6 +869,30 @@ export default function Portfolio() {
       <div className="card" style={{ overflow: 'visible' }}>
         {/* Toolbar */}
         <div className="card-head" style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {/* Filter chips */}
+          {[
+            ['all',  'Wszystkie', null],
+            ['win',  'Zyskowne',  'var(--up)'],
+            ['lose', 'Stratne',   'var(--down)'],
+            ['gpw',  'GPW',       null],
+          ].map(([id, lbl, c]) => (
+            <button
+              key={id}
+              className={'chip-filter' + (filterChip === id ? ' active' : '')}
+              onClick={() => setFilterChip(id)}
+            >
+              {c && <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: 'inline-block', marginRight: 4 }} />}
+              {lbl}
+            </button>
+          ))}
+          <button
+            className={'chip-filter' + (grouped ? ' active' : '')}
+            onClick={() => setGrouped(g => !g)}
+            style={{ marginLeft: 4 }}
+          >
+            Sektory
+          </button>
+          <div style={{ flex: '0 0 8px' }} />
           {[
             ['cost',   'Wg kosztu'],
             ['symbol', 'A–Z'],
@@ -763,164 +981,56 @@ export default function Portfolio() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(pos => {
-                const share = totalCostPLN > 0 ? ((pos.costPLN ?? 0) / totalCostPLN) * 100 : 0;
-                const menuOpen = menuSym === pos.symbol;
-                return (
-                  <React.Fragment key={pos.id ?? pos.symbol}>
-                  <tr>
-                    <td
-                      style={{ cursor: 'pointer', position: 'sticky', left: 0, zIndex: 1, background: 'var(--panel)' }}
-                      onClick={() => setSelectedItem(pos)}
-                      title={`Otwórz szczegóły ${pos.symbol}`}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <TickerLogo symbol={pos.symbol} />
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)' }}>{pos.symbol}</span>
-                            {notes[pos.symbol]?.text && (
-                              <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>📝</span>
-                            )}
-                            {alerts.some(a => a.symbol === pos.symbol) && (
-                              <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>🔔</span>
-                            )}
-                            {pos.notFound && (
-                              editTicker?.oldSymbol === pos.symbol ? (
-                                <form
-                                  onSubmit={e => { e.preventDefault(); e.stopPropagation(); handleTickerRename(pos.symbol, editTicker.value); }}
-                                  onClick={e => e.stopPropagation()}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                >
-                                  <input
-                                    autoFocus
-                                    value={editTicker.value}
-                                    onChange={e => setEditTicker(t => ({ ...t, value: e.target.value.toUpperCase() }))}
-                                    onKeyDown={e => e.key === 'Escape' && setEditTicker(null)}
-                                    style={{
-                                      width: 90, padding: '2px 6px', fontSize: 12,
-                                      background: 'var(--panel-2)', border: '1px solid var(--accent)',
-                                      borderRadius: 5, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace',
-                                      outline: 'none',
-                                    }}
-                                  />
-                                  <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 14, padding: '0 2px' }}>✓</button>
-                                  <button type="button" onClick={() => setEditTicker(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 14, padding: '0 2px' }}>✕</button>
-                                </form>
-                              ) : (
-                                <span
-                                  title="Nie znaleziono notowań — kliknij aby zmienić ticker"
-                                  onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: pos.symbol }); }}
-                                  style={{ fontSize: 12, color: 'var(--down)', cursor: 'pointer' }}
-                                >⚠</span>
-                              )
-                            )}
-                          </div>
-                          {pos.name && pos.name !== pos.symbol && (
-                            <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{pos.name}</div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    {cols.map(key => (
-                      <td key={key} className="right mono">
-                        {renderCell(key, pos, fxRates, divBySymbol)}
-                      </td>
-                    ))}
-                    <td className="right mono">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                        <div style={{ width: 64, height: 6, background: 'var(--panel-2)', borderRadius: 9999, overflow: 'hidden' }}>
-                          <div
-                            style={{ height: '100%', background: 'var(--info)', borderRadius: 9999, width: `${Math.min(share, 100)}%` }}
-                          />
-                        </div>
-                        <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 40, textAlign: 'right' }}>{fmt(share, 1)}%</span>
-                      </div>
-                    </td>
-                    {/* ⋯ action menu */}
-                    <td style={{ padding: '12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => setMenuSym(menuOpen ? null : pos.symbol)}
-                        style={{
-                          width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderRadius: 8, color: 'var(--text-faint)', background: 'transparent',
-                          border: 'none', cursor: 'pointer', fontSize: 16, transition: 'color 0.15s, background 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--panel-2)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'transparent'; }}
-                      >
-                        ⋯
-                      </button>
-                      {menuOpen && (
-                        <div
-                          ref={menuRef}
-                          style={{
-                            position: 'absolute', right: 0, top: 36, zIndex: 30,
-                            background: 'var(--panel)', border: '1px solid var(--border)',
-                            borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                            width: 176, padding: '4px 0', fontSize: 14,
-                          }}
-                        >
-                          {[
-                            { icon: '+', label: 'Kup więcej', action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
-                            { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
-                            { icon: '✏', label: 'Edytuj pozycję', action: () => { setEditTarget(pos); setMenuSym(null); } },
-                            { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
-                            { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
-                            { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
-                            { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
-                            null,
-                            { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
-                            { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
-                          ].map((item, i) =>
-                            item === null ? (
-                              <div key={i} style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                            ) : (
-                              <button
-                                key={item.label}
-                                onClick={item.action}
-                                style={{
-                                  width: '100%', textAlign: 'left', padding: '8px 16px',
-                                  display: 'flex', alignItems: 'center', gap: 8,
-                                  background: 'transparent', border: 'none', cursor: 'pointer',
-                                  color: item.danger ? 'var(--down)' : 'var(--text)',
-                                  transition: 'background 0.15s',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-2)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
-                                {item.label}
-                              </button>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                  {noteEditing === pos.symbol && (
-                    <tr key={`${pos.id ?? pos.symbol}-note`}>
-                      <td colSpan={cols.length + 3} style={{ padding: 0 }}>
-                        <NoteEditor
-                          symbol={pos.symbol}
-                          initial={notes[pos.symbol]?.text || ''}
-                          onSave={(text) => {
-                            const updated = text.trim()
-                              ? { ...notes, [pos.symbol]: { text: text.trim(), updatedAt: new Date().toISOString() } }
-                              : (() => { const n = { ...notes }; delete n[pos.symbol]; return n; })();
-                            setNotes(updated);
-                            saveNotes(updated);
-                            setNoteEditing(null);
-                          }}
-                          onCancel={() => setNoteEditing(null)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                  </React.Fragment>
-                );
-              })}
+              {grouped && groupedPositions
+                ? groupedPositions.map(([sec, list]) => {
+                    const sv = list.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
+                    const color = SECTOR_COLORS_P[sec] || '#8a929d';
+                    return (
+                      <React.Fragment key={sec}>
+                        <tr className="sector-group">
+                          <td colSpan={cols.length + 3}>
+                            <div className="sg-inner">
+                              <span style={{ width: 9, height: 9, borderRadius: 2, background: color, display: 'inline-block' }} />
+                              {sec}
+                              <span className="sg-count">· {list.length}</span>
+                              <span className="sg-val">
+                                {(sv / 1000).toFixed(1)}k · {totalValuePLN > 0 ? ((sv / totalValuePLN) * 100).toFixed(1) : 0}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {list.map(pos => renderPositionRow(pos))}
+                      </React.Fragment>
+                    );
+                  })
+                : filteredSorted.map(pos => renderPositionRow(pos))
+              }
             </tbody>
+            {filteredSorted.length > 0 && (() => {
+              const tot = filteredSorted.reduce((a, p) => ({
+                value: a.value + (p.valuePLN ?? 0),
+                pl:    a.pl    + (p.plPLN ?? 0),
+                cost:  a.cost  + (p.costPLN ?? 0),
+              }), { value: 0, pl: 0, cost: 0 });
+              const totRetPct = tot.cost > 0 ? (tot.pl / tot.cost) * 100 : null;
+              return (
+                <tfoot className="table-pro">
+                  <tr>
+                    <td className="lbl" style={{ position: 'sticky', left: 0, background: 'var(--panel-2)' }}>
+                      Razem · {filteredSorted.length}
+                    </td>
+                    {cols.map(key => {
+                      if (key === 'valuePLN') return <td key={key} className="right">{fmt(tot.value)} zł</td>;
+                      if (key === 'plPLN')    return <td key={key} className="right" style={{ color: tot.pl >= 0 ? 'var(--up)' : 'var(--down)' }}>{tot.pl >= 0 ? '+' : ''}{fmt(tot.pl)} zł</td>;
+                      if (key === 'costPLN')  return <td key={key} className="right">{fmt(tot.cost)} zł</td>;
+                      return <td key={key} />;
+                    })}
+                    <td className="right">{totRetPct != null ? ((totRetPct >= 0 ? '+' : '') + totRetPct.toFixed(1) + '%') : '—'}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              );
+            })()}
           </table>
         </div>
       </div>
