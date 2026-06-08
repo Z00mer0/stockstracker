@@ -58,7 +58,8 @@ const BENCHMARKS = [
   { key: '^GSPC',        label: 'S&P 500' },
   { key: '^IXIC',        label: 'NASDAQ' },
   { key: 'URTH',         label: 'MSCI World' },
-  { key: 'PL:WIG20',     label: 'WIG20' },
+  { key: 'PL:WIG',       label: 'WIG' },
+  { key: 'PL:WIG20',    label: 'WIG20' },
   { key: 'SYNTH:CPI_PL', label: 'Inflacja PL' },
   { key: 'SYNTH:LOK5',   label: 'Lokata 5%' },
 ];
