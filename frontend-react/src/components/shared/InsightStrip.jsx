@@ -1,15 +1,20 @@
 import React from 'react';
+import { useLanguage, useT } from '../../context/LanguageContext';
 
 function fmtPct(n) {
   if (n == null || isNaN(n)) return '—';
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
-function fmtPLN(n) {
-  if (n == null || isNaN(n)) return '—';
-  return (n >= 0 ? '+' : '') + Math.round(n).toLocaleString('pl-PL') + ' zł';
-}
 
 export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
+  const { locale } = useLanguage();
+  const t = useT();
+
+  function fmtPLN(n) {
+    if (n == null || isNaN(n)) return '—';
+    return (n >= 0 ? '+' : '') + Math.round(n).toLocaleString(locale) + ' zł';
+  }
+
   const withPl = positions.filter(p => p.plPLN != null && p.costPLN > 0);
   const withDay = positions.filter(p => p.dailyChg != null);
 
@@ -19,9 +24,9 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
 
   if (!best && !worst && !mover) return null;
 
-  const bestPct   = best  ? (best.plPLN  / best.costPLN)  * 100 : null;
-  const worstPct  = worst ? (worst.plPLN / worst.costPLN) * 100 : null;
-  const dayUp     = dailyChangePLN >= 0;
+  const bestPct  = best  ? (best.plPLN  / best.costPLN)  * 100 : null;
+  const worstPct = worst ? (worst.plPLN / worst.costPLN) * 100 : null;
+  const dayUp    = dailyChangePLN >= 0;
 
   return (
     <div className="insight-strip">
@@ -29,7 +34,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
         <div className="insight">
           <span className="ins-dot" style={{ background: 'var(--up)' }} />
           <div className="ins-body">
-            <div className="ins-label">Najlepsza pozycja</div>
+            <div className="ins-label">{t('best_position')}</div>
             <div className="ins-text">
               {best.symbol.replace('.WA', '')}
               {' · '}
@@ -42,7 +47,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
         <div className="insight">
           <span className="ins-dot" style={{ background: 'var(--down)' }} />
           <div className="ins-body">
-            <div className="ins-label">Pod presją</div>
+            <div className="ins-label">{t('under_pressure')}</div>
             <div className="ins-text">
               {worst.symbol.replace('.WA', '')}
               {' · '}
@@ -55,7 +60,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
         <div className="insight">
           <span className="ins-dot" style={{ background: 'var(--info)' }} />
           <div className="ins-body">
-            <div className="ins-label">Największy ruch dziś</div>
+            <div className="ins-label">{t('biggest_move')}</div>
             <div className="ins-text">
               {mover.symbol.replace('.WA', '')}
               {' · '}
@@ -64,15 +69,17 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
           </div>
         </div>
       )}
-      <div className="insight">
-        <span className="ins-dot" style={{ background: dayUp ? 'var(--up)' : 'var(--down)' }} />
-        <div className="ins-body">
-          <div className="ins-label">Wynik dnia</div>
-          <div className="ins-text">
-            <span className={'num ' + (dayUp ? 'up' : 'down')}>{fmtPLN(dailyChangePLN)}</span>
+      {dailyChangePLN != null && (
+        <div className="insight">
+          <span className="ins-dot" style={{ background: dayUp ? 'var(--up)' : 'var(--down)' }} />
+          <div className="ins-body">
+            <div className="ins-label">{t('daily_result')}</div>
+            <div className="ins-text">
+              <span className={'num ' + (dayUp ? 'up' : 'down')}>{fmtPLN(dailyChangePLN)}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
