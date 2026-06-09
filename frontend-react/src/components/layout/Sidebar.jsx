@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { NAV_ITEMS, NAV_BOTTOM } from './navItems.jsx';
+import { useT } from '../../context/LanguageContext';
+import { getNavItems, getNavBottom } from './navItems.jsx';
 
 const BrandIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -62,13 +63,17 @@ function PortfolioItem({ id, name, currency, isActive, onClick }) {
 
 export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
   const { displayName, logout, portfolios, activePortfolioId, switchPortfolio } = useApp();
+  const t = useT();
+  const NAV_ITEMS = getNavItems(t);
+  const NAV_BOTTOM = getNavBottom(t);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
 
+  const allLabel = t('nav_all');
   const activePortfolio = activePortfolioId === 'all'
-    ? { name: 'Wszystkie', currency: '' }
-    : portfolios.find(p => p.id === activePortfolioId) || { name: 'Wszystkie', currency: '' };
+    ? { name: allLabel, currency: '' }
+    : portfolios.find(p => p.id === activePortfolioId) || { name: allLabel, currency: '' };
 
-  const allItems = [{ id: 'all', name: 'Wszystkie', currency: '' }, ...portfolios];
+  const allItems = [{ id: 'all', name: allLabel, currency: '' }, ...portfolios];
 
   const sidebarContent = (
     <aside style={{
@@ -97,7 +102,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           <button
             onClick={onClose}
             style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: 4, lineHeight: 1, fontSize: 20 }}
-            aria-label="Zamknij menu"
+            aria-label={t('close_menu')}
           >
             ×
           </button>
@@ -108,7 +113,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
       <nav style={{ flex: 1, padding: '4px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
         {/* Portfolio switcher */}
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
-          Portfele
+          {t('nav_portfolios')}
         </div>
         {/* Active portfolio row — click to expand */}
         <button
@@ -149,17 +154,17 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
                 marginTop: 4,
               }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Nowy portfel
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> {t('nav_new_portfolio')}
             </button>
           </div>
         )}
         <div style={{ height: 8 }} />
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
-          Główne
+          {t('nav_section_main')}
         </div>
         {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '12px 10px 4px' }}>
-          Konto
+          {t('nav_section_account')}
         </div>
         {NAV_BOTTOM.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
       </nav>
@@ -175,8 +180,8 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           {(displayName || 'U').slice(0, 2).toUpperCase()}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName || 'Użytkownik'}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>GPW · PLN</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName || t('user_label')}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('gpw_pln_label')}</div>
         </div>
         <button
           onClick={logout}

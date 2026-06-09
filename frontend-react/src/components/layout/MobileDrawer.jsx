@@ -2,10 +2,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { NAV_ITEMS } from './navItems.jsx';
+import { useT } from '../../context/LanguageContext';
+import { getNavItems } from './navItems.jsx';
 
 export default function MobileDrawer({ isOpen, onClose }) {
   const { displayName, logout } = useApp();
+  const t = useT();
+  const NAV_ITEMS = getNavItems(t);
 
   function handleLogout() {
     onClose();
@@ -28,7 +31,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
         className={`fixed top-0 left-0 z-50 h-full w-4/5 max-w-xs flex flex-col bg-slate-950 border-r border-slate-800 transition-transform duration-300 md:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        aria-label="Menu nawigacyjne"
+        aria-label={t('nav_section_main')}
       >
         {/* Nagłówek drawera */}
         <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -39,7 +42,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
           <button
             onClick={onClose}
             className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-            aria-label="Zamknij menu"
+            aria-label={t('close_menu')}
           >
             ✕
           </button>
@@ -76,7 +79,7 @@ export default function MobileDrawer({ isOpen, onClose }) {
             onClick={handleLogout}
             className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
-            Wyloguj →
+            {t('logout')}
           </button>
         </div>
       </aside>
