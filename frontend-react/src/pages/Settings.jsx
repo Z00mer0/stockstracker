@@ -6,6 +6,7 @@ import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
 import { US_TAX_KEY } from '../services/dividendService';
 import BrokerImportModal from '../components/BrokerImportModal';
 import Card from '../components/shared/Card';
+import { useLanguage, useT } from '../context/LanguageContext';
 
 function SettingsRow({ label, value, children }) {
   return (
@@ -44,6 +45,7 @@ function ApiKeySection() {
 }
 
 function ChangePasswordSection() {
+  const t = useT();
   const [form, setForm] = useState({ current: '', next: '', next2: '' });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -52,21 +54,21 @@ function ChangePasswordSection() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (form.next !== form.next2) { setError('Nowe hasła nie są identyczne'); return; }
+    if (form.next !== form.next2) { setError(t('passwords_mismatch')); return; }
     setLoading(true);
     try {
       await api.post('/api/change-password', { current_password: form.current, new_password: form.next });
       setSuccess(true);
       setForm({ current: '', next: '', next2: '' });
     } catch (err) {
-      setError(err.response?.data?.error ?? 'Błąd zmiany hasła');
+      setError(err.response?.data?.error ?? t('password_error'));
     } finally { setLoading(false); }
   }
 
   return (
-    <Card title="Zmiana hasła">
+    <Card title={t('change_password')}>
       <form onSubmit={handleSubmit} className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {[['Aktualne hasło', 'current', 'current-password'], ['Nowe hasło', 'next', 'new-password'], ['Powtórz nowe', 'next2', 'new-password']].map(([label, field, ac]) => (
+        {[[t('current_password'), 'current', 'current-password'], [t('new_password'), 'next', 'new-password'], [t('repeat_new_password'), 'next2', 'new-password']].map(([label, field, ac]) => (
           <div key={field}>
             <label className="field-label">{label}</label>
             <input type="password" value={form[field]} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
@@ -74,11 +76,11 @@ function ChangePasswordSection() {
           </div>
         ))}
         {error && <p style={{ color: 'var(--down)', fontSize: 12 }}>{error}</p>}
-        {success && <p style={{ color: 'var(--up)', fontSize: 12 }}>Hasło zostało zmienione ✓</p>}
+        {success && <p style={{ color: 'var(--up)', fontSize: 12 }}>{t('password_changed')}</p>}
         <button type="submit" className="btn btn-primary"
           disabled={loading || !form.current || !form.next || !form.next2}
           style={{ alignSelf: 'flex-start', opacity: (loading || !form.current || !form.next || !form.next2) ? 0.4 : 1 }}>
-          {loading ? 'Zapisywanie…' : 'Zmień hasło'}
+          {loading ? t('saving_btn') : t('change_password_btn')}
         </button>
       </form>
     </Card>
@@ -86,15 +88,16 @@ function ChangePasswordSection() {
 }
 
 function DividendTaxSection() {
+  const t = useT();
   const [usTax, setUsTax] = useState(() => localStorage.getItem(US_TAX_KEY) || '15');
   function save(val) { setUsTax(val); localStorage.setItem(US_TAX_KEY, val); }
 
   return (
-    <Card title="Podatek od dywidend">
+    <Card title={t('dividend_tax')}>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <SettingsRow label="GPW (.WA)" value="19% ryczałt (stała)" />
+        <SettingsRow label={t('gpw_tax')} value={t('gpw_tax_value')} />
         <div>
-          <label className="field-label">Akcje US</label>
+          <label className="field-label">{t('us_stocks')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {[{ val: '15', label: '15%', desc: 'Umowa PL-US' }, { val: '30', label: '30%', desc: 'Pełny withholding' }].map(opt => (
               <button key={opt.val} onClick={() => save(opt.val)}
@@ -123,6 +126,8 @@ function fmtDate(iso) {
 }
 
 function SnapshotManagerSection() {
+  const t = useT();
+  const { locale } = useLanguage();
   const { snapshots, setSnapshot, deleteSnapshot } = useApp();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ date: today, total: '', invested: '' });
@@ -184,7 +189,7 @@ function SnapshotManagerSection() {
               />
             </div>
             <div>
-              <label className="field-label">Wartość portfela (zł)</label>
+              <label className="field-label">{t('portfolio_val_zl')}</label>
               <input
                 type="number" min="0" step="any"
                 className="field-input mono"
@@ -195,7 +200,7 @@ function SnapshotManagerSection() {
               />
             </div>
             <div>
-              <label className="field-label">Zainwestowano (zł)</label>
+              <label className="field-label">{t('invested_zl')}</label>
               <input
                 type="number" min="0" step="any"
                 className="field-input mono"
@@ -213,7 +218,7 @@ function SnapshotManagerSection() {
               className={`btn ${saved ? '' : 'btn-primary'}`}
               style={{ fontSize: 12, opacity: (!form.date || form.total === '') ? 0.4 : 1 }}
             >
-              {saved ? '✓ Zapisano' : saving ? 'Zapisuję…' : isEditing ? 'Zapisz zmiany' : 'Dodaj snapshot'}
+              {saved ? t('saved_ok') : saving ? t('saving') : isEditing ? t('save_changes') : t('add_snapshot')}
             </button>
             {isEditing && (
               <button onClick={cancelEdit} className="btn" style={{ fontSize: 12 }}>Anuluj</button>
@@ -225,7 +230,7 @@ function SnapshotManagerSection() {
         {sorted.length > 0 && (
           <div>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-              Istniejące snapshots ({sorted.length})
+              {t('existing_snapshots')} ({sorted.length})
             </p>
             <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {sorted.map(s => (
@@ -240,11 +245,11 @@ function SnapshotManagerSection() {
                 >
                   <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 72, flexShrink: 0 }}>{fmtDate(s.date)}</span>
                   <span className="mono" style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>
-                    {s.total != null ? s.total.toLocaleString('pl-PL', { maximumFractionDigits: 0 }) + ' zł' : '—'}
+                    {s.total != null ? s.total.toLocaleString(locale, { maximumFractionDigits: 0 }) + ' zł' : '—'}
                   </span>
                   {s.invested != null && (
                     <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                      inw. {s.invested.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} zł
+                      inw. {s.invested.toLocaleString(locale, { maximumFractionDigits: 0 })} zł
                     </span>
                   )}
                   <button
@@ -273,6 +278,8 @@ function SnapshotManagerSection() {
 
 export default function Settings() {
   const { displayName, logout, refresh, fxRates, transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport } = useApp();
+  const { language, locale, setLanguage } = useLanguage();
+  const t = useT();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
   const [showBrokerImport, setShowBrokerImport] = useState(false);
   const [clearingId, setClearingId] = useState(null);
@@ -280,17 +287,17 @@ export default function Settings() {
   // Group imported transactions by importId (or legacy "no importId" group)
   const importBatches = (() => {
     const byId = {};
-    for (const t of transactions) {
-      if (!String(t.note ?? '').startsWith('Import brokera')) continue;
-      const key = t.importId || 'legacy';
-      if (!byId[key]) byId[key] = { importId: t.importId || null, count: 0, dates: [] };
+    for (const tx of transactions) {
+      if (!String(tx.note ?? '').startsWith('Import brokera')) continue;
+      const key = tx.importId || 'legacy';
+      if (!byId[key]) byId[key] = { importId: tx.importId || null, count: 0, dates: [] };
       byId[key].count++;
-      if (t.date) byId[key].dates.push(t.date);
+      if (tx.date) byId[key].dates.push(tx.date);
     }
     return Object.values(byId).map(b => ({
       ...b,
       label: b.importId
-        ? new Date(parseInt(b.importId.replace('imp_', ''))).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        ? new Date(parseInt(b.importId.replace('imp_', ''))).toLocaleString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         : 'Poprzedni import (bez daty)',
     }));
   })();
@@ -303,6 +310,25 @@ export default function Settings() {
 
   return (
     <div style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Language section ── */}
+      <div style={{ marginBottom: 24 }}>
+        <div className="card-title" style={{ marginBottom: 12 }}>{t('language_section')}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className={`btn${language === 'pl' ? ' btn-primary' : ''}`}
+            onClick={() => setLanguage('pl')}
+          >
+            🇵🇱 Polski
+          </button>
+          <button
+            className={`btn${language === 'en' ? ' btn-primary' : ''}`}
+            onClick={() => setLanguage('en')}
+          >
+            🇬🇧 English
+          </button>
+        </div>
+      </div>
+
       <Card title="Konto">
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <SettingsRow label="Zalogowany jako" value={displayName || '—'} />
@@ -310,7 +336,7 @@ export default function Settings() {
             <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apiUrl}</span>
           </SettingsRow>
           <div style={{ paddingTop: 14, display: 'flex', gap: 8 }}>
-            <button onClick={refresh} className="btn btn-primary" style={{ fontSize: 12 }}>Odśwież dane</button>
+            <button onClick={refresh} className="btn btn-primary" style={{ fontSize: 12 }}>{t('refresh_data')}</button>
             <button onClick={logout} className="btn" style={{ fontSize: 12 }}>Wyloguj →</button>
           </div>
         </div>
