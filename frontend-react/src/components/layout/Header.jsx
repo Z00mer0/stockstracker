@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
+import { useLanguage, useT } from '../../context/LanguageContext';
 import AddStockModal from '../AddStockModal';
 import StockDetailModal from '../StockDetailModal';
 
@@ -133,7 +134,9 @@ const EyeIcon = ({ closed }) => closed ? (
 
 export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
-  const { isPrivate, toggle } = usePrivacy();
+  const { isPrivate, toggle: togglePrivacy } = usePrivacy();
+  const { language, toggle: toggleLanguage } = useLanguage();
+  const t = useT();
   const navigate = useNavigate();
   const [markets, setMarkets] = useState(getMarketStatuses);
   const [showAdd, setShowAdd] = useState(false);
@@ -239,7 +242,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
           ref={inputRef}
           className="field-input"
           style={{ paddingLeft: 32, paddingRight: 44, height: 34, fontSize: 12, color: 'var(--text-dim)' }}
-          placeholder="Szukaj spółki…"
+          placeholder={t('search_placeholder')}
           value={query}
           onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
           onFocus={() => setSearchOpen(true)}
@@ -258,7 +261,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
             background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8,
             boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 100, overflow: 'hidden',
           }}>
-            {!query && <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Twój portfel</div>}
+            {!query && <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('your_portfolio')}</div>}
             {searchResults.map(item => (
               <div key={item.symbol}
                 onMouseDown={() => handleSearchSelect(item)}
@@ -289,13 +292,13 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
       {/* Ticker strip — hidden on mobile */}
       {!isMobile && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 18, overflow: 'hidden' }}>
-          {tickers.map(t => (
-            <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{t.key}</span>
-              <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(t.key, t.price)}</span>
-              {t.delta != null && (
-                <span className="mono" style={{ fontSize: 11, color: t.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                  {t.delta >= 0 ? '+' : ''}{t.delta.toFixed(2)}%
+          {tickers.map(tick => (
+            <div key={tick.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
+              <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price)}</span>
+              {tick.delta != null && (
+                <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                  {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%
                 </span>
               )}
             </div>
@@ -328,8 +331,19 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
       </button>
 
       {/* Privacy toggle */}
-      <button style={iconBtn} onClick={toggle} title={isPrivate ? 'Pokaż wartości' : 'Ukryj wartości'}>
+      <button style={iconBtn} onClick={togglePrivacy} title={isPrivate ? t('show_values') : t('hide_values')}>
         <EyeIcon closed={isPrivate} />
+      </button>
+
+      {/* Language toggle */}
+      <button
+        style={iconBtn}
+        onClick={toggleLanguage}
+        title={language === 'pl' ? 'Switch to English' : 'Przełącz na Polski'}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>
+          {language === 'pl' ? '🇬🇧' : '🇵🇱'}
+        </span>
       </button>
 
       {/* Calendar / earnings shortcut */}
@@ -337,8 +351,8 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         <button
           style={iconBtn}
           onClick={() => navigate('/calendar')}
-          title="Kalendarz wyników"
-          aria-label="Kalendarz wyników"
+          title={t('earnings_calendar')}
+          aria-label={t('earnings_calendar')}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -351,7 +365,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
 
       {/* Add transaction CTA */}
       <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-        {isMobile ? '+' : '+ Dodaj transakcję'}
+        {isMobile ? '+' : t('add_transaction')}
       </button>
 
       {showAdd && (
