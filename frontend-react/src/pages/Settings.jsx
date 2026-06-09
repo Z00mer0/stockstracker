@@ -18,6 +18,7 @@ function SettingsRow({ label, value, children }) {
 }
 
 function ApiKeySection() {
+  const t = useT();
   const [key, setKey] = useState(getMdApiKey);
   const [saved, setSaved] = useState(false);
   const isSet = !!getMdApiKey();
@@ -25,19 +26,19 @@ function ApiKeySection() {
   function save() { setMdApiKey(key); setSaved(true); setTimeout(() => setSaved(false), 2000); }
 
   return (
-    <Card title="Klucze API">
+    <Card title={t('api_keys')}>
       <div className="card-body">
         <SettingsRow label={<span>MarketData.app <span style={{ fontWeight: 400, fontSize: 11, color: isSet ? 'var(--up)' : 'var(--warn)', marginLeft: 6 }}>{isSet ? '✓ ustawiony' : 'nie ustawiony'}</span></span>}>
           <div style={{ display: 'flex', gap: 8, flex: 1, maxWidth: 360 }}>
             <input type="password" value={key} onChange={e => setKey(e.target.value)}
-              className="field-input mono" style={{ flex: 1, minWidth: 0, fontSize: 12 }} placeholder="Wklej klucz…" />
+              className="field-input mono" style={{ flex: 1, minWidth: 0, fontSize: 12 }} placeholder={t('api_key_placeholder')} />
             <button onClick={save} className={`btn ${saved ? '' : 'btn-primary'}`} style={{ fontSize: 12 }}>
-              {saved ? '✓ Zapisano' : 'Zapisz'}
+              {saved ? t('saved_ok') : t('save_btn')}
             </button>
           </div>
         </SettingsRow>
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 8 }}>
-          Klucz przechowywany tylko lokalnie. Darmowy klucz: marketdata.app
+          {t('api_key_info')} Darmowy klucz: marketdata.app
         </p>
       </div>
     </Card>
@@ -99,7 +100,7 @@ function DividendTaxSection() {
         <div>
           <label className="field-label">{t('us_stocks')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
-            {[{ val: '15', label: '15%', desc: 'Umowa PL-US' }, { val: '30', label: '30%', desc: 'Pełny withholding' }].map(opt => (
+            {[{ val: '15', label: '15%', desc: t('agreement_pl_us') }, { val: '30', label: '30%', desc: t('full_withholding') }].map(opt => (
               <button key={opt.val} onClick={() => save(opt.val)}
                 style={{
                   flex: 1, padding: '10px 12px', borderRadius: 8, textAlign: 'left',
@@ -169,12 +170,12 @@ function SnapshotManagerSection() {
   const isEditing = editingDate !== null;
 
   return (
-    <Card title="Snapshots portfela">
+    <Card title={t('portfolio_snapshots')}>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Form */}
         <div>
           <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
-            {isEditing ? `Edytujesz snapshot: ${fmtDate(editingDate)}` : 'Dodaj nowy snapshot'}
+            {isEditing ? `${t('editing_snapshot')} ${fmtDate(editingDate)}` : t('add_new_snapshot')}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 8 }}>
             <div>
@@ -221,7 +222,7 @@ function SnapshotManagerSection() {
               {saved ? t('saved_ok') : saving ? t('saving') : isEditing ? t('save_changes') : t('add_snapshot')}
             </button>
             {isEditing && (
-              <button onClick={cancelEdit} className="btn" style={{ fontSize: 12 }}>Anuluj</button>
+              <button onClick={cancelEdit} className="btn" style={{ fontSize: 12 }}>{t('cancel_btn')}</button>
             )}
           </div>
         </div>
@@ -254,14 +255,14 @@ function SnapshotManagerSection() {
                   )}
                   <button
                     onClick={() => startEdit(s)}
-                    title="Edytuj"
+                    title={t('edit')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-faint)', padding: '2px 5px' }}
                     onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; }}
                     onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; }}
                   >✏</button>
                   <button
-                    onClick={() => { if (window.confirm(`Usunąć snapshot z ${fmtDate(s.date)}?`)) deleteSnapshot(s.date); }}
-                    title="Usuń"
+                    onClick={() => { if (window.confirm(`${t('delete_snapshot_confirm')} ${fmtDate(s.date)}?`)) deleteSnapshot(s.date); }}
+                    title={t('delete_btn')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-faint)', padding: '2px 5px' }}
                     onMouseEnter={e => { e.currentTarget.style.color = 'var(--down)'; }}
                     onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; }}
@@ -303,7 +304,7 @@ export default function Settings() {
   })();
 
   async function handleClearImport(importId, count) {
-    if (!window.confirm(`Usuń ${count} transakcji z tego importu?`)) return;
+    if (!window.confirm(`${t('delete')} ${count} ${t('delete_import_confirm')}`)) return;
     setClearingId(importId || 'legacy');
     try { await clearBrokerImport(importId); } finally { setClearingId(null); }
   }
@@ -329,15 +330,15 @@ export default function Settings() {
         </div>
       </div>
 
-      <Card title="Konto">
+      <Card title={t('account')}>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <SettingsRow label="Zalogowany jako" value={displayName || '—'} />
+          <SettingsRow label={t('logged_in_as')} value={displayName || '—'} />
           <SettingsRow label="API URL">
             <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apiUrl}</span>
           </SettingsRow>
           <div style={{ paddingTop: 14, display: 'flex', gap: 8 }}>
             <button onClick={refresh} className="btn btn-primary" style={{ fontSize: 12 }}>{t('refresh_data')}</button>
-            <button onClick={logout} className="btn" style={{ fontSize: 12 }}>Wyloguj →</button>
+            <button onClick={logout} className="btn" style={{ fontSize: 12 }}>{t('logout')}</button>
           </div>
         </div>
       </Card>
@@ -346,22 +347,22 @@ export default function Settings() {
       <ApiKeySection />
       <DividendTaxSection />
 
-      <Card title="Import danych brokera">
+      <Card title={t('broker_import')}>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-            Importuj historię z pliku CSV (eToro itp.). Obsługiwane: Closed Positions, Cash Operations.
+            {t('import_csv')}
           </p>
           <button onClick={() => setShowBrokerImport(true)} className="btn btn-primary" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
-            ↑ Importuj CSV brokera
+            {t('import_csv_btn')}
           </button>
           {importBatches.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Historia importów</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{t('import_history')}</p>
               {importBatches.map((b, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', background: 'var(--panel-2)', borderRadius: 8 }}>
                   <div>
                     <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.label}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-faint)', marginLeft: 8 }}>{b.count} transakcji</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-faint)', marginLeft: 8 }}>{b.count} {t('transactions_short')}</span>
                   </div>
                   <button
                     onClick={() => handleClearImport(b.importId, b.count)}
@@ -369,7 +370,7 @@ export default function Settings() {
                     className="btn"
                     style={{ fontSize: 11, color: 'var(--down)', padding: '3px 10px' }}
                   >
-                    {clearingId === (b.importId || 'legacy') ? 'Usuwanie…' : '✕ Cofnij'}
+                    {clearingId === (b.importId || 'legacy') ? t('deleting') : `✕ ${t('undo')}`}
                   </button>
                 </div>
               ))}
@@ -380,7 +381,7 @@ export default function Settings() {
 
       <SnapshotManagerSection />
 
-      <Card title="Kursy walut">
+      <Card title={t('currency_rates')}>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {['USD', 'EUR', 'GBP'].map(cur => (
             <SettingsRow key={cur} label={`${cur} / PLN`}>
@@ -389,7 +390,7 @@ export default function Settings() {
               </span>
             </SettingsRow>
           ))}
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>Aktualizowane co 30 min (frankfurter.app)</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>{t('currency_rates_info')}</p>
         </div>
       </Card>
 

@@ -236,6 +236,28 @@ export default {
   gpw_pln_label:        'GPW · PLN',
   user_label:           'Użytkownik',
 
+  // Additional Settings keys
+  api_key_placeholder:  'Wklej klucz…',
+  api_key_info:         'Klucz przechowywany tylko lokalnie.',
+  currency_rates:       'Kursy walut',
+  currency_rates_info:  'Aktualizowane co 30 min (frankfurter.app)',
+  logged_in_as:         'Zalogowany jako',
+  logout:               'Wyloguj →',
+  account:              'Konto',
+  edit:                 'Edytuj',
+  portfolio_snapshots:  'Snapshots portfela',
+  editing_snapshot:     'Edytujesz snapshot:',
+  add_new_snapshot:     'Dodaj nowy snapshot',
+  broker_import:        'Import danych brokera',
+  import_history:       'Historia importów',
+  transactions_short:   'transakcji',
+  deleting:             'Usuwanie…',
+  undo:                 'Cofnij',
+  delete_import_confirm: 'transakcji z tego importu?',
+  import_csv_btn:       '↑ Importuj CSV brokera',
+  agreement_pl_us:      'Umowa PL-US',
+  full_withholding:     'Pełny withholding',
+
   // ── Auth ────────────────────────────────────────────────────
   username_placeholder: 'nazwa użytkownika',
   password_placeholder: 'hasło',
