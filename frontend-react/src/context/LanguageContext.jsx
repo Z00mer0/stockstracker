@@ -31,7 +31,9 @@ export function useLanguage() {
 }
 
 export function useT() {
-  const { language } = useLanguage();
+  const ctx = useLanguage();
+  if (!ctx) throw new Error('useT must be used inside LanguageProvider');
+  const { language } = ctx;
   const dict = language === 'en' ? en : pl;
   return (key) => dict[key] ?? pl[key] ?? key;
 }
