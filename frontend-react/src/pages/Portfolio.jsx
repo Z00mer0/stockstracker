@@ -23,6 +23,7 @@ import * as XLSX from 'xlsx';
 import HistoryChart from '../components/HistoryChart';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import SegmentedControl from '../components/shared/SegmentedControl';
+import { useLanguage, useT } from '../context/LanguageContext';
 
 const CRYPTO_OPTIONS = [
   'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','AVAX',
@@ -30,6 +31,7 @@ const CRYPTO_OPTIONS = [
 ];
 
 function AddCryptoModal({ onSave, onClose }) {
+  const t = useT();
   const [symbol, setSymbol] = useState('BTC');
   const [customSym, setCustomSym] = useState('');
   const [qty, setQty]   = useState('');
@@ -42,16 +44,16 @@ function AddCryptoModal({ onSave, onClose }) {
   const finalSym = symbol === '__custom' ? customSym.trim().toUpperCase() : symbol;
 
   async function handleSave() {
-    if (!finalSym) { setError('Wybierz lub wpisz symbol'); return; }
+    if (!finalSym) { setError(t('err_enter_symbol')); return; }
     const q = parseFloat(qty), p = parseFloat(price);
-    if (isNaN(q) || q <= 0) { setError('Podaj ilość'); return; }
-    if (isNaN(p) || p <= 0) { setError('Podaj cenę zakupu'); return; }
+    if (isNaN(q) || q <= 0) { setError(t('err_enter_qty_short')); return; }
+    if (isNaN(p) || p <= 0) { setError(t('err_enter_price_short')); return; }
     setSaving(true); setError('');
     try {
       await onSave({ symbol: finalSym, qty: q, price: p, currency, date, note: 'Crypto', assetType: 'crypto' });
       onClose();
     } catch (e) {
-      setError(e.message || 'Błąd zapisu');
+      setError(e.message || t('save_error'));
     } finally { setSaving(false); }
   }
 
@@ -71,31 +73,31 @@ function AddCryptoModal({ onSave, onClose }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
-            <label className="field-label">Ilość</label>
+            <label className="field-label">{t('qty_short')}</label>
             <input type="number" min="0" step="any" className="field-input" value={qty} onChange={e => setQty(e.target.value)} autoFocus />
           </div>
           <div>
-            <label className="field-label">Cena zakupu</label>
+            <label className="field-label">{t('buy_price_label')}</label>
             <input type="number" min="0" step="any" className="field-input" value={price} onChange={e => setPrice(e.target.value)} />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <div>
-            <label className="field-label">Waluta</label>
+            <label className="field-label">{t('currency_label')}</label>
             <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
               {['USD','EUR','PLN'].map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label className="field-label">Data zakupu</label>
+            <label className="field-label">{t('buy_date_label')}</label>
             <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
           </div>
         </div>
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Zapisuję…' : '+ Dodaj'}
+            {saving ? t('saving') : t('add_btn')}
           </button>
         </div>
       </div>
@@ -133,6 +135,7 @@ function saveAlerts(list) {
 }
 
 function NoteEditor({ symbol, initial, onSave, onCancel }) {
+  const t = useT();
   const [draft, setDraft] = useState(initial);
   return (
     <div style={{ padding: '8px 16px 12px', background: 'var(--panel-2)' }}>
@@ -151,24 +154,25 @@ function NoteEditor({ symbol, initial, onSave, onCancel }) {
         <button
           onClick={() => { setDraft(initial); onCancel(); }}
           style={{ fontSize: 11, padding: '3px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
-        >Anuluj</button>
+        >{t('cancel')}</button>
         <button
           onClick={() => onSave(draft)}
           style={{ fontSize: 11, padding: '3px 12px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'white', cursor: 'pointer', fontWeight: 600 }}
-        >Zapisz</button>
+        >{t('save_btn')}</button>
       </div>
     </div>
   );
 }
 
 function SetAlertModal({ symbol, currentPrice, onSave, onClose }) {
+  const t = useT();
   const [target, setTarget] = useState(currentPrice != null ? String(Number(currentPrice).toFixed(2)) : '');
   const [dir, setDir] = useState(currentPrice != null ? 'above' : 'above');
 
   function handleSave() {
-    const t = parseFloat(target);
-    if (isNaN(t) || t <= 0) return;
-    onSave({ symbol, target: t, direction: dir });
+    const tgt = parseFloat(target);
+    if (isNaN(tgt) || tgt <= 0) return;
+    onSave({ symbol, target: tgt, direction: dir });
     onClose();
   }
 
@@ -201,7 +205,7 @@ function SetAlertModal({ symbol, currentPrice, onSave, onClose }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>Anuluj</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>{t('cancel')}</button>
           <button onClick={handleSave} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', fontWeight: 600 }}>Zapisz alert</button>
         </div>
       </div>
@@ -209,9 +213,9 @@ function SetAlertModal({ symbol, currentPrice, onSave, onClose }) {
   );
 }
 
-function fmt(n, decimals = 2) {
+function fmt(n, decimals = 2, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', {
+  return n.toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -220,42 +224,42 @@ function fmt(n, decimals = 2) {
 const CUR_FLAG = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 const COL_LABEL = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
-function renderCell(key, pos, fxRates, divBySymbol) {
+function renderCell(key, pos, fxRates, divBySymbol, locale) {
   const flag = CUR_FLAG[pos.currency] ?? pos.currency;
   switch (key) {
     case 'qty':
       return (
         <span style={{ color: 'var(--text)' }}>
-          {fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}
+          {fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4, locale)}
         </span>
       );
     case 'avgPrice':
       return (
         <span style={{ color: 'var(--text-dim)' }}>
-          {fmt(pos.avgPrice)} <span className="text-xs">{flag}</span>
+          {fmt(pos.avgPrice, 2, locale)} <span className="text-xs">{flag}</span>
         </span>
       );
     case 'price':
       return pos.price != null ? (
         <span style={{ color: 'var(--text)' }}>
-          {fmt(pos.price)} <span className="text-xs">{flag}</span>
+          {fmt(pos.price, 2, locale)} <span className="text-xs">{flag}</span>
         </span>
       ) : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'dailyChg':
       if (pos.dailyChg == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       return <Chip value={pos.dailyChg} />;
     case 'costPLN':
-      return <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.costPLN)} zł</span>;
+      return <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.costPLN, 2, locale)} zł</span>;
     case 'valuePLN':
       return pos.valuePLN != null
-        ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.valuePLN)} zł</span>
+        ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.valuePLN, 2, locale)} zł</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'plPLN': {
       if (pos.plPLN == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.plPLN >= 0;
       return (
         <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-          {up ? '+' : ''}{fmt(pos.plPLN)} zł
+          {up ? '+' : ''}{fmt(pos.plPLN, 2, locale)} zł
         </span>
       );
     }
@@ -263,28 +267,28 @@ function renderCell(key, pos, fxRates, divBySymbol) {
       return <span style={{ color: 'var(--text-dim)' }}>{fmtPeriod(pos.periodDays)}</span>;
     case 'moic':
       return pos.moic != null
-        ? <span style={{ color: 'var(--text)' }}>{fmt(pos.moic, 2)}x</span>
+        ? <span style={{ color: 'var(--text)' }}>{fmt(pos.moic, 2, locale)}x</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'irr': {
       if (pos.irr == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.irr >= 0;
       return (
         <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
-          {up ? '+' : ''}{fmt(pos.irr, 1)}%
+          {up ? '+' : ''}{fmt(pos.irr, 1, locale)}%
         </span>
       );
     }
     case 'pe':
       return pos.pe != null
-        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pe, 1)}</span>
+        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pe, 1, locale)}</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'peFwd':
       return pos.peFwd != null
-        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.peFwd, 1)}</span>
+        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.peFwd, 1, locale)}</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'pb':
       return pos.pb != null
-        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pb, 2)}</span>
+        ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pb, 2, locale)}</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'divYoc': {
       const totalDiv = divBySymbol[pos.symbol] ?? 0;
@@ -292,7 +296,7 @@ function renderCell(key, pos, fxRates, divBySymbol) {
       const yoc = pos.costPLN > 0 ? (totalDiv / pos.costPLN) * 100 : null;
       return (
         <span style={{ color: 'var(--warn)', fontWeight: 600 }}>
-          {fmt(totalDiv, 0)} zł{yoc != null ? <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.75 }}>({fmt(yoc, 1)}%)</span> : null}
+          {fmt(totalDiv, 0, locale)} zł{yoc != null ? <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.75 }}>({fmt(yoc, 1, locale)}%)</span> : null}
         </span>
       );
     }
@@ -303,6 +307,16 @@ function renderCell(key, pos, fxRates, divBySymbol) {
 
 export default function Portfolio() {
   const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
+  const { locale } = useLanguage();
+  const t = useT();
+
+  const SORT_LABELS = {
+    cost: t('sort_by_cost'),
+    symbol: t('sort_az'),
+    qty: t('sort_by_qty'),
+    pl: t('sort_by_pl'),
+  };
+
   const [showImport, setShowImport]   = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
   const [showAddCrypto, setShowAddCrypto] = useState(false);
@@ -352,8 +366,8 @@ export default function Portfolio() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(''), 2500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(''), 2500);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   useEffect(() => {
@@ -395,15 +409,15 @@ export default function Portfolio() {
 
   const divBySymbol = useMemo(() => {
     const map = {};
-    for (const t of transactions) {
-      const type = t.type?.toUpperCase();
+    for (const tx of transactions) {
+      const type = tx.type?.toUpperCase();
       if (type !== 'DIV' && type !== 'DIVIDEND') continue;
-      const sym = t.symbol;
+      const sym = tx.symbol;
       if (!sym) continue;
       // amount = qty * price (if qty present), else just price
-      const amount = t.qty != null && t.qty > 0
-        ? (t.qty * (t.price ?? 0))
-        : (t.price ?? 0);
+      const amount = tx.qty != null && tx.qty > 0
+        ? (tx.qty * (tx.price ?? 0))
+        : (tx.price ?? 0);
       map[sym] = (map[sym] ?? 0) + amount;
     }
     return map;
@@ -540,7 +554,7 @@ export default function Portfolio() {
                       <input
                         autoFocus
                         value={editTicker.value}
-                        onChange={e => setEditTicker(t => ({ ...t, value: e.target.value.toUpperCase() }))}
+                        onChange={e => setEditTicker(tk => ({ ...tk, value: e.target.value.toUpperCase() }))}
                         onKeyDown={e => e.key === 'Escape' && setEditTicker(null)}
                         style={{
                           width: 90, padding: '2px 6px', fontSize: 12,
@@ -554,7 +568,7 @@ export default function Portfolio() {
                     </form>
                   ) : (
                     <span
-                      title="Nie znaleziono notowań — kliknij aby zmienić ticker"
+                      title={t('quote_not_found')}
                       onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: pos.symbol }); }}
                       style={{ fontSize: 12, color: 'var(--down)', cursor: 'pointer' }}
                     >⚠</span>
@@ -569,7 +583,7 @@ export default function Portfolio() {
         </td>
         {cols.map(key => (
           <td key={key} className="right mono">
-            {renderCell(key, pos, fxRates, divBySymbol)}
+            {renderCell(key, pos, fxRates, divBySymbol, locale)}
           </td>
         ))}
         <td className="right mono">
@@ -579,7 +593,7 @@ export default function Portfolio() {
                 style={{ height: '100%', background: 'var(--info)', borderRadius: 9999, width: `${Math.min(share, 100)}%` }}
               />
             </div>
-            <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 40, textAlign: 'right' }}>{fmt(share, 1)}%</span>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 40, textAlign: 'right' }}>{fmt(share, 1, locale)}%</span>
           </div>
         </td>
         {/* ⋯ action menu */}
@@ -607,16 +621,16 @@ export default function Portfolio() {
               }}
             >
               {[
-                { icon: '+', label: 'Kup więcej', action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
+                { icon: '+', label: t('buy_more'), action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
                 { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
-                { icon: '✏', label: 'Edytuj pozycję', action: () => { setEditTarget(pos); setMenuSym(null); } },
+                { icon: '✏', label: t('edit_position'), action: () => { setEditTarget(pos); setMenuSym(null); } },
                 { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
-                { icon: '👁', label: isWatched(pos.symbol) ? 'Usuń z obserwowanych' : 'Obserwuj', action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} dodano do Watchlist` : `${pos.symbol} usunięto z Watchlist`); setMenuSym(null); } },
+                { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`); setMenuSym(null); } },
                 { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
                 { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
                 null,
                 { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
-                { icon: '✕', label: 'Usuń pozycję', action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
+                { icon: '✕', label: t('delete_position'), action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
               ].map((item, i) =>
                 item === null ? (
                   <div key={i} style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
@@ -667,7 +681,7 @@ export default function Portfolio() {
   }
 
   function handleExportCsv() {
-    const headers = ['Symbol', 'Ilość', 'Śr. zakup', 'Waluta', 'Cena', 'Wart. zakupu (PLN)', 'Wart. teraz (PLN)', 'Zysk/Strata (PLN)', 'Zysk/Strata (%)', 'Zmiana dz. (%)'];
+    const headers = [t('col_symbol'), t('col_qty'), t('col_avg_price'), t('col_currency'), t('col_price'), t('col_cost_pln'), t('col_value_pln'), t('col_pl_pln'), 'Zysk/Strata (%)', t('col_daily_chg')];
     const rows = sorted.map(p => [
       p.symbol,
       p.qty ?? '',
@@ -689,15 +703,15 @@ export default function Portfolio() {
   }
 
   function handleExportTransactions() {
-    const headers = ['Data', 'Typ', 'Symbol', 'Ilość', 'Cena', 'Waluta', 'Notatka'];
-    const rows = transactions.map(t => [
-      t.date ?? '',
-      t.type ?? '',
-      t.symbol ?? '',
-      t.qty != null ? t.qty : '',
-      t.price != null ? t.price : '',
-      t.currency ?? '',
-      t.note ?? '',
+    const headers = [t('col_date'), 'Typ', 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
+    const rows = transactions.map(tx => [
+      tx.date ?? '',
+      tx.type ?? '',
+      tx.symbol ?? '',
+      tx.qty != null ? tx.qty : '',
+      tx.price != null ? tx.price : '',
+      tx.currency ?? '',
+      tx.note ?? '',
     ]);
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -708,7 +722,7 @@ export default function Portfolio() {
   }
 
   function handleExportSnapshots() {
-    const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];
+    const headers = [t('col_date'), t('value_pln_header'), t('invested_pln_header')];
     const rows = snapshots
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -722,7 +736,7 @@ export default function Portfolio() {
   }
 
   function handleExportXlsPositions() {
-    const headers = ['Symbol', 'Ilość', 'Śr. zakup', 'Waluta', 'Cena', 'Wart. zakupu (PLN)', 'Wart. teraz (PLN)', 'Zysk/Strata (PLN)', 'Zysk/Strata (%)', 'Zmiana dz. (%)'];
+    const headers = [t('col_symbol'), t('col_qty'), t('col_avg_price'), t('col_currency'), t('col_price'), t('col_cost_pln'), t('col_value_pln'), t('col_pl_pln'), 'Zysk/Strata (%)', t('col_daily_chg')];
     const rows = sorted.map(p => [
       p.symbol, p.qty ?? '', p.avgPrice ?? '', p.currency ?? '', p.price ?? '',
       p.costPLN != null ? parseFloat(p.costPLN.toFixed(2)) : '',
@@ -738,12 +752,12 @@ export default function Portfolio() {
   }
 
   function handleExportXlsTransactions() {
-    const headers = ['Data', 'Typ', 'Symbol', 'Ilość', 'Cena', 'Waluta', 'Notatka'];
-    const rows = transactions.map(t => [
-      t.date ?? '', t.type ?? '', t.symbol ?? '',
-      t.qty != null ? t.qty : '',
-      t.price != null ? t.price : '',
-      t.currency ?? '', t.note ?? '',
+    const headers = [t('col_date'), 'Typ', 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
+    const rows = transactions.map(tx => [
+      tx.date ?? '', tx.type ?? '', tx.symbol ?? '',
+      tx.qty != null ? tx.qty : '',
+      tx.price != null ? tx.price : '',
+      tx.currency ?? '', tx.note ?? '',
     ]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
@@ -752,7 +766,7 @@ export default function Portfolio() {
   }
 
   function handleExportXlsSnapshots() {
-    const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];
+    const headers = [t('col_date'), t('value_pln_header'), t('invested_pln_header')];
     const rows = snapshots
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -772,12 +786,12 @@ export default function Portfolio() {
       <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
         <div className="text-5xl mb-3">💼</div>
         <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak pozycji w portfelu</p>
-        <p className="text-sm mt-1 mb-5">Dodaj pierwszą spółkę, aby zacząć śledzić portfel</p>
+        <p className="text-sm mt-1 mb-5">{t('add_first_stock_hint')}</p>
         <button
           onClick={() => setShowAdd(true)}
           className="btn btn-primary"
         >
-          + Dodaj spółkę
+          {t('add_stock_btn')}
         </button>
         {showAdd && (
           <AddStockModal
@@ -808,7 +822,7 @@ export default function Portfolio() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>{alert.symbol}</span>
             <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              Split {alert.ratio} wykryty {alert.date} — sprawdź czy ilość akcji ({alert.qty}) jest już po splicie
+              {t('split_detected').replace('Split wykryty', `Split ${alert.ratio} wykryty ${alert.date}`).replace('sprawdź czy ilość akcji jest już po splicie', `sprawdź czy ilość akcji (${alert.qty}) jest już po splicie`)}
             </span>
           </div>
           <button
@@ -830,14 +844,14 @@ export default function Portfolio() {
           <div style={{ padding: '18px 20px 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
             <div>
               <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
-                Wartość portfela
+                {t('portfolio_value_rail')}
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                {fmt(totalValuePLN)} zł
+                {fmt(totalValuePLN, 2, locale)} zł
               </div>
               {dailyChangePLN !== 0 && (
                 <div style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
-                  {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN)} zł dziś
+                  {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN, 2, locale)} zł {t('today')}
                 </div>
               )}
             </div>
@@ -850,7 +864,7 @@ export default function Portfolio() {
           <div style={{ padding: '4px 12px 18px' }}>
             {snapshotsForPortfolio.length >= 2
               ? <HistoryChart data={snapshotsForPortfolio} />
-              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>Za mało danych historycznych</div>
+              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
             }
           </div>
         </div>
@@ -864,12 +878,12 @@ export default function Portfolio() {
               <div className="rail-stats">
                 <div className="rail-stat">
                   <span className="rs-lbl">Koszt zakupu</span>
-                  <span className="rs-val">{fmt(totalCostPLN)} zł</span>
+                  <span className="rs-val">{fmt(totalCostPLN, 2, locale)} zł</span>
                 </div>
                 <div className="rail-stat">
                   <span className="rs-lbl">Wynik dnia</span>
                   <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                    {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN)} zł
+                    {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN, 2, locale)} zł
                   </span>
                 </div>
                 <div className="rail-stat">
@@ -912,7 +926,7 @@ export default function Portfolio() {
               <div style={{ position: 'relative', flexShrink: 0 }} ref={filterMenuRef}>
                 <button className={'btn' + (activeCount > 0 ? ' btn-primary' : '')} onClick={() => setShowFilterMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-                  Filtry
+                  {t('filter')}
                   {activeCount > 0 && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 8, fontSize: 10, fontWeight: 700, padding: '0 5px', lineHeight: '16px' }}>{activeCount}</span>}
                 </button>
                 {showFilterMenu && (
@@ -925,7 +939,7 @@ export default function Portfolio() {
                       </button>
                     ))}
                     <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                    <div style={hdr}>Giełda</div>
+                    <div style={hdr}>{t('exchange')}</div>
                     <button style={rowStyle(filterGpw)} onClick={() => setFilterGpw(v=>!v)}
                       onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=filterGpw?'var(--panel-2)':'transparent'}>
                       {check(filterGpw)}Tylko GPW
@@ -934,14 +948,14 @@ export default function Portfolio() {
                     <div style={hdr}>Widok</div>
                     <button style={rowStyle(grouped)} onClick={() => setGrouped(v=>!v)}
                       onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=grouped?'var(--panel-2)':'transparent'}>
-                      {check(grouped)}Grupuj sektorami
+                      {check(grouped)}{t('group_sectors')}
                     </button>
                     {activeCount > 0 && <>
                       <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
                       <button style={{ ...rowStyle(false), color: 'var(--text-faint)', fontSize: 12 }}
                         onClick={() => { setFilterChip('all'); setFilterGpw(false); setGrouped(false); setShowFilterMenu(false); }}
                         onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        {check(false)}Wyczyść filtry
+                        {check(false)}{t('clear_filters')}
                       </button>
                     </>}
                   </div>
@@ -952,7 +966,6 @@ export default function Portfolio() {
 
           {/* ── Sortuj ── */}
           {(() => {
-            const SORT_LABELS = { cost: 'Wg kosztu', symbol: 'A–Z', qty: 'Wg ilości', pl: 'Wg P&L' };
             const DD_STYLE = { position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 180, padding: '6px 0' };
             const rowStyle = (active) => ({ width: '100%', textAlign: 'left', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 9, background: active ? 'var(--panel-2)' : 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 });
             return (
@@ -985,12 +998,12 @@ export default function Portfolio() {
           <div style={{ position: 'relative', flexShrink: 0 }} ref={exportMenuRef}>
             <button className="btn" onClick={() => setShowExportMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Eksport / Import
+              {t('export')} / Import
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             {showExportMenu && (
               <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 210, padding: '6px 0' }}>
-                <div style={{ padding: '5px 14px 4px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>Eksport</div>
+                <div style={{ padding: '5px 14px 4px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600 }}>{t('export')}</div>
                 {[
                   { label: 'Pozycje (CSV)', fn: handleExportCsv },
                   { label: 'Pozycje (Excel)', fn: handleExportXlsPositions },
@@ -1017,7 +1030,7 @@ export default function Portfolio() {
           {/* ── + Dodaj ── */}
           <div style={{ position: 'relative', flexShrink: 0 }} ref={addMenuRef}>
             <button className="btn btn-primary" onClick={() => setShowAddMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-              + Dodaj
+              + {t('add')}
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             {showAddMenu && (
@@ -1050,7 +1063,7 @@ export default function Portfolio() {
                     {COL_LABEL[key] ?? key}
                   </th>
                 ))}
-                <th className="right">Udział %</th>
+                <th className="right">{t('col_share_pct')}</th>
                 <th />
               </tr>
             </thead>
@@ -1091,12 +1104,12 @@ export default function Portfolio() {
                 <tfoot className="table-pro">
                   <tr>
                     <td className="lbl" style={{ position: 'sticky', left: 0, background: 'var(--panel-2)' }}>
-                      Razem · {filteredSorted.length}
+                      {t('totals')} · {filteredSorted.length}
                     </td>
                     {cols.map(key => {
-                      if (key === 'valuePLN') return <td key={key} className="right">{fmt(tot.value)} zł</td>;
-                      if (key === 'plPLN')    return <td key={key} className="right" style={{ color: tot.pl >= 0 ? 'var(--up)' : 'var(--down)' }}>{tot.pl >= 0 ? '+' : ''}{fmt(tot.pl)} zł</td>;
-                      if (key === 'costPLN')  return <td key={key} className="right">{fmt(tot.cost)} zł</td>;
+                      if (key === 'valuePLN') return <td key={key} className="right">{fmt(tot.value, 2, locale)} zł</td>;
+                      if (key === 'plPLN')    return <td key={key} className="right" style={{ color: tot.pl >= 0 ? 'var(--up)' : 'var(--down)' }}>{tot.pl >= 0 ? '+' : ''}{fmt(tot.pl, 2, locale)} zł</td>;
+                      if (key === 'costPLN')  return <td key={key} className="right">{fmt(tot.cost, 2, locale)} zł</td>;
                       return <td key={key} />;
                     })}
                     <td className="right">{totRetPct != null ? ((totRetPct >= 0 ? '+' : '') + totRetPct.toFixed(1) + '%') : '—'}</td>
@@ -1177,21 +1190,21 @@ export default function Portfolio() {
             onClick={e => e.stopPropagation()}
           >
             <p style={{ color: 'var(--text)', fontWeight: 600, marginBottom: 4 }}>Usuń {confirmDel}?</p>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 20 }}>Pozycja zostanie usunięta z portfela. Transakcji nie można cofnąć.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 20 }}>{t('confirm_delete_pos')}</p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setConfirmDel(null)}
                 className="btn"
                 style={{ flex: 1, padding: '8px 0' }}
               >
-                Anuluj
+                {t('cancel')}
               </button>
               <button
                 onClick={async () => { await removePosition(confirmDel); setConfirmDel(null); refresh(); }}
                 className="btn btn-danger"
                 style={{ flex: 1, padding: '8px 0' }}
               >
-                Usuń
+                {t('delete_btn')}
               </button>
             </div>
           </div>
@@ -1247,6 +1260,8 @@ const ASSET_CATEGORIES = {
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
 function OtherAssetModal({ initial, onSave, onClose }) {
+  const t = useT();
+  const { locale } = useLanguage();
   const [name, setName]         = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.category ?? 'other');
   const [value, setValue]       = useState(initial?.value ?? '');
@@ -1256,15 +1271,15 @@ function OtherAssetModal({ initial, onSave, onClose }) {
   const [error, setError]       = useState('');
 
   async function handleSave() {
-    if (!name.trim()) { setError('Podaj nazwę'); return; }
+    if (!name.trim()) { setError(t('enter_name')); return; }
     const v = parseFloat(value);
-    if (isNaN(v) || v < 0) { setError('Podaj wartość'); return; }
+    if (isNaN(v) || v < 0) { setError(t('enter_value_err')); return; }
     setSaving(true);
     try {
       await onSave({ name: name.trim(), category, value: v, currency, note: note.trim() });
       onClose();
     } catch(e) {
-      setError(e.message || 'Błąd zapisu');
+      setError(e.message || t('save_error'));
     } finally { setSaving(false); }
   }
 
@@ -1288,11 +1303,11 @@ function OtherAssetModal({ initial, onSave, onClose }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
-            <label className="field-label">Wartość *</label>
+            <label className="field-label">{t('asset_value_label')}</label>
             <input type="number" min="0" step="any" className="field-input" value={value} onChange={e => setValue(e.target.value)} />
           </div>
           <div>
-            <label className="field-label">Waluta</label>
+            <label className="field-label">{t('currency_label')}</label>
             <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
@@ -1300,13 +1315,13 @@ function OtherAssetModal({ initial, onSave, onClose }) {
         </div>
         <div style={{ marginBottom: 20 }}>
           <label className="field-label">Notatka (opcjonalna)</label>
-          <input className="field-input" value={note} onChange={e => setNote(e.target.value)} placeholder="np. wartość rynkowa szacunkowa" />
+          <input className="field-input" value={note} onChange={e => setNote(e.target.value)} placeholder={t('asset_note_placeholder')} />
         </div>
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Zapisuję…' : 'Zapisz'}
+            {saving ? t('saving') : t('save_btn')}
           </button>
         </div>
       </div>
@@ -1316,24 +1331,26 @@ function OtherAssetModal({ initial, onSave, onClose }) {
 
 function OtherAssetsSection() {
   const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates } = useApp();
+  const t = useT();
+  const { locale } = useLanguage();
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
 
   const totalPLN = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
 
-  function fmt(n) {
-    return n.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  function fmtLocal(n) {
+    return n.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
   if (!otherAssets.length && !showModal) {
     return (
       <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>Inne aktywa</p>
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>Nieruchomości, lokaty, złoto, pojazdy — wyceniane ręcznie</p>
+          <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{t('other_assets')}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>{t('real_estate_hint')}</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 12 }}>+ Dodaj</button>
+        <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 12 }}>+ {t('add')}</button>
       </div>
     );
   }
@@ -1342,12 +1359,12 @@ function OtherAssetsSection() {
     <div className="card">
       <div className="card-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Inne aktywa</span>
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{t('other_assets')}</span>
           {totalPLN > 0 && (
-            <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmt(totalPLN)} zł łącznie</span>
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmtLocal(totalPLN)} zł {t('total_approx')}</span>
           )}
         </div>
-        <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ Dodaj</button>
+        <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ {t('add')}</button>
       </div>
       <div className="overflow-x-auto">
         <table className="data-table">
@@ -1355,9 +1372,9 @@ function OtherAssetsSection() {
             <tr>
               <th>Nazwa</th>
               <th>Kategoria</th>
-              <th className="right">Wartość</th>
+              <th className="right">{t('col_value')}</th>
               <th className="right">≈ PLN</th>
-              <th>Notatka</th>
+              <th>{t('col_note')}</th>
               <th>Ost. aktualizacja</th>
               <th />
             </tr>
@@ -1370,19 +1387,19 @@ function OtherAssetsSection() {
                 <tr key={a.id}>
                   <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cat.icon} {a.name}</td>
                   <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{cat.label}</td>
-                  <td className="right mono" style={{ color: 'var(--text)' }}>{fmt(a.value)} {a.currency}</td>
-                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(plnVal)} zł</td>
+                  <td className="right mono" style={{ color: 'var(--text)' }}>{fmtLocal(a.value)} {a.currency}</td>
+                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmtLocal(plnVal)} zł</td>
                   <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.note || '—'}</td>
                   <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.updatedAt || '—'}</td>
                   <td className="right" style={{ whiteSpace: 'nowrap' }}>
                     <button
                       onClick={() => { setEditTarget(a); setShowModal(true); }}
                       style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer', marginRight: 8 }}
-                    >Edytuj</button>
+                    >{t('edit')}</button>
                     <button
                       onClick={() => setConfirmDel(a)}
                       style={{ fontSize: 11, color: 'var(--down)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >Usuń</button>
+                    >{t('delete_btn')}</button>
                   </td>
                 </tr>
               );
@@ -1405,8 +1422,8 @@ function OtherAssetsSection() {
           <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, maxWidth: 320, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <p style={{ fontWeight: 600, marginBottom: 8 }}>Usuń "{confirmDel.name}"?</p>
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-              <button onClick={() => setConfirmDel(null)} className="btn" style={{ flex: 1 }}>Anuluj</button>
-              <button onClick={async () => { await deleteOtherAsset(confirmDel.id); setConfirmDel(null); }} className="btn btn-danger" style={{ flex: 1 }}>Usuń</button>
+              <button onClick={() => setConfirmDel(null)} className="btn" style={{ flex: 1 }}>{t('cancel')}</button>
+              <button onClick={async () => { await deleteOtherAsset(confirmDel.id); setConfirmDel(null); }} className="btn btn-danger" style={{ flex: 1 }}>{t('delete_btn')}</button>
             </div>
           </div>
         </div>
