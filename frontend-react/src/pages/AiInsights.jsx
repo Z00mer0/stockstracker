@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { useT } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
 
 const MANUAL_KEY = 'myfund_manual_insights';
@@ -43,15 +44,15 @@ async function apiSaveInsights(data) {
   });
 }
 
-function fmtTime(iso) {
+function fmtTime(iso, locale = 'pl-PL') {
   if (!iso) return '';
-  try { return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }); }
+  try { return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); }
   catch { return ''; }
 }
 
-function fmtDate(iso) {
+function fmtDate(iso, locale = 'pl-PL') {
   if (!iso) return '';
-  try { return new Date(iso).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: '2-digit' }); }
+  try { return new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }); }
   catch { return ''; }
 }
 
@@ -92,6 +93,7 @@ function wordCount(text) {
 
 export default function AiInsights() {
   const { portfolio } = useApp();
+  const t = useT();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
@@ -133,7 +135,7 @@ export default function AiInsights() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e) {
-      setError(e.message || 'Blad pobierania danych');
+      setError(e.message || t('error'));
     } finally { setLoading(false); }
   }, [waSymbols.join(',')]);
 
@@ -159,8 +161,8 @@ export default function AiInsights() {
     return (
       <div style={{ textAlign: 'center', paddingTop: 80, color: 'var(--text-faint)' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>🤖</div>
-        <p style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 6 }}>Brak spółek w portfelu</p>
-        <p style={{ fontSize: 13 }}>Dodaj spółki do portfela, aby korzystać z AI Insights</p>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 6 }}>{t('ai_no_stocks')}</p>
+        <p style={{ fontSize: 13 }}>{t('ai_no_stocks_hint')}</p>
       </div>
     );
   }
@@ -172,17 +174,17 @@ export default function AiInsights() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
-            AI Insights — portfel GPW
+            {t('ai_title')}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
             {activeTab === 'manual'
-              ? `${filledSymbols.length} z ${allSymbols.length} spółek uzupełnionych`
-              : `${waSymbols.length} spółek GPW${data?.generatedAt ? ` · generowano o ${fmtTime(data.generatedAt)}` : ''}`}
+              ? t('ai_filled_count').replace('{n}', filledSymbols.length).replace('{total}', allSymbols.length)
+              : `${t('ai_gpw_count').replace('{n}', waSymbols.length)}${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt)}` : ''}`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-            {[['manual', '📋 Własne'], ['ai', '🤖 Claude AI']].map(([key, label]) => (
+            {[['manual', t('ai_tab_manual')], ['ai', t('ai_tab_ai')]].map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key)} style={{
                 padding: '6px 14px', fontSize: 12, fontWeight: 600,
                 background: activeTab === key ? 'var(--accent)' : 'var(--panel)',
@@ -193,7 +195,7 @@ export default function AiInsights() {
           </div>
           {activeTab === 'ai' && (
             <button className="btn btn-primary" onClick={() => { setData(null); load(); }} disabled={loading} style={{ fontSize: 12 }}>
-              {loading ? 'Generowanie…' : '↻ Odśwież'}
+              {loading ? t('ai_generating') : t('ai_refresh')}
             </button>
           )}
         </div>
@@ -203,16 +205,16 @@ export default function AiInsights() {
         <>
           <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--panel)', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-              <span style={{ color: 'var(--text-dim)' }}>Pokrycie analiz</span>
+              <span style={{ color: 'var(--text-dim)' }}>{t('ai_coverage')}</span>
               <span style={{ fontWeight: 700, color: progress === 100 ? 'var(--up)' : 'var(--accent)' }}>
-                {filledSymbols.length}/{allSymbols.length} spółek
+                {filledSymbols.length}/{allSymbols.length}
               </span>
             </div>
             <div style={{ height: 5, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, var(--accent), #818cf8)', borderRadius: 3, transition: 'width 0.4s ease' }} />
             </div>
             <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.6 }}>
-              Wklej analizy z Investing Pro, Bloomberga lub raportów maklerskich. W trybie edycji możesz przetłumaczyć tekst EN→PL automatycznie.
+              {t('ai_coverage_hint')}
             </p>
           </div>
 
@@ -248,7 +250,7 @@ export default function AiInsights() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 10px' }}>
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   <span style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-                    Do uzupełnienia ({emptyListSymbols.length})
+                    {t('ai_to_fill')} ({emptyListSymbols.length})
                   </span>
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                 </div>
@@ -274,7 +276,7 @@ export default function AiInsights() {
                         background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: 'var(--accent)',
                       }}
                     >
-                      + Dodaj analizę
+                      {t('ai_add_analysis')}
                     </button>
                   </div>
                 ))}
@@ -288,17 +290,17 @@ export default function AiInsights() {
         <>
           {waSymbols.length === 0 && (
             <div style={{ padding: '14px 18px', borderRadius: 10, background: 'var(--panel)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-dim)' }}>
-              Claude AI analizuje tylko spółki z GPW (końcówka .WA). Twój portfel nie zawiera żadnych spółek GPW.
+              {t('ai_no_gpw_note')}
               <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-faint)' }}>
-                Dla spółek z USA i innych rynków użyj zakładki <strong>📋 Własne</strong>.
+                {t('ai_no_gpw_hint')} <strong>{t('ai_tab_manual')}</strong>.
               </div>
             </div>
           )}
           {waSymbols.length > 0 && error && (
             <div style={{ padding: '14px 18px', borderRadius: 10, background: 'var(--down-soft)', border: '1px solid var(--down)', color: 'var(--down)', fontSize: 13 }}>
-              Błąd: {error}
+              {t('ai_error_prefix')} {error}
               <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-faint)' }}>
-                Możesz użyć zakładki <strong>📋 Własne</strong> żeby wkleić analizy ręcznie.
+                {t('ai_no_gpw_hint')} <strong>{t('ai_tab_manual')}</strong>.
               </div>
             </div>
           )}
@@ -309,7 +311,7 @@ export default function AiInsights() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--panel-2)' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-faint)', fontSize: 13 }}>
-                      <Spinner size="sm" /> Generowanie podsumowania AI…
+                      <Spinner size="sm" /> {t('ai_generating_summary')}
                     </div>
                   </div>
                 </div>
@@ -323,7 +325,7 @@ export default function AiInsights() {
       )}
 
       <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)', fontSize: 11, color: 'var(--text-faint)' }}>
-        Źródło: własne analizy lub Yahoo Finance + Claude AI. Nie stanowi porady inwestycyjnej.
+        {t('ai_disclaimer')}
       </div>
     </div>
   );
@@ -415,6 +417,7 @@ function renderPara(text, idx) {
 }
 
 function AnalysisView({ text, expanded, onToggle }) {
+  const t = useT();
   const raw = text.trim();
   const hasDblNewline = /\n{2,}/.test(raw);
   const paras = hasDblNewline
@@ -432,7 +435,9 @@ function AnalysisView({ text, expanded, onToggle }) {
       {hasMore && (
         <button onClick={onToggle}
           style={{ marginTop: 12, fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          {expanded ? '▲ Zwiń' : `▼ Pokaż całość (jeszcze ${paras.length - PREVIEW} ${paras.length - PREVIEW === 1 ? 'akapit' : 'akapitów'})`}
+          {expanded
+            ? t('ai_collapse')
+            : `${t('ai_expand')} (${t('ai_more_paragraphs').replace('{n}', paras.length - PREVIEW)} ${paras.length - PREVIEW === 1 ? t('ai_paragraph') : t('ai_paragraphs')})`}
         </button>
       )}
     </div>
@@ -442,6 +447,7 @@ function AnalysisView({ text, expanded, onToggle }) {
 // ─── cards ───────────────────────────────────────────────────────────────────
 
 function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, onCancel }) {
+  const t = useT();
   const [editing, setEditing]         = useState(defaultEditing);
   const [draft, setDraft]             = useState(entry?.text || '');
   const [expanded, setExpanded]       = useState(false);
@@ -498,14 +504,14 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{symbol}</div>
           <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-            {text ? `${wc} słów · zapisano ${fmtDate(entry?.savedAt) || '—'}` : 'Brak analizy'}
+            {text ? `${wc} ${t('ai_words_saved')} ${fmtDate(entry?.savedAt) || '—'}` : t('ai_no_analysis')}
           </div>
         </div>
         {!editing && text && (
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button onClick={() => { setDraft(text); setEditing(true); }}
               style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer' }}>
-              ✏️ Edytuj
+              {t('ai_edit_btn')}
             </button>
             <button onClick={() => { if (confirm(`Usunąć analizę dla ${symbol}?`)) onDelete(); }}
               style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'none', border: '1px solid var(--border)', color: 'var(--text-faint)', cursor: 'pointer' }}
@@ -522,7 +528,7 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
             ref={taRef}
             value={draft}
             onChange={e => setDraft(e.target.value)}
-            placeholder={`Wklej analizę dla ${symbol} — np. z Investing Pro, Bloomberga, raportu maklerskiego…`}
+            placeholder={t('ai_paste_placeholder').replace('{symbol}', symbol)}
             style={{
               width: '100%', minHeight: 180, marginTop: 12, padding: '10px 12px',
               background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
@@ -544,12 +550,12 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
                 opacity: !draft.trim() ? 0.4 : 1,
               }}
             >
-              {translating ? '⏳ Tłumaczę…' : '🌐 Przetłumacz EN→PL'}
+              {translating ? t('ai_translating') : t('ai_translate_btn')}
             </button>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={handleCancel}
                 style={{ fontSize: 12, padding: '5px 14px', borderRadius: 6, background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer' }}>
-                Anuluj
+                {t('ai_cancel_btn')}
               </button>
               <button
                 onClick={() => { if (draft.trim()) { onSave(draft.trim()); setEditing(false); } }}
@@ -559,7 +565,7 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
                   color: '#fff', cursor: draft.trim() ? 'pointer' : 'not-allowed', fontWeight: 600,
                   opacity: draft.trim() ? 1 : 0.5,
                 }}>
-                Zapisz
+                {t('ai_save_btn')}
               </button>
             </div>
           </div>
@@ -574,6 +580,7 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
 }
 
 function AiInsightCard({ item }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const ticker = item.symbol.replace('.WA', '').slice(0, 4);
 
@@ -600,7 +607,7 @@ function AiInsightCard({ item }) {
           {item.summary
             ? <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.65, margin: 0 }}>{item.summary}</p>
             : <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', margin: 0 }}>
-                {item.headlines?.length === 0 ? 'Brak dostępnych informacji prasowych' : 'Podsumowanie niedostępne'}
+                {item.headlines?.length === 0 ? t('ai_no_press_info') : t('ai_summary_unavailable')}
               </p>
           }
         </div>
@@ -613,7 +620,7 @@ function AiInsightCard({ item }) {
             onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
             onMouseLeave={e => e.currentTarget.style.background = 'none'}
           >
-            <span>{expanded ? 'Zwiń' : 'Pokaż'} nagłówki ({item.headlines.length})</span>
+            <span>{expanded ? t('ai_headlines_collapse') : t('ai_headlines_expand')} ({item.headlines.length})</span>
             <span style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
           </button>
           {expanded && (

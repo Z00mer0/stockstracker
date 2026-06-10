@@ -1,16 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useT } from '../context/LanguageContext';
 import useCalendarData from '../hooks/useCalendarData';
 import useDividendEvents from '../hooks/useDividendEvents';
 import Spinner from '../components/shared/Spinner';
 import Card from '../components/shared/Card';
-
-const DAY_NAMES = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd'];
-
-const MONTH_NAMES = [
-  'Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
-  'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień',
-];
 
 function getMonday(date) {
   const d = new Date(date);
@@ -56,6 +50,9 @@ const COUNTRY_OPTS = [
 ];
 
 export default function Calendar() {
+  const t = useT();
+  const DAY_NAMES  = t('day_names');
+  const MONTH_NAMES = t('months');
   const { portfolio, loading: appLoading } = useApp();
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { events: calEvents, loading: calLoading } = useCalendarData(symbols);
@@ -158,7 +155,7 @@ export default function Calendar() {
               className="btn btn-ghost w-8 h-8 flex items-center justify-center text-lg"
             >‹</button>
             <h2 className="text-sm font-semibold w-36 text-center" style={{ color: 'var(--text)' }}>
-              {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              {Array.isArray(MONTH_NAMES) ? MONTH_NAMES[currentMonth.getMonth()] : ''} {currentMonth.getFullYear()}
             </h2>
             <button
               onClick={nextMonth}
@@ -171,7 +168,7 @@ export default function Calendar() {
               onClick={goToday}
               className="btn"
             >
-              Dziś
+              {t('today')}
             </button>
             {selectedDay && (
               <button
@@ -179,7 +176,7 @@ export default function Calendar() {
                 className="text-xs transition-colors"
                 style={{ color: 'var(--info)' }}
               >
-                Pokaż wszystko ×
+                {t('show_all')}
               </button>
             )}
           </div>
@@ -272,10 +269,10 @@ export default function Calendar() {
             color: 'var(--text-faint)',
           }}
         >
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--info)' }} /> Wyniki spółek</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--warn)' }} /> Dywidenda / Makro średni</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--down)' }} /> Makro wysoki</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} /> Makro niski</div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--info)' }} /> {t('earn_legend')}</div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--warn)' }} /> {t('div_macro_legend')}</div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--down)' }} /> {t('macro_high_legend')}</div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} /> {t('macro_low_legend')}</div>
         </div>
       </Card>
 
@@ -286,7 +283,7 @@ export default function Calendar() {
           style={{ borderBottom: '1px solid var(--border)' }}
         >
           <h2 className="text-sm font-semibold mr-auto" style={{ color: 'var(--text)' }}>
-            {selectedDay ? `Zdarzenia: ${selectedDay}` : `Zdarzenia — ${MONTH_NAMES[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`}
+            {selectedDay ? `${t('events_label')}: ${selectedDay}` : `${t('events_label')} — ${Array.isArray(MONTH_NAMES) ? MONTH_NAMES[currentMonth.getMonth()] : ''} ${currentMonth.getFullYear()}`}
           </h2>
           {/* Impact filter */}
           <div className="flex gap-1">
@@ -316,8 +313,8 @@ export default function Calendar() {
           <div className="flex justify-center py-10"><Spinner size="md" /></div>
         ) : groupedList.length === 0 ? (
           <div className="px-5 py-8 text-center" style={{ color: 'var(--text-faint)' }}>
-            <p>Brak zdarzeń w tym okresie</p>
-            {!symbols.length && <p className="text-xs mt-1">Dodaj spółki do portfela, by zobaczyć wyniki finansowe i dywidendy</p>}
+            <p>{t('no_events')}</p>
+            {!symbols.length && <p className="text-xs mt-1">{t('add_to_portfolio_hint')}</p>}
           </div>
         ) : (
           <div>
@@ -331,7 +328,7 @@ export default function Calendar() {
                       : { color: 'var(--text-faint)', background: 'var(--bg)' }
                   }
                 >
-                  {date}{date === today ? ' — dziś' : ''}
+                  {date}{date === today ? ` — ${t('today')}` : ''}
                 </div>
                 {items.map((ev, i) => (
                   <div
@@ -344,7 +341,7 @@ export default function Calendar() {
                         <span className="text-lg leading-none mt-0.5">📊</span>
                         <div>
                           <span className="font-semibold" style={{ color: 'var(--text)' }}>{ev.symbol}</span>
-                          <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>Wyniki finansowe</span>
+                          <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>{t('financial_results')}</span>
                         </div>
                       </>
                     ) : ev.type === 'DIV' ? (
@@ -352,12 +349,12 @@ export default function Calendar() {
                         <span className="text-lg leading-none mt-0.5">💰</span>
                         <div>
                           <span className="font-semibold" style={{ color: 'var(--text)' }}>{ev.symbol}</span>
-                          <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>Ex-dywidenda</span>
+                          <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>{t('ex_dividend')}</span>
                           {ev.amount != null && (
                             <span className="text-xs ml-2 font-medium" style={{ color: 'var(--warn)' }}>${Number(ev.amount).toFixed(4)}</span>
                           )}
                           {ev.projected && (
-                            <span className="text-xs ml-2" style={{ color: 'var(--text-faint)' }}>~prognoza</span>
+                            <span className="text-xs ml-2" style={{ color: 'var(--text-faint)' }}>{t('forecast_approx')}</span>
                           )}
                         </div>
                       </>
@@ -369,8 +366,8 @@ export default function Calendar() {
                           <div className="flex flex-wrap gap-2 text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
                             {ev.currency && <span className="font-medium" style={{ color: 'var(--text-dim)' }}>{ev.currency}</span>}
                             {ev.time && <span>{ev.time}</span>}
-                            {ev.forecast && <span>Prognoza: <span style={{ color: 'var(--text)' }}>{ev.forecast}</span></span>}
-                            {ev.previous && <span>Poprz.: <span style={{ color: 'var(--text-dim)' }}>{ev.previous}</span></span>}
+                            {ev.forecast && <span>{t('forecast_colon')} <span style={{ color: 'var(--text)' }}>{ev.forecast}</span></span>}
+                            {ev.previous && <span>{t('previous_colon')} <span style={{ color: 'var(--text-dim)' }}>{ev.previous}</span></span>}
                           </div>
                         </div>
                         {ev.actual ? (

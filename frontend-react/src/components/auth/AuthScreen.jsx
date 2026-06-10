@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { useT } from "../../context/LanguageContext";
 import "./auth.css";
 
 /* ---------- GPW session status ---------- */
@@ -38,13 +39,6 @@ function scorePassword(pw) {
   return Math.min(s, 4);
 }
 
-const PW_META = [
-  { label: "", color: "" },
-  { label: "Słabe",   color: "var(--down)" },
-  { label: "Średnie", color: "var(--warn)" },
-  { label: "Dobre",   color: "var(--info)" },
-  { label: "Silne",   color: "var(--up)"   },
-];
 
 export default function AuthScreen({
   variant = "terminal",
@@ -53,6 +47,14 @@ export default function AuthScreen({
   onRegister,
   onForgotPassword,
 }) {
+  const t = useT();
+  const PW_META = [
+    { label: t('pw_strength_empty'),  color: '' },
+    { label: t('pw_strength_weak'),   color: 'var(--down)' },
+    { label: t('pw_strength_medium'), color: 'var(--warn)' },
+    { label: t('pw_strength_good'),   color: 'var(--info)' },
+    { label: t('pw_strength_strong'), color: 'var(--up)'   },
+  ];
   const [mode, setMode]           = useState(defaultMode);
   const [showPw, setShowPw]       = useState(false);
   const [username, setUsername]   = useState("");
@@ -90,7 +92,7 @@ export default function AuthScreen({
         await onLogin?.({ username, password: pw, remember });
       }
     } catch (err) {
-      setServerError(err.message || (isReg ? "Błąd rejestracji" : "Błąd logowania"));
+      setServerError(err.message || (isReg ? t('auth_err_register') : t('auth_err_login')));
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ export default function AuthScreen({
           <div className="auth-status">
             <span className="live">
               <span className={`dot-status${sessionOpen ? '' : ' closed'}`} />
-              {sessionOpen ? 'Sesja otwarta' : 'Sesja zamknięta'}
+              {sessionOpen ? t('auth_session_open') : t('auth_session_closed')}
             </span>
             <span className="tk mono">
               <span className="sym">WIG20</span>
@@ -140,26 +142,24 @@ export default function AuthScreen({
 
         {/* heading */}
         <div className="auth-head">
-          <h1 className="auth-title">{isReg ? "Załóż konto" : "Zaloguj się"}</h1>
+          <h1 className="auth-title">{isReg ? t('auth_register_title') : t('auth_login_title')}</h1>
           <p className="auth-sub">
-            {isReg
-              ? "Kilka sekund i śledzisz swój portfel w czasie rzeczywistym."
-              : "Witaj z powrotem — Twój portfel czeka."}
+            {isReg ? t('auth_register_sub') : t('auth_login_sub')}
           </p>
         </div>
 
         {/* form */}
         <form className="auth-form-anim" key={mode} onSubmit={handleSubmit}>
-          <Field label="Nazwa użytkownika" lead={<UserIcon />}>
+          <Field label={t('auth_username_label')} lead={<UserIcon />}>
             <input
-              className="auth-input" type="text" placeholder="adamxdd"
+              className="auth-input" type="text" placeholder={t('username_placeholder')}
               autoComplete="username" value={username}
               onChange={(e) => setUsername(e.target.value)} required
             />
           </Field>
 
           {isReg && (
-            <Field label="E-mail" lead={<MailIcon />}>
+            <Field label={t('auth_email_label')} lead={<MailIcon />}>
               <input
                 className="auth-input" type="email" placeholder="adam@example.com"
                 autoComplete="email" value={email}
@@ -169,12 +169,12 @@ export default function AuthScreen({
           )}
 
           <Field
-            label="Hasło" lead={<LockIcon />} hasTrail
-            link={!isReg ? "Zapomniałeś hasła?" : undefined}
+            label={t('auth_password_label')} lead={<LockIcon />} hasTrail
+            link={!isReg ? t('auth_forgot_password') : undefined}
             onLink={onForgotPassword}
             trail={
               <button type="button" className="input-trail" tabIndex={-1}
-                onClick={() => setShowPw((v) => !v)} aria-label="Pokaż hasło">
+                onClick={() => setShowPw((v) => !v)} aria-label={t('auth_show_pw')}>
                 <EyeIcon open={showPw} />
               </button>
             }
@@ -182,7 +182,7 @@ export default function AuthScreen({
             <input
               className="auth-input"
               type={showPw ? "text" : "password"}
-              placeholder={isReg ? "Min. 8 znaków" : "••••••••••"}
+              placeholder={isReg ? t('auth_pw_min') : "••••••••••"}
               autoComplete={isReg ? "new-password" : "current-password"}
               value={pw} onChange={(e) => setPw(e.target.value)} required
             />
@@ -198,22 +198,22 @@ export default function AuthScreen({
               </div>
               <div className="pw-meta">
                 <span className="pw-label" style={{ color: meta.color }}>{meta.label}</span>
-                <span className="pw-tip">Min. 12 znaków = silne</span>
+                <span className="pw-tip">{t('auth_pw_tip')}</span>
               </div>
             </div>
           )}
 
           {isReg && (
-            <Field label="Powtórz hasło" lead={<LockIcon />}>
+            <Field label={t('auth_repeat_pw')} lead={<LockIcon />}>
               <input
                 className="auth-input"
                 type={showPw ? "text" : "password"}
-                placeholder="Powtórz hasło" autoComplete="new-password"
+                placeholder={t('auth_repeat_pw')} autoComplete="new-password"
                 value={pw2} onChange={(e) => setPw2(e.target.value)} required
               />
               {mismatch
-                ? <div className="field-hint err">Hasła nie są identyczne</div>
-                : pw2.length > 0 ? <div className="field-hint ok">Hasła zgodne</div> : null}
+                ? <div className="field-hint err">{t('auth_pw_mismatch')}</div>
+                : pw2.length > 0 ? <div className="field-hint ok">{t('auth_pw_match')}</div> : null}
             </Field>
           )}
 
@@ -223,7 +223,7 @@ export default function AuthScreen({
                 <input id={`${uid}-rm`} type="checkbox" checked={remember}
                   onChange={(e) => setRemember(e.target.checked)} />
                 <span className="box"><CheckIcon /></span>
-                Zapamiętaj mnie
+                {t('auth_remember_me')}
               </label>
             </div>
           )}
@@ -235,17 +235,17 @@ export default function AuthScreen({
 
           <button type="submit" className="auth-btn" disabled={loading}>
             {loading
-              ? (isReg ? "Tworzenie konta…" : "Logowanie…")
-              : (isReg ? "Utwórz konto" : "Zaloguj")}
+              ? (isReg ? t('auth_creating') : t('auth_logging_in'))
+              : (isReg ? t('auth_create_account') : t('auth_login_btn'))}
             {!loading && <ArrowRightIcon />}
           </button>
         </form>
 
         {/* footer switch */}
         <div className="auth-foot">
-          {isReg ? "Masz już konto?" : "Nie masz jeszcze konta?"}
+          {isReg ? t('auth_have_account') : t('auth_no_account')}
           <span className="switch" onClick={toggleMode}>
-            {isReg ? "Zaloguj się" : "Zarejestruj się"}
+            {isReg ? t('auth_switch_login') : t('auth_switch_register')}
           </span>
         </div>
       </div>

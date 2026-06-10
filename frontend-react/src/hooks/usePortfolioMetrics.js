@@ -313,10 +313,14 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       }
     }
 
+    const dow = new Date().getDay(); // 0=Sun, 6=Sat
+    const isWeekend = dow === 0 || dow === 6;
+    const isCrypto  = m.sector === 'Cryptocurrency';
+
     return {
       ...pos,
       price:       m.price       ?? null,
-      dailyChg:    m.dailyChg    ?? null,
+      dailyChg:    (isWeekend && !isCrypto) ? null : (m.dailyChg ?? null),
       pe:          m.pe          ?? null,
       peFwd:       m.peFwd       ?? null,
       pb:          m.pb          ?? null,

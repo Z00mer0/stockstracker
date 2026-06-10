@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { useFxBreakdown } from '../hooks/useFxBreakdown';
 import Spinner from '../components/shared/Spinner';
@@ -71,6 +72,7 @@ function calcBeta(portValues, bmValues) {
 }
 
 function RiskSection({ snapshots }) {
+  const t = useT();
   // Filter out anomalous snapshots from the race condition bug where stock prices
   // hadn't loaded yet (total showed only cash). Threshold: 40% of all-time high.
   const maxTotal = Math.max(...snapshots.map(s => s.total), 0);
@@ -126,11 +128,10 @@ function RiskSection({ snapshots }) {
   if (values.length < 10 || daySpan < 30) {
     if (daySpan > 0) {
       return (
-        <Card title="Analiza ryzyka">
+        <Card title={t('risk_section')}>
           <div className="card-body">
             <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
-              Za krótka historia do obliczeń statystycznych — potrzeba min. 30 dni snapshotów (masz {daySpan} {daySpan === 1 ? 'dzień' : 'dni'}).
-              Metryki pojawią się automatycznie gdy portfel będzie aktywny wystarczająco długo.
+              {t('not_enough_history')} (min. 30 {t('days_of_history')}: {daySpan})
             </p>
           </div>
         </Card>
@@ -141,23 +142,23 @@ function RiskSection({ snapshots }) {
   const hasEnoughSessions = values.length >= MIN_SESSIONS;
 
   return (
-    <Card title="Analiza ryzyka">
+    <Card title={t('risk_section')}>
       <div className="card-body">
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>Na podstawie historii snapshotów portfela</p>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}></p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
           {[
-            { label: 'Zmienność (rok.)', value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: 'Odch. std. × √252', needsSessions: true },
-            { label: 'Max Drawdown', value: maxDD > 0 ? maxDD : null, fmt: v => `-${v.toFixed(1)}%`, color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: 'Największy spadek' },
-            { label: 'Sharpe Ratio', value: sharpe, fmt: v => v.toFixed(2), color: sharpe >= 1 ? 'var(--up)' : sharpe < 0 ? 'var(--down)' : 'var(--text)', sub: 'Zwrot/ryzyko (RF=4.5%)' },
-            { label: 'Sortino Ratio', value: sortino, fmt: v => v.toFixed(2), color: sortino >= 1 ? 'var(--up)' : sortino < 0 ? 'var(--down)' : 'var(--text)', sub: 'Jak Sharpe, tylko dół' },
-            { label: 'Beta (S&P 500)', value: betaLoading ? null : beta, fmt: v => v.toFixed(2), color: 'var(--text)', sub: 'Korelacja z rynkiem US', needsSessions: true },
+            { label: t('volatility_label'), value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: t('volatility_sub'), needsSessions: true },
+            { label: t('max_drawdown_label'), value: maxDD > 0 ? maxDD : null, fmt: v => `-${v.toFixed(1)}%`, color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: t('max_drawdown_sub') },
+            { label: t('sharpe_label'), value: sharpe, fmt: v => v.toFixed(2), color: sharpe >= 1 ? 'var(--up)' : sharpe < 0 ? 'var(--down)' : 'var(--text)', sub: t('sharpe_sub') },
+            { label: t('sortino_label'), value: sortino, fmt: v => v.toFixed(2), color: sortino >= 1 ? 'var(--up)' : sortino < 0 ? 'var(--down)' : 'var(--text)', sub: t('sortino_sub') },
+            { label: t('beta_label'), value: betaLoading ? null : beta, fmt: v => v.toFixed(2), color: 'var(--text)', sub: t('beta_sub'), needsSessions: true },
           ].map(m => (
             <div key={m.label} className="kpi-card">
               <div className="kpi-label">{m.label}</div>
               <div className="kpi-value" style={{ fontSize: 22, color: m.needsSessions && !hasEnoughSessions ? 'var(--text-faint)' : m.value != null ? m.color : 'var(--text-faint)' }}>
                 {m.needsSessions && !hasEnoughSessions
-                  ? <span style={{ fontSize: 10, lineHeight: 1.3 }}>Oczekiwanie<br/>na dane<br/>({values.length}/{MIN_SESSIONS})</span>
-                  : betaLoading && m.label.includes('Beta') ? <span style={{ fontSize: 12 }}>ładowanie…</span>
+                  ? <span style={{ fontSize: 10, lineHeight: 1.3 }}>{t('waiting_for_data')}<br/>({values.length}/{MIN_SESSIONS})</span>
+                  : betaLoading && m.label === t('beta_label') ? <span style={{ fontSize: 12 }}>{t('loading')}</span>
                   : m.value != null ? m.fmt(m.value) : '—'}
               </div>
               <div className="kpi-sub">{m.sub}</div>
@@ -169,9 +170,9 @@ function RiskSection({ snapshots }) {
   );
 }
 
-function fmt(n, decimals = 0) {
+function fmt(n, decimals = 0, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 const REBAL_KEY = 'myfund_rebalance_targets';
@@ -185,6 +186,8 @@ function saveTargets(t) {
 }
 
 function RebalanceSection({ enriched, totalValue }) {
+  const t = useT();
+  const { locale } = useLanguage();
   const [targets, setTargets] = useState(loadTargets);
   const [editMode, setEditMode] = useState(false);
   const [draftTargets, setDraftTargets] = useState({});
@@ -217,13 +220,13 @@ function RebalanceSection({ enriched, totalValue }) {
   // Orders enriched with action, price, shares
   const orders = suggestions.map(s => ({
     ...s,
-    action: s.dev > 0 ? 'SPRZEDAJ' : 'KUP',
+    action: s.dev > 0 ? t('action_sell') : t('action_buy'),
     price: priceMap[s.symbol],
     shares: priceMap[s.symbol] ? Math.round(s.amt / priceMap[s.symbol]) : null,
   }));
 
   function exportOrdersCsv(ordersToExport) {
-    const header = 'Ticker,Akcja,Kwota PLN,Szac. akcji,Cena/szt. PLN\n';
+    const header = `${t('col_symbol')},${t('col_action')},${t('col_amount_pln')},${t('col_shares_approx')},${t('col_price_per_share')}\n`;
     const rows = ordersToExport.map(o =>
       `${o.symbol},${o.action},${o.amt.toFixed(2)},${o.shares ?? ''},${o.price?.toFixed(2) ?? ''}`
     ).join('\n');
@@ -252,21 +255,21 @@ function RebalanceSection({ enriched, totalValue }) {
 
   function fmtLocal(n, d = 0) {
     if (n == null || isNaN(n)) return '—';
-    return n.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+    return n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
   }
 
   return (
-    <Card title="Rebalansowanie portfela" actions={
+    <Card title={t('rebalance_section')} actions={
       <button onClick={editMode ? saveEdit : openEdit} className="btn" style={{ fontSize: 11 }}>
-        {editMode ? '✓ Zapisz cele' : '✎ Ustaw cele'}
+        {editMode ? t('save_goals') : t('set_goals')}
       </button>
     }>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Total target % indicator */}
         {hasTargets && (
           <p style={{ fontSize: 12, color: Math.abs(totalTargetPct - 100) < 1 ? 'var(--up)' : 'var(--warn)' }}>
-            Suma celów: {fmtLocal(totalTargetPct, 1)}%
-            {Math.abs(totalTargetPct - 100) >= 1 && ' — powinna wynosić 100%'}
+            {t('rebal_target_sum')}: {fmtLocal(totalTargetPct, 1)}%
+            {Math.abs(totalTargetPct - 100) >= 1 && ` ${t('rebal_should_be_100')}`}
           </p>
         )}
 
@@ -321,25 +324,25 @@ function RebalanceSection({ enriched, totalValue }) {
         {orders.length > 0 && (
           <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Lista Zleceń Egzekucyjnych</p>
-              <button className="btn" style={{ fontSize: 11 }} onClick={() => exportOrdersCsv(orders)}>📥 Pobierz CSV</button>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 {t('rebal_orders_title')}</p>
+              <button className="btn" style={{ fontSize: 11 }} onClick={() => exportOrdersCsv(orders)}>{t('rebal_download_csv')}</button>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Ticker</th>
-                    <th>Akcja</th>
-                    <th className="right">≈ Kwota PLN</th>
-                    <th className="right">≈ Akcji</th>
-                    <th className="right">Cena/szt.</th>
+                    <th>{t('col_symbol')}</th>
+                    <th>{t('col_action')}</th>
+                    <th className="right">{t('col_amount_pln')}</th>
+                    <th className="right">{t('col_shares_approx')}</th>
+                    <th className="right">{t('col_price_per_share')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.map(o => (
-                    <tr key={o.symbol} style={{ color: o.action === 'KUP' ? 'var(--up)' : 'var(--down)' }}>
+                    <tr key={o.symbol} style={{ color: o.action === t('action_buy') ? 'var(--up)' : 'var(--down)' }}>
                       <td style={{ fontWeight: 700 }}>{o.symbol}</td>
-                      <td>{o.action === 'KUP' ? '🟢 KUP' : '🔻 SPRZEDAJ'}</td>
+                      <td>{o.action === t('action_buy') ? `🟢 ${t('action_buy')}` : `🔻 ${t('action_sell')}`}</td>
                       <td className="right mono">{fmtLocal(o.amt)} zł</td>
                       <td className="right mono">{o.shares ?? '—'}</td>
                       <td className="right mono">{o.price != null ? `${fmtLocal(o.price, 2)} zł` : '—'}</td>
@@ -352,12 +355,12 @@ function RebalanceSection({ enriched, totalValue }) {
         )}
 
         {hasTargets && suggestions.length === 0 && Math.abs(totalTargetPct - 100) < 1 && (
-          <p style={{ fontSize: 12, color: 'var(--up)', paddingTop: 8 }}>✓ Portfel mieści się w 2% od wszystkich celów</p>
+          <p style={{ fontSize: 12, color: 'var(--up)', paddingTop: 8 }}>{t('rebal_balanced')}</p>
         )}
 
         {!hasTargets && (
           <p style={{ fontSize: 12, color: 'var(--text-faint)', paddingTop: 4 }}>
-            Kliknij „Ustaw cele" aby zdefiniować docelową alokację i zobaczyć sugestie rebalansowania.
+            {t('rebal_hint')}
           </p>
         )}
       </div>
@@ -378,6 +381,8 @@ function loadFireSettings() {
 }
 
 function FireSection({ totalValue }) {
+  const t = useT();
+  const { locale } = useLanguage();
   const saved = loadFireSettings();
   const [expenses, setExpenses] = useState(saved.expenses ?? '');
   const [savings,  setSavings]  = useState(saved.savings  ?? '');
@@ -426,34 +431,34 @@ function FireSection({ totalValue }) {
   const labelStyle = { fontSize: 11, color: 'var(--text-faint)', marginBottom: 4, display: 'block' };
 
   return (
-    <Card title="FIRE Calculator — kiedy możesz przejść na emeryturę?">
+    <Card title={t('fire_title')}>
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>
-          Reguła 4% — cel = 25× roczne wydatki. Obliczenia używają realnej stopy zwrotu (nominalny − inflacja).
+          {t('fire_description')}
         </p>
 
         {/* Inputs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div>
-            <label style={labelStyle}>Miesięczne wydatki (PLN)</label>
+            <label style={labelStyle}>{t('fire_monthly_exp')}</label>
             <input style={inputStyle} type="number" min="0" step="100"
               value={expenses} onChange={e => setExpenses(e.target.value)}
-              placeholder="np. 5000" />
+              placeholder={t('fire_exp_placeholder')} />
           </div>
           <div>
-            <label style={labelStyle}>Miesięczne oszczędności (PLN)</label>
+            <label style={labelStyle}>{t('fire_monthly_sav')}</label>
             <input style={inputStyle} type="number" min="0" step="100"
               value={savings} onChange={e => setSavings(e.target.value)}
-              placeholder="np. 2000" />
+              placeholder={t('fire_sav_placeholder')} />
           </div>
           <div>
-            <label style={labelStyle}>Oczekiwana stopa zwrotu: {annReturn}%</label>
+            <label style={labelStyle}>{t('fire_ann_return')}: {annReturn}%</label>
             <input type="range" min="2" max="15" step="0.5" value={annReturn}
               onChange={e => setAnnReturn(parseFloat(e.target.value))}
               style={{ width: '100%', accentColor: 'var(--accent)' }} />
           </div>
           <div>
-            <label style={labelStyle}>Inflacja: {infl}%</label>
+            <label style={labelStyle}>{t('fire_inflation')}: {infl}%</label>
             <input type="range" min="0" max="10" step="0.5" value={infl}
               onChange={e => setInfl(parseFloat(e.target.value))}
               style={{ width: '100%', accentColor: 'var(--accent)' }} />
@@ -465,12 +470,12 @@ function FireSection({ totalValue }) {
             {/* KPIs */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
               {[
-                { label: 'Cel FIRE (PLN)',       value: fmt(target),                color: 'var(--text)' },
-                { label: 'Obecny portfel',        value: fmt(totalValue),             color: 'var(--text)' },
-                { label: 'Postęp',                value: `${fmt(progress, 1)}%`,      color: progress >= 100 ? 'var(--up)' : 'var(--accent)' },
-                { label: 'Rok FIRE',              value: fireYear ?? '> 100 lat',     color: fireYear ? 'var(--up)' : 'var(--text-faint)' },
-                { label: 'Do emerytury',          value: yearsToFire == null ? '—' : yearsToFire === 0 ? 'Już teraz!' : `${fmt(yearsToFire, 1)} lat`, color: yearsToFire === 0 ? 'var(--up)' : 'var(--text)' },
-                { label: 'Pasywny dochód/mies.', value: `${fmt(monthlyPassive)} zł`, color: monthlyPassive >= monthlyExp ? 'var(--up)' : 'var(--text-dim)' },
+                { label: t('fire_target'),        value: fmt(target, 0, locale),                color: 'var(--text)' },
+                { label: t('fire_current'),       value: fmt(totalValue, 0, locale),             color: 'var(--text)' },
+                { label: t('fire_progress'),      value: `${fmt(progress, 1, locale)}%`,      color: progress >= 100 ? 'var(--up)' : 'var(--accent)' },
+                { label: t('fire_year'),          value: fireYear ?? t('fire_over_100'),      color: fireYear ? 'var(--up)' : 'var(--text-faint)' },
+                { label: t('fire_years_to'),      value: yearsToFire == null ? '—' : yearsToFire === 0 ? t('fire_already_now') : `${fmt(yearsToFire, 1, locale)}`, color: yearsToFire === 0 ? 'var(--up)' : 'var(--text)' },
+                { label: t('fire_passive_income'), value: `${fmt(monthlyPassive, 0, locale)} zł`, color: monthlyPassive >= monthlyExp ? 'var(--up)' : 'var(--text-dim)' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="kpi-card">
                   <div className="kpi-label">{label}</div>
@@ -483,8 +488,8 @@ function FireSection({ totalValue }) {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-faint)', marginBottom: 6 }}>
                 <span>0</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{fmt(progress, 1)}% do celu</span>
-                <span>{fmt(target)} zł</span>
+                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{fmt(progress, 1, locale)}% {t('fire_goal_pct')}</span>
+                <span>{fmt(target, 0, locale)} zł</span>
               </div>
               <div style={{ height: 8, borderRadius: 4, background: 'var(--panel-2)', overflow: 'hidden' }}>
                 <div style={{
@@ -497,7 +502,7 @@ function FireSection({ totalValue }) {
           </>
         ) : (
           <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic' }}>
-            Wpisz miesięczne wydatki aby zobaczyć obliczenia FIRE.
+            {t('fire_enter_expenses')}
           </p>
         )}
       </div>
@@ -506,6 +511,9 @@ function FireSection({ totalValue }) {
 }
 
 function SmartInsightsSection({ enrichedPositions }) {
+  const t = useT();
+  const { locale } = useLanguage();
+  const rp = (key, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), t(key));
   const valid = enrichedPositions.filter(p => p.valuePLN != null && p.costPLN > 0);
   if (valid.length === 0) return null;
 
@@ -521,15 +529,15 @@ function SmartInsightsSection({ enrichedPositions }) {
   if (biggest?.pct > 25) {
     insights.push({
       icon: '⚠️', cardStyle: { background: 'rgba(255,176,32,0.08)', borderColor: 'rgba(255,176,32,0.3)' },
-      title: 'Ryzyko koncentracji pozycji',
+      title: t('insight_conc_title'),
       lines: [
-        `${biggest.sym} stanowi ${biggest.pct.toFixed(0)}% portfela.`,
-        'Zalecane max dla jednej spółki: 20–25%.',
+        rp('insight_conc_l1', { sym: biggest.sym, pct: biggest.pct.toFixed(0) }),
+        t('insight_conc_l2'),
         '',
-        'Możliwości:',
-        `├─ Zmniejsz pozycję ${biggest.sym}`,
-        '├─ Dokup spółki z innych sektorów',
-        '└─ Ustaw target-weight i trzymaj się planu',
+        t('insight_conc_opts'),
+        rp('insight_conc_reduce', { sym: biggest.sym }),
+        t('insight_conc_divers'),
+        t('insight_conc_plan'),
       ]
     });
   }
@@ -544,14 +552,14 @@ function SmartInsightsSection({ enrichedPositions }) {
   if (topSec && topSec[1] / totalValue > 0.30 && topSec[0] !== 'Inne') {
     insights.push({
       icon: '⚠️', cardStyle: { background: 'rgba(255,176,32,0.08)', borderColor: 'rgba(255,176,32,0.3)' },
-      title: `Koncentracja sektora: ${topSec[0]}`,
+      title: rp('insight_sec_title', { sec: topSec[0] }),
       lines: [
-        `Sektor ${topSec[0]} = ${(topSec[1] / totalValue * 100).toFixed(0)}% portfela (max: 30%).`,
+        rp('insight_sec_l1', { sec: topSec[0], pct: (topSec[1] / totalValue * 100).toFixed(0) }),
         '',
-        'Możliwości:',
-        '├─ Dodaj spółki z Energy / Healthcare / Utilities',
-        `├─ Zmniejsz ekspozycję na ${topSec[0]}`,
-        '└─ Rozważ ETF na szeroki rynek dla dywersyfikacji',
+        t('insight_conc_opts'),
+        t('insight_sec_add'),
+        rp('insight_sec_reduce', { sec: topSec[0] }),
+        t('insight_sec_etf'),
       ]
     });
   }
@@ -562,15 +570,15 @@ function SmartInsightsSection({ enrichedPositions }) {
     const tax = bigWin.pnlPLN * 0.19;
     insights.push({
       icon: '📈', cardStyle: { background: 'var(--up-soft)', borderColor: 'var(--up)' },
-      title: `Realizacja zysku: ${bigWin.symbol} +${bigWin.pnlPct.toFixed(0)}%`,
+      title: rp('insight_profit_title', { sym: bigWin.symbol, pct: bigWin.pnlPct.toFixed(0) }),
       lines: [
-        `Niezrealizowany zysk: ${bigWin.pnlPLN.toFixed(0)} PLN.`,
-        `Podatek przy realizacji: ~${tax.toFixed(0)} PLN (19%).`,
+        rp('insight_profit_l1', { pln: bigWin.pnlPLN.toFixed(0) }),
+        rp('insight_profit_l2', { tax: tax.toFixed(0) }),
         '',
-        'Rekomendacja:',
-        `├─ Rozważ sprzedaż części pozycji ${bigWin.symbol}`,
-        '├─ Ustaw stop-loss by chronić zysk',
-        '└─ Reinwestuj w niedoważone sektory',
+        t('insight_profit_rec'),
+        rp('insight_profit_sell', { sym: bigWin.symbol }),
+        t('insight_profit_stop'),
+        t('insight_profit_reinv'),
       ]
     });
   }
@@ -585,14 +593,14 @@ function SmartInsightsSection({ enrichedPositions }) {
       `${i === a.length - 1 ? '└' : '├'}─ ${p.symbol}: ${p.pnlPLN.toFixed(0)} PLN`);
     insights.push({
       icon: '💚', cardStyle: { background: 'var(--up-soft)', borderColor: 'var(--up)' },
-      title: `Tax Loss Harvesting — oszczędność ~${saving.toFixed(0)} PLN`,
+      title: rp('insight_tlh_title', { saving: saving.toFixed(0) }),
       lines: [
-        'Realizując straty możesz obniżyć podatek od zysków.',
+        t('insight_tlh_l1'),
         '',
-        'Kandydaci do sprzedaży:',
+        t('insight_tlh_cands'),
         ...li,
         '',
-        'Uwaga: wash-sale — nie odkupuj przez 30 dni.',
+        t('insight_tlh_wash'),
       ]
     });
   }
@@ -605,15 +613,15 @@ function SmartInsightsSection({ enrichedPositions }) {
     if (diff > 30) {
       insights.push({
         icon: '🔴', cardStyle: { background: 'var(--down-soft)', borderColor: 'var(--down)' },
-        title: `Wycena: ${p.symbol} drogi vs sektor`,
+        title: rp('insight_pe_exp_title', { sym: p.symbol }),
         lines: [
-          `P/E ${p.symbol}: ${p.pe.toFixed(1)}x, sektor ${p.sector}: ${spe}x`,
-          `(${diff.toFixed(0)}% powyżej średniej).`,
+          rp('insight_pe_l1', { sym: p.symbol, pe: p.pe.toFixed(1), sec: p.sector, spe }),
+          rp('insight_pe_exp_l2', { pct: diff.toFixed(0) }),
           '',
-          'Rekomendacja:',
-          `├─ Ogranicz dokupowanie ${p.symbol}`,
-          '├─ Ustaw alert cenowy na korekcie',
-          '└─ Szukaj tańszych alternatyw w sektorze',
+          t('insight_pe_rec'),
+          rp('insight_pe_exp_limit', { sym: p.symbol }),
+          t('insight_pe_exp_alert'),
+          t('insight_pe_exp_alt'),
         ]
       });
       break;
@@ -621,15 +629,15 @@ function SmartInsightsSection({ enrichedPositions }) {
     if (diff < -15) {
       insights.push({
         icon: '🟢', cardStyle: { background: 'var(--up-soft)', borderColor: 'var(--up)' },
-        title: `Okazja: ${p.symbol} tańszy od sektora`,
+        title: rp('insight_pe_cheap_title', { sym: p.symbol }),
         lines: [
-          `P/E ${p.symbol}: ${p.pe.toFixed(1)}x, sektor ${p.sector}: ${spe}x`,
-          `(${Math.abs(diff).toFixed(0)}% poniżej średniej — potencjalny dobry punkt wejścia).`,
+          rp('insight_pe_l1', { sym: p.symbol, pe: p.pe.toFixed(1), sec: p.sector, spe }),
+          rp('insight_pe_cheap_l2', { pct: Math.abs(diff).toFixed(0) }),
           '',
-          'Rekomendacja:',
-          `├─ Rozważ dokupienie ${p.symbol}`,
-          '├─ Potwierdź fundamenty (ROE, marże, dług)',
-          '└─ Ustaw order limit poniżej ceny rynkowej',
+          t('insight_pe_rec'),
+          rp('insight_pe_cheap_buy', { sym: p.symbol }),
+          t('insight_pe_cheap_chk'),
+          t('insight_pe_cheap_ord'),
         ]
       });
       break;
@@ -643,13 +651,13 @@ function SmartInsightsSection({ enrichedPositions }) {
     .filter(p => p.earningsTs && p.earningsTs * 1000 > now && p.earningsTs * 1000 < in14)
     .sort((a, b) => a.earningsTs - b.earningsTs);
   if (upcoming.length) {
-    const fmtD = ts => new Date(ts * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' });
+    const fmtD = ts => new Date(ts * 1000).toLocaleDateString(locale, { day: 'numeric', month: 'long' });
     const li = upcoming.slice(0, 4).map((p, i, a) =>
       `${i === a.length - 1 ? '└' : '├'}─ ${fmtD(p.earningsTs)}: ${p.symbol} ⭐`);
     insights.push({
       icon: '📅', cardStyle: { background: 'var(--panel-2)', borderColor: 'var(--border)' },
-      title: 'Nadchodzące wyniki finansowe',
-      lines: ['Za najbliższe 14 dni:', '', ...li, '', 'Uwaga: możliwa podwyższona zmienność ⚠️'],
+      title: t('insight_earn_title'),
+      lines: [t('insight_earn_in14'), '', ...li, '', t('insight_earn_warn')],
     });
   }
 
@@ -688,9 +696,9 @@ function SmartInsightsSection({ enrichedPositions }) {
   });
 
   return (
-    <Card title="Smart Insights">
+    <Card title={t('smart_insights')}>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Automatyczne rekomendacje na podstawie Twojego portfela</p>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>{t('smart_insights_sub')}</p>
         {insights.map((ins, i) => (
           <div key={i} style={{ borderRadius: 8, border: '1px solid', ...ins.cardStyle, padding: '12px 16px' }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{ins.icon} {ins.title}</div>
@@ -704,18 +712,19 @@ function SmartInsightsSection({ enrichedPositions }) {
   );
 }
 
-const SECTOR_PL = {
-  'Technology': 'Technologia',
-  'Financial Services': 'Finanse',
-  'Healthcare': 'Ochrona zdrowia',
-  'Consumer Cyclical': 'Konsumpcja cykliczna',
-  'Consumer Defensive': 'Konsumpcja defensywna',
-  'Industrials': 'Przemysł',
-  'Basic Materials': 'Surowce',
-  'Energy': 'Energia',
-  'Utilities': 'Usługi komunalne',
-  'Real Estate': 'Nieruchomości',
-  'Communication Services': 'Komunikacja',
+const SECTOR_KEY_MAP = {
+  'Technology': 'sector_Technology',
+  'Financial Services': 'sector_FinancialServices',
+  'Healthcare': 'sector_Healthcare',
+  'Consumer Cyclical': 'sector_ConsumerCyclical',
+  'Consumer Defensive': 'sector_ConsumerDefensive',
+  'Industrials': 'sector_Industrials',
+  'Basic Materials': 'sector_BasicMaterials',
+  'Energy': 'sector_Energy',
+  'Utilities': 'sector_Utilities',
+  'Real Estate': 'sector_RealEstate',
+  'Communication Services': 'sector_CommunicationServices',
+  'Inne': 'sector_Other',
 };
 
 const SECTOR_COLORS = [
@@ -724,6 +733,8 @@ const SECTOR_COLORS = [
 ];
 
 function SectorAnalysisSection({ enriched, totalValue }) {
+  const t = useT();
+  const { locale } = useLanguage();
   const [view, setView] = useState('sector'); // 'sector' | 'industry'
 
   const positions = enriched.filter(p => p.valuePLN != null && p.valuePLN > 0);
@@ -747,15 +758,15 @@ function SectorAnalysisSection({ enriched, totalValue }) {
   const hasSectorData = positions.some(p => p.sector);
   if (!hasSectorData) return null;
 
-  function fmt(n, d = 0) {
+  function fmtSec(n, d = 0) {
     if (n == null || isNaN(n)) return '—';
-    return n.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+    return n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
   }
 
   return (
-    <Card title="Analiza sektorowa i branżowa" actions={
+    <Card title={t('sector_analysis')} actions={
       <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
-        {[['sector', 'Sektor'], ['industry', 'Branża']].map(([k, label]) => (
+        {[['sector', t('sector_label')], ['industry', t('industry_label')]].map(([k, label]) => (
           <button key={k} onClick={() => setView(k)} style={{
             padding: '3px 12px', fontSize: 11, fontWeight: 600,
             background: view === k ? 'var(--accent)' : 'var(--panel)',
@@ -771,12 +782,12 @@ function SectorAnalysisSection({ enriched, totalValue }) {
           {grouped.map((g, i) => {
             const pct = total > 0 ? (g.valuePLN / total) * 100 : 0;
             const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
-            const label = SECTOR_PL[g.name] || g.name;
+            const label = SECTOR_KEY_MAP[g.name] ? t(SECTOR_KEY_MAP[g.name]) : g.name;
             return (
               <div key={g.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>{label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{fmt(pct, 1)}%</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{fmtSec(pct, 1)}%</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
@@ -791,18 +802,18 @@ function SectorAnalysisSection({ enriched, totalValue }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>{view === 'sector' ? 'Sektor' : 'Branża'}</th>
-                <th className="right">Wartość</th>
-                <th className="right">Udział</th>
-                <th className="right">Zysk/strata</th>
-                <th>Spółki</th>
+                <th>{view === 'sector' ? t('sector_label') : t('industry_label')}</th>
+                <th className="right">{t('col_value_short')}</th>
+                <th className="right">{t('col_share')}</th>
+                <th className="right">{t('gain_loss')}</th>
+                <th>{t('col_companies')}</th>
               </tr>
             </thead>
             <tbody>
               {grouped.map((g, i) => {
                 const pct   = total > 0 ? (g.valuePLN / total) * 100 : 0;
                 const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
-                const label = SECTOR_PL[g.name] || g.name;
+                const label = SECTOR_KEY_MAP[g.name] ? t(SECTOR_KEY_MAP[g.name]) : g.name;
                 return (
                   <tr key={g.name}>
                     <td>
@@ -811,10 +822,10 @@ function SectorAnalysisSection({ enriched, totalValue }) {
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
                       </div>
                     </td>
-                    <td className="right mono" style={{ fontWeight: 600 }}>{fmt(g.valuePLN)} zł</td>
-                    <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(pct, 1)}%</td>
+                    <td className="right mono" style={{ fontWeight: 600 }}>{fmtSec(g.valuePLN)} zł</td>
+                    <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmtSec(pct, 1)}%</td>
                     <td className="right mono" style={{ color: g.plPLN >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                      {g.plPLN >= 0 ? '+' : ''}{fmt(g.plPLN)} zł
+                      {g.plPLN >= 0 ? '+' : ''}{fmtSec(g.plPLN)} zł
                     </td>
                     <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{g.positions.join(', ')}</td>
                   </tr>
@@ -831,6 +842,8 @@ function SectorAnalysisSection({ enriched, totalValue }) {
 export default function Analysis() {
   const { portfolio, transactions, fxRates, loading, snapshots } = useApp();
   const { isPrivate } = usePrivacy();
+  const t = useT();
+  const { locale } = useLanguage();
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const enriched = useMemo(
@@ -876,7 +889,7 @@ export default function Analysis() {
     return (
       <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
         <div className="text-5xl mb-3">📊</div>
-        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak danych portfela</p>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('no_portfolio_data')}</p>
       </div>
     );
   }
@@ -889,10 +902,10 @@ export default function Analysis() {
       {/* Statystyki */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
         {[
-          { label: 'Liczba pozycji', value: portfolio.length, color: null },
-          { label: 'Zyskowne', value: profitableCount, color: 'var(--up)' },
-          { label: 'Stratne', value: lossCount, color: 'var(--down)' },
-          { label: 'Śr. zwrot', value: avgReturn != null ? `${avgReturn >= 0 ? '+' : ''}${fmt(avgReturn, 1)}%` : '—', color: avgReturn != null ? (avgReturn >= 0 ? 'var(--up)' : 'var(--down)') : null },
+          { label: t('num_positions'), value: portfolio.length, color: null },
+          { label: t('profitable'), value: profitableCount, color: 'var(--up)' },
+          { label: t('losing'), value: lossCount, color: 'var(--down)' },
+          { label: t('avg_return'), value: avgReturn != null ? `${avgReturn >= 0 ? '+' : ''}${fmt(avgReturn, 1, locale)}%` : '—', color: avgReturn != null ? (avgReturn >= 0 ? 'var(--up)' : 'var(--down)') : null },
         ].map(({ label, value, color }) => (
           <div key={label} className="kpi-card">
             <div className="kpi-label">{label}</div>
@@ -903,34 +916,34 @@ export default function Analysis() {
 
       {/* Najlepsze/najgorsze */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <PerformanceTable title="Najlepsze pozycje" positions={best5} />
-        <PerformanceTable title="Najgorsze pozycje" positions={worst5} />
+        <PerformanceTable title={t('best_positions')} positions={best5} />
+        <PerformanceTable title={t('worst_positions')} positions={worst5} />
       </div>
 
       {/* Alokacja walutowa */}
-      <Card title="Alokacja walutowa">
+      <Card title={t('currency_alloc')}>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr>
-                <th>Waluta</th>
-                <th className="right">Wartość</th>
-                <th className="right">Udział</th>
+                <th>{t('col_currency')}</th>
+                <th className="right">{t('col_value_short')}</th>
+                <th className="right">{t('col_share')}</th>
               </tr>
             </thead>
             <tbody>
               {Object.entries(byCurrency).sort((a, b) => b[1] - a[1]).map(([cur, val]) => (
                 <tr key={cur}>
                   <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cur}</td>
-                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(val)} zł</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(val, 0, locale)} zł</td>
                   <td className="right mono" style={{ color: 'var(--text-dim)' }}>
-                    {totalValue > 0 ? `${fmt((val / totalValue) * 100, 1)}%` : '—'}
+                    {totalValue > 0 ? `${fmt((val / totalValue) * 100, 1, locale)}%` : '—'}
                   </td>
                 </tr>
               ))}
               <tr style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
-                <td style={{ fontWeight: 700, color: 'var(--text)' }}>Razem</td>
-                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontWeight: 700 }}>{fmt(totalValue)} zł</td>
+                <td style={{ fontWeight: 700, color: 'var(--text)' }}>{t('total_row')}</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontWeight: 700 }}>{fmt(totalValue, 0, locale)} zł</td>
                 <td className="right mono" style={{ color: 'var(--text-dim)' }}>100%</td>
               </tr>
             </tbody>
@@ -939,23 +952,23 @@ export default function Analysis() {
       </Card>
 
       {/* Koncentracja pozycji */}
-      <Card title="Koncentracja pozycji">
+      <Card title={t('position_concentration')}>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr>
-                <th>Symbol</th>
-                <th className="right">Wartość</th>
-                <th className="right">Udział</th>
+                <th>{t('col_symbol')}</th>
+                <th className="right">{t('col_value_short')}</th>
+                <th className="right">{t('col_share')}</th>
               </tr>
             </thead>
             <tbody>
               {sortedByValue.map((pos) => (
                 <tr key={pos.id ?? pos.symbol}>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
-                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN)} zł</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN, 0, locale)} zł</td>
                   <td className="right mono" style={{ color: 'var(--text-dim)' }}>
-                    {totalValue > 0 ? `${fmt((pos.valuePLN / totalValue) * 100, 1)}%` : '—'}
+                    {totalValue > 0 ? `${fmt((pos.valuePLN / totalValue) * 100, 1, locale)}%` : '—'}
                   </td>
                 </tr>
               ))}
@@ -988,6 +1001,7 @@ export default function Analysis() {
 }
 
 function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
+  const t = useT();
   const fxPositions = enriched.filter(p => p.currency && p.currency !== 'PLN' && p.price != null);
 
   if (!fxPositions.length) return null;
@@ -1006,27 +1020,27 @@ function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
   }
 
   return (
-    <Card title="Dekompozycja zwrotu walutowego">
+    <Card title={t('fx_decomp')}>
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>
-          Ile zwrotu pochodzi z samego aktywa, a ile z ruchu kursu waluty (kurs zakupu z NBP)
+          {t('fx_description')}
         </p>
         {loading && (
           <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 8 }}>
-            ⏳ Pobieranie historycznych kursów NBP…
+            {t('fx_loading')}
           </p>
         )}
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr>
-                <th>Symbol</th>
-                <th>Waluta</th>
-                <th className="right">Kurs zakupu</th>
-                <th className="right">Kurs obecny</th>
-                <th className="right">Zwrot aktywa</th>
-                <th className="right">Wpływ FX</th>
-                <th className="right">Łączny PLN</th>
+                <th>{t('col_symbol')}</th>
+                <th>{t('col_currency')}</th>
+                <th className="right">{t('col_buy_rate')}</th>
+                <th className="right">{t('col_current_rate')}</th>
+                <th className="right">{t('col_asset_return')}</th>
+                <th className="right">{t('col_fx_impact')}</th>
+                <th className="right">{t('col_total_pln')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1058,7 +1072,7 @@ function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
           </table>
         </div>
         <p style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 10, lineHeight: 1.5 }}>
-          Łączny PLN ≈ (1 + Zwrot aktywa) × (1 + Wpływ FX) − 1. Kursy historyczne: NBP (tabela A).
+          {t('fx_footer')}
         </p>
       </div>
     </Card>
@@ -1067,9 +1081,11 @@ function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
 
 function PerformanceTable({ title, positions }) {
   const { isPrivate } = usePrivacy();
-  function fmt(n, decimals = 0) {
+  const t = useT();
+  const { locale } = useLanguage();
+  function fmtPerf(n, decimals = 0) {
     if (n == null || isNaN(n)) return '—';
-    return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
   return (
@@ -1078,9 +1094,9 @@ function PerformanceTable({ title, positions }) {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Symbol</th>
+              <th>{t('col_symbol')}</th>
               <th className="right">P&amp;L</th>
-              <th className="right">Zwrot</th>
+              <th className="right">{t('col_return')}</th>
             </tr>
           </thead>
           <tbody>
@@ -1090,10 +1106,10 @@ function PerformanceTable({ title, positions }) {
                 <tr key={pos.id ?? pos.symbol}>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
                   <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
-                    {up ? '+' : ''}{fmt(pos.plPLN)} zł
+                    {up ? '+' : ''}{fmtPerf(pos.plPLN)} zł
                   </td>
                   <td className="right mono" style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
-                    {up ? '+' : ''}{fmt(pos.returnPct, 1)}%
+                    {up ? '+' : ''}{fmtPerf(pos.returnPct, 1)}%
                   </td>
                 </tr>
               );

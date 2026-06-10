@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import Annotation from 'chartjs-plugin-annotation';
 import { useApp } from '../context/AppContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { fetchOptionChain, getMdApiKey } from '../services/MarketDataService';
 import {
   calcSigma, makePrices, calcPayoff, calcKPIs, calcGreeks,
@@ -96,6 +97,7 @@ function Field({ label, children }) {
 
 export default function ScenarioLab() {
   const { portfolio } = useApp();
+  const t = useT();
   const canvasRef = useRef(null);
   const chartRef  = useRef(null);
 
@@ -163,8 +165,8 @@ export default function ScenarioLab() {
 
   async function handleFetchChain() {
     const ticker = (chainTicker || selectedSymbol || '').toUpperCase().trim();
-    if (!ticker) { setChainError('Wprowadź ticker (np. AAPL)'); return; }
-    if (!getMdApiKey()) { setChainError('Brak klucza API — ustaw go w Ustawienia → Klucze API'); return; }
+    if (!ticker) { setChainError(t('scenario_err_enter_ticker')); return; }
+    if (!getMdApiKey()) { setChainError(t('scenario_err_no_api')); return; }
     setChainLoading(true);
     setChainError(null);
     setChain(null);
@@ -276,7 +278,7 @@ export default function ScenarioLab() {
 
     if ((isHedgedLocal || isSpreadLocal) && !hideStock) {
       datasets.push({
-        label: 'Tylko Akcje',
+        label: t('scenario_stock_only'),
         data: stock,
         borderColor: '#3b82f6',
         backgroundColor: 'rgba(59,130,246,.05)',
@@ -298,7 +300,7 @@ export default function ScenarioLab() {
     });
 
     datasets.push({
-      label: 'Dzisiaj (T+0)',
+      label: t('scenario_today_t0'),
       data: t0,
       borderColor: '#c084fc',
       backgroundColor: 'transparent',
@@ -345,7 +347,7 @@ export default function ScenarioLab() {
           y: {
             ticks: { color: '#8892a4', callback: v => fmtDollar(v) },
             grid: { color: 'rgba(255,255,255,.04)' },
-            title: { display: true, text: 'Zysk / Strata ($)', color: '#8892a4', font: { size: 11 } },
+            title: { display: true, text: t('scenario_pnl_axis'), color: '#8892a4', font: { size: 11 } },
           },
         },
       },
@@ -359,28 +361,28 @@ export default function ScenarioLab() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>🧪 Scenario Lab — Akcje vs Opcje</h2>
+      <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>{t('scenario_title')}</h2>
 
       {/* Stock picker + chain fetch */}
-      <Card title="Spółka i łańcuch opcji">
+      <Card title={t('scenario_stock_chain')}>
         {/* Row 1: portfolio selector */}
         <div className="flex items-center gap-3 flex-wrap">
           <label className="field-label whitespace-nowrap">
-            Spółka z portfela
+            {t('scenario_portfolio_stock')}
           </label>
           <select
             value={selectedSymbol}
             onChange={e => { setSelectedSymbol(e.target.value); if (e.target.value) setChainTicker(e.target.value); }}
             className="field-input max-w-xs"
           >
-            <option value="">— własne wartości —</option>
+            <option value="">{t('scenario_own_values')}</option>
             {portfolio.map(pos => (
               <option key={pos.id ?? pos.symbol} value={pos.symbol}>
                 {pos.symbol}{pos.name && pos.name !== pos.symbol ? ` — ${pos.name}` : ''}
               </option>
             ))}
           </select>
-          {fetchingPrice && <span className="text-xs animate-pulse" style={{ color: 'var(--text-dim)' }}>Pobieranie kursu…</span>}
+          {fetchingPrice && <span className="text-xs animate-pulse" style={{ color: 'var(--text-dim)' }}>{t('scenario_fetching_price')}</span>}
           {livePrice != null && !fetchingPrice && (
             <span className="text-xs rounded-md px-2 py-1 font-mono" style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--info)' }}>
               {livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -388,7 +390,7 @@ export default function ScenarioLab() {
           )}
           {selectedSymbol && !fetchingPrice && (
             <button onClick={() => setSelectedSymbol('')} className="btn text-xs ml-auto">
-              ✕ wyczyść
+              {t('scenario_clear')}
             </button>
           )}
         </div>
@@ -396,7 +398,7 @@ export default function ScenarioLab() {
         {/* Row 2: ticker input + fetch button */}
         <div className="flex items-center gap-2 flex-wrap mt-3">
           <label className="field-label whitespace-nowrap">
-            Ticker opcji
+            {t('scenario_ticker_option')}
           </label>
           <input
             type="text"
@@ -415,11 +417,11 @@ export default function ScenarioLab() {
             {chainLoading
               ? <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : '🔍'}
-            Pobierz łańcuch
+            {t('scenario_fetch_chain')}
           </button>
           {chain && !chainLoading && (
             <span className="text-xs" style={{ color: 'var(--up)' }}>
-              ✓ {chain.contracts.length} kontraktów ({chain.expirations.length} dat)
+              ✓ {chain.contracts.length} {t('scenario_contracts_count')} ({chain.expirations.length} {t('scenario_dates_count')})
             </span>
           )}
           {chainError && <span className="text-xs" style={{ color: 'var(--down)' }}>{chainError}</span>}
@@ -430,7 +432,7 @@ export default function ScenarioLab() {
           <div className="flex flex-col gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
             <div className="flex items-center gap-2 flex-wrap">
               <label className="field-label whitespace-nowrap w-24">
-                Wygaśnięcie
+                {t('scenario_expiry')}
               </label>
               <select
                 value={selectedExpiry}
@@ -451,14 +453,14 @@ export default function ScenarioLab() {
             {!SPREAD_STRATEGIES.has(strategy) && (
               <div className="flex items-center gap-2 flex-wrap">
                 <label className="field-label whitespace-nowrap w-24">
-                  Kontrakt
+                  {t('scenario_contract')}
                 </label>
                 <select
                   value={selectedSym1}
                   onChange={e => applyContract(e.target.value, false)}
                   className="field-input flex-1 min-w-[200px]"
                 >
-                  <option value="">— wybierz strike —</option>
+                  <option value="">{t('scenario_choose_strike')}</option>
                   {leg1Contracts.map(c => (
                     <option key={c.optionSymbol} value={c.optionSymbol}>
                       ${c.strike} · mid {c.mid != null ? `$${c.mid.toFixed(2)}` : '—'} · IV {c.iv != null ? `${(c.iv*100).toFixed(0)}%` : '—'} · Δ {c.delta != null ? c.delta.toFixed(2) : '—'}
@@ -472,14 +474,14 @@ export default function ScenarioLab() {
               <>
                 <div className="flex items-center gap-2 flex-wrap">
                   <label className="field-label whitespace-nowrap w-24">
-                    {strategy === 'iron-condor' ? 'Short Put' : 'Noga długa'}
+                    {strategy === 'iron-condor' ? 'Short Put' : t('scenario_long_leg')}
                   </label>
                   <select
                     value={selectedSym1}
                     onChange={e => applyContract(e.target.value, false)}
                     className="field-input flex-1 min-w-[200px]"
                   >
-                    <option value="">— wybierz strike —</option>
+                    <option value="">{t('scenario_choose_strike')}</option>
                     {leg1Contracts.map(c => (
                       <option key={c.optionSymbol} value={c.optionSymbol}>
                         ${c.strike} · mid {c.mid != null ? `$${c.mid.toFixed(2)}` : '—'} · IV {c.iv != null ? `${(c.iv*100).toFixed(0)}%` : '—'} · Δ {c.delta != null ? c.delta.toFixed(2) : '—'}
@@ -489,14 +491,14 @@ export default function ScenarioLab() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <label className="field-label whitespace-nowrap w-24">
-                    {strategy === 'iron-condor' ? 'Short Call' : 'Noga krótka'}
+                    {strategy === 'iron-condor' ? 'Short Call' : t('scenario_short_leg')}
                   </label>
                   <select
                     value={selectedSym2}
                     onChange={e => applyContract(e.target.value, true)}
                     className="field-input flex-1 min-w-[200px]"
                   >
-                    <option value="">— wybierz strike —</option>
+                    <option value="">{t('scenario_choose_strike')}</option>
                     {leg2Contracts.map(c => (
                       <option key={c.optionSymbol} value={c.optionSymbol}>
                         ${c.strike} · mid {c.mid != null ? `$${c.mid.toFixed(2)}` : '—'} · IV {c.iv != null ? `${(c.iv*100).toFixed(0)}%` : '—'} · Δ {c.delta != null ? c.delta.toFixed(2) : '—'}
@@ -513,29 +515,29 @@ export default function ScenarioLab() {
       {/* Toolbar */}
       <div className="flex justify-end">
         <button onClick={resetParams} className="btn">
-          ↺ Reset parametrów
+          {t('scenario_reset')}
         </button>
       </div>
 
       {/* Form grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         {/* Left panel */}
-        <Card title="Parametry podstawowe">
+        <Card title={t('scenario_basic_params')}>
           <div className="flex flex-col gap-3">
             <Field label="Strategia">
               <select value={strategy} onChange={e => setStrategy(e.target.value)} className="field-input">
                 {STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </Field>
-            <Field label="Cena wejścia ($)">
+            <Field label={t('scenario_entry_price')}>
               <input type="number" value={entry} min="0.01" step="0.01"
                 onChange={e => setEntry(parseFloat(e.target.value) || 100)} className="field-input" />
               {strategy === 'covered-call' && livePrice != null && Math.abs((entry - livePrice) / livePrice) > 0.15 && (
-                <span className="text-xs" style={{ color: 'var(--warn)' }}>⚠ Cena akcji znacznie odbiega od rynkowej ({livePrice.toFixed(2)})</span>
+                <span className="text-xs" style={{ color: 'var(--warn)' }}>{t('scenario_price_warning')} ({livePrice.toFixed(2)})</span>
               )}
             </Field>
             {!isSpread && (
-              <Field label="Ilość akcji / kontraktów">
+              <Field label={t('scenario_qty_contracts')}>
                 <input type="number" value={qty} min="1" step="1"
                   onChange={e => setQty(parseInt(e.target.value) || 1)} className="field-input" />
               </Field>
@@ -544,7 +546,7 @@ export default function ScenarioLab() {
         </Card>
 
         {/* Right panel */}
-        <Card title="Parametry opcji">
+        <Card title={t('scenario_option_params')}>
           <div className="flex flex-col gap-3">
             <Field label={STRIKE_LABELS[strategy] || 'Strike ($)'}>
               <input type="number" value={strike} min="0.01" step="0.01"
@@ -562,11 +564,11 @@ export default function ScenarioLab() {
                   onChange={e => setWing(parseFloat(e.target.value) || 5)} className="field-input" />
               </Field>
             )}
-            <Field label={PREMIUM_LABELS[strategy] || 'Premia ($ / opcja)'}>
+            <Field label={PREMIUM_LABELS[strategy] || 'Premium ($ / option)'}>
               <input type="number" value={premium} min="0" step="0.01"
                 onChange={e => setPremium(parseFloat(e.target.value) || 0)} className="field-input" />
             </Field>
-            <Field label={`Data wygaśnięcia (DTE: ${dte})`}>
+            <Field label={t('scenario_expiry_date').replace('{dte}', dte)}>
               <input
                 type="date"
                 value={expiryDate}
@@ -587,7 +589,7 @@ export default function ScenarioLab() {
       <label className="flex items-center gap-2 cursor-pointer text-sm select-none" style={{ color: 'var(--text-dim)' }}>
         <input type="checkbox" checked={hideStock} onChange={e => setHideStock(e.target.checked)}
           className="w-4 h-4 accent-indigo-500 cursor-pointer" />
-        Ukryj linię bazową akcji
+        {t('scenario_hide_stock')}
       </label>
 
       {/* KPI cards */}
@@ -597,15 +599,15 @@ export default function ScenarioLab() {
             <StatCard label="Break-even" value={fmtDollar(kpis.breakevens[0])} color="blue" />
           ) : (
             <>
-              <StatCard label="BE dolny"  value={fmtDollar(kpis.breakevens[0])} color="blue" />
-              <StatCard label="BE górny"  value={fmtDollar(kpis.breakevens[1])} color="blue" />
+              <StatCard label={t('scenario_be_lower')}  value={fmtDollar(kpis.breakevens[0])} color="blue" />
+              <StatCard label={t('scenario_be_upper')}  value={fmtDollar(kpis.breakevens[1])} color="blue" />
             </>
           )}
-          <StatCard label="Max Zysk"   value={fmtDollar(kpis.maxProfit)} color="green" />
-          <StatCard label="Max Strata" value={fmtDollar(kpis.maxLoss)}   color="red"   />
+          <StatCard label={t('scenario_max_profit')}   value={fmtDollar(kpis.maxProfit)} color="green" />
+          <StatCard label={t('scenario_max_loss')} value={fmtDollar(kpis.maxLoss)}   color="red"   />
           <StatCard label="PoP"        value={(kpis.pop * 100).toFixed(1) + '%'} color="yellow" />
           {kpis.bpe > 0 && (
-            <StatCard label="BPE (depozyt)" value={fmtDollar(kpis.bpe)} color="muted" />
+            <StatCard label={t('scenario_bpe')} value={fmtDollar(kpis.bpe)} color="muted" />
           )}
           {kpis.moic != null && (
             <StatCard label="MOIC" value={kpis.moic.toFixed(2) + 'x'} color="yellow" />
@@ -625,7 +627,7 @@ export default function ScenarioLab() {
             />
           )}
           {sigma != null && (
-            <StatCard label="±1σ zakres" value={'±$' + sigma.toFixed(2)} color="muted" />
+            <StatCard label={t('scenario_sigma_range')} value={'±$' + sigma.toFixed(2)} color="muted" />
           )}
         </div>
       )}
@@ -641,18 +643,18 @@ export default function ScenarioLab() {
       {greeks && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Card>
-            <div className="kpi-label">Δ Delta (pozycja)</div>
+            <div className="kpi-label">Δ Delta</div>
             <div className="kpi-value" style={{ fontSize: 20, color: greeks.posDelta >= 0 ? 'var(--up)' : 'var(--down)' }}>
               {greeks.posDelta.toFixed(3)}
             </div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>zmiana P&amp;L na $1 ruchu akcji</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>{t('scenario_delta_sub')}</div>
           </Card>
           <Card>
-            <div className="kpi-label">Θ Theta (dzienny, na opcję)</div>
+            <div className="kpi-label">{t('scenario_theta_label')}</div>
             <div className="kpi-value" style={{ fontSize: 20, color: greeks.posTheta >= 0 ? 'var(--up)' : 'var(--down)' }}>
               {greeks.posTheta.toFixed(4)}
             </div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>dzienny upływ wartości czasowej</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>{t('scenario_theta_sub')}</div>
           </Card>
         </div>
       )}
@@ -663,12 +665,14 @@ export default function ScenarioLab() {
 }
 
 function RunwayCalculator() {
+  const t = useT();
+  const { locale } = useLanguage();
   const [capital,    setCapital]    = useState(500000);
   const [monthly,    setMonthly]    = useState(5000);
   const [returnPct,  setReturnPct]  = useState(5);
   const [inflation,  setInflation]  = useState(3);
 
-  const fmt = (n) => n.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+  const fmt = (n) => n.toLocaleString(locale, { maximumFractionDigits: 0 });
 
   const r  = (1 + returnPct / 100) / (1 + inflation / 100) - 1;
   const rm = Math.pow(1 + r, 1 / 12) - 1;
@@ -713,13 +717,13 @@ function RunwayCalculator() {
       padding: 24,
     }}>
       <div className="text-lg font-bold" style={{ color: 'var(--text)', marginBottom: 16 }}>
-        Runway Majątkowy — na ile wystarczy kapitał?
+        {t('runway_title')}
       </div>
 
       {/* Inputs 2x2 grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
         <div className="flex flex-col gap-1">
-          <label className="field-label">Kapitał (PLN)</label>
+          <label className="field-label">{t('runway_capital')}</label>
           <input
             type="number"
             className="field-input"
@@ -730,7 +734,7 @@ function RunwayCalculator() {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="field-label">Wydatki/miesiąc (PLN)</label>
+          <label className="field-label">{t('runway_monthly_exp')}</label>
           <input
             type="number"
             className="field-input"
@@ -741,7 +745,7 @@ function RunwayCalculator() {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="field-label">Stopa zwrotu (%/rok)</label>
+          <label className="field-label">{t('runway_return_pct')}</label>
           <input
             type="number"
             className="field-input"
@@ -753,7 +757,7 @@ function RunwayCalculator() {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="field-label">Inflacja (%/rok)</label>
+          <label className="field-label">{t('runway_inflation')}</label>
           <input
             type="number"
             className="field-input"
@@ -773,16 +777,16 @@ function RunwayCalculator() {
       <div style={{ marginBottom: 20 }}>
         {isEternal ? (
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--up)' }}>
-            ♾️ Portfel samofinansujący — pasywny dochód pokrywa wydatki
+            {t('runway_eternal')}
           </div>
         ) : (
           <div style={{ fontSize: 32, fontWeight: 800, color: mainColor, fontVariantNumeric: 'tabular-nums' }}>
-            {years} lat {months} mies.
+            {t('runway_years_months').replace('{y}', years).replace('{m}', months)}
           </div>
         )}
         {!isEternal && (
           <div className="text-xs" style={{ color: 'var(--text-dim)', marginTop: 4 }}>
-            realna stopa zwrotu: {(r * 100).toFixed(2)}% / rok &nbsp;·&nbsp; miesięcznie: {(rm * 100).toFixed(3)}%
+            {t('runway_real_return')}: {(r * 100).toFixed(2)}% / rok &nbsp;·&nbsp; miesięcznie: {(rm * 100).toFixed(3)}%
           </div>
         )}
       </div>
@@ -791,9 +795,9 @@ function RunwayCalculator() {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>Rok</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>Pozostały kapitał</th>
-            <th style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>Status</th>
+            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_year_col')}</th>
+            <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_remaining_capital')}</th>
+            <th style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_status_col')}</th>
           </tr>
         </thead>
         <tbody>

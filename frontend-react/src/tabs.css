@@ -97,6 +97,13 @@
   overflow: hidden;
   margin-bottom: 18px;
 }
+
+@media (max-width: 700px) {
+  .insight-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
 .insight {
   flex: 1;
   background: var(--panel);

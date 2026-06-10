@@ -309,6 +309,7 @@ export default function Portfolio() {
   const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
   const { locale } = useLanguage();
   const t = useT();
+  const ASSET_CATEGORIES = getAssetCategories(t);
 
   const SORT_LABELS = {
     cost: t('sort_by_cost'),
@@ -681,7 +682,7 @@ export default function Portfolio() {
   }
 
   function handleExportCsv() {
-    const headers = [t('col_symbol'), t('col_qty'), t('col_avg_price'), t('col_currency'), t('col_price'), t('col_cost_pln'), t('col_value_pln'), t('col_pl_pln'), 'Zysk/Strata (%)', t('col_daily_chg')];
+    const headers = [t('col_symbol'), t('col_qty'), t('col_avg_price'), t('col_currency'), t('col_price'), t('col_cost_pln'), t('col_value_pln'), t('col_pl_pln'), t('col_pl_pct'), t('col_daily_chg')];
     const rows = sorted.map(p => [
       p.symbol,
       p.qty ?? '',
@@ -703,7 +704,7 @@ export default function Portfolio() {
   }
 
   function handleExportTransactions() {
-    const headers = [t('col_date'), 'Typ', 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
+    const headers = [t('col_date'), t('col_type'), 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
     const rows = transactions.map(tx => [
       tx.date ?? '',
       tx.type ?? '',
@@ -736,7 +737,7 @@ export default function Portfolio() {
   }
 
   function handleExportXlsPositions() {
-    const headers = [t('col_symbol'), t('col_qty'), t('col_avg_price'), t('col_currency'), t('col_price'), t('col_cost_pln'), t('col_value_pln'), t('col_pl_pln'), 'Zysk/Strata (%)', t('col_daily_chg')];
+    const headers = [t('col_symbol'), t('col_qty'), t('col_avg_price'), t('col_currency'), t('col_price'), t('col_cost_pln'), t('col_value_pln'), t('col_pl_pln'), t('col_pl_pct'), t('col_daily_chg')];
     const rows = sorted.map(p => [
       p.symbol, p.qty ?? '', p.avgPrice ?? '', p.currency ?? '', p.price ?? '',
       p.costPLN != null ? parseFloat(p.costPLN.toFixed(2)) : '',
@@ -752,7 +753,7 @@ export default function Portfolio() {
   }
 
   function handleExportXlsTransactions() {
-    const headers = [t('col_date'), 'Typ', 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
+    const headers = [t('col_date'), t('col_type'), 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
     const rows = transactions.map(tx => [
       tx.date ?? '', tx.type ?? '', tx.symbol ?? '',
       tx.qty != null ? tx.qty : '',
@@ -822,7 +823,7 @@ export default function Portfolio() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>{alert.symbol}</span>
             <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              {t('split_detected').replace('Split wykryty', `Split ${alert.ratio} wykryty ${alert.date}`).replace('sprawdź czy ilość akcji jest już po splicie', `sprawdź czy ilość akcji (${alert.qty}) jest już po splicie`)}
+              {t('split_alert_msg').replace('{ratio}', alert.ratio).replace('{date}', alert.date).replace('{qty}', alert.qty)}
             </span>
           </div>
           <button
@@ -833,7 +834,7 @@ export default function Portfolio() {
               color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0,
             }}
           >
-            Rozumiem
+            {t('understood')}
           </button>
         </div>
       ))}
@@ -872,26 +873,26 @@ export default function Portfolio() {
         <div className="hero-side">
           <div className="card">
             <div className="card-head">
-              <div className="card-title">Statystyki</div>
+              <div className="card-title">{t('stats_section')}</div>
             </div>
             <div style={{ padding: '4px 20px 4px' }}>
               <div className="rail-stats">
                 <div className="rail-stat">
-                  <span className="rs-lbl">Koszt zakupu</span>
+                  <span className="rs-lbl">{t('stats_cost')}</span>
                   <span className="rs-val">{fmt(totalCostPLN, 2, locale)} zł</span>
                 </div>
                 <div className="rail-stat">
-                  <span className="rs-lbl">Wynik dnia</span>
+                  <span className="rs-lbl">{t('stats_daily')}</span>
                   <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
                     {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN, 2, locale)} zł
                   </span>
                 </div>
                 <div className="rail-stat">
-                  <span className="rs-lbl">Beta portfela</span>
+                  <span className="rs-lbl">{t('stats_beta')}</span>
                   <span className="rs-val" style={{ color: 'var(--text-faint)' }}>N/A</span>
                 </div>
                 <div className="rail-stat">
-                  <span className="rs-lbl">Pozycji</span>
+                  <span className="rs-lbl">{t('stats_positions')}</span>
                   <span className="rs-val">{portfolio.length}</span>
                 </div>
               </div>
@@ -900,7 +901,7 @@ export default function Portfolio() {
           {enriched.length > 0 && (
             <div className="card" style={{ flex: 1 }}>
               <div className="card-head">
-                <div className="card-title">Alokacja</div>
+                <div className="card-title">{t('alloc_section')}</div>
               </div>
               <div style={{ padding: '16px 20px' }}>
                 <StackedAllocation positions={enriched} totalValue={totalValuePLN} />
@@ -931,8 +932,8 @@ export default function Portfolio() {
                 </button>
                 {showFilterMenu && (
                   <div style={DD_STYLE}>
-                    <div style={hdr}>Zysk / strata</div>
-                    {[['all','Wszystkie',null],['win','Zyskowne','var(--up)'],['lose','Stratne','var(--down)']].map(([id,lbl,c]) => (
+                    <div style={hdr}>{t('filter_pl_label')}</div>
+                    {[['all',t('filter_all'),null],['win',t('filter_winners'),'var(--up)'],['lose',t('filter_losers'),'var(--down)']].map(([id,lbl,c]) => (
                       <button key={id} style={rowStyle(filterChip===id)} onClick={() => setFilterChip(id)}
                         onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=filterChip===id?'var(--panel-2)':'transparent'}>
                         {check(filterChip===id)}{c&&<span style={{width:8,height:8,borderRadius:2,background:c,flexShrink:0}}/>}{lbl}
@@ -998,7 +999,7 @@ export default function Portfolio() {
           <div style={{ position: 'relative', flexShrink: 0 }} ref={exportMenuRef}>
             <button className="btn" onClick={() => setShowExportMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              {t('export')} / Import
+              {t('export')} / {t('import_btn')}
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             {showExportMenu && (
@@ -1250,18 +1251,21 @@ export default function Portfolio() {
   );
 }
 
-const ASSET_CATEGORIES = {
-  real_estate: { label: 'Nieruchomość', icon: '🏠' },
-  metals:      { label: 'Metale szlachetne', icon: '🥇' },
-  savings:     { label: 'Oszczędności/Lokata', icon: '🏦' },
-  vehicle:     { label: 'Pojazd', icon: '🚗' },
-  other:       { label: 'Inne', icon: '📦' },
-};
+function getAssetCategories(t) {
+  return {
+    real_estate: { label: t('asset_cat_real_estate'), icon: '🏠' },
+    metals:      { label: t('asset_cat_metals'), icon: '🥇' },
+    savings:     { label: t('asset_cat_savings'), icon: '🏦' },
+    vehicle:     { label: t('asset_cat_vehicle'), icon: '🚗' },
+    other:       { label: t('asset_cat_other'), icon: '📦' },
+  };
+}
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
 function OtherAssetModal({ initial, onSave, onClose }) {
   const t = useT();
   const { locale } = useLanguage();
+  const ASSET_CATEGORIES = getAssetCategories(t);
   const [name, setName]         = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.category ?? 'other');
   const [value, setValue]       = useState(initial?.value ?? '');
@@ -1287,14 +1291,14 @@ function OtherAssetModal({ initial, onSave, onClose }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-          {initial ? 'Edytuj aktywo' : 'Dodaj inne aktywo'}
+          {initial ? t('asset_edit_title') : t('asset_add_title')}
         </h2>
         <div style={{ marginBottom: 12 }}>
-          <label className="field-label">Nazwa *</label>
+          <label className="field-label">{t('asset_name_label')}</label>
           <input className="field-input" placeholder="np. Mieszkanie Warszawa" value={name} onChange={e => setName(e.target.value)} autoFocus />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label className="field-label">Kategoria</label>
+          <label className="field-label">{t('asset_category_label')}</label>
           <select className="field-input" value={category} onChange={e => setCategory(e.target.value)}>
             {Object.entries(ASSET_CATEGORIES).map(([k, { label, icon }]) => (
               <option key={k} value={k}>{icon} {label}</option>
@@ -1314,7 +1318,7 @@ function OtherAssetModal({ initial, onSave, onClose }) {
           </div>
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label className="field-label">Notatka (opcjonalna)</label>
+          <label className="field-label">{t('note_optional')}</label>
           <input className="field-input" value={note} onChange={e => setNote(e.target.value)} placeholder={t('asset_note_placeholder')} />
         </div>
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
@@ -1370,12 +1374,12 @@ function OtherAssetsSection() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Nazwa</th>
-              <th>Kategoria</th>
+              <th>{t('col_name')}</th>
+              <th>{t('col_category')}</th>
               <th className="right">{t('col_value')}</th>
               <th className="right">≈ PLN</th>
               <th>{t('col_note')}</th>
-              <th>Ost. aktualizacja</th>
+              <th>{t('col_last_updated')}</th>
               <th />
             </tr>
           </thead>
