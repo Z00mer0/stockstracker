@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useT } from '../context/LanguageContext';
 
 const overlay = {
   position: 'fixed', inset: 0,
@@ -19,19 +20,20 @@ const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
 export default function NewPortfolioModal({ onClose }) {
   const { createPortfolio } = useApp();
+  const t = useT();
   const [name, setName]         = useState('');
   const [currency, setCurrency] = useState('PLN');
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
 
   async function handleSave() {
-    if (!name.trim()) { setError('Podaj nazwę portfela.'); return; }
+    if (!name.trim()) { setError(t('err_enter_portfolio_name')); return; }
     setSaving(true); setError('');
     try {
       await createPortfolio(name.trim(), currency);
       onClose();
     } catch (e) {
-      setError(e.response?.data?.error || e.message || 'Błąd zapisu');
+      setError(e.response?.data?.error || e.message || t('save_error'));
     } finally {
       setSaving(false);
     }
@@ -41,11 +43,11 @@ export default function NewPortfolioModal({ onClose }) {
     <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-          Nowy portfel
+          {t('new_portfolio_title')}
         </h2>
 
         <label style={{ display: 'block', fontSize: 11, color: 'var(--text-faint)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Nazwa
+          {t('portfolio_name')}
         </label>
         <input
           autoFocus
@@ -64,7 +66,7 @@ export default function NewPortfolioModal({ onClose }) {
         />
 
         <label style={{ display: 'block', fontSize: 11, color: 'var(--text-faint)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Waluta bazowa
+          {t('base_currency')}
         </label>
         <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
           {CURRENCIES.map(c => (
@@ -86,9 +88,9 @@ export default function NewPortfolioModal({ onClose }) {
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Tworzenie…' : 'Utwórz portfel'}
+            {saving ? t('creating') : t('create_portfolio')}
           </button>
         </div>
       </div>

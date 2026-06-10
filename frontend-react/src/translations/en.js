@@ -154,6 +154,40 @@ export default {
   mode_qty:             'Qty',
   mode_value:           'Transaction value',
 
+  // ── SellStockModal ───────────────────────────────────────────
+  sell_title:           'Sell',
+  sell_qty_label:       'Share qty *',
+  sell_price_label:     'Sell price *',
+  sell_date_label:      'Sell date',
+  note_optional:        'Note (optional)',
+  est_result:           'Estimated result',
+  manual_result:        'Result (manual)',
+  restore_auto:         '↺ auto',
+  edit_pl:              '✎ edit',
+  err_too_many_shares:  'You only have',
+  err_enter_sell_price: 'Enter sell price',
+
+  // ── EditPositionModal ─────────────────────────────────────────
+  edit_pos_hint:        'Manual correction of quantity and average buy price.',
+  avg_price_currency:   'Avg price',
+  err_enter_qty_pos:    'Enter quantity (> 0)',
+  err_enter_avg_price:  'Enter average price (> 0)',
+
+  // ── AddDividendModal ──────────────────────────────────────────
+  add_dividend_title:   'Add dividend',
+  edit_dividend_title:  'Edit dividend',
+  ex_date_label:        'Ex-date *',
+  pay_date_label:       'Pay date (optional)',
+  amount_per_share:     'Amount / share *',
+
+  // ── NewPortfolioModal ─────────────────────────────────────────
+  new_portfolio_title:  'New portfolio',
+  portfolio_name:       'Name',
+  base_currency:        'Base currency',
+  err_enter_portfolio_name: 'Enter portfolio name.',
+  creating:             'Creating…',
+  create_portfolio:     'Create portfolio',
+
   // ── Transactions page ────────────────────────────────────────
   add_transaction_title: 'Add transaction',
   type_buy:             'Buy',

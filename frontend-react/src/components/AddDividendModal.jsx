@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useT } from '../context/LanguageContext';
 
 const EMPTY = { symbol: '', exDate: '', payDate: '', amount: '', currency: 'PLN', note: '' };
 
@@ -20,6 +21,7 @@ const card = {
 
 export default function AddDividendModal({ isOpen, onClose, onSave, initialData = null }) {
   const { portfolio } = useApp();
+  const t = useT();
   const [form, setForm] = useState(EMPTY);
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-            {initialData ? 'Edytuj dywidendę' : 'Dodaj dywidendę'}
+            {initialData ? t('edit_dividend_title') : t('add_dividend_title')}
           </h3>
           <button
             onClick={onClose}
@@ -66,26 +68,26 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
         {/* Form */}
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label className="field-label">Spółka</label>
+            <label className="field-label">{t('col_company')}</label>
             <select className="field-input" value={form.symbol} onChange={e => set('symbol', e.target.value)}>
-              <option value="">— wybierz —</option>
+              <option value="">—</option>
               {symbols.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="field-label">Ex-date *</label>
+            <label className="field-label">{t('ex_date_label')}</label>
             <input type="date" className="field-input" value={form.exDate} onChange={e => set('exDate', e.target.value)} />
           </div>
 
           <div>
-            <label className="field-label">Pay-date (opcjonalnie)</label>
+            <label className="field-label">{t('pay_date_label')}</label>
             <input type="date" className="field-input" value={form.payDate} onChange={e => set('payDate', e.target.value)} />
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <label className="field-label">Kwota / akcję *</label>
+              <label className="field-label">{t('amount_per_share')}</label>
               <input
                 type="number" min="0" step="0.01"
                 className="field-input"
@@ -95,7 +97,7 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
               />
             </div>
             <div style={{ width: 90 }}>
-              <label className="field-label">Waluta</label>
+              <label className="field-label">{t('currency_label')}</label>
               <select className="field-input" value={form.currency} onChange={e => set('currency', e.target.value)}>
                 {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -103,7 +105,7 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
           </div>
 
           <div>
-            <label className="field-label">Notatka (opcjonalnie)</label>
+            <label className="field-label">{t('note_label')}</label>
             <input
               type="text" className="field-input"
               placeholder="np. wypłata za 2025"
@@ -116,13 +118,13 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
 
         {/* Footer */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" onClick={onClose}>Anuluj</button>
+          <button className="btn" onClick={onClose}>{t('cancel')}</button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
             disabled={!form.symbol || !form.exDate || !form.amount}
           >
-            Zapisz
+            {t('save_btn')}
           </button>
         </div>
       </div>

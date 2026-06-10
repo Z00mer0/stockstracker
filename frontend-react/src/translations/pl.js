@@ -154,6 +154,40 @@ export default {
   mode_qty:             'Ilość',
   mode_value:           'Wartość transakcji',
 
+  // ── SellStockModal ───────────────────────────────────────────
+  sell_title:           'Sprzedaj',
+  sell_qty_label:       'Ilość akcji *',
+  sell_price_label:     'Cena sprzedaży *',
+  sell_date_label:      'Data sprzedaży',
+  note_optional:        'Notatka (opcjonalna)',
+  est_result:           'Szacowany wynik',
+  manual_result:        'Wynik (ręczny)',
+  restore_auto:         '↺ auto',
+  edit_pl:              '✎ edytuj',
+  err_too_many_shares:  'Masz tylko',
+  err_enter_sell_price: 'Podaj cenę sprzedaży',
+
+  // ── EditPositionModal ─────────────────────────────────────────
+  edit_pos_hint:        'Ręczna korekta ilości i średniej ceny zakupu.',
+  avg_price_currency:   'Śr. cena',
+  err_enter_qty_pos:    'Podaj ilość (> 0)',
+  err_enter_avg_price:  'Podaj średnią cenę (> 0)',
+
+  // ── AddDividendModal ──────────────────────────────────────────
+  add_dividend_title:   'Dodaj dywidendę',
+  edit_dividend_title:  'Edytuj dywidendę',
+  ex_date_label:        'Ex-date *',
+  pay_date_label:       'Pay-date (opcjonalnie)',
+  amount_per_share:     'Kwota / akcję *',
+
+  // ── NewPortfolioModal ─────────────────────────────────────────
+  new_portfolio_title:  'Nowy portfel',
+  portfolio_name:       'Nazwa',
+  base_currency:        'Waluta bazowa',
+  err_enter_portfolio_name: 'Podaj nazwę portfela.',
+  creating:             'Tworzenie…',
+  create_portfolio:     'Utwórz portfel',
+
   // ── Transactions page ────────────────────────────────────────
   add_transaction_title: 'Dodaj transakcję',
   type_buy:             'Kupno',

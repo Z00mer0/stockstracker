@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useT } from '../context/LanguageContext';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
@@ -41,13 +42,16 @@ function ToggleGroup({ options, value, onChange }) {
 }
 
 export default function AddStockModal({ existingPortfolio, onSave, onClose, initialSymbol = '' }) {
+  const t = useT();
   const [symbol, setSymbol]    = useState(initialSymbol);
   const [mode, setMode]        = useState('qty');
   const [qty, setQty]          = useState('');
   const [price, setPrice]      = useState('');
   const [totalValue, setTotal] = useState('');
   const [currency, setCurrency] = useState('PLN');
-  const [date, setDate]        = useState(new Date().toISOString().slice(0, 10));
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const [date, setDate]        = useState(today);
   const [note, setNote]        = useState('');
   const [funding, setFunding]  = useState('topup');
   const [saving, setSaving]    = useState(false);
@@ -55,8 +59,10 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
   const [suggestions, setSuggestions] = useState([]);
   const [showSug, setShowSug]  = useState(false);
   const sugRef = useRef(null);
+  const justPicked = useRef(false);
 
   useEffect(() => {
+    if (justPicked.current) { justPicked.current = false; return; }
     if (symbol.length < 2) { setSuggestions([]); setShowSug(false); return; }
     const id = setTimeout(async () => {
       try {
@@ -77,7 +83,9 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
   }, []);
 
   function pickSuggestion(s) {
+    justPicked.current = true;
     setSymbol(s.symbol);
+    setSuggestions([]);
     setShowSug(false);
     // Auto-set currency based on exchange
     if (s.exchange && (s.exchange.includes('Warsaw') || s.symbol.endsWith('.WA'))) setCurrency('PLN');
@@ -89,15 +97,15 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
 
   async function handleSave() {
     const sym = symbol.trim().toUpperCase();
-    if (!sym) { setError('Podaj symbol tickera'); return; }
-    if (isNaN(resolvedQty) || resolvedQty <= 0) { setError('Podaj ilość / wartość'); return; }
-    if (isNaN(resolvedPrice) || resolvedPrice <= 0) { setError('Podaj cenę zakupu'); return; }
+    if (!sym) { setError(t('err_enter_symbol')); return; }
+    if (isNaN(resolvedQty) || resolvedQty <= 0) { setError(t('err_enter_qty')); return; }
+    if (isNaN(resolvedPrice) || resolvedPrice <= 0) { setError(t('err_enter_price')); return; }
     setSaving(true); setError('');
     try {
       await onSave({ symbol: sym, qty: resolvedQty, price: resolvedPrice, currency, date, note: note.trim(), funding });
       onClose();
     } catch (e) {
-      setError(e.message || 'Błąd zapisu');
+      setError(e.message || t('save_error'));
     } finally {
       setSaving(false);
     }
@@ -109,12 +117,12 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
     <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-          Dodaj spółkę do portfela
+          {t('add_stock_title')}
         </h2>
 
         {/* Symbol */}
         <div style={{ marginBottom: 16, position: 'relative' }} ref={sugRef}>
-          <label className="field-label">Symbol tickera *</label>
+          <label className="field-label">{t('ticker_symbol')}</label>
           <input
             className="field-input"
             placeholder="np. AAPL, PKN.WA, MSFT"
@@ -146,11 +154,11 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
             </div>
           )}
           <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>
-            🇵🇱 GPW: dodaj <strong>.WA</strong> (np. PKN.WA) · 🇺🇸 US: bez sufiksu (np. AAPL)
+            {t('ticker_hint_gpw')}
           </p>
           {existing && (
             <p style={{ fontSize: 11, color: 'var(--warn)', marginTop: 4 }}>
-              Masz już {existing.qty} szt. po śr. {existing.avgPrice} {existing.currency} — zostanie uśrednione
+              {t('already_own_prefix')} {existing.qty} {t('already_own_suffix')} {existing.avgPrice} {existing.currency} {t('will_average')}
             </p>
           )}
         </div>
@@ -158,7 +166,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         {/* Mode toggle */}
         <div style={{ marginBottom: 16 }}>
           <ToggleGroup
-            options={[['qty', 'Ilość'], ['value', 'Wartość transakcji']]}
+            options={[['qty', t('mode_qty')], ['value', t('mode_value')]]}
             value={mode}
             onChange={setMode}
           />
@@ -167,7 +175,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         {/* Qty + Price */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
-            <label className="field-label">{mode === 'qty' ? 'Ilość akcji *' : 'Wartość transakcji *'}</label>
+            <label className="field-label">{mode === 'qty' ? t('qty_label') : t('value_label')}</label>
             <input
               type="number" min="0" step="any"
               className="field-input"
@@ -177,7 +185,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
             />
           </div>
           <div>
-            <label className="field-label">Cena zakupu *</label>
+            <label className="field-label">{t('buy_price_label')}</label>
             <input
               type="number" min="0" step="any"
               className="field-input"
@@ -191,23 +199,23 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         {/* Currency + Date */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
-            <label className="field-label">Waluta</label>
+            <label className="field-label">{t('currency_label')}</label>
             <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label className="field-label">Data zakupu</label>
-            <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
+            <label className="field-label">{t('buy_date_label')}</label>
+            <input type="date" className="field-input" value={date} max={today} onChange={e => setDate(e.target.value)} />
           </div>
         </div>
 
         {/* Note */}
         <div style={{ marginBottom: 16 }}>
-          <label className="field-label">Notatka (opcjonalna)</label>
+          <label className="field-label">{t('note_label')}</label>
           <input
             className="field-input"
-            placeholder="np. długoterminowo, dywidendowa…"
+            placeholder={t('note_placeholder')}
             value={note}
             onChange={e => setNote(e.target.value)}
           />
@@ -215,9 +223,9 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
 
         {/* Funding */}
         <div style={{ marginBottom: 20 }}>
-          <label className="field-label">Źródło środków</label>
+          <label className="field-label">{t('source_of_funds')}</label>
           <ToggleGroup
-            options={[['topup', '💼 Dopłata'], ['cash', '💵 Odejmij od gotówki']]}
+            options={[['topup', t('top_up')], ['cash', t('deduct_cash')]]}
             value={funding}
             onChange={setFunding}
           />
@@ -226,9 +234,9 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Zapisuję…' : 'Dodaj do portfela'}
+            {saving ? t('saving') : t('add_to_portfolio')}
           </button>
         </div>
       </div>
