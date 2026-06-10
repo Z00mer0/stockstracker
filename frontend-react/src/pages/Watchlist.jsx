@@ -1,6 +1,7 @@
 // src/pages/Watchlist.jsx
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { useChart } from '../context/ChartContext';
 import StockDetailModal from '../components/StockDetailModal';
 import Card from '../components/shared/Card';
@@ -47,6 +48,7 @@ function saveWatchlist(items) { localStorage.setItem(WATCH_KEY, JSON.stringify(i
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
 function AlertModal({ item, onClose, onSave }) {
+  const t = useT();
   const [type, setType] = useState('above');
   const [price, setPrice] = useState('');
   function handleAdd() {
@@ -59,19 +61,19 @@ function AlertModal({ item, onClose, onSave }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div className="card" style={{ width: 340, padding: 24 }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Alert — {item.symbol}</h2>
-        {item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>Cena przy dodaniu: {item.addedPrice.toFixed(2)} {item.currency}</p>}
+        {item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>{item.addedPrice.toFixed(2)} {item.currency}</p>}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {['above', 'below'].map(t => (
-            <button key={t} onClick={() => setType(t)} className={`btn ${type === t ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center' }}>
-              {t === 'above' ? '↑ Powyżej' : '↓ Poniżej'}
+          {['above', 'below'].map(tp => (
+            <button key={tp} onClick={() => setType(tp)} className={`btn ${type === tp ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center' }}>
+              {tp === 'above' ? t('above_alert') : t('below_alert')}
             </button>
           ))}
         </div>
-        <input type="number" placeholder="Cena docelowa" value={price} onChange={e => setPrice(e.target.value)}
+        <input type="number" placeholder={t('col_price')} value={price} onChange={e => setPrice(e.target.value)}
           className="field-input" style={{ marginBottom: 20 }} autoFocus />
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>Anuluj</button>
-          <button onClick={handleAdd} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>Dodaj</button>
+          <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>{t('cancel')}</button>
+          <button onClick={handleAdd} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{t('add_btn')}</button>
         </div>
       </div>
     </div>
@@ -81,6 +83,8 @@ function AlertModal({ item, onClose, onSave }) {
 export default function Watchlist() {
   const { portfolio } = useApp();
   const { openChart } = useChart();
+  const { locale } = useLanguage();
+  const t = useT();
   const [watchItems, setWatchItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [alertTarget, setAlertTarget] = useState(null);
@@ -130,25 +134,24 @@ export default function Watchlist() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card
-        title={`Obserwowane spółki${watchItems.length ? ` · ${watchItems.length}` : ''}`}
-        actions={loading && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Ładowanie kursów…</span>}
+        title={`${t('watched_companies')}${watchItems.length ? ` · ${watchItems.length}` : ''}`}
+        actions={loading && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('loading_quotes')}</span>}
       >
         {!watchItems.length ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
-            <p>Watchlist jest pusta.</p>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Spółki obserwowane synchronizowane są z serwerem.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>{t('watched_synced')}</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Aktywo</th>
-                  <th className="right">Cena dodania</th>
-                  <th className="right">Kurs</th>
-                  <th className="right">Dzień</th>
-                  <th>Notatka</th>
-                  <th className="right">Alerty</th>
+                  <th>{t('col_symbol')}</th>
+                  <th className="right">{t('col_price')}</th>
+                  <th className="right">{t('col_price')}</th>
+                  <th className="right">{t('col_day')}</th>
+                  <th>{t('col_note')}</th>
+                  <th className="right">Alerts</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,7 +185,7 @@ export default function Watchlist() {
                             <button key={a.id} onClick={() => removeAlert(w.id, a.id)}
                               className={`chip ${a.triggered ? 'chip-warn' : a.type === 'above' ? 'chip-up' : 'chip-down'}`}
                               style={{ cursor: 'pointer', textDecoration: a.triggered ? 'line-through' : 'none', border: 'none' }}
-                              title="Kliknij aby usunąć">
+                              title={t('click_to_remove')}>
                               {a.type === 'above' ? '↑' : '↓'} {a.targetPrice?.toFixed(2)}
                             </button>
                           ))}
@@ -199,14 +202,14 @@ export default function Watchlist() {
       </Card>
 
       {portfolio.length > 0 && (
-        <Card title="Posiadane spółki">
+        <Card title={t('owned_companies')}>
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Symbol</th>
-                  <th className="right">Ilość</th>
-                  <th className="right">Śr. cena</th>
+                  <th>{t('col_symbol')}</th>
+                  <th className="right">{t('col_qty')}</th>
+                  <th className="right">{t('col_avg_price_short')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -221,7 +224,7 @@ export default function Watchlist() {
                         </div>
                       </div>
                     </td>
-                    <td className="right mono" style={{ fontSize: 13 }}>{pos.qty?.toLocaleString('pl-PL') ?? '—'}</td>
+                    <td className="right mono" style={{ fontSize: 13 }}>{pos.qty?.toLocaleString(locale) ?? '—'}</td>
                     <td className="right mono" style={{ fontSize: 13, color: 'var(--text-dim)' }}>{pos.avgPrice?.toFixed(2)} {pos.currency}</td>
                   </tr>
                 ))}

@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
 import Card from '../components/shared/Card';
 import Chip from '../components/shared/Chip';
@@ -18,24 +19,22 @@ import {
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 
-const PL_MONTHS_FULL = [
-  'Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
-  'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień',
-];
-
-function fmt(n, decimals = 2) {
+function fmt(n, decimals = 2, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
-function fmtMonthYear(ym) {
-  const [y, m] = ym.split('-');
-  return `${PL_MONTHS_FULL[parseInt(m) - 1]} ${y}`;
+  return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 export default function Dividends() {
   const { transactions, loading, fxRates, portfolio } = useApp();
   const { isPrivate } = usePrivacy();
+  const { locale } = useLanguage();
+  const t = useT();
+
+  function fmtMonthYear(ym) {
+    const [y, m] = ym.split('-');
+    const months = t('months');
+    return `${Array.isArray(months) ? months[parseInt(m) - 1] : ym} ${y}`;
+  }
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
 
@@ -177,7 +176,7 @@ export default function Dividends() {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   }
 
-  const modeLabel = isNet ? 'netto' : 'brutto';
+  const modeLabel = isNet ? t('net') : t('gross');
 
   return (
     <div className="space-y-5">
@@ -186,36 +185,36 @@ export default function Dividends() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
           <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-            Dywidendy (12 mies.) · {modeLabel}
+            {t('nav_dividends')} (12 mies.) · {modeLabel}
           </p>
           <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
-            {fmt(annualDivPLN)} zł
+            {fmt(annualDivPLN, 2, locale)} zł
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>ostatnie 12 miesięcy</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{t('last_12m_sub')}</p>
         </div>
 
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
           <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }} className="flex items-center gap-2">
-            Yield portfela (proj.)
+            Yield (proj.)
             {yocLoading && <Spinner size="sm" />}
           </p>
           {portfolioYield != null ? (
             <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--up)' }}>
-              {fmt(portfolioYield, 2)}%
+              {fmt(portfolioYield, 2, locale)}%
             </p>
           ) : (
             <p className="text-2xl font-bold" style={{ color: 'var(--text-faint)' }}>—</p>
           )}
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>roczne dywidendy / wartość portfela</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{t('yield_sub')}</p>
         </div>
 
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Nadchodzące (30 dni)</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{t('upcoming_30d')}</p>
           <p className="text-2xl font-bold" style={{ color: 'var(--info)' }}>{upcoming30d.length}</p>
           <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
             {upcoming30d.length > 0
               ? upcoming30d.map(e => e.symbol).join(', ')
-              : 'brak zaplanowanych'}
+              : t('no_upcoming_div')}
           </p>
         </div>
       </div>
@@ -231,7 +230,7 @@ export default function Dividends() {
         if (editingGoal) {
           return (
             <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Ustaw miesięczny cel dywidendowy (PLN/mies.)</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{t('set_monthly_goal')}</p>
               <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
                 <input
                   type="number"
@@ -243,8 +242,8 @@ export default function Dividends() {
                   autoFocus
                   style={{ fontSize: 15, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', width: 160 }}
                 />
-                <button onClick={saveGoal} className="btn btn-primary" style={{ fontSize: 13 }}>Zapisz</button>
-                <button onClick={() => setEditingGoal(false)} style={{ fontSize: 13, background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>Anuluj</button>
+                <button onClick={saveGoal} className="btn btn-primary" style={{ fontSize: 13 }}>{t('save_btn')}</button>
+                <button onClick={() => setEditingGoal(false)} style={{ fontSize: 13, background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>{t('cancel')}</button>
               </div>
             </div>
           );
@@ -254,13 +253,13 @@ export default function Dividends() {
           return (
             <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-                Ustaw miesięczny cel dywidendowy aby śledzić postęp do niezależności finansowej
+                {t('set_monthly_goal')}
               </p>
               <button
                 onClick={() => { setGoalInput(''); setEditingGoal(true); }}
                 className="btn btn-primary"
                 style={{ fontSize: 13, whiteSpace: 'nowrap' }}
-              >Ustaw cel</button>
+              >{t('set_monthly_goal')}</button>
             </div>
           );
         }
@@ -269,36 +268,35 @@ export default function Dividends() {
           <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Cel pasywnego dochodu
+                {t('next_dividend')}
               </p>
               <button
                 onClick={() => { setGoalInput(String(fireGoal)); setEditingGoal(true); }}
                 style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer' }}
-              >Zmień cel</button>
+              >{t('change_goal')}</button>
             </div>
             <div className="flex items-center gap-2" style={{ marginBottom: 10, fontSize: 13, color: 'var(--text-dim)', flexWrap: 'wrap' }}>
               <span>
-                <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)', fontSize: 15 }}>{fmt(monthlyPLN)} zł/mies.</span>
+                <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)', fontSize: 15 }}>{fmt(monthlyPLN, 2, locale)} zł/mies.</span>
               </span>
               <span style={{ color: 'var(--text-faint)' }}>→</span>
               <span>
-                cel: <span style={{ fontWeight: 600, color: 'var(--text)' }}><span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0)}</span> zł/mies.</span>
+                cel: <span style={{ fontWeight: 600, color: 'var(--text)' }}><span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0, locale)}</span> zł/mies.</span>
               </span>
             </div>
             <div style={{ height: 10, borderRadius: 6, background: 'var(--border)', overflow: 'hidden', marginBottom: 10 }}>
               <div style={{ height: '100%', width: `${barPct}%`, background: barColor, borderRadius: 6, transition: 'width 0.4s ease' }} />
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              Pokrywasz{' '}
               <span style={{ fontSize: 17, fontWeight: 700, color: textColor }}>
-                {fmt(pct, 1)}%
+                {fmt(pct, 1, locale)}%
               </span>
-              {' '}miesięcznego celu{' '}
-              (<span className={isPrivate ? 'privacy-blur' : ''}>{fmt(monthlyPLN)} zł</span> z <span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0)} zł</span>)
+              {' '}{t('of_monthly_goal')}{' '}
+              (<span className={isPrivate ? 'privacy-blur' : ''}>{fmt(monthlyPLN, 2, locale)} zł</span> / <span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0, locale)} zł</span>)
             </p>
             {pct >= 100 && (
               <p style={{ marginTop: 8, fontSize: 13, color: 'var(--up)', fontWeight: 600 }}>
-                🎯 Cel osiągnięty! Twój portfel generuje pasywny dochód wystarczający na pokrycie celu.
+                {t('goal_achieved')}
               </p>
             )}
           </div>
@@ -308,44 +306,38 @@ export default function Dividends() {
       {/* ── Netto / Brutto toggle ── */}
       <div className="card flex items-center justify-between flex-wrap gap-3" style={{ padding: '12px 20px' }}>
         <div>
-          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Tryb wyświetlania kwot</p>
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
-            {isNet
-              ? `Po podatku: GPW 19%, US ${getUsTaxRate() === 0.30 ? '30' : '15'}% (zmień w Ustawienia)`
-              : 'Kwoty brutto — przed potrąceniem podatku'}
-          </p>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t('display_mode')}</p>
         </div>
         <SegmentedControl
-          options={['BRUTTO', 'NETTO']}
-          value={isNet ? 'NETTO' : 'BRUTTO'}
-          onChange={v => { setIsNet(v === 'NETTO'); localStorage.setItem(DIV_MODE_KEY, v === 'NETTO' ? 'net' : 'gross'); }}
+          options={[t('gross').toUpperCase(), t('net').toUpperCase()]}
+          value={isNet ? t('net').toUpperCase() : t('gross').toUpperCase()}
+          onChange={v => { setIsNet(v === t('net').toUpperCase()); localStorage.setItem(DIV_MODE_KEY, v === t('net').toUpperCase() ? 'net' : 'gross'); }}
         />
       </div>
 
       {/* ── Banner + dodaj GPW ── */}
       <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <p style={{ fontSize: 13, color: 'var(--info)', lineHeight: 1.5, maxWidth: 520 }}>
-          <span className="font-semibold">ℹ️ Daty dywidend GPW</span> (XTB.WA, VOT.WA itp.) są dodawane ręcznie.
-          Daty US (NVDA, HOOD itp.) pobierane automatycznie z Finnhub.
+          <span className="font-semibold">ℹ️</span> {t('gpw_dividends_note')}
         </p>
         <button
           onClick={() => { setEditTarget(null); setModalOpen(true); }}
           className="btn btn-primary" style={{ fontSize: 13 }}
         >
-          + Dodaj dywidendę GPW
+          {t('add_dividend_gpw')}
         </button>
       </div>
 
       {/* ── Nadchodzące dywidendy ── */}
       <Card
-        title="Nadchodzące dywidendy"
+        title={t('upcoming_dividends')}
         actions={
           <>
             {divLoading && <Spinner size="sm" />}
             <button
               onClick={() => { setEditTarget(null); setModalOpen(true); }}
               className="btn btn-primary" style={{ fontSize: 12 }}
-            >+ Dodaj ręcznie</button>
+            >{t('add_manually')}</button>
           </>
         }
       >
@@ -353,9 +345,9 @@ export default function Dividends() {
           <div className="flex justify-center py-8"><Spinner size="md" /></div>
         ) : upcoming.length === 0 ? (
           <div className="card-body text-center" style={{ color: 'var(--text-faint)', fontSize: 13 }}>
-            Brak nadchodzących dywidend.
+            {t('no_upcoming_div')}
             {symbols.some(s => !s.includes('.')) && (
-              <span className="block mt-1" style={{ fontSize: 11 }}>US stocks: Finnhub może nie mieć danych dla tej spółki.</span>
+              <span className="block mt-1" style={{ fontSize: 11 }}>{t('us_no_data_note')}</span>
             )}
           </div>
         ) : (
@@ -363,11 +355,11 @@ export default function Dividends() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Spółka</th>
-                  <th>Ex-date</th>
-                  <th>Pay-date</th>
-                  <th className="right">Kwota/ak. ({modeLabel})</th>
-                  <th>Źródło</th>
+                  <th>{t('col_company')}</th>
+                  <th>{t('ex_date_label')}</th>
+                  <th>{t('pay_date_label')}</th>
+                  <th className="right">{t('amount_per_share')} ({modeLabel})</th>
+                  <th>{t('col_source')}</th>
                   <th />
                 </tr>
               </thead>
@@ -384,10 +376,10 @@ export default function Dividends() {
                       <td style={{ color: 'var(--text)' }}>{ev.date}</td>
                       <td style={{ color: 'var(--text-dim)' }}>{ev.payDate ?? '—'}</td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)', fontWeight: 600 }}>
-                        {dispAmount != null ? `${fmt(dispAmount)} ${cur}` : '—'}
+                        {dispAmount != null ? `${fmt(dispAmount, 2, locale)} ${cur}` : '—'}
                       </td>
                       <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                        {ev.isManual ? '✍️ ręczne' : '🤖 auto'}
+                        {ev.isManual ? t('manual_source') : t('auto_source')}
                       </td>
                       <td className="right">
                         {ev.isManual && (
@@ -395,11 +387,11 @@ export default function Dividends() {
                             <button
                               onClick={() => { const src = manualDividends.find(d => d.id === ev.id); if (src) openEdit(src); }}
                               style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer' }}
-                            >Edytuj</button>
+                            >{t('edit')}</button>
                             <button
                               onClick={() => deleteDividend(ev.id)}
                               style={{ fontSize: 11, color: 'var(--down)', background: 'none', border: 'none', cursor: 'pointer' }}
-                            >Usuń</button>
+                            >{t('delete_btn')}</button>
                           </div>
                         )}
                       </td>
@@ -414,7 +406,7 @@ export default function Dividends() {
 
       {/* ── Timeline wypłat ── */}
       {timeline.length > 0 && (
-        <Card title="Timeline wypłat">
+        <Card title={t('payment_timeline')}>
           <div style={{ borderTop: '1px solid var(--border)' }}>
             {timeline.map(({ ym, items, totalPLN: monthTotal }) => (
               <div key={ym} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -423,7 +415,7 @@ export default function Dividends() {
                     {fmtMonthYear(ym)}
                   </span>
                   <span className={`mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--warn)' }}>
-                    {fmt(monthTotal)} zł {modeLabel}
+                    {fmt(monthTotal, 2, locale)} zł {modeLabel}
                   </span>
                 </div>
                 {items.map(d => (
@@ -436,7 +428,7 @@ export default function Dividends() {
                       <span className="shrink-0" style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.date}</span>
                     </div>
                     <span className={`mono shrink-0 ml-4${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--warn)' }}>
-                      {fmt(d.dispPLN)} zł
+                      {fmt(d.dispPLN, 2, locale)} zł
                     </span>
                   </div>
                 ))}
@@ -449,39 +441,39 @@ export default function Dividends() {
       {/* ── KPI summary ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Łącznie dywidendy ({modeLabel})</p>
-          <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>{fmt(totalPLN)} zł</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{t('total_dividends')} ({modeLabel})</p>
+          <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>{fmt(totalPLN, 2, locale)} zł</p>
         </div>
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Liczba wypłat</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{t('num_payments')}</p>
           <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{dividends.length}</p>
         </div>
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Spółki dywidendowe</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{t('dividend_companies')}</p>
           <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{bySymbol.length}</p>
         </div>
       </div>
 
       {/* ── Per spółka + YoC ── */}
       <Card
-        title="Dywidendy per spółka · Yield on Cost"
+        title={t('div_per_company')}
         actions={yocLoading && <Spinner size="sm" />}
       >
         {bySymbol.length === 0 ? (
           <div className="card-body text-center">
             <div className="text-4xl mb-3">🌱</div>
-            <p className="font-semibold" style={{ color: 'var(--text-dim)' }}>Brak spółek dywidendowych w portfelu</p>
-            <p style={{ marginTop: 4, fontSize: 11, color: 'var(--text-faint)' }}>Dodaj wypłatę dywidendy w sekcji Transakcje (typ: DIV) lub ręcznie powyżej.</p>
+            <p className="font-semibold" style={{ color: 'var(--text-dim)' }}>{t('no_div_companies')}</p>
+            <p style={{ marginTop: 4, fontSize: 11, color: 'var(--text-faint)' }}>{t('no_div_hint')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Spółka</th>
-                  <th className="right">Wypłaty</th>
-                  <th className="right">Łącznie PLN ({modeLabel})</th>
-                  <th className="right">YoC (prognoza)</th>
+                  <th>{t('col_company')}</th>
+                  <th className="right">{t('col_payments')}</th>
+                  <th className="right">{t('total_pln_header')} ({modeLabel})</th>
+                  <th className="right">YoC</th>
                 </tr>
               </thead>
               <tbody>
@@ -497,7 +489,7 @@ export default function Dividends() {
                       </td>
                       <td className="right" style={{ color: 'var(--text-dim)' }}>{row.count}×</td>
                       <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
-                        {fmt(row.totalPLN)} zł
+                        {fmt(row.totalPLN, 2, locale)} zł
                       </td>
                       <td className="right">
                         {yoc != null
@@ -517,19 +509,19 @@ export default function Dividends() {
       {/* ── Historia wypłat ── */}
       {dividends.length > 0 && (
         <Card
-          title="Historia wypłat"
-          actions={<span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{dividends.length} wpisów</span>}
+          title={t('payment_history')}
+          actions={<span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{dividends.length} {t('entries')}</span>}
         >
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Data</th>
-                  <th>Spółka</th>
-                  <th className="right">Kwota/ak. ({modeLabel})</th>
-                  <th className="right">Ilość</th>
+                  <th>{t('col_date')}</th>
+                  <th>{t('col_company')}</th>
+                  <th className="right">{t('amount_per_share')} ({modeLabel})</th>
+                  <th className="right">{t('qty_short')}</th>
                   <th className="right">≈ PLN</th>
-                  <th>Notatka</th>
+                  <th>{t('col_note')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -547,11 +539,11 @@ export default function Dividends() {
                         )}
                       </td>
                       <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
-                        {fmt(dispPricePerShare)} {CUR_SYMBOLS[d.currency] ?? d.currency}
+                        {fmt(dispPricePerShare, 2, locale)} {CUR_SYMBOLS[d.currency] ?? d.currency}
                       </td>
                       <td className="right mono" style={{ color: 'var(--text-dim)' }}>{d.qty ?? '—'}</td>
                       <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text)' }}>
-                        {fmt(approxPLN)} zł
+                        {fmt(approxPLN, 2, locale)} zł
                       </td>
                       <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.note || '—'}</td>
                     </tr>
