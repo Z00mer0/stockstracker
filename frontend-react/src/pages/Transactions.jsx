@@ -2,39 +2,32 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import Card from '../components/shared/Card';
 import Chip from '../components/shared/Chip';
 import TickerLogo from '../components/shared/TickerLogo';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Spinner from '../components/shared/Spinner';
 
-const FILTERS = [
-  { value: 'all',      label: 'Wszystkie' },
-  { value: 'BUY',      label: 'Kupno' },
-  { value: 'SELL',     label: 'Sprzedaż' },
-  { value: 'DIV',      label: 'Dywidendy' },
-  { value: 'CASH',     label: 'Gotówka' },
-];
-
 const TAG_CLASS  = { BUY: 'tag-buy', SELL: 'tag-sell', DIV: 'tag-div', DIVIDEND: 'tag-div', CASH: 'tag-fee' };
-const TAG_LABEL  = { BUY: 'Kupno', SELL: 'Sprzedaż', DIV: 'Dywidenda', DIVIDEND: 'Dywidenda', CASH: 'Gotówka' };
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 
-function fmtDate(d) {
+function fmtDate(d, locale = 'pl-PL') {
   if (!d) return '—';
   const dt = new Date(d);
-  return isNaN(dt) ? d : dt.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return isNaN(dt) ? d : dt.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
-function fmtMoney(v, cur = 'PLN') {
+function fmtMoney(v, cur = 'PLN', locale = 'pl-PL') {
   if (v == null) return '—';
-  return Number(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur;
+  return Number(v).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur;
 }
-function fmt(n, decimals = 2) {
+function fmt(n, decimals = 2, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 function AddTransactionModal({ onSave, onClose }) {
+  const t = useT();
   const [form, setForm] = useState({
     type: 'BUY',
     symbol: '',
@@ -50,11 +43,11 @@ function AddTransactionModal({ onSave, onClose }) {
   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })); }
 
   async function handleSave() {
-    if (!form.symbol.trim()) { setError('Podaj symbol'); return; }
+    if (!form.symbol.trim()) { setError(t('err_enter_symbol')); return; }
     const qty   = form.type === 'CASH' ? null : parseFloat(form.qty);
     const price = parseFloat(form.price);
-    if (form.type !== 'CASH' && (isNaN(qty) || qty <= 0)) { setError('Podaj ilość'); return; }
-    if (isNaN(price) || price < 0) { setError('Podaj cenę'); return; }
+    if (form.type !== 'CASH' && (isNaN(qty) || qty <= 0)) { setError(t('err_enter_qty_short')); return; }
+    if (isNaN(price) || price < 0) { setError(t('err_enter_price_short')); return; }
     setSaving(true);
     setError('');
     try {
@@ -70,7 +63,7 @@ function AddTransactionModal({ onSave, onClose }) {
       });
       onClose();
     } catch (e) {
-      setError(e.message || 'Błąd zapisu');
+      setError(e.message || t('save_error'));
     } finally {
       setSaving(false);
     }
@@ -83,20 +76,20 @@ function AddTransactionModal({ onSave, onClose }) {
          onClick={onClose}>
       <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360, boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}
            onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>Dodaj transakcję</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>{t('add_transaction_title')}</h2>
 
         {/* Typ */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-          {['BUY', 'SELL', 'DIV', 'CASH'].map(t => (
-            <button key={t} onClick={() => set('type', t)}
+          {['BUY', 'SELL', 'DIV', 'CASH'].map(tp => (
+            <button key={tp} onClick={() => set('type', tp)}
               style={{
                 flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
-                background: form.type === t
-                  ? t === 'BUY' ? 'var(--up)' : t === 'SELL' ? 'var(--down)' : t === 'DIV' ? 'var(--warn)' : 'var(--info)'
+                background: form.type === tp
+                  ? tp === 'BUY' ? 'var(--up)' : tp === 'SELL' ? 'var(--down)' : tp === 'DIV' ? 'var(--warn)' : 'var(--info)'
                   : 'var(--border)',
-                color: form.type === t ? '#fff' : 'var(--text-dim)',
+                color: form.type === tp ? '#fff' : 'var(--text-dim)',
               }}>
-              {t === 'BUY' ? 'Kupno' : t === 'SELL' ? 'Sprzedaż' : t === 'DIV' ? 'Dywidenda' : 'Gotówka'}
+              {tp === 'BUY' ? t('type_buy') : tp === 'SELL' ? t('type_sell') : tp === 'DIV' ? t('type_div') : t('type_cash')}
             </button>
           ))}
         </div>
@@ -104,7 +97,7 @@ function AddTransactionModal({ onSave, onClose }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Symbol */}
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Symbol</label>
+            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('col_symbol')}</label>
             <input type="text" placeholder="np. AAPL, CDR.WA"
               value={form.symbol} onChange={e => set('symbol', e.target.value)}
               style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box', textTransform: 'uppercase' }}
@@ -115,7 +108,7 @@ function AddTransactionModal({ onSave, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: showQty ? '1fr 1fr' : '1fr', gap: 12 }}>
             {showQty && (
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Ilość</label>
+                <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('qty_short')}</label>
                 <input type="number" min="0" step="any" placeholder="0"
                   value={form.qty} onChange={e => set('qty', e.target.value)}
                   style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
@@ -124,7 +117,7 @@ function AddTransactionModal({ onSave, onClose }) {
             )}
             <div>
               <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>
-                {form.type === 'CASH' ? 'Kwota' : 'Cena'}
+                {form.type === 'CASH' ? t('col_value') : t('price_label')}
               </label>
               <input type="number" min="0" step="any" placeholder="0.00"
                 value={form.price} onChange={e => set('price', e.target.value)}
@@ -136,14 +129,14 @@ function AddTransactionModal({ onSave, onClose }) {
           {/* Currency + Date */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Waluta</label>
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('currency_label')}</label>
               <select value={form.currency} onChange={e => set('currency', e.target.value)}
                 style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}>
                 {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Data</label>
+              <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('col_date')}</label>
               <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
                 style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
               />
@@ -152,7 +145,7 @@ function AddTransactionModal({ onSave, onClose }) {
 
           {/* Note */}
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Notatka (opcjonalna)</label>
+            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('note_optional')}</label>
             <input type="text" placeholder=""
               value={form.note} onChange={e => set('note', e.target.value)}
               style={{ width: '100%', background: 'var(--bg, #0d1117)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
@@ -165,11 +158,11 @@ function AddTransactionModal({ onSave, onClose }) {
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
           <button onClick={onClose}
             style={{ flex: 1, padding: '8px 16px', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>
-            Anuluj
+            {t('cancel')}
           </button>
           <button onClick={handleSave} disabled={saving}
             style={{ flex: 1, padding: '8px 16px', borderRadius: 8, background: 'var(--info)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
-            {saving ? 'Zapisywanie…' : 'Zapisz'}
+            {saving ? t('saving_btn') : t('save_btn')}
           </button>
         </div>
       </div>
@@ -180,6 +173,23 @@ function AddTransactionModal({ onSave, onClose }) {
 export default function Transactions() {
   const { transactions = [], loading, saveTransactions, activePortfolioId } = useApp();
   const { isPrivate } = usePrivacy();
+  const { locale } = useLanguage();
+  const t = useT();
+
+  const FILTERS = [
+    { value: 'all',  label: t('nav_all') },
+    { value: 'BUY',  label: t('type_buy') },
+    { value: 'SELL', label: t('type_sell') },
+    { value: 'DIV',  label: t('nav_dividends') },
+    { value: 'CASH', label: t('type_cash') },
+  ];
+
+  const TAG_LABEL = {
+    BUY: t('type_buy'), SELL: t('type_sell'),
+    DIV: t('type_div'), DIVIDEND: t('type_div'),
+    CASH: t('type_cash'),
+  };
+
   const [filter, setFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
 
@@ -210,14 +220,14 @@ export default function Transactions() {
       {/* KPI strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         {[
-          { label: 'Kupna 30d',      value: stats.buy,  cur: 'PLN' },
-          { label: 'Sprzedaże 30d',  value: stats.sell, cur: 'PLN' },
-          { label: 'Dywidendy 30d',  value: stats.div,  cur: 'PLN' },
-          { label: 'Gotówka 30d',    value: stats.cash, cur: 'PLN' },
-        ].map(({ label, value, cur }) => (
-          <div key={label} className="kpi-card">
-            <div className="kpi-label">{label}</div>
-            <div className="kpi-value" style={{ fontSize: 20 }}>{fmtMoney(value, cur)}</div>
+          { labelKey: 'buys_30d',  value: stats.buy  },
+          { labelKey: 'sells_30d', value: stats.sell },
+          { labelKey: 'divs_30d',  value: stats.div  },
+          { labelKey: 'cash_30d',  value: stats.cash },
+        ].map(({ labelKey, value }) => (
+          <div key={labelKey} className="kpi-card">
+            <div className="kpi-label">{t(labelKey)}</div>
+            <div className="kpi-value" style={{ fontSize: 20 }}>{fmtMoney(value, 'PLN', locale)}</div>
           </div>
         ))}
       </div>
@@ -229,7 +239,7 @@ export default function Transactions() {
           <button
             onClick={() => setShowAdd(true)}
             style={{ padding: '5px 12px', borderRadius: 6, background: 'var(--info)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            + Dodaj
+            {t('add_btn')}
           </button>
         }
       >
@@ -242,18 +252,18 @@ export default function Transactions() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Data</th>
-                <th>Typ</th>
-                <th>Aktywo</th>
-                <th className="right">Ilość</th>
-                <th className="right">Cena</th>
-                <th className="right">Wartość</th>
-                <th>Notatka</th>
+                <th>{t('col_date')}</th>
+                <th>{t('col_type')}</th>
+                <th>{t('col_symbol')}</th>
+                <th className="right">{t('qty_short')}</th>
+                <th className="right">{t('price_label')}</th>
+                <th className="right">{t('col_value')}</th>
+                <th>{t('col_note')}</th>
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-faint)', padding: '32px 14px' }}>Brak transakcji</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-faint)', padding: '32px 14px' }}>{t('no_data')}</td></tr>
               )}
               {sorted.map((tx, i) => {
                 const typeKey = tx.type?.toUpperCase();
@@ -261,7 +271,7 @@ export default function Transactions() {
                 const total = (tx.qty ?? 1) * (tx.price ?? 0);
                 return (
                   <tr key={tx.id ?? i}>
-                    <td className="mono" style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtDate(tx.date)}</td>
+                    <td className="mono" style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtDate(tx.date, locale)}</td>
                     <td><span className={`tag ${TAG_CLASS[typeKey] ?? ''}`}>{TAG_LABEL[typeKey] ?? typeKey}</span></td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -277,12 +287,12 @@ export default function Transactions() {
                         )}
                       </div>
                     </td>
-                    <td className="right mono" style={{ fontSize: 13 }}>{tx.qty != null ? fmt(tx.qty, tx.qty % 1 === 0 ? 0 : 4) : '—'}</td>
+                    <td className="right mono" style={{ fontSize: 13 }}>{tx.qty != null ? fmt(tx.qty, tx.qty % 1 === 0 ? 0 : 4, locale) : '—'}</td>
                     <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-                      {tx.price != null ? `${fmt(tx.price)} ${cur}` : '—'}
+                      {tx.price != null ? `${fmt(tx.price, 2, locale)} ${cur}` : '—'}
                     </td>
                     <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, fontWeight: 600 }}>
-                      {fmt(total)} {cur}
+                      {fmt(total, 2, locale)} {cur}
                     </td>
                     <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{tx.note || '—'}</td>
                   </tr>

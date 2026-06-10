@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import HistoryChart from '../components/HistoryChart';
 import ReturnRateChart from '../components/ReturnRateChart';
 import RollingReturnsChart from '../components/RollingReturnsChart';
@@ -8,14 +9,14 @@ import Spinner from '../components/shared/Spinner';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Card from '../components/shared/Card';
 
-function fmt(n, decimals = 0) {
+function fmt(n, decimals = 0, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-function fmtMoney(v) {
+function fmtMoney(v, locale = 'pl-PL') {
   if (v == null) return '—';
-  return Number(v).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł';
+  return Number(v).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł';
 }
 
 function fmtDate(iso) {
@@ -53,16 +54,6 @@ const PERIODS = [
   { key: 'MAX', label: 'MAX', days: null },
 ];
 
-const BENCHMARKS = [
-  { key: null,           label: 'Brak' },
-  { key: '^GSPC',        label: 'S&P 500' },
-  { key: '^IXIC',        label: 'NASDAQ' },
-  { key: 'URTH',         label: 'MSCI World' },
-  { key: 'PL:WIG',       label: 'WIG' },
-  { key: 'PL:WIG20',    label: 'WIG20' },
-  { key: 'SYNTH:CPI_PL', label: 'Inflacja PL' },
-  { key: 'SYNTH:LOK5',   label: 'Lokata 5%' },
-];
 
 // Polish annual CPI from GUS (average YoY %)
 const PL_CPI_ANNUAL = {
@@ -95,6 +86,20 @@ function generateSynthBench(key, startDate, endDate) {
 export default function History() {
   const { snapshots, loading, invested } = useApp();
   const { isPrivate } = usePrivacy();
+  const { locale } = useLanguage();
+  const t = useT();
+
+  const BENCHMARKS = [
+    { key: null,            label: t('no_benchmark') },
+    { key: '^GSPC',         label: 'S&P 500' },
+    { key: '^IXIC',         label: 'NASDAQ' },
+    { key: 'URTH',          label: 'MSCI World' },
+    { key: 'PL:WIG',        label: 'WIG' },
+    { key: 'PL:WIG20',      label: 'WIG20' },
+    { key: 'SYNTH:CPI_PL',  label: 'Inflacja PL' },
+    { key: 'SYNTH:LOK5',    label: 'Lokata 5%' },
+  ];
+
   const [period, setPeriod] = useState('MAX');
   const [benchmark, setBenchmark] = useState(null);
   const [benchData, setBenchData] = useState([]);
@@ -184,7 +189,7 @@ export default function History() {
   }, [benchmark, sorted]);
 
   function handleExportHistory() {
-    const headers = ['Data', 'Wartość (PLN)', 'Zainwestowano (PLN)'];
+    const headers = [t('col_date'), t('value_pln_header'), t('invested_pln_header')];
     const rows = sorted.map(s => [s.date, s.total ?? '', s.invested ?? '']);
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -202,8 +207,8 @@ export default function History() {
     return (
       <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
         <div className="text-5xl mb-3">📈</div>
-        <p style={{ color: 'var(--text-dim)' }} className="font-semibold">Brak historii</p>
-        <p className="text-sm mt-1">Historia pojawi się po pierwszym odświeżeniu portfela</p>
+        <p style={{ color: 'var(--text-dim)' }} className="font-semibold">{t('no_history')}</p>
+        <p className="text-sm mt-1">{t('history_first_refresh')}</p>
       </div>
     );
   }
@@ -213,16 +218,16 @@ export default function History() {
       {/* KPI grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
-          { label: 'Wartość (filtr)', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(filteredLast?.total)}</span>, sub: null },
-          { label: 'Zysk/strata', value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
-          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? `min. 90 dni (${days} dni historii)` : null },
-          { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(ath?.total)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
+          { label: t('value_filter'), value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(filteredLast?.total, locale)}</span>, sub: null },
+          { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN, locale)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
+          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? `min. 90 dni (${days} ${t('days_of_history')})` : null },
+          { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(ath?.total, locale)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
           {
             label: 'Max Drawdown',
             value: mdd
               ? <span style={{ color: mdd.pct > 25 ? 'var(--down)' : mdd.pct > 10 ? 'var(--warn)' : 'var(--up)' }}>-{mdd.pct.toFixed(1)}%</span>
               : <span style={{ color: 'var(--text-faint)' }}>—</span>,
-            sub: mdd ? `${fmtDate(mdd.from)} → ${fmtDate(mdd.to)}` : 'brak danych',
+            sub: mdd ? `${fmtDate(mdd.from)} → ${fmtDate(mdd.to)}` : t('no_data_short'),
           },
         ].map(({ label, value, sub }) => (
           <div key={label} className="kpi-card">
@@ -234,7 +239,7 @@ export default function History() {
       </div>
 
       {/* Wykres kapitału */}
-      <Card title="Wartość portfela">
+      <Card title={t('portfolio_value_tf')}>
         <div style={{ marginBottom: 16 }}>
           <SegmentedControl
             options={PERIODS.map(p => ({ value: p.key, label: p.label }))}
@@ -246,9 +251,9 @@ export default function History() {
       </Card>
 
       {/* Wykres stopy zwrotu z benchmarkiem */}
-      <Card title="Stopa zwrotu">
+      <Card title={t('return_rate')}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Benchmark:</span>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('benchmark_label')}:</span>
           <SegmentedControl
             options={BENCHMARKS.map(b => ({ value: b.key ?? 'none', label: b.label + (benchLoading && benchmark === b.key ? ' …' : '') }))}
             value={benchmark ?? 'none'}
@@ -263,25 +268,25 @@ export default function History() {
       </Card>
 
       {/* Rolling Returns */}
-      <Card title="Rolling Returns — kroczące stopy zwrotu">
+      <Card title={t('rolling_returns')}>
         <RollingReturnsChart data={sorted} />
       </Card>
 
       {/* Tabela */}
-      <Card title={period === 'MAX' ? 'Wszystkie snapshots' : `Snapshots — ostatnie ${PERIODS.find(p => p.key === period)?.label}`}>
+      <Card title={period === 'MAX' ? t('all_snapshots') : `${t('snapshots_last')} ${PERIODS.find(p => p.key === period)?.label}`}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <button onClick={handleExportHistory} className="btn" style={{ fontSize: 11 }}>⬇ Eksport CSV</button>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 8, alignSelf: 'center' }}>{filtered.length} wpisów</span>
+          <button onClick={handleExportHistory} className="btn" style={{ fontSize: 11 }}>{t('export_csv')}</button>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 8, alignSelf: 'center' }}>{filtered.length} {t('entries')}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Data</th>
-                <th className="right">Wartość</th>
-                <th className="right">Zainwestowano</th>
+                <th>{t('col_date')}</th>
+                <th className="right">{t('col_value')}</th>
+                <th className="right">{t('invested_label')}</th>
                 <th className="right">P&L</th>
-                <th className="right">Δ dnia</th>
+                <th className="right">Δ</th>
               </tr>
             </thead>
             <tbody>
@@ -300,13 +305,13 @@ export default function History() {
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{
                         color: valueUp === true ? 'var(--up)' : valueUp === false ? 'var(--down)' : 'var(--text)',
                         fontWeight: 600,
-                      }}>{fmt(s.total)} zł</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(s.invested)} zł</td>
+                      }}>{fmt(s.total, 0, locale)} zł</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(s.invested, 0, locale)} zł</td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl == null ? 'var(--text-faint)' : pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
-                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(pl)} zł<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1)}%)</span></>}
+                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(pl, 0, locale)} zł<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1, locale)}%)</span></>}
                       </td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
-                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta)} zł`}
+                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta, 0, locale)} zł`}
                       </td>
                     </tr>
                   );
