@@ -42,6 +42,17 @@ export default {
   not_enough_history:   'Not enough historical data',
   add_positions_hint:   'Add positions in the Portfolio tab',
   portfolio_value_tf:   'Portfolio value',
+  unrealized:           'unrealized',
+  account_pln:          'account · PLN',
+  top_movers_today:     'Top movers today',
+  sector_alloc:         'Sector allocation',
+  winners_losers:       'Winners & Losers',
+  returns_pct:          'return %',
+  no_portfolio_data:    'No portfolio data',
+  greeting:             'Hello',
+  investor_fallback:    'Investor',
+  market_live:          'live',
+  market_closed_status: 'closed',
 
   // ── InsightStrip ─────────────────────────────────────────────
   best_position:        'Best position',

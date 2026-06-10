@@ -2,23 +2,20 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
 import { usePrivacy } from '../context/PrivacyContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import Sparkline from '../components/shared/Sparkline';
 import Spinner from '../components/shared/Spinner';
-import Card from '../components/shared/Card';
 import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
-import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import KpiPro from '../components/shared/KpiPro';
 import InsightStrip from '../components/shared/InsightStrip';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import WinnersLosers from '../components/shared/WinnersLosers';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import HistoryChart from '../components/HistoryChart';
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 function xirr(cashflows) {
   if (cashflows.length < 2) return null;
@@ -45,9 +42,9 @@ function toPlnRate(currency, fx) {
   return fx[currency] ?? 1;
 }
 
-function fmt(n, decimals = 2) {
+function fmt(n, decimals = 2, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', {
+  return n.toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -104,223 +101,14 @@ function renderCellDash(key, pos, isPrivate) {
 }
 
 
-function AllocationChart({ positions }) {
-  const [tab, setTab] = useState('stocks');
-
-  const grouped = (() => {
-    if (tab === 'stocks') {
-      return positions.reduce((acc, p) => {
-        acc[p.symbol] = (acc[p.symbol] ?? 0) + (p.valuePLN ?? 0);
-        return acc;
-      }, {});
-    }
-    if (tab === 'currencies') {
-      return positions.reduce((acc, p) => {
-        acc[p.currency] = (acc[p.currency] ?? 0) + (p.valuePLN ?? 0);
-        return acc;
-      }, {});
-    }
-    // sectors — use sector from enrichPosition (covers US via Yahoo + .WA via WA_SECTOR_MAP)
-    return positions.reduce((acc, p) => {
-      const sector = p.sector || 'Inne';
-      acc[sector] = (acc[sector] ?? 0) + (p.valuePLN ?? 0);
-      return acc;
-    }, {});
-  })();
-
-  const allLabels = Object.keys(grouped);
-  const totalVal = allLabels.reduce((s, k) => s + grouped[k], 0);
-  const labels = allLabels.filter(k => totalVal > 0 && (grouped[k] / totalVal * 100) >= 0.05);
-  const data = {
-    labels,
-    datasets: [{
-      data: labels.map(k => grouped[k]),
-      backgroundColor: ['#00d97e', '#7c9eff', '#ffb020', '#ff4d6d', '#a78bfa', '#34d399', '#60a5fa', '#f59e0b'].slice(0, labels.length),
-      borderColor: 'transparent',
-      borderWidth: 0,
-    }],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: true,
-    plugins: {
-      legend: tab === 'stocks'
-        ? { display: false }
-        : { position: 'right', labels: { color: '#8a929d', font: { size: 11 }, boxWidth: 12, padding: 10 } },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
-            return ` ${ctx.label}: ${ctx.parsed.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} zł (${pct}%)`;
-          },
-        },
-      },
-    },
-  };
-
-  if (!positions.length) return null;
-
-  return (
-    <Card title="Alokacja portfela" actions={
-      <div className="flex gap-1">
-        {[['stocks', 'Spółki'], ['currencies', 'Waluty'], ['sectors', 'Sektory']].map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={tab === key ? 'btn btn-primary' : 'btn btn-ghost'}
-            style={{ fontSize: 12, padding: '2px 10px' }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    }>
-      <div style={{ padding: '16px 20px 16px', maxWidth: 360, margin: '0 auto' }}>
-        <Doughnut data={data} options={options} />
-      </div>
-      {tab === 'stocks' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', marginTop: 8, justifyContent: 'center', paddingBottom: 16, padding: '0 8px 16px' }}>
-          {labels.map((sym, i) => {
-            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-            const pct = total > 0 ? ((grouped[sym] / total) * 100).toFixed(1) : '0';
-            return (
-              <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-dim)' }}>
-                <TickerLogo symbol={sym} size={18} />
-                <span style={{ fontWeight: 600, color: 'var(--text)' }}>{sym.replace('.WA', '')}</span>
-                <span style={{ color: 'var(--text-faint)' }}>{pct}%</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function KpiCard({ label, value, sub, trend, isPrivate }) {
-  return (
-    <div className="kpi-card">
-      <div className="kpi-label">{label}</div>
-      <div className={`kpi-value${isPrivate ? ' privacy-blur' : ''}`}>{value}</div>
-      {sub != null && (
-        <div style={{
-          fontSize: 12,
-          marginTop: 4,
-          fontWeight: 500,
-          color: trend > 0 ? 'var(--up)' : trend < 0 ? 'var(--down)' : 'var(--text-dim)',
-        }} className={isPrivate ? 'privacy-blur' : ''}>{sub}</div>
-      )}
-    </div>
-  );
-}
-
-const CUR_FLAGS = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
-const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
-
-function CashSection({ cash, fxRates, saveCash }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  function openModal() {
-    setForm({ PLN: cash.PLN ?? 0, USD: cash.USD ?? 0, EUR: cash.EUR ?? 0, GBP: cash.GBP ?? 0 });
-    setIsOpen(true);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await saveCash(Object.fromEntries(CURRENCIES.map(c => [c, parseFloat(form[c]) || 0])));
-      setIsOpen(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const hasCash = CURRENCIES.some(c => (cash[c] ?? 0) > 0);
-
-  return (
-    <>
-      <Card title="Gotówka" actions={
-        <button onClick={openModal} className="btn btn-ghost" style={{ fontSize: 12 }}>
-          ✎ Zarządzaj
-        </button>
-      }>
-        <div style={{ padding: '0 20px 16px' }}>
-          {!hasCash ? (
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', paddingTop: 8, paddingBottom: 8 }}>
-              Brak gotówki — kliknij „Zarządzaj" aby dodać.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {CURRENCIES.filter(c => (cash[c] ?? 0) > 0).map(cur => {
-                const amt = cash[cur] ?? 0;
-                const pln = amt * (fxRates[cur] ?? 1);
-                return (
-                  <div key={cur} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 16px', minWidth: 110 }}>
-                    <p style={{ fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                      {CUR_FLAGS[cur]} {cur}
-                    </p>
-                    <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
-                      {amt.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    {cur !== 'PLN' && (
-                      <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
-                        ≈ {Math.round(pln).toLocaleString('pl-PL')} zł
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-             onClick={() => setIsOpen(false)}>
-          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 384 }}
-               onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>Zarządzaj gotówką</h2>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Wprowadź aktualne salda. Wartości zostaną przeliczone na PLN po bieżącym kursie.</p>
-            <div className="space-y-3">
-              {CURRENCIES.map(cur => (
-                <div key={cur} className="flex items-center gap-3">
-                  <label style={{ fontSize: 14, color: 'var(--text)', width: 64 }}>{CUR_FLAGS[cur]} {cur}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form[cur] ?? 0}
-                    onChange={e => setForm(prev => ({ ...prev, [cur]: e.target.value }))}
-                    style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 14, color: 'var(--text)', outline: 'none' }}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setIsOpen(false)} className="btn btn-ghost" style={{ flex: 1 }}>
-                Anuluj
-              </button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>
-                {saving ? 'Zapisywanie…' : 'Zapisz'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 export default function Dashboard() {
   const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, displayName, displayCurrency } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
+  const { locale } = useLanguage();
+  const t = useT();
+  const fmtN = (n, decimals = 2) => fmt(n, decimals, locale);
   const [cols] = useState(loadColumnConfig);
   const [tf, setTf] = useState('MAX');
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
@@ -468,12 +256,15 @@ export default function Dashboard() {
   }, [positionsValueKey, loading]);
 
   const dailyChange = useMemo(() => {
+    let contributing = 0;
     const pln = allPositions.reduce((sum, pos) => {
       if (pos.valuePLN != null && pos.dailyChg != null) {
+        contributing++;
         return sum + pos.valuePLN * pos.dailyChg / 100;
       }
       return sum;
     }, 0);
+    if (contributing === 0) return { pln: null, pct: null };
     const pct = kpi.totalValue > 0 ? (pln / kpi.totalValue) * 100 : null;
     return { pln, pct };
   }, [allPositions, kpi.totalValue]);
@@ -492,7 +283,9 @@ export default function Dashboard() {
 
   const fmtVal = (n, d = 0) => n == null || isNaN(n)
     ? '—'
-    : n.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+    : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  const isWeekend = [0, 6].includes(new Date().getDay());
 
   const dayChipVal = dailyChange.pct != null
     ? (dailyChange.pct >= 0 ? '+' : '') + fmtVal(dailyChange.pct, 2) + '%'
@@ -511,9 +304,9 @@ export default function Dashboard() {
       {/* page-head */}
       <div className="page-header" style={{ marginBottom: 18 }}>
         <div>
-          <h1 className="page-title">Witaj, {displayName ?? 'Inwestorze'}</h1>
+          <h1 className="page-title">{t('greeting')}, {displayName ?? t('investor_fallback')}</h1>
           <p className="page-sub">
-            {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
       </div>
@@ -524,56 +317,56 @@ export default function Dashboard() {
       )}
 
       {/* KPI grid */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 18 }}>
+      <div className="kpi-grid" style={{ gap: 14, marginBottom: 18 }}>
         <KpiPro
           hero
-          label="Wartość portfela"
+          label={t('portfolio_value')}
           value={`${fmtVal(kpi.totalValue)} ${currLabel}`}
           chip={dayChipVal}
           chipUp={dailyChange.pln >= 0}
-          sub="dziś"
+          sub={t('today')}
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={dailyChange.pln >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
         />
         <KpiPro
-          label="Zysk / strata"
+          label={t('gain_loss')}
           tone={kpi.unrealPLN >= 0 ? 'up' : 'down'}
           value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmtVal(kpi.unrealPLN)} ${currLabel}`}
           chip={unrealChipVal}
           chipUp={kpi.unrealPLN >= 0}
-          sub="niezrealizowany"
+          sub={t('unrealized')}
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={kpi.unrealPLN >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>}
         />
         <KpiPro
-          label="Dywidendy YTD"
+          label={t('dividends_ytd')}
           value={`${fmtVal(kpi.annualDivPLN)} ${currLabel}`}
-          sub={nextDividend ? `następna: ${nextDividend.symbol}` : 'ostatnie 12 mies.'}
+          sub={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
           spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>}
         />
         <KpiPro
-          label="Wolne środki"
+          label={t('free_cash')}
           value={`${fmtVal(kpi.cashValue)} ${currLabel}`}
           chip={irrChipVal}
           chipUp={portfolioIrr != null && portfolioIrr >= 0}
-          sub="konto · PLN"
+          sub={t('account_pln')}
           spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>}
         />
       </div>
 
       {/* Chart + Top movers */}
-      <div className="detail-grid" style={{ gridTemplateColumns: '1fr 380px', gap: 16, marginBottom: 18 }}>
+      <div className="detail-grid" style={{ gap: 16, marginBottom: 18 }}>
         <div className="card chart-card">
           <div style={{ padding: '18px 20px 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
             <div>
               <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
-                Wartość portfela · {tf}
+                {t('portfolio_value_tf')} · {tf}
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+              <div className={isPrivate ? 'privacy-blur' : ''} style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
                 {fmtVal(kpi.totalValue)} {currLabel}
               </div>
             </div>
@@ -586,22 +379,22 @@ export default function Dashboard() {
           <div style={{ padding: '4px 12px 18px' }}>
             {snapshotsFiltered.length >= 2
               ? <HistoryChart data={snapshotsFiltered} />
-              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>Za mało danych historycznych</div>
+              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
             }
           </div>
         </div>
 
         <div className="card">
           <div className="card-head">
-            <div className="card-title">Top ruchy dzisiaj</div>
+            <div className="card-title">{t('top_movers_today')}</div>
             <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span className="dot-status" />
-              live
+              <span className={isWeekend ? 'dot-status closed' : 'dot-status'} />
+              {isWeekend ? t('market_closed_status') : t('market_live')}
             </span>
           </div>
           <div>
             {[...topMovers.gainers, ...topMovers.losers].length === 0
-              ? <p style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-faint)' }}>Brak danych</p>
+              ? <p style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-faint)' }}>{isWeekend ? t('market_closed') : t('no_data')}</p>
               : [...topMovers.gainers, ...topMovers.losers].map(pos => (
                 <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
                   <TickerLogo symbol={pos.symbol} size={28} />
@@ -609,12 +402,12 @@ export default function Dashboard() {
                     <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
                     {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
                   </div>
-                  <div style={{ textAlign: 'right', minWidth: 58 }}>
+                  <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', minWidth: 58 }}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
                       {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
                     </div>
                     {pos.price != null && (
-                      <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmt(pos.price)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
                     )}
                   </div>
                 </div>
@@ -626,10 +419,10 @@ export default function Dashboard() {
 
       {/* Allocation + Winners/Losers */}
       {allPositions.length > 0 && (
-        <div className="detail-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 18 }}>
+        <div className="detail-grid detail-grid-alloc" style={{ gap: 16, marginBottom: 18 }}>
           <div className="card">
             <div className="card-head">
-              <div className="card-title">Alokacja sektorowa</div>
+              <div className="card-title">{t('sector_alloc')}</div>
             </div>
             <div style={{ padding: '16px 20px' }}>
               <StackedAllocation positions={allPositions} totalValue={kpi.positionsValue} />
@@ -637,8 +430,8 @@ export default function Dashboard() {
           </div>
           <div className="card">
             <div className="card-head">
-              <div className="card-title">Wygrani i przegrani</div>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>zwrot %</span>
+              <div className="card-title">{t('winners_losers')}</div>
+              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('returns_pct')}</span>
             </div>
             <div style={{ padding: '16px 20px' }}>
               <WinnersLosers positions={allPositions} />
@@ -650,8 +443,8 @@ export default function Dashboard() {
       {!portfolio.length && !loading && (
         <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-faint)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-          <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak danych portfela</p>
-          <p style={{ fontSize: 14, marginTop: 4 }}>Dodaj pozycje w zakładce Portfel</p>
+          <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('no_portfolio_data')}</p>
+          <p style={{ fontSize: 14, marginTop: 4 }}>{t('add_positions_hint')}</p>
         </div>
       )}
     </div>

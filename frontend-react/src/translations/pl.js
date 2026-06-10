@@ -42,6 +42,17 @@ export default {
   not_enough_history:   'Za mało danych historycznych',
   add_positions_hint:   'Dodaj pozycje w zakładce Portfel',
   portfolio_value_tf:   'Wartość portfela',
+  unrealized:           'niezrealizowany',
+  account_pln:          'konto · PLN',
+  top_movers_today:     'Top ruchy dzisiaj',
+  sector_alloc:         'Alokacja sektorowa',
+  winners_losers:       'Wygrani i przegrani',
+  returns_pct:          'zwrot %',
+  no_portfolio_data:    'Brak danych portfela',
+  greeting:             'Witaj',
+  investor_fallback:    'Inwestorze',
+  market_live:          'live',
+  market_closed_status: 'closed',
 
   // ── InsightStrip ─────────────────────────────────────────────
   best_position:        'Najlepsza pozycja',
