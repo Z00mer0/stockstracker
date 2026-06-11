@@ -75,10 +75,10 @@ const FX_KEYS = new Set(['EUR/PLN', 'USD/PLN']);
 const CACHE_KEY = 'myfund_market_tickers';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-function formatPrice(key, price) {
+function formatPrice(key, price, locale = 'pl-PL') {
   if (price == null) return '—';
   if (FX_KEYS.has(key)) return price.toFixed(3);
-  return Math.round(price).toLocaleString('pl-PL').replace(/ /g, ' ');
+  return Math.round(price).toLocaleString(locale).replace(/ /g, ' ');
 }
 
 function loadCache() {
@@ -135,7 +135,7 @@ const EyeIcon = ({ closed }) => closed ? (
 export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
   const { isPrivate, toggle: togglePrivacy } = usePrivacy();
-  const { language, toggle: toggleLanguage } = useLanguage();
+  const { language, locale, toggle: toggleLanguage } = useLanguage();
   const t = useT();
   const navigate = useNavigate();
   const [markets, setMarkets] = useState(getMarketStatuses);
@@ -295,7 +295,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
           {tickers.map(tick => (
             <div key={tick.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
-              <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price)}</span>
+              <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
               {tick.delta != null && (
                 <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
                   {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%

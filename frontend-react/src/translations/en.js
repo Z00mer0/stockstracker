@@ -657,4 +657,16 @@ export default {
   add_btn:              '+ Add',
   loading:              'Loading…',
   error:                'Error',
+
+  // ── StockDetailModal ─────────────────────────────────────────
+  shares:               'shares',
+  avg_abbr:             'avg.',
+  of_portfolio:         'of portfolio',
+  no_chart_data:        'No chart data',
+  tab_chart:            'Chart',
+  tab_indicators:       'Indicators',
+  tab_financials:       'Financials',
+  tab_notes:            'Notes',
+  none_label:           'None',
+  period_1y_label:      '1Y',
 };

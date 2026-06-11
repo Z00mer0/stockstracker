@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 const AUTH_KEY = 'myfund_auth_token';
 
-function fmtM(val) {
+function fmtM(val, locale = 'pl-PL') {
   if (val == null) return '—';
   const m = val / 1e6;
-  return m.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return m.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function fmtPct(val) {
@@ -18,13 +19,13 @@ function fmtX(val) {
   return val.toFixed(1) + 'x';
 }
 
-function fmtLarge(val) {
+function fmtLarge(val, locale = 'pl-PL') {
   if (val == null) return '—';
   const abs = Math.abs(val);
   if (abs >= 1e12) return (val / 1e12).toFixed(1) + 'T';
   if (abs >= 1e9)  return (val / 1e9).toFixed(1) + 'B';
   if (abs >= 1e6)  return (val / 1e6).toFixed(0) + 'M';
-  return val.toLocaleString('pl-PL');
+  return val.toLocaleString(locale);
 }
 
 function growthColor(v) {
@@ -241,6 +242,8 @@ function ValuationCard({ label, value, sub }) {
 }
 
 export default function FinancialsTab({ symbol, livePrice }) {
+  const { locale } = useLanguage();
+  const fmtL = (val) => fmtLarge(val, locale);
   const [period, setPeriod]         = useState('quarterly');
   const [data, setData]             = useState(null);
   const [loading, setLoading]       = useState(false);
@@ -708,28 +711,28 @@ export default function FinancialsTab({ symbol, livePrice }) {
               <ValuationCard
                 label="EV/EBITDA"
                 value={fmtX(val.evEbitda)}
-                sub={val.ev != null ? `EV: ${fmtLarge(val.ev)}` : null}
+                sub={val.ev != null ? `EV: ${fmtL(val.ev)}` : null}
               />
               <ValuationCard
                 label="P/S"
                 value={fmtX(val.ps)}
-                sub={val.marketCap != null ? `Market Cap: ${fmtLarge(val.marketCap)}` : null}
+                sub={val.marketCap != null ? `Market Cap: ${fmtL(val.marketCap)}` : null}
               />
               <ValuationCard
                 label="P/FCF"
                 value={fmtX(val.pfcf)}
-                sub={val.marketCap != null && val.pfcf != null ? `TTM FCF: ${fmtLarge(val.marketCap / val.pfcf)}` : null}
+                sub={val.marketCap != null && val.pfcf != null ? `TTM FCF: ${fmtL(val.marketCap / val.pfcf)}` : null}
               />
               <ValuationCard
                 label="EqV (Market Cap)"
-                value={val.marketCap != null ? fmtLarge(val.marketCap) : '—'}
-                sub={val.sharesOutstanding != null ? `${fmtLarge(val.sharesOutstanding)} akcji` : null}
+                value={val.marketCap != null ? fmtL(val.marketCap) : '—'}
+                sub={val.sharesOutstanding != null ? `${fmtL(val.sharesOutstanding)} akcji` : null}
               />
               <ValuationCard
                 label="EV"
-                value={val.ev != null ? fmtLarge(val.ev) : '—'}
+                value={val.ev != null ? fmtL(val.ev) : '—'}
                 sub={val.netDebtLatest != null
-                  ? `Dług netto: ${val.netDebtLatest < 0 ? '' : '+'}${fmtLarge(val.netDebtLatest)}`
+                  ? `Dług netto: ${val.netDebtLatest < 0 ? '' : '+'}${fmtL(val.netDebtLatest)}`
                   : null}
               />
             </div>

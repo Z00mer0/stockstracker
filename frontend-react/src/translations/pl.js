@@ -657,4 +657,16 @@ export default {
   add_btn:              '+ Dodaj',
   loading:              'Ładowanie…',
   error:                'Błąd',
+
+  // ── StockDetailModal ─────────────────────────────────────────
+  shares:               'akcji',
+  avg_abbr:             'śr.',
+  of_portfolio:         'portfela',
+  no_chart_data:        'Brak danych wykresu',
+  tab_chart:            'Wykres',
+  tab_indicators:       'Wskaźniki',
+  tab_financials:       'Finanse',
+  tab_notes:            'Notatki',
+  none_label:           'Brak',
+  period_1y_label:      '1R',
 };

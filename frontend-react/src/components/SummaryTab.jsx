@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
-function fmt(val, decimals = 2) {
+function fmt(val, decimals = 2, locale = 'pl-PL') {
   if (val == null || !isFinite(val)) return '—';
-  return val.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return val.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 function UpsideCard({ label, value, upside, note }) {
+  const { locale } = useLanguage();
   if (upside == null) return null;
   const color = upside >= 0 ? '#10b981' : '#f43f5e';
   return (
@@ -24,7 +26,7 @@ function UpsideCard({ label, value, upside, note }) {
       </div>
       <div style={{ textAlign: 'right' }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>
-          {fmt(value)}
+          {fmt(value, 2, locale)}
         </div>
         <div style={{ fontSize: 12, color, fontWeight: 500 }}>
           {upside >= 0 ? '+' : ''}{upside.toFixed(1)}% {upside >= 0 ? '▲' : '▼'}

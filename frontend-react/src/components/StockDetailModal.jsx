@@ -3,16 +3,17 @@ import FinancialsTab from './FinancialsTab';
 import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
 import TickerLogo from './shared/TickerLogo';
+import { useLanguage, useT } from '../context/LanguageContext';
 
-const PERIODS = [
-  { key: '1M', days: 30 },
-  { key: '3M', days: 90 },
-  { key: '6M', days: 180 },
-  { key: '1R', days: 365 },
+const PERIODS_BASE = [
+  { key: '1M', pl: '1M', en: '1M', days: 30 },
+  { key: '3M', pl: '3M', en: '3M', days: 90 },
+  { key: '6M', pl: '6M', en: '6M', days: 180 },
+  { key: '1Y', pl: '1R', en: '1Y', days: 365 },
 ];
 
 const BENCH_OPTS = [
-  { key: null,       label: 'Brak' },
+  { key: null,       label: 'none' },
   { key: '^GSPC',    label: 'S&P 500' },
   { key: '^IXIC',    label: 'NASDAQ' },
   { key: '^WIG20',   label: 'WIG20' },
@@ -21,6 +22,7 @@ const CM = { top: 8, right: 8, bottom: 22, left: 56 };
 const CHART_H = 150;
 
 function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
+  const { locale } = useLanguage();
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
 
@@ -31,7 +33,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
   }, []);
 
   const filtered = useMemo(() => {
-    const p = PERIODS.find(x => x.key === period);
+    const p = PERIODS_BASE.find(x => x.key === period);
     if (!p) return data;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - p.days);
@@ -41,7 +43,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
 
   const filteredBench = useMemo(() => {
     if (!benchData.length) return [];
-    const p = PERIODS.find(x => x.key === period);
+    const p = PERIODS_BASE.find(x => x.key === period);
     if (!p) return benchData;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - p.days);
@@ -140,7 +142,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
                     textAnchor="end" fontFamily="JetBrains Mono, monospace">
                 {showBench
                   ? `${v >= 0 ? '+' : ''}${v.toFixed(yDecimals)}%`
-                  : v.toLocaleString('pl-PL', { minimumFractionDigits: yDecimals, maximumFractionDigits: yDecimals })}
+                  : v.toLocaleString(locale, { minimumFractionDigits: yDecimals, maximumFractionDigits: yDecimals })}
               </text>
             </g>
           );
@@ -185,6 +187,9 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
 }
 
 export default function StockDetailModal({ item, existingPortfolio, totalPortfolioValue = 0, onSave, onClose }) {
+  const { locale } = useLanguage();
+  const t = useT();
+  const PERIODS = PERIODS_BASE.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('3M');
@@ -306,7 +311,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             {currentPrice != null && (
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>
-                  {currentPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
+                  {currentPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
                 </div>
                 {dayChangePct != null && (
                   <div style={{ fontSize: 12, fontWeight: 600, color: dayChangePct >= 0 ? 'var(--up)' : 'var(--down)', marginTop: 2 }}>
@@ -326,17 +331,17 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         {item.qty != null && (
           <div style={{ margin: '10px 20px 0', padding: '8px 12px', background: 'var(--panel)', borderRadius: 8, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-              {item.qty.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 4 })} akcji
+              {item.qty.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} {t('shares')}
               {item.avgPrice != null && (
-                <> · śr. {item.avgPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}</>
+                <> · {t('avg_abbr')} {item.avgPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}</>
               )}
               {item.valuePLN != null && totalPortfolioValue > 0 && (
-                <> · {((item.valuePLN / totalPortfolioValue) * 100).toFixed(1)}% portfela</>
+                <> · {((item.valuePLN / totalPortfolioValue) * 100).toFixed(1)}% {t('of_portfolio')}</>
               )}
             </span>
             {item.plPLN != null && (
               <span style={{ fontSize: 11, fontWeight: 600, color: item.plPLN >= 0 ? 'var(--up)' : 'var(--down)', marginLeft: 'auto' }}>
-                {item.plPLN >= 0 ? '+' : ''}{item.plPLN.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                {item.plPLN >= 0 ? '+' : ''}{item.plPLN.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
                 {item.costPLN > 0 && (
                   <span style={{ fontWeight: 400, opacity: 0.8 }}>
                     {' '}({((item.plPLN / item.costPLN) * 100) >= 0 ? '+' : ''}{((item.plPLN / item.costPLN) * 100).toFixed(1)}%)
@@ -349,7 +354,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, margin: '12px 20px 0', borderBottom: '1px solid var(--border)' }}>
-          {[['wykres', 'Wykres'], ['wskazniki', 'Wskaźniki'], ['finanse', 'Finanse'], ['ai', 'AI'], ['notatki', note ? '📝 Notatki' : 'Notatki']].map(([k, l]) => (
+          {[['wykres', t('tab_chart')], ['wskazniki', t('tab_indicators')], ['finanse', t('tab_financials')], ['ai', 'AI'], ['notatki', note ? `📝 ${t('tab_notes')}` : t('tab_notes')]].map(([k, l]) => (
             <button
               key={k}
               onClick={() => switchTab(k)}
@@ -374,7 +379,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         <div style={{ padding: '8px 20px 0' }}>
           {chartLoading ? (
             <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Ładowanie wykresu…</span>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('loading')}</span>
             </div>
           ) : chartData.length >= 2 ? (
             <>
@@ -382,7 +387,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
                 data={chartData}
                 period={chartPeriod}
                 benchData={benchData}
-                benchLabel={BENCH_OPTS.find(b => b.key === benchSymbol)?.label}
+                benchLabel={benchSymbol === null ? '' : (BENCH_OPTS.find(b => b.key === benchSymbol)?.label ?? '')}
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: 4 }}>
@@ -397,7 +402,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
                         fontWeight: chartPeriod === p.key ? 600 : 400,
                         transition: 'background 0.15s',
                       }}
-                    >{p.key}</button>
+                    >{p.label}</button>
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
@@ -413,14 +418,14 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
                         transition: 'background 0.15s, color 0.15s',
                         outline: benchSymbol === b.key ? '1px solid var(--border)' : 'none',
                       }}
-                    >{b.label}{benchLoading && benchSymbol === b.key ? ' …' : ''}</button>
+                    >{b.key === null ? t('none_label') : b.label}{benchLoading && benchSymbol === b.key ? ' …' : ''}</button>
                   ))}
                 </div>
               </div>
             </>
           ) : (
             <div style={{ height: 36, display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Brak danych wykresu</span>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('no_chart_data')}</span>
             </div>
           )}
         </div>

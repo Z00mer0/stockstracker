@@ -53,7 +53,7 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 const CUR_FLAG_DASH = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 const COL_LABEL_DASH = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
-function renderCellDash(key, pos, isPrivate) {
+function renderCellDash(key, pos, isPrivate, locale = 'pl-PL') {
   const flag = CUR_FLAG_DASH[pos.currency] ?? pos.currency;
   switch (key) {
     case 'qty':

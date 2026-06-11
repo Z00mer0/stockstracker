@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 function fmt(val, opts = {}) {
   if (val == null || (typeof val === 'number' && !isFinite(val))) return '—';
-  const { decimals = 2, suffix = '', percent = false } = opts;
+  const { decimals = 2, suffix = '', percent = false, locale = 'pl-PL' } = opts;
   const num = typeof val === 'number' ? val : parseFloat(val);
   if (isNaN(num)) return '—';
   const v = percent ? num * 100 : num;
-  return v.toLocaleString('pl-PL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+  return v.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
 }
 
-function fmtLarge(val) {
+function fmtLarge(val, locale = 'pl-PL') {
   if (val == null) return '—';
   const abs = Math.abs(val);
   if (abs >= 1e12) return (val / 1e12).toFixed(2) + ' T';
   if (abs >= 1e9)  return (val / 1e9).toFixed(2)  + ' B';
   if (abs >= 1e6)  return (val / 1e6).toFixed(2)  + ' M';
-  return val.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+  return val.toLocaleString(locale, { maximumFractionDigits: 0 });
 }
 
-function fmtDate(ts) {
+function fmtDate(ts, locale = 'pl-PL') {
   if (!ts) return '—';
-  return new Date(ts * 1000).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return new Date(ts * 1000).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 const REC_LABEL = {
@@ -235,6 +236,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
 
 // ─── Valuation Gauge ─────────────────────────────────────────────────────────
 function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
+  const { locale } = useLanguage();
   if (!currentPrice) return null;
   const vals = [currentPrice, dcfValue, analystTarget].filter(v => v != null);
   if (vals.length < 2) return null;
@@ -267,21 +269,21 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
           <div style={{ position: 'absolute', top: '50%', left: `${dcfX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
             <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: '9px solid #008751' }} />
             <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#008751', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-              DCF {dcfValue.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              DCF {dcfValue.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         )}
         <div style={{ position: 'absolute', top: '50%', left: `${priceX}%`, transform: 'translate(-50%, -50%)', zIndex: 4 }}>
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--text)', border: '2px solid var(--panel)' }} />
           <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: 'var(--text)', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-            {currentPrice.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {currentPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         {targetX != null && (
           <div style={{ position: 'absolute', top: '50%', left: `${targetX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
             <div style={{ width: 2, height: 14, background: '#f59e0b', marginLeft: -1 }} />
             <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#f59e0b', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-              TP {analystTarget.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              TP {analystTarget.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         )}
@@ -434,6 +436,10 @@ function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
+  const { locale } = useLanguage();
+  const fmtL      = (val, opts = {}) => fmt(val, { ...opts, locale });
+  const fmtLargeL = (val) => fmtLarge(val, locale);
+  const fmtDateL  = (ts) => fmtDate(ts, locale);
   const [raw, setRaw]         = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -530,16 +536,16 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasValuation && (
         <Section title="Wycena">
-          {peRatio        != null && <Row label="C/Z (TTM)"     value={fmt(peRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Zysk (P/E). Ile płacisz za 1 PLN zysku netto. Mediana historyczna ~15x. Wysokie P/E = oczekiwania wzrostu lub przeszacowanie." />}
-          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmt(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip="Cena do prognozowanego zysku na następne 12 miesięcy. Niższy od TTM = oczekiwany wzrost zysku." />}
-          {psRatio        != null && <Row label="C/P"           value={fmt(psRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Przychody (Price/Sales). Ile płacisz za 1 PLN przychodów. C/P < 1 = tanie, ale sprawdź marże. Dla retailerów typowe 0,3–1,5x." />}
-          {evEbitda       != null && <Row label="EV/EBITDA"     value={fmt(evEbitda, { decimals: 1, suffix: 'x' })} tooltip="Wartość przedsiębiorstwa / EBITDA. Neutralny wobec struktury kapitału — porównywalny między spółkami z różnym poziomem długu. < 10x = tanie." />}
-          {pfcf           != null && <Row label="C/FCF"         value={fmt(pfcf,     { decimals: 1, suffix: 'x' })} tooltip="Cena/Wolne Przepływy Pieniężne. FCF = gotówka po capexie. Dla spółek z wysokim capexem (jak Dino) może być wysoki — sprawdź C/Z jako alternatywę." />}
-          {fcfYield       != null && <Row label="FCF Yield"     value={fmt(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip="FCF / Kapitalizacja rynkowa. Odwrotność C/FCF. Powyżej 5% = atrakcyjne. To ile gotówki spółka generuje na każde 100 PLN kapitalizacji." />}
-          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmt(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip="Cena/Wartość księgowa. P/B < 1 = akcja tańsza niż wartość aktywów netto. Wysoki P/B = silna marka lub dźwignia operacyjna." />}
-          {raw?.pegRatio    != null && <Row label="PEG"          value={fmt(raw.pegRatio,    { decimals: 2 })} tooltip="PEG = C/Z ÷ stopa wzrostu EPS. PEG < 1 = akcja tania względem wzrostu. Uwzględnia przyszły wzrost przy wycenie." />}
-          {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLarge(liveMarketCap)} />}
-          {liveEV           != null && <Row label="EV"           value={fmtLarge(liveEV)} tooltip="Enterprise Value = Kapitalizacja + Dług netto. Pełna cena przejęcia spółki. Używany w EV/EBITDA." />}
+          {peRatio        != null && <Row label="C/Z (TTM)"     value={fmtL(peRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Zysk (P/E). Ile płacisz za 1 PLN zysku netto. Mediana historyczna ~15x. Wysokie P/E = oczekiwania wzrostu lub przeszacowanie." />}
+          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmtL(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip="Cena do prognozowanego zysku na następne 12 miesięcy. Niższy od TTM = oczekiwany wzrost zysku." />}
+          {psRatio        != null && <Row label="C/P"           value={fmtL(psRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Przychody (Price/Sales). Ile płacisz za 1 PLN przychodów. C/P < 1 = tanie, ale sprawdź marże. Dla retailerów typowe 0,3–1,5x." />}
+          {evEbitda       != null && <Row label="EV/EBITDA"     value={fmtL(evEbitda, { decimals: 1, suffix: 'x' })} tooltip="Wartość przedsiębiorstwa / EBITDA. Neutralny wobec struktury kapitału — porównywalny między spółkami z różnym poziomem długu. < 10x = tanie." />}
+          {pfcf           != null && <Row label="C/FCF"         value={fmtL(pfcf,     { decimals: 1, suffix: 'x' })} tooltip="Cena/Wolne Przepływy Pieniężne. FCF = gotówka po capexie. Dla spółek z wysokim capexem (jak Dino) może być wysoki — sprawdź C/Z jako alternatywę." />}
+          {fcfYield       != null && <Row label="FCF Yield"     value={fmtL(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip="FCF / Kapitalizacja rynkowa. Odwrotność C/FCF. Powyżej 5% = atrakcyjne. To ile gotówki spółka generuje na każde 100 PLN kapitalizacji." />}
+          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmtL(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip="Cena/Wartość księgowa. P/B < 1 = akcja tańsza niż wartość aktywów netto. Wysoki P/B = silna marka lub dźwignia operacyjna." />}
+          {raw?.pegRatio    != null && <Row label="PEG"          value={fmtL(raw.pegRatio,    { decimals: 2 })} tooltip="PEG = C/Z ÷ stopa wzrostu EPS. PEG < 1 = akcja tania względem wzrostu. Uwzględnia przyszły wzrost przy wycenie." />}
+          {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLargeL(liveMarketCap)} />}
+          {liveEV           != null && <Row label="EV"           value={fmtLargeL(liveEV)} tooltip="Enterprise Value = Kapitalizacja + Dług netto. Pełna cena przejęcia spółki. Używany w EV/EBITDA." />}
           {(raw?.epsRevisionsUp30d != null || raw?.epsRevisionsDown30d != null) && (
             <Row
               label="Rewizje EPS (30d)"
@@ -549,7 +555,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
             />
           )}
           {raw?.forwardRevenueEstimate != null && (
-            <Row label="Prognoza przychodów (nast. rok)" value={fmtLarge(raw.forwardRevenueEstimate)} />
+            <Row label="Prognoza przychodów (nast. rok)" value={fmtLargeL(raw.forwardRevenueEstimate)} />
           )}
         </Section>
       )}
@@ -561,12 +567,12 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
               label={raw?.revenueGrowthYoY != null
                 ? `Przychody TTM (${raw.revenueGrowthYoY >= 0 ? '+' : ''}${(raw.revenueGrowthYoY * 100).toFixed(1)}% r/r)`
                 : 'Przychody TTM'}
-              value={fmtLarge(raw.ttmRevenue)}
+              value={fmtLargeL(raw.ttmRevenue)}
               color={raw?.revenueGrowthYoY != null ? (raw.revenueGrowthYoY >= 0 ? '#10b981' : '#f43f5e') : undefined}
             />
           )}
-          {raw?.bookPerShare != null && <Row label="Wartość księgowa/akcję" value={fmt(raw.bookPerShare, { decimals: 2 })} />}
-          {netMargin != null && <Row label="Marża netto" value={fmt(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip="Zysk netto / Przychody. Ile zostaje po wszystkich kosztach z każdego 1 PLN sprzedaży. Dla retailerów typowe 1–5%." />}
+          {raw?.bookPerShare != null && <Row label="Wartość księgowa/akcję" value={fmtL(raw.bookPerShare, { decimals: 2 })} />}
+          {netMargin != null && <Row label="Marża netto" value={fmtL(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip="Zysk netto / Przychody. Ile zostaje po wszystkich kosztach z każdego 1 PLN sprzedaży. Dla retailerów typowe 1–5%." />}
         </Section>
       )}
 
@@ -574,9 +580,9 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {(hasProfit || raw?.beta != null || yearChangePct != null) && (
         <Section title="Zysk / Ryzyko">
-          {epsTtm          != null && <Row label="EPS (TTM)"     value={fmt(epsTtm, { decimals: 2 })} tooltip="Zysk na akcję za ostatnie 12 miesięcy. Używany do obliczenia C/Z. Rosnący EPS = dobry znak." />}
-          {raw?.forwardEps != null && <Row label="EPS (forward)" value={fmt(raw.forwardEps, { decimals: 2 })} tooltip="Prognozowany zysk na akcję na następne 12 miesięcy (konsensus analityków)." />}
-          {raw?.beta       != null && <Row label="Beta"          value={fmt(raw.beta, { decimals: 2 })} tooltip="Zmienność akcji względem rynku. Beta = 1 = ruch jak rynek. Beta > 1 = bardziej zmienne. Beta < 1 = defensywna." />}
+          {epsTtm          != null && <Row label="EPS (TTM)"     value={fmtL(epsTtm, { decimals: 2 })} tooltip="Zysk na akcję za ostatnie 12 miesięcy. Używany do obliczenia C/Z. Rosnący EPS = dobry znak." />}
+          {raw?.forwardEps != null && <Row label="EPS (forward)" value={fmtL(raw.forwardEps, { decimals: 2 })} tooltip="Prognozowany zysk na akcję na następne 12 miesięcy (konsensus analityków)." />}
+          {raw?.beta       != null && <Row label="Beta"          value={fmtL(raw.beta, { decimals: 2 })} tooltip="Zmienność akcji względem rynku. Beta = 1 = ruch jak rynek. Beta > 1 = bardziej zmienne. Beta < 1 = defensywna." />}
           {yearChangePct   != null && (
             <Row
               label="Zmiana 1 rok"
@@ -589,8 +595,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasDividend && (
         <Section title="Dywidenda">
-          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmt(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip="Roczna dywidenda / cena akcji. Dochód pasywny z akcji. Powyżej 4% = atrakcyjne, ale sprawdź czy spółka nie płaci więcej niż zarabia." />
-          {raw.dividendRate != null && <Row label="DPS" value={fmt(raw.dividendRate)} tooltip="Dywidenda na akcję (Dividend Per Share) za ostatnie 12 miesięcy." />}
+          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmtL(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip="Roczna dywidenda / cena akcji. Dochód pasywny z akcji. Powyżej 4% = atrakcyjne, ale sprawdź czy spółka nie płaci więcej niż zarabia." />
+          {raw.dividendRate != null && <Row label="DPS" value={fmtL(raw.dividendRate)} tooltip="Dywidenda na akcję (Dividend Per Share) za ostatnie 12 miesięcy." />}
           {raw?.payoutRatio != null && (
             <Row
               label="Payout Ratio"
@@ -602,7 +608,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {raw?.exDividendDate && (
             <Row
               label="Data ex-dividend"
-              value={new Date(raw.exDividendDate).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })}
+              value={new Date(raw.exDividendDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
               tooltip="Ostatni dzień, w którym trzeba posiadać akcje, aby otrzymać kolejną dywidendę."
             />
           )}
@@ -618,13 +624,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {has52W && (
         <Section title="52-tygodniowy zakres">
-          <Row label="Min"  value={fmt(low52,  { decimals: 2 })} />
-          <Row label="Maks" value={fmt(high52, { decimals: 2 })} />
+          <Row label="Min"  value={fmtL(low52,  { decimals: 2 })} />
+          <Row label="Maks" value={fmtL(high52, { decimals: 2 })} />
           {pct52 != null && (
             <div style={{ marginTop: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{fmt(low52, { decimals: 2 })}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{fmt(high52, { decimals: 2 })}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{fmtL(low52, { decimals: 2 })}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{fmtL(high52, { decimals: 2 })}</span>
               </div>
               <div style={{ height: 4, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, pct52))}%`, background: 'var(--accent)', borderRadius: 2 }} />
@@ -639,13 +645,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasAnalysts && (
         <Section title="Analitycy">
-          {raw.targetMeanPrice != null && <Row label="Cel (średni)" value={fmt(raw.targetMeanPrice, { decimals: 2 })} />}
+          {raw.targetMeanPrice != null && <Row label="Cel (średni)" value={fmtL(raw.targetMeanPrice, { decimals: 2 })} />}
           {raw.targetLowPrice  != null && raw.targetHighPrice != null && (
-            <Row label="Cel (min–maks)" value={`${fmt(raw.targetLowPrice, { decimals: 2 })} – ${fmt(raw.targetHighPrice, { decimals: 2 })}`} />
+            <Row label="Cel (min–maks)" value={`${fmtL(raw.targetLowPrice, { decimals: 2 })} – ${fmtL(raw.targetHighPrice, { decimals: 2 })}`} />
           )}
           {raw.numberOfAnalystOpinions != null && <Row label="Analityków" value={String(raw.numberOfAnalystOpinions)} />}
           {rec && <Row label="Rekomendacja" value={rec[0]} color={rec[1]} />}
-          {raw.nextEarningsDate != null && <Row label="Nast. wyniki" value={fmtDate(raw.nextEarningsDate)} />}
+          {raw.nextEarningsDate != null && <Row label="Nast. wyniki" value={fmtDateL(raw.nextEarningsDate)} />}
         </Section>
       )}
 
@@ -659,14 +665,14 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {analystUpside != null && (
             <Row
               label="Cel analityków (śr.)"
-              value={`${fmt(raw.targetMeanPrice, { decimals: 2 })}  ${analystUpside >= 0 ? '+' : ''}${analystUpside.toFixed(1)}% ${analystUpside >= 0 ? '▲' : '▼'}`}
+              value={`${fmtL(raw.targetMeanPrice, { decimals: 2 })}  ${analystUpside >= 0 ? '+' : ''}${analystUpside.toFixed(1)}% ${analystUpside >= 0 ? '▲' : '▼'}`}
               color={analystUpside >= 0 ? '#10b981' : '#f43f5e'}
             />
           )}
           {dcfUpside != null && (
             <Row
               label="Wycena DCF"
-              value={fmt(raw.dcfFairValue, { decimals: 2 })}
+              value={fmtL(raw.dcfFairValue, { decimals: 2 })}
               color={dcfUpside <= 0 ? '#008751' : '#f43f5e'}
             />
           )}
