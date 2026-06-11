@@ -325,7 +325,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
       <button
         style={iconBtn}
         onClick={onThemeToggle}
-        title={theme === 'dark' ? 'Motyw jasny' : 'Motyw ciemny'}
+        title={theme === 'dark' ? t('light_theme') : t('dark_theme')}
       >
         {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
       </button>

@@ -1,4 +1,20 @@
 import React from 'react';
+import { useT, useLanguage } from '../../context/LanguageContext';
+
+const SECTOR_KEY_MAP = {
+  'Technology': 'sector_Technology',
+  'Financial Services': 'sector_FinancialServices',
+  'Healthcare': 'sector_Healthcare',
+  'Consumer Cyclical': 'sector_ConsumerCyclical',
+  'Consumer Defensive': 'sector_ConsumerDefensive',
+  'Industrials': 'sector_Industrials',
+  'Basic Materials': 'sector_BasicMaterials',
+  'Energy': 'sector_Energy',
+  'Utilities': 'sector_Utilities',
+  'Real Estate': 'sector_RealEstate',
+  'Communication Services': 'sector_CommunicationServices',
+  'Inne': 'sector_Other',
+};
 
 const SECTOR_COLORS = {
   Technology: '#7c9eff', Tech: '#7c9eff',
@@ -22,12 +38,15 @@ function getColor(sector) {
   return SECTOR_COLORS[sector] || '#8a929d';
 }
 
-function fmtK(n) {
-  if (n == null) return '—';
-  return (n / 1000).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
-}
-
 export default function StackedAllocation({ positions = [], totalValue }) {
+  const t = useT();
+  const { locale } = useLanguage();
+
+  function fmtK(n) {
+    if (n == null) return '—';
+    return (n / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
+  }
+
   const bySector = {};
   positions.forEach(p => {
     const sec = p.sector || 'Inne';
@@ -36,7 +55,11 @@ export default function StackedAllocation({ positions = [], totalValue }) {
 
   const total = totalValue || Object.values(bySector).reduce((a, b) => a + b, 0) || 1;
   const slices = Object.entries(bySector)
-    .map(([label, value]) => ({ label, value, color: getColor(label) }))
+    .map(([key, value]) => ({
+      label: SECTOR_KEY_MAP[key] ? t(SECTOR_KEY_MAP[key]) : key,
+      value,
+      color: getColor(key),
+    }))
     .sort((a, b) => b.value - a.value);
 
   if (!slices.length) return null;
