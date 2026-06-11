@@ -1,16 +1,17 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 const M = { top: 10, right: 56, bottom: 28, left: 10 };
 const H = 220;
 
-const PL_MONTHS = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
-function fmtXDate(iso) {
-  if (!iso) return '';
-  const [, m, d] = iso.split('-');
-  return `${parseInt(d)} ${PL_MONTHS[parseInt(m) - 1]}`;
-}
-
 export default function ReturnRateChart({ data, benchData = [], benchLabel = '' }) {
+  const { locale } = useLanguage();
+
+  function fmtXDate(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return new Date(+y, +m - 1, +d).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  }
   const containerRef = useRef(null);
   const svgRef       = useRef(null);
   const [svgWidth, setSvgWidth] = useState(800);

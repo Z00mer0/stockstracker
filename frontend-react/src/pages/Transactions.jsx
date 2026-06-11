@@ -234,7 +234,7 @@ export default function Transactions() {
 
       {/* Table */}
       <Card
-        title={`Transakcje · ${sorted.length}`}
+        title={`${t('transactions_label')} · ${sorted.length}`}
         actions={
           <button
             onClick={() => setShowAdd(true)}

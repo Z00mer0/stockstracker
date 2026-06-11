@@ -405,7 +405,7 @@ export default function ScenarioLab() {
             value={chainTicker}
             onChange={e => setChainTicker(e.target.value.toUpperCase())}
             onKeyDown={e => e.key === 'Enter' && handleFetchChain()}
-            placeholder="np. AAPL"
+            placeholder={t('scenario_ticker_placeholder')}
             className="field-input w-28 font-mono"
             style={{ textTransform: 'uppercase' }}
           />
@@ -524,7 +524,7 @@ export default function ScenarioLab() {
         {/* Left panel */}
         <Card title={t('scenario_basic_params')}>
           <div className="flex flex-col gap-3">
-            <Field label="Strategia">
+            <Field label={t('scenario_strategy_label')}>
               <select value={strategy} onChange={e => setStrategy(e.target.value)} className="field-input">
                 {STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>

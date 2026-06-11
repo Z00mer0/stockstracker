@@ -1,15 +1,8 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 const M = { top: 10, right: 56, bottom: 28, left: 10 };
 const H = 190;
-
-const PL_MONTHS = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
-function fmtXDate(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  const mo = PL_MONTHS[parseInt(m) - 1];
-  return `${parseInt(d)} ${mo} '${y.slice(2)}`;
-}
 
 function calcRolling(snapshots, windowDays) {
   return snapshots.map((s, i) => {
@@ -27,13 +20,22 @@ function calcRolling(snapshots, windowDays) {
   });
 }
 
-const DISPLAY_PERIODS = [
-  { key: '1Y',  label: '1R',  days: 365  },
-  { key: '2Y',  label: '2 lata', days: 730 },
-  { key: 'MAX', label: 'MAX', days: null },
+const DISPLAY_PERIODS_KEYS = [
+  { key: '1Y', pl: '1R',    en: '1Y',  days: 365  },
+  { key: '2Y', pl: '2 lata', en: '2Y', days: 730 },
+  { key: 'MAX', pl: 'MAX',  en: 'MAX', days: null },
 ];
 
 export default function RollingReturnsChart({ data }) {
+  const { locale } = useLanguage();
+  const DISPLAY_PERIODS = DISPLAY_PERIODS_KEYS.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
+
+  function fmtXDate(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return new Date(+y, +m - 1, +d).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: '2-digit' });
+  }
+
   const containerRef = useRef(null);
   const svgRef       = useRef(null);
   const [svgWidth, setSvgWidth]       = useState(800);

@@ -46,12 +46,12 @@ function calcMDD(snapshots) {
   return maxDD > 0 ? { pct: maxDD, from: ddStart, to: ddEnd } : null;
 }
 
-const PERIODS = [
-  { key: '1M',  label: '1M',  days: 30  },
-  { key: '3M',  label: '3M',  days: 90  },
-  { key: '6M',  label: '6M',  days: 180 },
-  { key: '1Y',  label: '1R',  days: 365 },
-  { key: 'MAX', label: 'MAX', days: null },
+const PERIODS_BASE = [
+  { key: '1M',  pl: '1M',  en: '1M',  days: 30  },
+  { key: '3M',  pl: '3M',  en: '3M',  days: 90  },
+  { key: '6M',  pl: '6M',  en: '6M',  days: 180 },
+  { key: '1Y',  pl: '1R',  en: '1Y',  days: 365 },
+  { key: 'MAX', pl: 'MAX', en: 'MAX', days: null },
 ];
 
 
@@ -88,6 +88,7 @@ export default function History() {
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
+  const PERIODS = PERIODS_BASE.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
 
   const BENCHMARKS = [
     { key: null,            label: t('no_benchmark') },
@@ -220,7 +221,7 @@ export default function History() {
         {[
           { label: t('value_filter'), value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(filteredLast?.total, locale)}</span>, sub: null },
           { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(gainPLN, locale)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
-          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? `min. 90 dni (${days} ${t('days_of_history')})` : null },
+          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? `${t('cagr_min_days')} (${days} ${t('days_of_history')})` : null },
           { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(ath?.total, locale)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
           {
             label: 'Max Drawdown',
