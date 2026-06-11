@@ -629,6 +629,22 @@ export default {
   sector_CommunicationServices:   'Communication Services',
   sector_Other:                   'Other',
 
+  // ── Portfolio column headers ──────────────────────────────────
+  col_qty_lbl:          'Qty',
+  col_avg_price_lbl:    'Avg. Price',
+  col_price_lbl:        'Price',
+  col_daily_chg_lbl:    'Daily Chg.',
+  col_cost_pln_lbl:     'Purchase Value',
+  col_value_pln_lbl:    'Curr. Value',
+  col_pl_pln_lbl:       'Gain/Loss',
+  col_period_lbl:       'Period',
+  col_dividends_lbl:    'Dividends',
+  save_alert:           'Save alert',
+  col_configure:        'Configure columns',
+  col_visible:          'Visible columns',
+  col_move_left:        'Move left',
+  col_move_right:       'Move right',
+
   // ── Common ──────────────────────────────────────────────────
   save_btn:             'Save',
   delete_btn:           'Delete',

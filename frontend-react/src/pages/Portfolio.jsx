@@ -14,7 +14,7 @@ import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import {
-  COLUMN_DEFS, loadColumnConfig, saveColumnConfig,
+  COLUMN_DEFS, getColLabel, loadColumnConfig, saveColumnConfig,
 } from '../utils/portfolioColumns';
 import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
@@ -206,7 +206,7 @@ function SetAlertModal({ symbol, currentPrice, onSave, onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>{t('cancel')}</button>
-          <button onClick={handleSave} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', fontWeight: 600 }}>Zapisz alert</button>
+          <button onClick={handleSave} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', fontWeight: 600 }}>{t('save_alert')}</button>
         </div>
       </div>
     </div>
@@ -222,7 +222,6 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 }
 
 const CUR_FLAG = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
-const COL_LABEL = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
 function renderCell(key, pos, fxRates, divBySymbol, locale) {
   const flag = CUR_FLAG[pos.currency] ?? pos.currency;
@@ -1061,7 +1060,7 @@ export default function Portfolio() {
                 <th style={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 2, background: 'var(--panel)' }}>Symbol</th>
                 {cols.map(key => (
                   <th key={key} className="right">
-                    {COL_LABEL[key] ?? key}
+                    {getColLabel(key, t)}
                   </th>
                 ))}
                 <th className="right">{t('col_share_pct')}</th>

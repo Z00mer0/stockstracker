@@ -629,6 +629,22 @@ export default {
   sector_CommunicationServices:   'Komunikacja',
   sector_Other:                   'Inne',
 
+  // ── Portfolio column headers ──────────────────────────────────
+  col_qty_lbl:          'Ilość',
+  col_avg_price_lbl:    'Śr. Zakup',
+  col_price_lbl:        'Cena Teraz',
+  col_daily_chg_lbl:    'Zmiana Dz.',
+  col_cost_pln_lbl:     'Wart. Zakupu',
+  col_value_pln_lbl:    'Wart. Teraz',
+  col_pl_pln_lbl:       'Zysk/Strata',
+  col_period_lbl:       'Okres',
+  col_dividends_lbl:    'Dywidendy',
+  save_alert:           'Zapisz alert',
+  col_configure:        'Konfiguruj kolumny',
+  col_visible:          'Widoczne kolumny',
+  col_move_left:        'Przesuń w lewo',
+  col_move_right:       'Przesuń w prawo',
+
   // ── Common ──────────────────────────────────────────────────
   save_btn:             'Zapisz',
   delete_btn:           'Usuń',

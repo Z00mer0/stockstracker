@@ -1,8 +1,10 @@
 // frontend-react/src/components/shared/ColumnPicker.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { COLUMN_DEFS } from '../../utils/portfolioColumns';
+import { COLUMN_DEFS, getColLabel } from '../../utils/portfolioColumns';
+import { useT } from '../../context/LanguageContext';
 
 export default function ColumnPicker({ cols, onChange }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef(null);
@@ -33,12 +35,11 @@ export default function ColumnPicker({ cols, onChange }) {
     if (cols.includes(key)) {
       onChange(cols.filter(c => c !== key));
     } else {
-      // append after last visible column
       onChange([...cols, key]);
     }
   }
 
-  function move(key, dir) { // dir: -1 = left, +1 = right
+  function move(key, dir) {
     const idx = cols.indexOf(key);
     if (idx === -1) return;
     const next = idx + dir;
@@ -54,7 +55,7 @@ export default function ColumnPicker({ cols, onChange }) {
         ref={btnRef}
         onClick={handleToggle}
         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors text-base"
-        title="Konfiguruj kolumny"
+        title={t('col_configure')}
       >
         ⚙️
       </button>
@@ -66,10 +67,10 @@ export default function ColumnPicker({ cols, onChange }) {
           className="w-60 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-3"
         >
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 px-1">
-            Widoczne kolumny
+            {t('col_visible')}
           </div>
           <div className="space-y-0.5">
-            {COLUMN_DEFS.map(({ key, label, fixed }) => {
+            {COLUMN_DEFS.map(({ key, fixed }) => {
               const visible = cols.includes(key);
               const idx = cols.indexOf(key);
               return (
@@ -84,7 +85,7 @@ export default function ColumnPicker({ cols, onChange }) {
                   <span className={`flex-1 text-sm select-none ${
                     fixed ? 'text-slate-500' : visible ? 'text-slate-200' : 'text-slate-500'
                   }`}>
-                    {label}
+                    {getColLabel(key, t)}
                   </span>
                   {visible && !fixed && (
                     <div className="flex gap-0.5 shrink-0">
@@ -92,13 +93,13 @@ export default function ColumnPicker({ cols, onChange }) {
                         onClick={() => move(key, -1)}
                         disabled={idx === 0}
                         className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-25 rounded transition-colors text-xs"
-                        title="Przesuń w lewo"
+                        title={t('col_move_left')}
                       >←</button>
                       <button
                         onClick={() => move(key, 1)}
                         disabled={idx === cols.length - 1}
                         className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-25 rounded transition-colors text-xs"
-                        title="Przesuń w prawo"
+                        title={t('col_move_right')}
                       >→</button>
                     </div>
                   )}
