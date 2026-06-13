@@ -124,7 +124,8 @@ function RevenueChart({ periods, currency }) {
 const COL_W = '110px';
 const NUM_COLS = 4;
 
-function TableRow({ label, values, fmt = fmtM }) {
+function TableRow({ label, values, fmt, locale = 'pl-PL' }) {
+  const fmtFn = fmt ?? ((v) => fmtM(v, locale));
   const cols = values.slice(0, NUM_COLS);
   const allEmpty = cols.every(v => v == null);
   return (
@@ -143,7 +144,7 @@ function TableRow({ label, values, fmt = fmtM }) {
           fontWeight: i === 0 ? 700 : 400,
           fontFamily: 'JetBrains Mono, monospace',
           fontSize: 11,
-        }}>{fmt(v)}</span>
+        }}>{fmtFn(v)}</span>
       ))}
       {Array.from({ length: NUM_COLS - cols.length }).map((_, i) => <span key={`e${i}`} />)}
     </div>
@@ -658,46 +659,46 @@ export default function FinancialsTab({ symbol, livePrice }) {
           {/* RZiS */}
           <Accordion title="Rachunek Zysków i Strat" unit={`mln ${currency}`} defaultOpen={true}>
             <ColumnHeaders periods={periods} />
-            <TableRow label="Przychody" values={periods.map(p => p.revenue)} />
+            <TableRow label="Przychody" values={periods.map(p => p.revenue)} locale={locale} />
             <SubRow label="Wzrost r/r" values={periods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
             {LFL_DATA[symbol] && (
               <SubRow label="Wzrost LFL (r/r)" values={periods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
             )}
-            <TableRow label="Zysk brutto" values={periods.map(p => p.grossProfit)} />
+            <TableRow label="Zysk brutto" values={periods.map(p => p.grossProfit)} locale={locale} />
             <SubRow label="Marża brutto" values={periods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
-            <TableRow label="Koszty oper." values={periods.map(p => p.operatingCost)} />
-            <TableRow label="Zysk oper." values={periods.map(p => p.operatingIncome)} />
-            <TableRow label="EBITDA" values={periods.map(p => p.ebitda)} />
+            <TableRow label="Koszty oper." values={periods.map(p => p.operatingCost)} locale={locale} />
+            <TableRow label="Zysk oper." values={periods.map(p => p.operatingIncome)} locale={locale} />
+            <TableRow label="EBITDA" values={periods.map(p => p.ebitda)} locale={locale} />
             <SubRow label="Marża EBITDA" values={periods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
-            <TableRow label="Zysk netto" values={periods.map(p => p.netIncome)} />
-            <TableRow label="Dług netto" values={periods.map(p => p.netDebt)} />
+            <TableRow label="Zysk netto" values={periods.map(p => p.netIncome)} locale={locale} />
+            <TableRow label="Dług netto" values={periods.map(p => p.netDebt)} locale={locale} />
           </Accordion>
 
           {/* Bilans */}
           <Accordion title="Bilans" unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={periods} />
-            <TableRow label="Aktywa obrotowe" values={periods.map(p => p.totalCurrentAssets)} />
-            <TableRow label="Aktywa ogółem" values={periods.map(p => p.totalAssets)} />
-            <TableRow label="Zob. bieżące" values={periods.map(p => p.totalCurrentLiabilities)} />
-            <TableRow label="Zobowiązania" values={periods.map(p => p.totalLiabilities)} />
-            <TableRow label="Kapitał własny" values={periods.map(p => p.equity)} />
-            <TableRow label="Gotówka" values={periods.map(p => p.cashAndEquivalents)} />
-            <TableRow label="Dług całkowity" values={periods.map(p => p.totalDebt)} />
+            <TableRow label="Aktywa obrotowe" values={periods.map(p => p.totalCurrentAssets)} locale={locale} />
+            <TableRow label="Aktywa ogółem" values={periods.map(p => p.totalAssets)} locale={locale} />
+            <TableRow label="Zob. bieżące" values={periods.map(p => p.totalCurrentLiabilities)} locale={locale} />
+            <TableRow label="Zobowiązania" values={periods.map(p => p.totalLiabilities)} locale={locale} />
+            <TableRow label="Kapitał własny" values={periods.map(p => p.equity)} locale={locale} />
+            <TableRow label="Gotówka" values={periods.map(p => p.cashAndEquivalents)} locale={locale} />
+            <TableRow label="Dług całkowity" values={periods.map(p => p.totalDebt)} locale={locale} />
           </Accordion>
 
           {/* Przepływy */}
           <Accordion title="Przepływy pieniężne" unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={periods} />
-            <TableRow label="CFO (oper.)" values={periods.map(p => p.operatingCashFlow)} />
-            <TableRow label="CAPEX / Inwest." values={periods.map(p => p.capex)} />
+            <TableRow label="CFO (oper.)" values={periods.map(p => p.operatingCashFlow)} locale={locale} />
+            <TableRow label="CAPEX / Inwest." values={periods.map(p => p.capex)} locale={locale} />
             <SubRow label="Stopa Reinwest." values={periods.map(p =>
               p.capex != null && p.operatingCashFlow != null && Math.abs(p.operatingCashFlow) > 0
                 ? Math.abs(p.capex) / Math.abs(p.operatingCashFlow)
                 : null
             )} fmt={v => v == null ? '—' : (v * 100).toFixed(0) + '%'} />
-            <TableRow label="Finansowanie" values={periods.map(p => p.cashFromFinancing)} />
-            <TableRow label="FCF" values={periods.map(p => p.fcf)} />
-            <TableRow label="Skup akcji" values={periods.map(p => p.shareRepurchases)} />
+            <TableRow label="Finansowanie" values={periods.map(p => p.cashFromFinancing)} locale={locale} />
+            <TableRow label="FCF" values={periods.map(p => p.fcf)} locale={locale} />
+            <TableRow label="Skup akcji" values={periods.map(p => p.shareRepurchases)} locale={locale} />
           </Accordion>
 
           {/* Wycena */}
