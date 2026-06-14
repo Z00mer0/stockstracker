@@ -2210,6 +2210,38 @@ async function doRecover() {
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
 
+        elif path == '/api/test-groq':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            api_key = os.environ.get('GROQ_API_KEY', '').strip()
+            result = {'key_set': bool(api_key), 'key_prefix': api_key[:8] if api_key else ''}
+            if api_key:
+                try:
+                    test_body = json.dumps({
+                        'model': 'llama-3.3-70b-versatile',
+                        'messages': [{'role': 'user', 'content': 'Say OK'}],
+                        'max_tokens': 5,
+                        'stream': False,
+                    }).encode('utf-8')
+                    req = urllib.request.Request(
+                        'https://api.groq.com/openai/v1/chat/completions',
+                        data=test_body,
+                        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+                    )
+                    with urllib.request.urlopen(req, timeout=20) as r:
+                        resp_data = json.loads(r.read())
+                        result['groq_ok'] = True
+                        result['response'] = resp_data.get('choices', [{}])[0].get('message', {}).get('content', '')
+                except urllib.error.HTTPError as e:
+                    result['groq_ok'] = False
+                    result['http_error'] = e.code
+                    result['error_body'] = e.read().decode('utf-8', errors='replace')[:300]
+                except Exception as e:
+                    result['groq_ok'] = False
+                    result['exception'] = f'{type(e).__name__}: {e}'
+            self.send_json(200, result)
+
         elif path == '/api/analyze':
             username = get_username(self)
             if not username:
