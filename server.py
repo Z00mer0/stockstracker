@@ -2266,7 +2266,7 @@ async function doRecover() {
             if not fin_row:
                 self.send_json(404, {'error': 'err_no_financials'}); return
 
-            api_key = os.environ.get('GROQ_API_KEY', '')
+            api_key = os.environ.get('GROQ_API_KEY', '').strip()
             if not api_key:
                 self.send_json(503, {'error': 'err_no_groq_key'}); return
 
