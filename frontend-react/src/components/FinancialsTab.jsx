@@ -508,8 +508,9 @@ export default function FinancialsTab({ symbol, livePrice }) {
             const payload = line.slice(6);
             if (payload === '[DONE]') { setAnalysisLoaded(true); break; }
             try {
-              const { text } = JSON.parse(payload);
-              if (text) setAnalysis(prev => prev + text);
+              const parsed = JSON.parse(payload);
+              if (parsed.error) { setAnalysisError(parsed.error); break; }
+              if (parsed.text) setAnalysis(prev => prev + parsed.text);
             } catch (_) {}
           }
         }

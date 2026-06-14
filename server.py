@@ -2331,21 +2331,17 @@ async function doRecover() {
                             except Exception:
                                 pass
             except urllib.error.HTTPError as e:
-                if e.code == 429:
-                    err_msg = json.dumps({'text': '\n\nerr_rate_limit'})
-                    self.wfile.write(f'data: {err_msg}\n\n'.encode('utf-8'))
-                    self.wfile.flush()
-                else:
-                    err_msg = json.dumps({'text': '\n\nerr_groq_failed'})
-                    self.wfile.write(f'data: {err_msg}\n\n'.encode('utf-8'))
-                    self.wfile.flush()
+                err_body = e.read().decode('utf-8', errors='replace')[:200]
+                print(f'[analyze] groq HTTP {e.code}: {err_body}')
+                err_key = 'err_rate_limit' if e.code == 429 else 'err_groq_failed'
+                self.wfile.write(f'data: {json.dumps({"error": err_key})}\n\n'.encode('utf-8'))
+                self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
                 self.wfile.flush()
                 return
             except Exception as e:
-                print(f'[analyze] groq error: {e}')
-                err_msg = json.dumps({'text': '\n\nerr_groq_failed'})
-                self.wfile.write(f'data: {err_msg}\n\n'.encode('utf-8'))
+                print(f'[analyze] groq error: {type(e).__name__}: {e}')
+                self.wfile.write(f'data: {json.dumps({"error": "err_groq_failed"})}\n\n'.encode('utf-8'))
                 self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
                 self.wfile.flush()
