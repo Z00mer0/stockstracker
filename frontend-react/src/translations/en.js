@@ -669,4 +669,14 @@ export default {
   tab_notes:            'Notes',
   none_label:           'None',
   period_1y_label:      '1Y',
+
+  // ── AI Analysis ──────────────────────────────────────────────
+  ai_analysis_title:    'AI Fundamental Analysis',
+  ai_analysis_generate: 'Generate analysis',
+  ai_analysis_refresh:  'Refresh',
+  err_no_financials:    'No financial data available for this stock',
+  err_no_groq_key:      'Feature unavailable — GROQ key not configured',
+  err_rate_limit:       'Groq rate limit exceeded, try again in a moment',
+  err_groq_failed:      'Analysis generation failed',
+  err_db:               'Database error',
 };

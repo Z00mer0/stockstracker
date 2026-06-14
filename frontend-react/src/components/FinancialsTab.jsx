@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 
 const AUTH_KEY = 'myfund_auth_token';
 
@@ -244,6 +244,7 @@ function ValuationCard({ label, value, sub }) {
 
 export default function FinancialsTab({ symbol, livePrice }) {
   const { locale } = useLanguage();
+  const t = useT();
   const fmtL = (val) => fmtLarge(val, locale);
   const [period, setPeriod]         = useState('quarterly');
   const [data, setData]             = useState(null);
@@ -255,6 +256,17 @@ export default function FinancialsTab({ symbol, livePrice }) {
   const [csvCurrency, setCsvCurrency] = useState('PLN');
   const fileRef = useRef(null);
   const csvRef  = useRef(null);
+
+  const [analysis, setAnalysis]               = useState('');
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError]     = useState('');
+  const [analysisLoaded, setAnalysisLoaded]   = useState(false);
+
+  useEffect(() => {
+    setAnalysis('');
+    setAnalysisLoaded(false);
+    setAnalysisError('');
+  }, [symbol, period]);
 
   useEffect(() => {
     let cancelled = false;
@@ -465,6 +477,77 @@ export default function FinancialsTab({ symbol, livePrice }) {
     for (const item of items) {
       if (item.type.startsWith('image/')) { handleScreenshotUpload(item.getAsFile()); break; }
     }
+  }
+
+  async function generateAnalysis() {
+    setAnalysisLoading(true);
+    setAnalysis('');
+    setAnalysisError('');
+    const token = localStorage.getItem(AUTH_KEY) || '';
+    try {
+      const resp = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        body: JSON.stringify({ symbol, period }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'err_groq_failed');
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const payload = line.slice(6);
+            if (payload === '[DONE]') { setAnalysisLoaded(true); break; }
+            try {
+              const { text } = JSON.parse(payload);
+              if (text) setAnalysis(prev => prev + text);
+            } catch (_) {}
+          }
+        }
+      }
+      setAnalysisLoaded(true);
+    } catch (e) {
+      setAnalysisError(e.message || 'err_groq_failed');
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }
+
+  function parseInline(text) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  }
+
+  function renderAnalysis(text) {
+    return text.split('\n').map((line, i) => {
+      if (line.startsWith('### ')) {
+        return <h3 key={i} style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', margin: '16px 0 6px' }}>{line.slice(4)}</h3>;
+      }
+      if (line.startsWith('## ')) {
+        return <h2 key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '16px 0 6px' }}>{line.slice(3)}</h2>;
+      }
+      if (line.startsWith('- ')) {
+        return <div key={i} style={{ paddingLeft: 12, marginBottom: 3 }}>• {parseInline(line.slice(2))}</div>;
+      }
+      if (line.trim() === '') {
+        return <div key={i} style={{ height: 6 }} />;
+      }
+      return <div key={i}>{parseInline(line)}</div>;
+    });
   }
 
   const periods  = data?.periods ?? [];
@@ -740,6 +823,46 @@ export default function FinancialsTab({ symbol, livePrice }) {
           </Accordion>
         </>
       )}
+
+      {/* ── AI Fundamental Analysis ─────────────────────────────────────── */}
+      <div style={{ marginTop: 32, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+            🧠 {t('ai_analysis_title')}
+          </h3>
+          {(analysisLoaded || analysisError) && !analysisLoading && (
+            <button
+              onClick={generateAnalysis}
+              style={{ fontSize: 11, padding: '3px 10px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--card)', color: 'var(--text)', cursor: 'pointer' }}
+            >
+              ↻ {t('ai_analysis_refresh')}
+            </button>
+          )}
+        </div>
+
+        {!analysis && !analysisLoading && !analysisError && (
+          <button
+            onClick={generateAnalysis}
+            style={{ fontSize: 12, padding: '7px 16px', border: 'none', borderRadius: 6, background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
+          >
+            {t('ai_analysis_generate')}
+          </button>
+        )}
+
+        {analysis && (
+          <div style={{ fontSize: 12, lineHeight: 1.75, color: 'var(--text)' }}>
+            {renderAnalysis(analysis)}
+          </div>
+        )}
+
+        {analysisLoading && (
+          <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>●●●</span>
+        )}
+
+        {analysisError && !analysisLoading && (
+          <p style={{ color: 'var(--down)', fontSize: 12, margin: '8px 0 0' }}>{t(analysisError) || analysisError}</p>
+        )}
+      </div>
     </div>
   );
 }

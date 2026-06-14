@@ -669,4 +669,14 @@ export default {
   tab_notes:            'Notatki',
   none_label:           'Brak',
   period_1y_label:      '1R',
+
+  // ── AI Analysis ──────────────────────────────────────────────
+  ai_analysis_title:    'Analiza fundamentalna AI',
+  ai_analysis_generate: 'Generuj analizę',
+  ai_analysis_refresh:  'Odśwież',
+  err_no_financials:    'Brak danych finansowych dla tej spółki',
+  err_no_groq_key:      'Funkcja niedostępna — brak klucza GROQ',
+  err_rate_limit:       'Limit zapytań Groq przekroczony, spróbuj za chwilę',
+  err_groq_failed:      'Błąd generowania analizy',
+  err_db:               'Błąd bazy danych',
 };

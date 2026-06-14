@@ -503,6 +503,14 @@ if DATABASE_URL:
                     username     TEXT PRIMARY KEY,
                     insights_json TEXT NOT NULL DEFAULT '{}'
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS financial_analyses (
+                    symbol     TEXT NOT NULL,
+                    period     TEXT NOT NULL,
+                    analysis   TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (symbol, period)
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -2201,6 +2209,165 @@ async function doRecover() {
             data['source']    = 'manual'
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
+
+        elif path == '/api/analyze':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            body = self.read_json(max_size=1024)
+            if not body:
+                self.send_json(400, {'error': 'invalid_json'}); return
+            symbol = body.get('symbol', '')
+            period = body.get('period', '')
+            import re as _re
+            if not _re.match(r'^[A-Z0-9.\-]{1,15}$', symbol) or period not in ('annual', 'quarterly'):
+                self.send_json(400, {'error': 'invalid_params'}); return
+
+            # Check DB cache
+            try:
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute(
+                        "SELECT analysis FROM financial_analyses WHERE symbol=%s AND period=%s AND created_at > NOW() - INTERVAL '7 days'",
+                        (symbol, period)
+                    )
+                    row = cur.fetchone()
+            except Exception as e:
+                print(f'[analyze] db error: {e}')
+                self.send_json(500, {'error': 'err_db'}); return
+
+            if row:
+                cached_text = row[0]
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/event-stream')
+                self.send_header('Cache-Control', 'no-cache')
+                self.send_header('X-Accel-Buffering', 'no')
+                self.send_header('Access-Control-Allow-Origin', self._cors_origin())
+                self.end_headers()
+                for i in range(0, len(cached_text), 50):
+                    chunk = cached_text[i:i+50]
+                    self.wfile.write(f'data: {json.dumps({"text": chunk})}\n\n'.encode('utf-8'))
+                    self.wfile.flush()
+                self.wfile.write(b'data: [DONE]\n\n')
+                self.wfile.flush()
+                return
+
+            # Fetch financial data from DB
+            try:
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute(
+                        "SELECT data_json FROM financials WHERE symbol=%s AND period=%s ORDER BY fetched_at DESC LIMIT 1",
+                        (symbol, period)
+                    )
+                    fin_row = cur.fetchone()
+            except Exception as e:
+                print(f'[analyze] db error fetching financials: {e}')
+                self.send_json(500, {'error': 'err_db'}); return
+
+            if not fin_row:
+                self.send_json(404, {'error': 'err_no_financials'}); return
+
+            api_key = os.environ.get('GROQ_API_KEY', '')
+            if not api_key:
+                self.send_json(503, {'error': 'err_no_groq_key'}); return
+
+            fin_data = fin_row[0] if isinstance(fin_row[0], dict) else json.loads(fin_row[0])
+            currency = fin_data.get('currency', 'PLN')
+            # Build prompt
+            system_prompt = (
+                'Jesteś profesjonalnym analitykiem giełdowym (Equity Research Analyst). '
+                'Przeprowadzasz rygorystyczną analizę fundamentalną spółki na podstawie danych finansowych. '
+                'Bądź krytyczny, szukaj anomalii, unikaj ogólników. '
+                'Skup się wyłącznie na liczbach, trendach i faktach. '
+                'Odpowiadaj wyłącznie w języku polskim. '
+                'Używaj profesjonalnego słownictwa finansowego. '
+                'Formatuj odpowiedź w Markdownie.'
+            )
+            user_prompt = (
+                f'Dane finansowe spółki {symbol} (dane {period}, waluta: {currency}):\n\n'
+                f'{json.dumps(fin_data, ensure_ascii=False)}\n\n'
+                'Wygeneruj raport według struktury:\n\n'
+                '### 1. TEZA INWESTYCYJNA I FOSA (Moat)\n'
+                '### 2. ANALIZA PRZYCHODÓW I MARŻ\n'
+                '### 3. ZDROWIE BILANSU I ZADŁUŻENIE\n'
+                '### 4. JAKOŚĆ PRZEPŁYWÓW GOTÓWKOWYCH\n'
+                '### 5. WYCENA I CZERWONE FLAGI'
+            )
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.send_header('Access-Control-Allow-Origin', self._cors_origin())
+            self.end_headers()
+
+            full_text = []
+            try:
+                import urllib.request
+                groq_url = 'https://api.groq.com/openai/v1/chat/completions'
+                groq_body = json.dumps({
+                    'model': 'llama-3.3-70b-versatile',
+                    'messages': [
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': user_prompt},
+                    ],
+                    'max_tokens': 2000,
+                    'stream': True,
+                }).encode('utf-8')
+                req = urllib.request.Request(groq_url, data=groq_body, headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json',
+                })
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    for line in resp:
+                        line = line.decode('utf-8').strip()
+                        if line.startswith('data: ') and line != 'data: [DONE]':
+                            try:
+                                chunk_data = json.loads(line[6:])
+                                text = chunk_data['choices'][0]['delta'].get('content', '')
+                                if text:
+                                    full_text.append(text)
+                                    self.wfile.write(f'data: {json.dumps({"text": text})}\n\n'.encode('utf-8'))
+                                    self.wfile.flush()
+                            except Exception:
+                                pass
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    err_msg = json.dumps({'text': '\n\nerr_rate_limit'})
+                    self.wfile.write(f'data: {err_msg}\n\n'.encode('utf-8'))
+                    self.wfile.flush()
+                else:
+                    err_msg = json.dumps({'text': '\n\nerr_groq_failed'})
+                    self.wfile.write(f'data: {err_msg}\n\n'.encode('utf-8'))
+                    self.wfile.flush()
+                self.wfile.write(b'data: [DONE]\n\n')
+                self.wfile.flush()
+                return
+            except Exception as e:
+                print(f'[analyze] groq error: {e}')
+                err_msg = json.dumps({'text': '\n\nerr_groq_failed'})
+                self.wfile.write(f'data: {err_msg}\n\n'.encode('utf-8'))
+                self.wfile.flush()
+                self.wfile.write(b'data: [DONE]\n\n')
+                self.wfile.flush()
+                return
+
+            self.wfile.write(b'data: [DONE]\n\n')
+            self.wfile.flush()
+
+            # Cache to DB
+            if full_text:
+                analysis_text = ''.join(full_text)
+                try:
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute(
+                            """INSERT INTO financial_analyses (symbol, period, analysis, created_at)
+                               VALUES (%s, %s, %s, NOW())
+                               ON CONFLICT (symbol, period) DO UPDATE
+                               SET analysis = EXCLUDED.analysis, created_at = NOW()""",
+                            (symbol, period, analysis_text)
+                        )
+                except Exception as e:
+                    print(f'[analyze] db cache write error: {e}')
 
         else:
             self.send_response(405); self.end_headers()
