@@ -1743,10 +1743,11 @@ class Handler(SimpleHTTPRequestHandler):
                         client = _GroqClient(api_key=api_key)
                         prompt = (
                             'Jesteś doświadczonym analitykiem giełdowym GPW. '
-                            'Na podstawie danych fundamentalnych i newsów napisz dla każdej spółki '
-                            'profesjonalne podsumowanie inwestycyjne (4-6 zdań) po polsku. '
-                            'Uwzględnij: kondycję finansową, wycenę vs. cel analityków, perspektywy i główne ryzyko. '
-                            'Bądź konkretny — cytuj liczby. Pisz obiektywnie jak analityk sell-side.\n\n'
+                            'Napisz dla każdej spółki profesjonalne podsumowanie inwestycyjne (4-6 zdań) po polsku.\n'
+                            'WAŻNE: Używaj WYŁĄCZNIE danych podanych poniżej. NIE wymyślaj liczb, cen ani wskaźników. '
+                            'Jeśli dane finansowe nie są podane, skup się na newsach i ogólnej charakterystyce spółki. '
+                            'Jeśli nie masz żadnych danych — napisz co wiesz o spółce z wiedzy ogólnej bez konkretnych liczb.\n'
+                            'Pisz obiektywnie: kondycja finansowa, perspektywy wzrostu, główne ryzyko/szansa.\n\n'
                             'Format: każda spółka zaczyna się od "TICKER.WA: " na początku linii.\n\n'
                             + '\n\n'.join(prompt_parts)
                         )
