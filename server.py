@@ -2348,6 +2348,8 @@ async function doRecover() {
                 req = urllib.request.Request(groq_url, data=groq_body, headers={
                     'Authorization': f'Bearer {api_key}',
                     'Content-Type': 'application/json',
+                    'User-Agent': 'groq-python/0.13.0',
+                    'Accept': 'application/json',
                 })
                 with urllib.request.urlopen(req, timeout=60) as resp:
                     for line in resp:
