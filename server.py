@@ -2210,38 +2210,6 @@ async function doRecover() {
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
 
-        elif path == '/api/test-groq':
-            username = get_username(self)
-            if not username:
-                self.send_json(401, {'error': 'unauthorized'}); return
-            api_key = os.environ.get('GROQ_API_KEY', '').strip()
-            result = {'key_set': bool(api_key), 'key_prefix': api_key[:8] if api_key else ''}
-            if api_key:
-                try:
-                    test_body = json.dumps({
-                        'model': 'llama-3.3-70b-versatile',
-                        'messages': [{'role': 'user', 'content': 'Say OK'}],
-                        'max_tokens': 5,
-                        'stream': False,
-                    }).encode('utf-8')
-                    req = urllib.request.Request(
-                        'https://api.groq.com/openai/v1/chat/completions',
-                        data=test_body,
-                        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
-                    )
-                    with urllib.request.urlopen(req, timeout=20) as r:
-                        resp_data = json.loads(r.read())
-                        result['groq_ok'] = True
-                        result['response'] = resp_data.get('choices', [{}])[0].get('message', {}).get('content', '')
-                except urllib.error.HTTPError as e:
-                    result['groq_ok'] = False
-                    result['http_error'] = e.code
-                    result['error_body'] = e.read().decode('utf-8', errors='replace')[:300]
-                except Exception as e:
-                    result['groq_ok'] = False
-                    result['exception'] = f'{type(e).__name__}: {e}'
-            self.send_json(200, result)
-
         elif path == '/api/analyze':
             username = get_username(self)
             if not username:
@@ -2334,53 +2302,29 @@ async function doRecover() {
 
             full_text = []
             try:
-                import urllib.request
-                groq_url = 'https://api.groq.com/openai/v1/chat/completions'
-                groq_body = json.dumps({
-                    'model': 'llama-3.3-70b-versatile',
-                    'messages': [
+                from groq import Groq as _GroqClient, RateLimitError as _RateLimitError
+                client = _GroqClient(api_key=api_key)
+                stream = client.chat.completions.create(
+                    messages=[
                         {'role': 'system', 'content': system_prompt},
                         {'role': 'user', 'content': user_prompt},
                     ],
-                    'max_tokens': 2000,
-                    'stream': True,
-                }).encode('utf-8')
-                req = urllib.request.Request(groq_url, data=groq_body, headers={
-                    'Authorization': f'Bearer {api_key}',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'groq-python/0.13.0',
-                    'Accept': 'application/json',
-                })
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    for line in resp:
-                        line = line.decode('utf-8').strip()
-                        if line.startswith('data: ') and line != 'data: [DONE]':
-                            try:
-                                chunk_data = json.loads(line[6:])
-                                text = chunk_data['choices'][0]['delta'].get('content', '')
-                                if text:
-                                    full_text.append(text)
-                                    self.wfile.write(f'data: {json.dumps({"text": text})}\n\n'.encode('utf-8'))
-                                    self.wfile.flush()
-                            except Exception:
-                                pass
-            except urllib.error.HTTPError as e:
-                try:
-                    err_body = e.read().decode('utf-8', errors='replace')[:300]
-                except Exception:
-                    err_body = '(unreadable)'
-                print(f'[analyze] groq HTTP {e.code}: {err_body}')
-                err_key = 'err_rate_limit' if e.code == 429 else 'err_groq_failed'
-                debug_info = f'HTTP {e.code}: {err_body[:100]}'
-                self.wfile.write(f'data: {json.dumps({"error": err_key, "debug": debug_info})}\n\n'.encode('utf-8'))
-                self.wfile.flush()
-                self.wfile.write(b'data: [DONE]\n\n')
-                self.wfile.flush()
-                return
+                    model='llama-3.3-70b-versatile',
+                    max_tokens=2000,
+                    stream=True,
+                )
+                for chunk in stream:
+                    text = chunk.choices[0].delta.content or ''
+                    if text:
+                        full_text.append(text)
+                        self.wfile.write(f'data: {json.dumps({"text": text})}\n\n'.encode('utf-8'))
+                        self.wfile.flush()
             except Exception as e:
+                from groq import RateLimitError as _RateLimitError
+                err_key = 'err_rate_limit' if isinstance(e, _RateLimitError) else 'err_groq_failed'
                 debug_info = f'{type(e).__name__}: {str(e)[:150]}'
                 print(f'[analyze] groq error: {debug_info}')
-                self.wfile.write(f'data: {json.dumps({"error": "err_groq_failed", "debug": debug_info})}\n\n'.encode('utf-8'))
+                self.wfile.write(f'data: {json.dumps({"error": err_key, "debug": debug_info})}\n\n'.encode('utf-8'))
                 self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
                 self.wfile.flush()
