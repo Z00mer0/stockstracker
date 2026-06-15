@@ -1708,31 +1708,36 @@ class Handler(SimpleHTTPRequestHandler):
                     eps_up  = _gv(ann.get('epsRevisions', {}), 'upLast30days') if ann else None
                     eps_dn  = _gv(ann.get('epsRevisions', {}), 'downLast30days') if ann else None
 
-                    if price:  lines.append(f'Cena: {price:.2f} PLN')
-                    if target and price:
-                        upside = (target / price - 1) * 100
-                        lines.append(f'Cel analityków (śr.): {target:.2f} PLN ({upside:+.1f}% upside)')
-                    if rec:    lines.append(f'Rekomendacja: {rec}' + (f' ({n_buy} analityków)' if n_buy else ''))
-                    if pe:     lines.append(f'P/E trailing: {pe:.1f}x')
-                    if fwd_pe: lines.append(f'P/E forward: {fwd_pe:.1f}x')
-                    if rev:    lines.append(f'Przychody TTM: {_bfmt(rev)}')
-                    if rev_g:  lines.append(f'Wzrost przychodów r/r: {rev_g*100:.1f}%')
-                    if net_i:  lines.append(f'Zysk netto TTM: {_bfmt(net_i)}')
-                    if gm:     lines.append(f'Marża brutto: {gm*100:.1f}%')
-                    if om:     lines.append(f'Marża operacyjna: {om*100:.1f}%')
-                    if fcf:    lines.append(f'FCF TTM: {_bfmt(fcf)}')
-                    if debt and cash:
-                        net_debt = debt - cash
-                        lines.append(f'Dług netto: {_bfmt(net_debt)}')
-                    if fwd_rev: lines.append(f'Prognoza przychodów nast. rok: {_bfmt(fwd_rev)}')
-                    if eps_up is not None or eps_dn is not None:
-                        lines.append(f'Rewizje EPS 30d: ↑{eps_up or 0} ↓{eps_dn or 0}')
+                    has_fin = any(v is not None for v in [price, rev, net_i, pe, target])
+                    if has_fin:
+                        if price:  lines.append(f'Cena: {price:.2f} PLN')
+                        if target and price:
+                            upside = (target / price - 1) * 100
+                            lines.append(f'Cel analityków (śr.): {target:.2f} PLN ({upside:+.1f}% upside)')
+                        if rec:    lines.append(f'Rekomendacja: {rec}' + (f' ({n_buy} analityków)' if n_buy else ''))
+                        if pe:     lines.append(f'P/E trailing: {pe:.1f}x')
+                        if fwd_pe: lines.append(f'P/E forward: {fwd_pe:.1f}x')
+                        if rev:    lines.append(f'Przychody TTM: {_bfmt(rev)}')
+                        if rev_g:  lines.append(f'Wzrost przychodów r/r: {rev_g*100:.1f}%')
+                        if net_i:  lines.append(f'Zysk netto TTM: {_bfmt(net_i)}')
+                        if gm:     lines.append(f'Marża brutto: {gm*100:.1f}%')
+                        if om:     lines.append(f'Marża operacyjna: {om*100:.1f}%')
+                        if fcf:    lines.append(f'FCF TTM: {_bfmt(fcf)}')
+                        if debt and cash:
+                            lines.append(f'Dług netto: {_bfmt(debt - cash)}')
+                        if fwd_rev: lines.append(f'Prognoza przychodów nast. rok: {_bfmt(fwd_rev)}')
+                        if eps_up is not None or eps_dn is not None:
+                            lines.append(f'Rewizje EPS 30d: ↑{eps_up or 0} ↓{eps_dn or 0}')
+                    else:
+                        lines.append('[BRAK DANYCH FUNDAMENTALNYCH — nie podawaj żadnych liczb ani cen akcji]')
 
                     headlines = news_map.get(sym, [])
                     if headlines:
                         lines.append('Ostatnie newsy:')
                         for h in headlines:
                             lines.append(f'• {h}')
+                    else:
+                        lines.append('[BRAK NEWSÓW]')
 
                     prompt_parts.append('\n'.join(lines))
 
