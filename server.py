@@ -2520,7 +2520,7 @@ def local_ip():
 # ── DAILY SNAPSHOT SCHEDULER ──────────────────────────────────────────────────
 
 def _fetch_prices_batch(symbols):
-    """Fetch current prices for a list of symbols from Yahoo Finance v7/quote."""
+    """Batch price fetch via YF v7/finance/quote. Works for US/global stocks."""
     if not symbols:
         return {}
     url = ('https://query1.finance.yahoo.com/v7/finance/quote'
@@ -2542,12 +2542,52 @@ def _fetch_prices_batch(symbols):
                 result[sym] = float(price)
         return result
     except Exception as e:
-        print(f'[snapshot] price batch error: {e}')
+        print(f'[snapshot] v7/quote batch error: {e}')
         return {}
 
 
+def _fetch_price_chart(symbol):
+    """Single price via YF v8/chart — works for .WA stocks from Render IP."""
+    url = (f'https://query1.finance.yahoo.com/v8/finance/chart/'
+           f'{urllib.parse.quote(symbol)}?interval=1d&range=1d')
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read().decode())
+        meta = (data.get('chart', {}).get('result') or [{}])[0].get('meta', {})
+        price = meta.get('regularMarketPrice') or meta.get('chartPreviousClose')
+        return float(price) if price else None
+    except Exception as e:
+        print(f'[snapshot] chart price error {symbol}: {e}')
+        return None
+
+
+def _fetch_all_prices(symbols):
+    """
+    Fetch prices for all symbols.
+    Step 1: batch v7/quote (fast, handles US/global).
+    Step 2: individual v8/chart fallback for any still missing (handles .WA).
+    """
+    prices = {}
+    for i in range(0, len(symbols), 20):
+        prices.update(_fetch_prices_batch(symbols[i:i + 20]))
+
+    missing = [s for s in symbols if s not in prices]
+    if missing:
+        print(f'[snapshot] Chart fallback for {len(missing)} symbols: {missing}')
+        for sym in missing:
+            p = _fetch_price_chart(sym)
+            if p is not None:
+                prices[sym] = p
+
+    return prices
+
+
 def _run_daily_snapshots():
-    """Compute and save today's portfolio snapshots for all portfolios in the DB."""
+    """Compute and save today's portfolio snapshots for ALL portfolios in the DB."""
     if not DATABASE_URL:
         return
     today = datetime.date.today().isoformat()
@@ -2576,23 +2616,27 @@ def _run_daily_snapshots():
             for h in holdings:
                 all_symbols.add(h['symbol'])
 
-        # Fetch prices in batches of 20
-        syms = list(all_symbols)
-        prices = {}
-        for i in range(0, len(syms), 20):
-            prices.update(_fetch_prices_batch(syms[i:i + 20]))
-        print(f'[snapshot] Prices: {len(prices)}/{len(syms)} symbols')
+        if not all_symbols:
+            print('[snapshot] No holdings found — skipping')
+            return
+
+        # Fetch prices with .WA fallback
+        prices = _fetch_all_prices(list(all_symbols))
+        print(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
 
         # Compute and upsert snapshot per portfolio
         saved = 0
+        skipped = []
         for pid in all_pids:
             holdings = pid_holdings.get(pid, [])
-            priced = [h for h in holdings if h['symbol'] in prices]
+            priced   = [h for h in holdings if h['symbol'] in prices]
             if not priced:
+                skipped.append(pid)
                 continue
             total    = sum(float(h['qty']) * prices[h['symbol']] for h in priced)
             invested = sum(float(h['qty']) * float(h['avg_price']) for h in priced)
             if total <= 0:
+                skipped.append(pid)
                 continue
             with _conn() as conn, conn.cursor() as cur:
                 cur.execute("""
@@ -2603,28 +2647,56 @@ def _run_daily_snapshots():
                 """, (pid, today, total, invested))
             saved += 1
 
+        if skipped:
+            print(f'[snapshot] WARNING — {len(skipped)} portfolios skipped '
+                  f'(no prices available): {skipped}')
         print(f'[snapshot] Done — {saved}/{len(all_pids)} portfolios saved for {today}')
+
     except Exception as e:
         import traceback
         print(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
 
 
 def _snapshot_scheduler():
-    """Daemon thread: sleep until 22:00 Warsaw time, take snapshots, repeat daily."""
-    import threading as _threading
-    while True:
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        # Warsaw: UTC+2 (CEST Apr–Oct) or UTC+1 (CET Nov–Mar)
+    """
+    Daemon thread: sleep until 22:00 Warsaw time, take snapshots, repeat daily.
+    On startup: if server restarted after 22:00 and today has no snapshots, catch up.
+    The outer loop catches all exceptions so the thread never dies silently.
+    """
+    # Catch-up: handle server restart after 22:00
+    try:
+        now_utc  = datetime.datetime.now(datetime.timezone.utc)
         offset_h = 2 if 4 <= now_utc.month <= 10 else 1
-        now_warsaw = now_utc + datetime.timedelta(hours=offset_h)
-        target = now_warsaw.replace(hour=22, minute=0, second=0, microsecond=0)
-        if now_warsaw >= target:
-            target += datetime.timedelta(days=1)
-        wait_s = (target - now_warsaw).total_seconds()
-        print(f'[snapshot] Next run in {wait_s/3600:.1f}h '
-              f'({target.strftime("%Y-%m-%d %H:%M")} Warsaw)')
-        time.sleep(wait_s)
-        _run_daily_snapshots()
+        hour_waw = (now_utc.hour + offset_h) % 24
+        if hour_waw >= 22:
+            today = datetime.date.today().isoformat()
+            with _conn() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*) FROM portfolio_snapshots WHERE date=%s", (today,)
+                )
+                count = cur.fetchone()[0]
+            if count == 0:
+                print('[snapshot] Catchup: restarted after 22:00, no snapshot today — running now')
+                _run_daily_snapshots()
+    except Exception as e:
+        print(f'[snapshot] catchup check error: {e}')
+
+    while True:
+        try:
+            now_utc  = datetime.datetime.now(datetime.timezone.utc)
+            offset_h = 2 if 4 <= now_utc.month <= 10 else 1
+            now_waw  = now_utc + datetime.timedelta(hours=offset_h)
+            target   = now_waw.replace(hour=22, minute=0, second=0, microsecond=0)
+            if now_waw >= target:
+                target += datetime.timedelta(days=1)
+            wait_s = (target - now_waw).total_seconds()
+            print(f'[snapshot] Next run in {wait_s/3600:.1f}h '
+                  f'({target.strftime("%Y-%m-%d %H:%M")} Warsaw)')
+            time.sleep(wait_s)
+            _run_daily_snapshots()
+        except Exception as e:
+            print(f'[snapshot] scheduler loop error: {e} — retrying in 5 min')
+            time.sleep(300)
 
 
 if __name__ == '__main__':
