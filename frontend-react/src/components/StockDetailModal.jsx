@@ -255,6 +255,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const [wskaznikMounted, setWskaznikMounted] = useState(false);
   const [summaryMounted, setSummaryMounted] = useState(false);
   const [note, setNote] = useState(() => localStorage.getItem(`myfund_note_${item.symbol}`) || '');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -338,16 +339,20 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
         backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-        zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: isFullscreen ? 0 : 16,
       }}
       onClick={onClose}
     >
       <div
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--border)',
-          borderRadius: 14, width: '100%', maxWidth: 620,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-          maxHeight: '92vh', overflowY: 'auto',
+          borderRadius: isFullscreen ? 0 : 14, width: '100%',
+          maxWidth: isFullscreen ? '100%' : 620,
+          boxShadow: isFullscreen ? 'none' : '0 24px 64px rgba(0,0,0,0.5)',
+          maxHeight: isFullscreen ? '100vh' : '92vh',
+          height: isFullscreen ? '100vh' : undefined,
+          overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -373,6 +378,16 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
                 )}
               </div>
             )}
+            <button
+              onClick={() => setIsFullscreen(f => !f)}
+              title={isFullscreen ? 'Zmniejsz' : 'Pełny ekran'}
+              style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-dim)', padding: '6px 8px', lineHeight: 1, flexShrink: 0, borderRadius: 8, display: 'flex', alignItems: 'center' }}
+            >
+              {isFullscreen
+                ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              }
+            </button>
             <button
               onClick={onClose}
               style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14, padding: '6px 8px', lineHeight: 1, flexShrink: 0, borderRadius: 8 }}
