@@ -7,7 +7,7 @@ function getPlPct(p) {
   return (p.plPLN / p.costPLN) * 100;
 }
 
-export default function WinnersLosers({ positions = [] }) {
+export default function WinnersLosers({ positions = [], onSymbolClick }) {
   const t = useT();
   const withPl = positions
     .map(p => ({ ...p, _plPct: getPlPct(p) }))
@@ -30,7 +30,12 @@ export default function WinnersLosers({ positions = [] }) {
         const up = p._plPct >= 0;
         const w = max > 0 ? (Math.abs(p._plPct) / max) * 50 : 0;
         return (
-          <div className="wl-row" key={p.symbol ?? p.id}>
+          <div
+            className={'wl-row' + (onSymbolClick ? ' clickable' : '')}
+            key={p.symbol ?? p.id}
+            onClick={() => onSymbolClick?.(p)}
+            style={onSymbolClick ? { cursor: 'pointer' } : undefined}
+          >
             <div className="wl-sym">
               <TickerLogo symbol={p.symbol} size={24} />
               {p.symbol?.replace('.WA', '')}

@@ -444,7 +444,7 @@ export default function Dashboard() {
               <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('returns_pct')}</span>
             </div>
             <div style={{ padding: '16px 20px' }}>
-              <WinnersLosers positions={allPositions} />
+              <WinnersLosers positions={allPositions} onSymbolClick={setSelectedStock} />
             </div>
           </div>
         </div>
