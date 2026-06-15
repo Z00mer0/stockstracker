@@ -682,7 +682,7 @@ export default function FinancialsTab({ symbol, livePrice }) {
 
           {/* Screenshot — secondary (requires API) */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-            <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 4, fontSize: 10 }}>📎 Ze screenshota (wymaga Anthropic API)</div>
+            <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 4, fontSize: 10 }}>📎 Ze screenshota (wizja AI)</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button
                 onClick={() => fileRef.current?.click()}

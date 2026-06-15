@@ -130,7 +130,7 @@ export default function SummaryTab({ symbol, livePrice }) {
           )}
           {!summaryError && (
             <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>
-              Claude AI · cache 7 dni
+              Groq AI · cache 7 dni
             </div>
           )}
         </div>

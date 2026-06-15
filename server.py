@@ -1463,19 +1463,19 @@ class Handler(SimpleHTTPRequestHandler):
                 'Nie używaj nagłówków ani wypunktowań. Bądź konkretny i obiektywny.'
             )
 
-            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            api_key = os.environ.get('GROQ_API_KEY', '').strip()
             if not api_key:
                 self.send_json(503, {'error': 'AI unavailable'}); return
 
             try:
-                import anthropic as _anthropic
-                client = _anthropic.Anthropic(api_key=api_key)
-                msg = client.messages.create(
-                    model='claude-sonnet-4-6',
+                from groq import Groq as _GroqClient
+                client = _GroqClient(api_key=api_key)
+                resp = client.chat.completions.create(
+                    model='llama-3.3-70b-versatile',
                     max_tokens=600,
-                    messages=[{'role': 'user', 'content': prompt}]
+                    messages=[{'role': 'user', 'content': prompt}],
                 )
-                text = msg.content[0].text
+                text = resp.choices[0].message.content
                 try:
                     with _conn() as conn, conn.cursor() as cur:
                         cur.execute("""
@@ -1488,12 +1488,8 @@ class Handler(SimpleHTTPRequestHandler):
                     print(f'[summary/cache_write] {e}')
                 self.send_json(200, {'summary': text})
             except Exception as e:
-                err_str = str(e)
-                print(f'[summary/anthropic] {type(e).__name__}: {err_str}')
-                if 'credit balance' in err_str or 'billing' in err_str.lower():
-                    self.send_json(402, {'error': 'Brak kredytów Anthropic — doładuj konto na console.anthropic.com'})
-                else:
-                    self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
+                print(f'[summary/groq] {type(e).__name__}: {e}')
+                self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
 
         elif path == '/api/wig20-quote':
             # Public endpoint — no auth required (used on login screen)
@@ -1630,7 +1626,7 @@ class Handler(SimpleHTTPRequestHandler):
                 wa_syms = [s.strip().upper() for s in raw.split(',') if s.strip().upper().endswith('.WA')][:8]
                 if not wa_syms:
                     self.send_json(200, {'items': []}); return
-                api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+                api_key = os.environ.get('GROQ_API_KEY', '').strip()
                 if not api_key:
                     self.send_json(503, {'error': 'AI unavailable'}); return
                 cache_key = ','.join(sorted(wa_syms))
@@ -1659,8 +1655,8 @@ class Handler(SimpleHTTPRequestHandler):
                 summaries = {}
                 if syms_with_news:
                     try:
-                        import anthropic as _a
-                        client = _a.Anthropic(api_key=api_key)
+                        from groq import Groq as _GroqClient
+                        client = _GroqClient(api_key=api_key)
                         prompt_parts = []
                         for sym, hl in syms_with_news:
                             bullet = '\n'.join(f'• {h}' for h in hl)
@@ -1672,12 +1668,12 @@ class Handler(SimpleHTTPRequestHandler):
                             'TICKER: [treść]\n\n'
                             + '\n\n'.join(prompt_parts)
                         )
-                        msg = client.messages.create(
-                            model='claude-sonnet-4-6',
+                        resp = client.chat.completions.create(
+                            model='llama-3.3-70b-versatile',
                             max_tokens=800,
                             messages=[{'role': 'user', 'content': prompt}],
                         )
-                        for line in msg.content[0].text.strip().splitlines():
+                        for line in resp.choices[0].message.content.strip().splitlines():
                             if ':' in line:
                                 ticker, _, text = line.partition(':')
                                 ticker = ticker.strip().upper()
@@ -2102,12 +2098,12 @@ async function doRecover() {
                     self.send_json(400, {'error': 'invalid image_b64'}); return
             except ValueError as e:
                 self.send_json(400, {'error': str(e)}); return
-            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            api_key = os.environ.get('GROQ_API_KEY', '').strip()
             if not api_key:
-                self.send_json(503, {'error': 'ANTHROPIC_API_KEY not configured'}); return
+                self.send_json(503, {'error': 'GROQ_API_KEY not configured'}); return
             try:
-                import anthropic as _anthropic
-                client = _anthropic.Anthropic(api_key=api_key)
+                from groq import Groq as _GroqClient
+                client = _GroqClient(api_key=api_key)
                 prompt = (
                     f'Parse the financial table in this screenshot for stock {symbol}. '
                     f'Extract {period} financial data. Return ONLY a JSON object with this exact schema '
@@ -2135,18 +2131,18 @@ async function doRecover() {
                     _media_type = 'image/webp'
                 else:
                     _media_type = 'image/png'
-                msg = client.messages.create(
-                    model='claude-sonnet-4-6',
+                resp = client.chat.completions.create(
+                    model='meta-llama/llama-4-scout-17b-16e-instruct',
                     max_tokens=4096,
                     messages=[{
                         'role': 'user',
                         'content': [
-                            {'type': 'image', 'source': {'type': 'base64', 'media_type': _media_type, 'data': image_b64}},
+                            {'type': 'image_url', 'image_url': {'url': f'data:{_media_type};base64,{image_b64}'}},
                             {'type': 'text', 'text': prompt},
                         ],
                     }],
                 )
-                text = msg.content[0].text.strip()
+                text = resp.choices[0].message.content.strip()
                 if text.startswith('```'):
                     parts = text.split('\n', 1)
                     if len(parts) < 2:
