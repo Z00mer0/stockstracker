@@ -276,12 +276,23 @@ export default function Dashboard() {
   }, [allPositions, kpi.totalValue]);
 
   const snapshotsFiltered = useMemo(() => {
-    const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+    const today = new Date().toISOString().slice(0, 10);
+    let sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+    // Always inject today's live value so current period has an endpoint
+    if (kpi.totalValue > 0 && (sorted.length === 0 || sorted[sorted.length - 1].date !== today)) {
+      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null }];
+    }
     if (tf === 'MAX') return sorted;
     const days = { '1T': 7, '1M': 30, '3M': 90, '6M': 180, '1R': 365 }[tf] || 30;
     const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-    return sorted.filter(s => s.date >= cutoff);
-  }, [snapshots, tf]);
+    const inRange = sorted.filter(s => s.date >= cutoff);
+    // If fewer than 2 points in range, prepend the last known snapshot before cutoff as anchor
+    if (inRange.length < 2) {
+      const before = sorted.filter(s => s.date < cutoff);
+      if (before.length > 0) return [before[before.length - 1], ...inRange];
+    }
+    return inRange;
+  }, [snapshots, tf, kpi.totalValue, invested]);
 
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
