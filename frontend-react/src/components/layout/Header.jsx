@@ -146,6 +146,24 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef(null);
   const inputRef = useRef(null);
+  const tickerRef = useRef(null);
+  const dragRef = useRef({ active: false, startX: 0, scrollLeft: 0 });
+
+  function handleTickerMouseDown(e) {
+    const el = tickerRef.current;
+    dragRef.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+    el.style.cursor = 'grabbing';
+  }
+  function handleTickerMouseMove(e) {
+    if (!dragRef.current.active) return;
+    e.preventDefault();
+    const el = tickerRef.current;
+    el.scrollLeft = dragRef.current.scrollLeft - (e.pageX - el.offsetLeft - dragRef.current.startX);
+  }
+  function handleTickerMouseUp() {
+    dragRef.current.active = false;
+    if (tickerRef.current) tickerRef.current.style.cursor = 'grab';
+  }
 
   useEffect(() => {
     const id = setInterval(() => setMarkets(getMarketStatuses()), 60000);
@@ -289,25 +307,37 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         )}
       </div>
 
-      {/* Ticker strip — hidden on mobile */}
-      {!isMobile && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 18, overflow: 'hidden' }}>
-          {tickers.map(tick => (
-            <div key={tick.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
-              <span className="mono" style={{ fontSize: 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
-              {tick.delta != null && (
-                <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                  {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Spacer on mobile */}
-      {isMobile && <div style={{ flex: 1 }} />}
+      {/* Ticker strip — scrollable everywhere */}
+      <div
+        ref={tickerRef}
+        className="no-scrollbar"
+        onMouseDown={handleTickerMouseDown}
+        onMouseMove={handleTickerMouseMove}
+        onMouseUp={handleTickerMouseUp}
+        onMouseLeave={handleTickerMouseUp}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? 14 : 18,
+          overflowX: 'auto',
+          cursor: 'grab',
+          userSelect: 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {tickers.map(tick => (
+          <div key={tick.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
+            <span className="mono" style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
+            {tick.delta != null && (
+              <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Market status dots — hidden on mobile */}
       {!isMobile && (

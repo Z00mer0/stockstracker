@@ -67,6 +67,9 @@ body {
 ::-webkit-scrollbar-thumb    { background: var(--border-strong); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* ── Typography helpers ── */
 .mono {
   font-family: 'JetBrains Mono', 'Fira Mono', monospace;
