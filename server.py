@@ -1635,8 +1635,9 @@ class Handler(SimpleHTTPRequestHandler):
                     self.send_json(200, cached['data']); return
                 import concurrent.futures as _cf
                 def _fetch_yf_news(sym):
+                    ticker_base = sym.replace('.WA', '').upper()
                     url = (f'https://query1.finance.yahoo.com/v1/finance/search'
-                           f'?q={sym}&newsCount=5&quotesCount=0&lang=pl-PL&region=PL')
+                           f'?q={sym}&newsCount=8&quotesCount=0&lang=pl-PL&region=PL')
                     req = urllib.request.Request(url, headers={
                         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:125.0)',
                         'Accept': 'application/json',
@@ -1644,7 +1645,9 @@ class Handler(SimpleHTTPRequestHandler):
                     try:
                         with urllib.request.urlopen(req, timeout=8) as r:
                             data = json.loads(r.read().decode())
-                        return [n['title'] for n in data.get('news', []) if n.get('title')][:4]
+                        all_titles = [n['title'] for n in data.get('news', []) if n.get('title')]
+                        relevant = [h for h in all_titles if ticker_base in h.upper()]
+                        return relevant[:4]
                     except Exception as e:
                         print(f'[espi/yf_news] {sym}: {e}')
                         return []
@@ -1747,18 +1750,33 @@ class Handler(SimpleHTTPRequestHandler):
                         from groq import Groq as _GroqClient
                         client = _GroqClient(api_key=api_key)
                         prompt = (
-                            'Jesteś doświadczonym analitykiem giełdowym GPW. '
-                            'Napisz dla każdej spółki profesjonalne podsumowanie inwestycyjne (4-6 zdań) po polsku.\n'
-                            'WAŻNE: Używaj WYŁĄCZNIE danych podanych poniżej. NIE wymyślaj liczb, cen ani wskaźników. '
-                            'Jeśli dane finansowe nie są podane, skup się na newsach i ogólnej charakterystyce spółki. '
-                            'Jeśli nie masz żadnych danych — napisz co wiesz o spółce z wiedzy ogólnej bez konkretnych liczb.\n'
-                            'Pisz obiektywnie: kondycja finansowa, perspektywy wzrostu, główne ryzyko/szansa.\n\n'
-                            'Format: każda spółka zaczyna się od "TICKER.WA: " na początku linii.\n\n'
+                            'Jesteś doświadczonym analitykiem sell-side specjalizującym się w GPW '
+                            '(Giełdzie Papierów Wartościowych w Warszawie).\n'
+                            'Napisz dla każdej z poniższych spółek GPW profesjonalne, '
+                            'samodzielne podsumowanie inwestycyjne w języku polskim.\n\n'
+                            'ZASADY (przestrzegaj ściśle):\n'
+                            '1. Każde podsumowanie: 5-6 zdań, SAMODZIELNE — nie odwołuj się do innych spółek z listy.\n'
+                            '2. Obowiązkowa struktura: (a) model biznesowy i pozycja rynkowa, '
+                            '(b) przewagi konkurencyjne lub moat, '
+                            '(c) kondycja finansowa lub perspektywy wzrostu, '
+                            '(d) główna szansa, (e) główne ryzyko.\n'
+                            '3. UŻYWAJ swojej wiedzy ogólnej o spółkach GPW: historia, produkty, '
+                            'segment, konkurencja, otoczenie branżowe — to jest pożądane.\n'
+                            '4. ZAKAZ podawania konkretnych liczb (cena akcji, P/E, przychody, '
+                            'EBITDA, marże) — chyba że są podane wprost w danych poniżej.\n'
+                            '5. Jeśli podano dane finansowe — odnieś się do nich i skomentuj '
+                            '(wzrost/spadek, siła bilansu, jakość FCF).\n'
+                            '6. Jeśli podano nagłówki newsów — uwzględnij TYLKO wyraźnie '
+                            'powiązane z daną spółką; pomiń niezwiązane.\n'
+                            '7. Pisz obiektywnie. Bez przesadnego optymizmu ani pesymizmu.\n\n'
+                            'FORMAT: Każda spółka MUSI zaczynać się dokładnie od "TICKER.WA: " '
+                            'na początku nowej linii (np. "CDR.WA: ..."). '
+                            'Bez numeracji, bez gwiazdek, bez nagłówków markdown.\n\n'
                             + '\n\n'.join(prompt_parts)
                         )
                         resp = client.chat.completions.create(
                             model='llama-3.3-70b-versatile',
-                            max_tokens=2500,
+                            max_tokens=4000,
                             messages=[{'role': 'user', 'content': prompt}],
                         )
                         current_sym = None
