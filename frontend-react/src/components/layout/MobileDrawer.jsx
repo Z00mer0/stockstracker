@@ -2,12 +2,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { useT } from '../../context/LanguageContext';
+import { useT, useLanguage } from '../../context/LanguageContext';
 import { getNavItems } from './navItems.jsx';
 
 export default function MobileDrawer({ isOpen, onClose }) {
   const { displayName, logout } = useApp();
   const t = useT();
+  const { language, toggle: toggleLanguage } = useLanguage();
   const NAV_ITEMS = getNavItems(t);
 
   function handleLogout() {
@@ -70,17 +71,26 @@ export default function MobileDrawer({ isOpen, onClose }) {
           ))}
         </nav>
 
-        {/* Stopka — użytkownik + wyloguj */}
+        {/* Stopka — użytkownik + wyloguj + język */}
         <div className="px-5 py-4 border-t border-slate-800">
           {displayName && (
             <p className="text-xs text-slate-500 mb-3 truncate">{displayName}</p>
           )}
-          <button
-            onClick={handleLogout}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            {t('logout')}
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <span className="text-lg leading-none">{language === 'pl' ? '🇬🇧' : '🇵🇱'}</span>
+              <span>{language === 'pl' ? 'English' : 'Polski'}</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              {t('logout')}
+            </button>
+          </div>
         </div>
       </aside>
     </>
