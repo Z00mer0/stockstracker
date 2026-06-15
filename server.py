@@ -2517,7 +2517,124 @@ def local_ip():
         s.close()
 
 
+# ── DAILY SNAPSHOT SCHEDULER ──────────────────────────────────────────────────
+
+def _fetch_prices_batch(symbols):
+    """Fetch current prices for a list of symbols from Yahoo Finance v7/quote."""
+    if not symbols:
+        return {}
+    url = ('https://query1.finance.yahoo.com/v7/finance/quote'
+           f'?symbols={urllib.parse.quote(",".join(symbols))}'
+           '&fields=regularMarketPrice')
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.loads(r.read().decode())
+        result = {}
+        for q in data.get('quoteResponse', {}).get('result', []):
+            sym = q.get('symbol', '')
+            price = q.get('regularMarketPrice')
+            if sym and price is not None:
+                result[sym] = float(price)
+        return result
+    except Exception as e:
+        print(f'[snapshot] price batch error: {e}')
+        return {}
+
+
+def _run_daily_snapshots():
+    """Compute and save today's portfolio snapshots for all portfolios in the DB."""
+    if not DATABASE_URL:
+        return
+    today = datetime.date.today().isoformat()
+    print(f'[snapshot] Starting daily snapshot job — {today}')
+    try:
+        with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id FROM portfolio_list")
+            all_pids = [r['id'] for r in cur.fetchall()]
+
+        if not all_pids:
+            print('[snapshot] No portfolios — skipping')
+            return
+
+        # Load holdings for each portfolio, collect all unique symbols
+        pid_holdings = {}
+        all_symbols = set()
+        for pid in all_pids:
+            with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT symbol, qty, avg_price FROM portfolio_holdings "
+                    "WHERE portfolio_id=%s AND qty>0",
+                    (pid,)
+                )
+                holdings = list(cur.fetchall())
+            pid_holdings[pid] = holdings
+            for h in holdings:
+                all_symbols.add(h['symbol'])
+
+        # Fetch prices in batches of 20
+        syms = list(all_symbols)
+        prices = {}
+        for i in range(0, len(syms), 20):
+            prices.update(_fetch_prices_batch(syms[i:i + 20]))
+        print(f'[snapshot] Prices: {len(prices)}/{len(syms)} symbols')
+
+        # Compute and upsert snapshot per portfolio
+        saved = 0
+        for pid in all_pids:
+            holdings = pid_holdings.get(pid, [])
+            priced = [h for h in holdings if h['symbol'] in prices]
+            if not priced:
+                continue
+            total    = sum(float(h['qty']) * prices[h['symbol']] for h in priced)
+            invested = sum(float(h['qty']) * float(h['avg_price']) for h in priced)
+            if total <= 0:
+                continue
+            with _conn() as conn, conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (portfolio_id, date) DO UPDATE
+                        SET total=EXCLUDED.total, invested=EXCLUDED.invested
+                """, (pid, today, total, invested))
+            saved += 1
+
+        print(f'[snapshot] Done — {saved}/{len(all_pids)} portfolios saved for {today}')
+    except Exception as e:
+        import traceback
+        print(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
+
+
+def _snapshot_scheduler():
+    """Daemon thread: sleep until 22:00 Warsaw time, take snapshots, repeat daily."""
+    import threading as _threading
+    while True:
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        # Warsaw: UTC+2 (CEST Apr–Oct) or UTC+1 (CET Nov–Mar)
+        offset_h = 2 if 4 <= now_utc.month <= 10 else 1
+        now_warsaw = now_utc + datetime.timedelta(hours=offset_h)
+        target = now_warsaw.replace(hour=22, minute=0, second=0, microsecond=0)
+        if now_warsaw >= target:
+            target += datetime.timedelta(days=1)
+        wait_s = (target - now_warsaw).total_seconds()
+        print(f'[snapshot] Next run in {wait_s/3600:.1f}h '
+              f'({target.strftime("%Y-%m-%d %H:%M")} Warsaw)')
+        time.sleep(wait_s)
+        _run_daily_snapshots()
+
+
 if __name__ == '__main__':
+    if DATABASE_URL:
+        import threading as _threading
+        _snap_thread = _threading.Thread(
+            target=_snapshot_scheduler, daemon=True, name='snapshot-scheduler'
+        )
+        _snap_thread.start()
+
     server = HTTPServer(('0.0.0.0', PORT), Handler)
     ip = local_ip()
     print('StocksTracker server działa:')
