@@ -26,6 +26,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
   const { locale } = useLanguage();
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
+  const [hoverIdx, setHoverIdx] = useState(null);
 
   useEffect(() => {
     const obs = new ResizeObserver(([e]) => setWidth(Math.floor(e.contentRect.width)));
@@ -112,8 +113,17 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
       return xScale(arr[li + 1].i) - xScale(dl.i) >= MIN_LABEL_GAP;
     });
 
+  const handleMouseMove = (e) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mx = (e.clientX - rect.left) * (width / rect.width);
+    const relX = mx - CM.left;
+    if (relX < 0 || relX > chartW) { setHoverIdx(null); return; }
+    setHoverIdx(Math.max(0, Math.min(filtered.length - 1, Math.round((relX / chartW) * (filtered.length - 1)))));
+  };
+
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
       {showBench && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 4, paddingLeft: CM.left, fontSize: 10 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -182,7 +192,49 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
             </text>
           );
         })}
+        {hoverIdx !== null && (
+          <line
+            x1={xScale(hoverIdx)} y1={CM.top}
+            x2={xScale(hoverIdx)} y2={CM.top + CHART_H}
+            stroke="var(--border)" strokeWidth={1} strokeDasharray="3,2"
+          />
+        )}
+        {hoverIdx !== null && (
+          <circle cx={xScale(hoverIdx)} cy={yScale(stockValues[hoverIdx])} r={4} fill={lineColor} stroke="var(--bg-2)" strokeWidth={2} />
+        )}
       </svg>
+      {hoverIdx !== null && (() => {
+        const d = filtered[hoverIdx];
+        const x = xScale(hoverIdx);
+        const tooltipLeft = x + 10 + 110 < width ? x + 10 : x - 120;
+        return (
+          <div style={{
+            position: 'absolute', top: CM.top + 4, left: tooltipLeft,
+            background: 'var(--bg-2)', border: '1px solid var(--border)',
+            borderRadius: 6, padding: '6px 10px', fontSize: 11,
+            pointerEvents: 'none', zIndex: 10, minWidth: 100,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}>
+            <div style={{ color: 'var(--text-faint)', marginBottom: 3 }}>
+              {d.date.slice(5).split('-').reverse().join('.')}
+            </div>
+            <div style={{ color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+              {showBench
+                ? (stockValues[hoverIdx] >= 0 ? '+' : '') + stockValues[hoverIdx].toFixed(2) + '%'
+                : d.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            {hasVol && d.volume > 0 && (
+              <div style={{ color: 'var(--text-faint)', marginTop: 2 }}>
+                {d.volume >= 1_000_000
+                  ? (d.volume / 1_000_000).toFixed(1) + 'M'
+                  : d.volume >= 1000
+                  ? Math.round(d.volume / 1000) + 'K'
+                  : String(d.volume)}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -377,7 +429,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
 
         {/* Wykres tab */}
         {activeTab === 'wykres' && (
-        <div style={{ padding: '10px 22px 0' }}>
+        <div style={{ padding: '10px 22px 22px' }}>
           {chartLoading ? (
             <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('loading')}</span>
