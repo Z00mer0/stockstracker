@@ -147,7 +147,23 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
   const searchRef = useRef(null);
   const inputRef = useRef(null);
   const tickerRef = useRef(null);
+  const tickerPaused = useRef(false);
   const dragRef = useRef({ active: false, startX: 0, scrollLeft: 0 });
+
+  // Auto-scroll RAF loop
+  useEffect(() => {
+    let frameId;
+    function tick() {
+      const el = tickerRef.current;
+      if (el && !tickerPaused.current && !dragRef.current.active) {
+        el.scrollLeft += 0.6;
+        if (el.scrollLeft >= el.scrollWidth / 2) el.scrollLeft = 0;
+      }
+      frameId = requestAnimationFrame(tick);
+    }
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
 
   function handleTickerMouseDown(e) {
     const el = tickerRef.current;
@@ -307,14 +323,17 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         )}
       </div>
 
-      {/* Ticker strip — scrollable everywhere */}
+      {/* Ticker strip — auto-scrolling, pauseable, draggable */}
       <div
         ref={tickerRef}
         className="no-scrollbar"
+        onMouseEnter={() => { tickerPaused.current = true; }}
+        onMouseLeave={() => { tickerPaused.current = false; handleTickerMouseUp(); }}
         onMouseDown={handleTickerMouseDown}
         onMouseMove={handleTickerMouseMove}
         onMouseUp={handleTickerMouseUp}
-        onMouseLeave={handleTickerMouseUp}
+        onTouchStart={() => { tickerPaused.current = true; }}
+        onTouchEnd={() => { setTimeout(() => { tickerPaused.current = false; }, 2000); }}
         style={{
           flex: 1,
           display: 'flex',
@@ -326,8 +345,8 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
           WebkitOverflowScrolling: 'touch',
         }}
       >
-        {tickers.map(tick => (
-          <div key={tick.key} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+        {[...tickers, ...tickers].map((tick, i) => (
+          <div key={`${tick.key}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
             <span className="mono" style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
             {tick.delta != null && (
