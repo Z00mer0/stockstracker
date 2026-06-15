@@ -1644,43 +1644,138 @@ class Handler(SimpleHTTPRequestHandler):
                     try:
                         with urllib.request.urlopen(req, timeout=8) as r:
                             data = json.loads(r.read().decode())
-                        return [n['title'] for n in data.get('news', []) if n.get('title')][:5]
+                        return [n['title'] for n in data.get('news', []) if n.get('title')][:4]
                     except Exception as e:
-                        print(f'[espi/yf] {sym}: {e}')
+                        print(f'[espi/yf_news] {sym}: {e}')
                         return []
+                def _fetch_yf_fin(sym):
+                    try:
+                        return _yf_quotesummary(sym, 'financialData,defaultKeyStatistics,summaryDetail,assetProfile,earningsTrend')
+                    except Exception as e:
+                        print(f'[espi/yf_fin] {sym}: {e}')
+                        return {}
                 with _cf.ThreadPoolExecutor(max_workers=8) as ex:
-                    news_list = list(ex.map(_fetch_yf_news, wa_syms))
+                    news_futures = [ex.submit(_fetch_yf_news, s) for s in wa_syms]
+                    fin_futures  = [ex.submit(_fetch_yf_fin, s)  for s in wa_syms]
+                    news_list = [f.result() for f in news_futures]
+                    fin_list  = [f.result() for f in fin_futures]
                 news_map = dict(zip(wa_syms, news_list))
-                syms_with_news = [(s, news_map[s]) for s in wa_syms if news_map[s]]
+                fin_map  = dict(zip(wa_syms, fin_list))
+
+                def _gv(d, k):
+                    v = d.get(k)
+                    return v.get('raw') if isinstance(v, dict) else v
+                def _bfmt(v):
+                    if v is None: return None
+                    av = abs(v)
+                    if av >= 1e9: return f'{v/1e9:.2f}B'
+                    if av >= 1e6: return f'{v/1e6:.1f}M'
+                    return f'{v:.2f}'
+
+                prompt_parts = []
+                for sym in wa_syms:
+                    fd    = fin_map.get(sym) or {}
+                    fdata = fd.get('financialData', {})
+                    kstat = fd.get('defaultKeyStatistics', {})
+                    sdet  = fd.get('summaryDetail', {})
+                    prof  = fd.get('assetProfile', {})
+                    trend = fd.get('earningsTrend', {}).get('trend', [])
+
+                    lines = [f'## {sym}']
+                    if prof.get('industry'):
+                        lines.append(f'Branża: {prof["industry"]}')
+                    desc = prof.get('longBusinessSummary', '')
+                    if desc:
+                        lines.append(f'Opis: {desc[:250]}')
+
+                    price  = _gv(fdata, 'currentPrice') or _gv(sdet, 'regularMarketPrice')
+                    target = _gv(fdata, 'targetMeanPrice')
+                    rec    = fdata.get('recommendationKey', '')
+                    n_buy  = _gv(fdata, 'numberOfAnalystOpinions')
+                    pe     = _gv(sdet, 'trailingPE') or _gv(kstat, 'trailingPE')
+                    fwd_pe = _gv(kstat, 'forwardPE')
+                    rev    = _gv(fdata, 'totalRevenue')
+                    net_i  = _gv(fdata, 'netIncomeToCommon')
+                    fcf    = _gv(fdata, 'freeCashflow')
+                    gm     = _gv(fdata, 'grossMargins')
+                    om     = _gv(fdata, 'operatingMargins')
+                    debt   = _gv(fdata, 'totalDebt')
+                    cash   = _gv(fdata, 'totalCash')
+                    rev_g  = _gv(fdata, 'revenueGrowth')
+
+                    ann = next((t for t in trend if t.get('period') in ('0y', '+1y')), None)
+                    fwd_rev = _gv(ann.get('revenueEstimate', {}), 'avg') if ann else None
+                    eps_up  = _gv(ann.get('epsRevisions', {}), 'upLast30days') if ann else None
+                    eps_dn  = _gv(ann.get('epsRevisions', {}), 'downLast30days') if ann else None
+
+                    if price:  lines.append(f'Cena: {price:.2f} PLN')
+                    if target and price:
+                        upside = (target / price - 1) * 100
+                        lines.append(f'Cel analityków (śr.): {target:.2f} PLN ({upside:+.1f}% upside)')
+                    if rec:    lines.append(f'Rekomendacja: {rec}' + (f' ({n_buy} analityków)' if n_buy else ''))
+                    if pe:     lines.append(f'P/E trailing: {pe:.1f}x')
+                    if fwd_pe: lines.append(f'P/E forward: {fwd_pe:.1f}x')
+                    if rev:    lines.append(f'Przychody TTM: {_bfmt(rev)}')
+                    if rev_g:  lines.append(f'Wzrost przychodów r/r: {rev_g*100:.1f}%')
+                    if net_i:  lines.append(f'Zysk netto TTM: {_bfmt(net_i)}')
+                    if gm:     lines.append(f'Marża brutto: {gm*100:.1f}%')
+                    if om:     lines.append(f'Marża operacyjna: {om*100:.1f}%')
+                    if fcf:    lines.append(f'FCF TTM: {_bfmt(fcf)}')
+                    if debt and cash:
+                        net_debt = debt - cash
+                        lines.append(f'Dług netto: {_bfmt(net_debt)}')
+                    if fwd_rev: lines.append(f'Prognoza przychodów nast. rok: {_bfmt(fwd_rev)}')
+                    if eps_up is not None or eps_dn is not None:
+                        lines.append(f'Rewizje EPS 30d: ↑{eps_up or 0} ↓{eps_dn or 0}')
+
+                    headlines = news_map.get(sym, [])
+                    if headlines:
+                        lines.append('Ostatnie newsy:')
+                        for h in headlines:
+                            lines.append(f'• {h}')
+
+                    prompt_parts.append('\n'.join(lines))
+
                 summaries = {}
-                if syms_with_news:
+                if prompt_parts:
                     try:
                         from groq import Groq as _GroqClient
                         client = _GroqClient(api_key=api_key)
-                        prompt_parts = []
-                        for sym, hl in syms_with_news:
-                            bullet = '\n'.join(f'• {h}' for h in hl)
-                            prompt_parts.append(f'## {sym}\n{bullet}')
                         prompt = (
-                            'Jesteś analitykiem finansowym GPW. Poniżej informacje prasowe dla kilku spółek.\n'
-                            'Dla KAŻDEJ spółki napisz DOKŁADNIE 2 zdania po polsku: kluczowe fakty i ryzyko/szansa dla inwestora.\n'
-                            'Format odpowiedzi — każda spółka w osobnej linii:\n'
-                            'TICKER: [treść]\n\n'
+                            'Jesteś doświadczonym analitykiem giełdowym GPW. '
+                            'Na podstawie danych fundamentalnych i newsów napisz dla każdej spółki '
+                            'profesjonalne podsumowanie inwestycyjne (4-6 zdań) po polsku. '
+                            'Uwzględnij: kondycję finansową, wycenę vs. cel analityków, perspektywy i główne ryzyko. '
+                            'Bądź konkretny — cytuj liczby. Pisz obiektywnie jak analityk sell-side.\n\n'
+                            'Format: każda spółka zaczyna się od "TICKER.WA: " na początku linii.\n\n'
                             + '\n\n'.join(prompt_parts)
                         )
                         resp = client.chat.completions.create(
                             model='llama-3.3-70b-versatile',
-                            max_tokens=800,
+                            max_tokens=2500,
                             messages=[{'role': 'user', 'content': prompt}],
                         )
+                        current_sym = None
+                        current_buf = []
+                        def _flush(sym, buf):
+                            if sym and buf:
+                                summaries[sym] = ' '.join(buf).strip()
                         for line in resp.choices[0].message.content.strip().splitlines():
-                            if ':' in line:
-                                ticker, _, text = line.partition(':')
-                                ticker = ticker.strip().upper()
-                                for s in wa_syms:
-                                    if s == ticker or s.replace('.WA', '') == ticker:
-                                        summaries[s] = text.strip()
-                                        break
+                            matched = None
+                            for s in wa_syms:
+                                pfx1 = s + ':'
+                                pfx2 = s.replace('.WA', '') + '.WA:'
+                                pfx3 = s.replace('.WA', '') + ':'
+                                if line.upper().startswith(pfx1) or line.upper().startswith(pfx2) or line.upper().startswith(pfx3):
+                                    matched = s; break
+                            if matched:
+                                _flush(current_sym, current_buf)
+                                current_sym = matched
+                                after = line.partition(':')[2].strip()
+                                current_buf = [after] if after else []
+                            elif current_sym and line.strip():
+                                current_buf.append(line.strip())
+                        _flush(current_sym, current_buf)
                     except Exception as _ai_e:
                         print(f'[espi/ai] {_ai_e}')
                 items = [
