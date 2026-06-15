@@ -62,6 +62,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.kpi-pro.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.kpi-pro.clickable:hover {
+  border-color: color-mix(in oklab, var(--accent), transparent 60%);
+  background: color-mix(in oklab, var(--panel), var(--accent) 4%);
+}
+.insight.clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 8px;
+}
+.insight.clickable:hover {
+  background: var(--panel-2);
+}
+.mover-row.clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mover-row.clickable:hover {
+  background: var(--panel-2);
+}
 .kpi-pro.hero {
   background: linear-gradient(160deg,
     color-mix(in oklab, var(--accent), transparent 92%),

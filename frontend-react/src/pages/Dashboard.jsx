@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
+import StockDetailModal from '../components/StockDetailModal';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import Sparkline from '../components/shared/Sparkline';
@@ -102,15 +104,19 @@ function renderCellDash(key, pos, isPrivate, locale = 'pl-PL') {
 
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, displayName, displayCurrency } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, displayName, displayCurrency, addPosition, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
+  const navigate = useNavigate();
   const fmtN = (n, decimals = 2) => fmt(n, decimals, locale);
   const [cols] = useState(loadColumnConfig);
   const [tf, setTf] = useState('MAX');
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [showCashModal, setShowCashModal] = useState(false);
+  const [cashEdit, setCashEdit] = useState({});
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
@@ -313,7 +319,7 @@ export default function Dashboard() {
 
       {/* InsightStrip */}
       {allPositions.length > 0 && (
-        <InsightStrip positions={allPositions} dailyChangePLN={dailyChange.pln} />
+        <InsightStrip positions={allPositions} dailyChangePLN={dailyChange.pln} onSymbolClick={setSelectedStock} />
       )}
 
       {/* KPI grid */}
@@ -328,6 +334,7 @@ export default function Dashboard() {
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={dailyChange.pln >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+          onClick={() => navigate('/portfolio')}
         />
         <KpiPro
           label={t('gain_loss')}
@@ -339,6 +346,7 @@ export default function Dashboard() {
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={kpi.unrealPLN >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>}
+          onClick={() => navigate('/portfolio')}
         />
         <KpiPro
           label={t('dividends_ytd')}
@@ -346,6 +354,7 @@ export default function Dashboard() {
           sub={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
           spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>}
+          onClick={() => navigate('/dividends')}
         />
         <KpiPro
           label={t('free_cash')}
@@ -355,6 +364,7 @@ export default function Dashboard() {
           sub={t('account_pln')}
           spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>}
+          onClick={() => { setCashEdit({ ...cash }); setShowCashModal(true); }}
         />
       </div>
 
@@ -396,7 +406,7 @@ export default function Dashboard() {
             {[...topMovers.gainers, ...topMovers.losers].length === 0
               ? <p style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-faint)' }}>{isWeekend ? t('market_closed') : t('no_data')}</p>
               : [...topMovers.gainers, ...topMovers.losers].map(pos => (
-                <div key={pos.symbol} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
+                <div key={pos.symbol} className="mover-row clickable" onClick={() => setSelectedStock(pos)} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
                   <TickerLogo symbol={pos.symbol} size={28} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
@@ -445,6 +455,46 @@ export default function Dashboard() {
           <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
           <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('no_portfolio_data')}</p>
           <p style={{ fontSize: 14, marginTop: 4 }}>{t('add_positions_hint')}</p>
+        </div>
+      )}
+
+      {selectedStock && (
+        <StockDetailModal
+          item={selectedStock}
+          existingPortfolio={portfolio}
+          onSave={async (data) => { await addPosition(data); refresh(); }}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
+
+      {showCashModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setShowCashModal(false)}>
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, minWidth: 280, maxWidth: 360 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>{t('free_cash')}</div>
+            {Object.keys(cashEdit).length === 0 && <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 12 }}>Brak walut — dodaj wartość poniżej.</p>}
+            {['PLN', 'USD', 'EUR', 'GBP'].map(cur => (
+              <div key={cur} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 36 }}>{cur}</span>
+                <input
+                  type="number"
+                  className="field-input"
+                  style={{ flex: 1, height: 36, fontSize: 13 }}
+                  value={cashEdit[cur] ?? ''}
+                  placeholder="0"
+                  onChange={e => setCashEdit(prev => ({ ...prev, [cur]: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setShowCashModal(false)}>{'Anuluj'}</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
+                await saveCash(cashEdit);
+                setShowCashModal(false);
+              }}>{'Zapisz'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

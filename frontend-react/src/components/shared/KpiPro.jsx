@@ -26,11 +26,11 @@ function MiniSparkline({ data, width = 62, height = 24, up = true }) {
   );
 }
 
-export default function KpiPro({ label, value, chip, chipUp, sub, icon, spark, sparkUp, hero, tone }) {
+export default function KpiPro({ label, value, chip, chipUp, sub, icon, spark, sparkUp, hero, tone, onClick }) {
   const chipClass = chipUp === true ? 'up' : chipUp === false ? 'down' : 'neutral';
   const valueClass = tone === 'up' ? ' up' : tone === 'down' ? ' down' : '';
   return (
-    <div className={'kpi-pro' + (hero ? ' hero' : '')}>
+    <div className={'kpi-pro' + (hero ? ' hero' : '') + (onClick ? ' clickable' : '')} onClick={onClick}>
       <div className="kp-top">
         <span className="kp-label">{label}</span>
         {icon && <span className="kp-ico">{icon}</span>}

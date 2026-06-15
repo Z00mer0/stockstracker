@@ -6,7 +6,7 @@ function fmtPct(n) {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
 
-export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
+export default function InsightStrip({ positions = [], dailyChangePLN = 0, onSymbolClick }) {
   const { locale } = useLanguage();
   const t = useT();
 
@@ -31,7 +31,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
   return (
     <div className="insight-strip">
       {best && (
-        <div className="insight">
+        <div className={'insight' + (onSymbolClick ? ' clickable' : '')} onClick={() => onSymbolClick?.(best)}>
           <span className="ins-dot" style={{ background: 'var(--up)' }} />
           <div className="ins-body">
             <div className="ins-label">{t('best_position')}</div>
@@ -44,7 +44,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
         </div>
       )}
       {worst && worst.symbol !== best?.symbol && (
-        <div className="insight">
+        <div className={'insight' + (onSymbolClick ? ' clickable' : '')} onClick={() => onSymbolClick?.(worst)}>
           <span className="ins-dot" style={{ background: 'var(--down)' }} />
           <div className="ins-body">
             <div className="ins-label">{t('under_pressure')}</div>
@@ -57,7 +57,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0 }) {
         </div>
       )}
       {mover && (
-        <div className="insight">
+        <div className={'insight' + (onSymbolClick ? ' clickable' : '')} onClick={() => onSymbolClick?.(mover)}>
           <span className="ins-dot" style={{ background: 'var(--info)' }} />
           <div className="ins-body">
             <div className="ins-label">{t('biggest_move')}</div>
