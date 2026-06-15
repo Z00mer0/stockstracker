@@ -2363,17 +2363,22 @@ async function doRecover() {
                             except Exception:
                                 pass
             except urllib.error.HTTPError as e:
-                err_body = e.read().decode('utf-8', errors='replace')[:200]
+                try:
+                    err_body = e.read().decode('utf-8', errors='replace')[:300]
+                except Exception:
+                    err_body = '(unreadable)'
                 print(f'[analyze] groq HTTP {e.code}: {err_body}')
                 err_key = 'err_rate_limit' if e.code == 429 else 'err_groq_failed'
-                self.wfile.write(f'data: {json.dumps({"error": err_key})}\n\n'.encode('utf-8'))
+                debug_info = f'HTTP {e.code}: {err_body[:100]}'
+                self.wfile.write(f'data: {json.dumps({"error": err_key, "debug": debug_info})}\n\n'.encode('utf-8'))
                 self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
                 self.wfile.flush()
                 return
             except Exception as e:
-                print(f'[analyze] groq error: {type(e).__name__}: {e}')
-                self.wfile.write(f'data: {json.dumps({"error": "err_groq_failed"})}\n\n'.encode('utf-8'))
+                debug_info = f'{type(e).__name__}: {str(e)[:150]}'
+                print(f'[analyze] groq error: {debug_info}')
+                self.wfile.write(f'data: {json.dumps({"error": "err_groq_failed", "debug": debug_info})}\n\n'.encode('utf-8'))
                 self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
                 self.wfile.flush()
