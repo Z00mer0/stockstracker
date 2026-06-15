@@ -6,6 +6,7 @@ import TickerLogo from './shared/TickerLogo';
 import { useLanguage, useT } from '../context/LanguageContext';
 
 const PERIODS_BASE = [
+  { key: '1W', pl: '1T', en: '1W', days: 7 },
   { key: '1M', pl: '1M', en: '1M', days: 30 },
   { key: '3M', pl: '3M', en: '3M', days: 90 },
   { key: '6M', pl: '6M', en: '6M', days: 180 },
@@ -19,7 +20,7 @@ const BENCH_OPTS = [
   { key: '^WIG20',   label: 'WIG20' },
 ];
 const CM = { top: 8, right: 8, bottom: 22, left: 56 };
-const CHART_H = 150;
+const CHART_H = 200;
 
 function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
   const { locale } = useLanguage();
@@ -292,29 +293,29 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
       <div
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--border)',
-          borderRadius: 12, width: '100%', maxWidth: 480,
+          borderRadius: 14, width: '100%', maxWidth: 620,
           boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-          maxHeight: '90vh', overflowY: 'auto',
+          maxHeight: '92vh', overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Stock header */}
-        <div style={{ padding: '18px 20px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <TickerLogo symbol={item.symbol} size={38} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{item.symbol}</div>
-              {item.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{item.name}</div>}
+        <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+            <TickerLogo symbol={item.symbol} size={44} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{item.symbol}</div>
+              {item.name && <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
             {currentPrice != null && (
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '-0.01em' }}>
                   {currentPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
                 </div>
                 {dayChangePct != null && (
-                  <div style={{ fontSize: 12, fontWeight: 600, color: dayChangePct >= 0 ? 'var(--up)' : 'var(--down)', marginTop: 2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: dayChangePct >= 0 ? 'var(--up)' : 'var(--down)', marginTop: 2, textAlign: 'right' }}>
                     {dayChangePct >= 0 ? '▲' : '▼'} {Math.abs(dayChangePct).toFixed(2)}%
                   </div>
                 )}
@@ -322,14 +323,14 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             )}
             <button
               onClick={onClose}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: 18, padding: '2px 4px', lineHeight: 1, flexShrink: 0 }}
+              style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14, padding: '6px 8px', lineHeight: 1, flexShrink: 0, borderRadius: 8 }}
             >✕</button>
           </div>
         </div>
 
         {/* Position context strip — only for portfolio positions */}
         {item.qty != null && (
-          <div style={{ margin: '10px 20px 0', padding: '8px 12px', background: 'var(--panel)', borderRadius: 8, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ margin: '12px 22px 0', padding: '10px 14px', background: 'var(--panel)', borderRadius: 10, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
               {item.qty.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} {t('shares')}
               {item.avgPrice != null && (
@@ -353,7 +354,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         )}
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 0, margin: '12px 20px 0', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 0, margin: '14px 22px 0', borderBottom: '1px solid var(--border)' }}>
           {[['wykres', t('tab_chart')], ['wskazniki', t('tab_indicators')], ['finanse', t('tab_financials')], ['ai', 'AI'], ['notatki', note ? `📝 ${t('tab_notes')}` : t('tab_notes')]].map(([k, l]) => (
             <button
               key={k}
@@ -362,7 +363,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
                 background: 'none',
                 border: 'none',
                 borderBottom: activeTab === k ? '2px solid var(--accent)' : '2px solid transparent',
-                padding: '8px 14px',
+                padding: '9px 16px',
                 fontSize: 12,
                 fontWeight: activeTab === k ? 600 : 400,
                 color: activeTab === k ? 'var(--text)' : 'var(--text-dim)',
@@ -376,7 +377,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
 
         {/* Wykres tab */}
         {activeTab === 'wykres' && (
-        <div style={{ padding: '8px 20px 0' }}>
+        <div style={{ padding: '10px 22px 0' }}>
           {chartLoading ? (
             <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('loading')}</span>
