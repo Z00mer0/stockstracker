@@ -104,7 +104,7 @@ function renderCellDash(key, pos, isPrivate, locale = 'pl-PL') {
 
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, displayName, displayCurrency, addPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
@@ -250,13 +250,28 @@ export default function Dashboard() {
   useEffect(() => {
     if (loading) return;
     const pricesLoaded = allPositions.some(p => p.valuePLN != null);
-    if (!pricesLoaded) return; // wait until market data arrives
+    if (!pricesLoaded) return;
 
-    const totalValue    = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0)
-      + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
-    const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
-    if (totalValue > 0 && investedValue > 0) {
-      saveSnapshot(totalValue, investedValue);
+    if (activePortfolioId === 'all') {
+      // In "Wszystkie" view: save snapshot for each individual portfolio separately
+      const byPid = {};
+      allPositions.forEach(pos => {
+        const pid = pos._portfolioId;
+        if (!pid) return;
+        if (!byPid[pid]) byPid[pid] = { total: 0, invested: 0 };
+        byPid[pid].total += pos.valuePLN ?? 0;
+        byPid[pid].invested += pos.costPLN ?? 0;
+      });
+      if (Object.keys(byPid).length > 0) {
+        saveBatchSnapshots(byPid);
+      }
+    } else {
+      const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0)
+        + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
+      const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
+      if (totalValue > 0 && investedValue > 0) {
+        saveSnapshot(totalValue, investedValue);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionsValueKey, loading]);

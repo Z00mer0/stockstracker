@@ -175,23 +175,27 @@ export function AppProvider({ children }) {
   }, [rawData, fxRates]);
 
   async function saveCash(newCash) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     setRawData(prev => ({ ...prev, cash: newCash }));
     await api.post(dataUrl, { ...rawData, cash: newCash });
   }
 
   async function saveHoldings(newHoldings) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings } };
     setRawData(updated);
     await api.post(dataUrl, updated);
   }
 
   async function saveTransactions(newTransactions) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać transakcję');
     const updated = { ...rawData, transactions: newTransactions };
     setRawData(updated);
     await api.post(dataUrl, updated);
   }
 
   async function renameSymbol(oldSymbol, newSymbol) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zmienić symbol');
     const holdings = rawData?.portfolio?.holdings ?? [];
     const src = holdings.find(h => h.symbol === oldSymbol);
     const dst = holdings.find(h => h.symbol === newSymbol);
@@ -219,6 +223,7 @@ export function AppProvider({ children }) {
   }
 
   async function editPosition({ symbol, qty, avgPrice }) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby edytować pozycję');
     const holdings = rawData?.portfolio?.holdings ?? [];
     const updated = {
       ...rawData,
@@ -232,6 +237,7 @@ export function AppProvider({ children }) {
   }
 
   async function removePosition(symbol) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć pozycję');
     const holdings = rawData?.portfolio?.holdings ?? [];
     const updated = {
       ...rawData,
@@ -242,6 +248,7 @@ export function AppProvider({ children }) {
   }
 
   async function sellPosition({ symbol, qty, price, currency, date, note, overridePL }) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby sprzedać pozycję');
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
     const existing = holdings.find(h => h.symbol === symbol);
@@ -265,6 +272,7 @@ export function AppProvider({ children }) {
   }
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType }) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać pozycję');
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
     const cash = rawData?.cash ?? {};
@@ -449,6 +457,7 @@ export function AppProvider({ children }) {
   }
 
   async function saveSnapshot(totalValue, investedValue) {
+    if (!canWrite) return; // "all" view cannot save directly — use saveBatchSnapshots instead
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
       ...rawData,
@@ -457,6 +466,11 @@ export function AppProvider({ children }) {
     };
     setRawData(updated);
     await api.post(dataUrl, updated);
+  }
+
+  async function saveBatchSnapshots(snapshotsMap) {
+    // snapshotsMap: {portfolioId: {total, invested}}
+    await api.post('/api/portfolios/save-snapshots', snapshotsMap);
   }
 
   async function addOtherAsset({ name, category, value: val, currency, note }) {
@@ -508,6 +522,7 @@ export function AppProvider({ children }) {
     saveHoldings,
     saveTransactions,
     saveSnapshot,
+    saveBatchSnapshots,
     setSnapshot,
     deleteSnapshot,
     addPosition,

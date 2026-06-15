@@ -2144,6 +2144,31 @@ async function doRecover() {
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
+        elif path == '/api/portfolios/save-snapshots':
+            # POST {pid: {total, invested}} — batch-save today's snapshot for multiple portfolios
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                snapshots_map = self.read_json(max_size=65536)
+                today = datetime.date.today().isoformat()
+                portfolios_list = list_portfolios(username)
+                pid_set = {p['id'] for p in portfolios_list}
+                for pid, vals in snapshots_map.items():
+                    if pid not in pid_set or not re.fullmatch(r'[a-f0-9]{24}', pid):
+                        continue
+                    total = vals.get('total')
+                    invested = vals.get('invested')
+                    if total is None or invested is None or total <= 0:
+                        continue
+                    pdata = load_portfolio_data(pid)
+                    pdata.setdefault('snapshots', {})[today] = total
+                    pdata.setdefault('snapshotsInvested', {})[today] = invested
+                    save_portfolio_data(pid, pdata)
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
         elif path.startswith('/api/portfolios/') and not path.endswith('/data'):
             # PUT/DELETE /api/portfolios/:id — update or delete a portfolio
             username = get_username(self)
