@@ -1499,7 +1499,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(200, entry['data'])
             else:
                 try:
-                    url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EWIG20?interval=1d&range=2d'
+                    url = 'https://query1.finance.yahoo.com/v8/finance/chart/WIG20.WA?interval=1d&range=2d'
                     req = urllib.request.Request(url, headers={
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                         'Accept': 'application/json',
