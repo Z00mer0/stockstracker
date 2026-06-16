@@ -56,7 +56,7 @@ export default function Calendar() {
   const { portfolio, loading: appLoading } = useApp();
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { events: calEvents, loading: calLoading } = useCalendarData(symbols);
-  const { allCalendarEvents: divEvents, loading: divLoading } = useDividendEvents(symbols);
+  const { allCalendarEvents: divEvents, loading: divLoading, deleteDividend } = useDividendEvents(symbols);
 
   // Połącz makro+earnings z dywidendami, posortuj po dacie
   const events = useMemo(() =>
@@ -347,16 +347,26 @@ export default function Calendar() {
                     ) : ev.type === 'DIV' ? (
                       <>
                         <span className="text-lg leading-none mt-0.5">💰</span>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <span className="font-semibold" style={{ color: 'var(--text)' }}>{ev.symbol}</span>
                           <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>{t('ex_dividend')}</span>
                           {ev.amount != null && (
-                            <span className="text-xs ml-2 font-medium" style={{ color: 'var(--warn)' }}>${Number(ev.amount).toFixed(4)}</span>
+                            <span className="text-xs ml-2 font-medium" style={{ color: 'var(--warn)' }}>{Number(ev.amount).toFixed(2)} {ev.currency ?? ''}</span>
                           )}
                           {ev.projected && (
                             <span className="text-xs ml-2" style={{ color: 'var(--text-faint)' }}>{t('forecast_approx')}</span>
                           )}
+                          {ev.isManual && (
+                            <span className="text-xs ml-2" style={{ color: 'var(--text-faint)' }}>{t('manual_source')}</span>
+                          )}
                         </div>
+                        {ev.isManual && (
+                          <button
+                            onClick={() => deleteDividend(ev.id)}
+                            style={{ fontSize: 16, lineHeight: 1, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
+                            title={t('delete_btn')}
+                          >×</button>
+                        )}
                       </>
                     ) : (
                       <>

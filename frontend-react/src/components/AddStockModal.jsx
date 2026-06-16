@@ -105,7 +105,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
       await onSave({ symbol: sym, qty: resolvedQty, price: resolvedPrice, currency, date, note: note.trim(), funding });
       onClose();
     } catch (e) {
-      setError(e.message || t('save_error'));
+      setError(e.response?.data?.error || e.message || t('save_error'));
     } finally {
       setSaving(false);
     }

@@ -63,7 +63,7 @@ function AddTransactionModal({ onSave, onClose }) {
       });
       onClose();
     } catch (e) {
-      setError(e.message || t('save_error'));
+      setError(e.response?.data?.error || e.message || t('save_error'));
     } finally {
       setSaving(false);
     }

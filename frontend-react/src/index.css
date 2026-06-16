@@ -91,6 +91,10 @@ body.privacy-mode .kpi-value,
 body.privacy-mode .ins-text,
 body.privacy-mode .wl-pct,
 body.privacy-mode .rs-val,
+body.privacy-mode .pv-total,
+body.privacy-mode .pv-daily,
+body.privacy-mode .lg-val,
+body.privacy-mode .lg-pct,
 body.privacy-mode td.mono,
 body.privacy-mode td.right {
   filter: blur(6px);

@@ -556,7 +556,7 @@ export default {
   stats_daily:          'Wynik dnia',
   stats_beta:           'Beta portfela',
   stats_positions:      'Pozycji',
-  alloc_section:        'Alokacja',
+  alloc_section:        'Alokacja sektorowa',
   filter_pl_label:      'Zysk / strata',
   filter_all:           'Wszystkie',
   filter_winners:       'Zyskowne',

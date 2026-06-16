@@ -22,7 +22,7 @@ const BENCH_OPTS = [
 const CM = { top: 8, right: 8, bottom: 22, left: 56 };
 const CHART_H = 200;
 
-function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
+function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '', isIntraday = false }) {
   const { locale } = useLanguage();
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
@@ -35,13 +35,14 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
   }, []);
 
   const filtered = useMemo(() => {
+    if (isIntraday) return data;
     const p = PERIODS_BASE.find(x => x.key === period);
     if (!p) return data;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - p.days);
     const cutStr = cutoff.toISOString().slice(0, 10);
     return data.filter(d => d.date >= cutStr);
-  }, [data, period]);
+  }, [data, period, isIntraday]);
 
   const filteredBench = useMemo(() => {
     if (!benchData.length) return [];
@@ -216,12 +217,12 @@ function MiniChart({ data, period, benchData = [], benchLabel = '' }) {
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}>
             <div style={{ color: 'var(--text-faint)', marginBottom: 3 }}>
-              {d.date.slice(5).split('-').reverse().join('.')}
+              {d.date.slice(5).split('-').reverse().join('.')}{d.time ? ` ${d.time}` : ''}
             </div>
             <div style={{ color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
               {showBench
                 ? (stockValues[hoverIdx] >= 0 ? '+' : '') + stockValues[hoverIdx].toFixed(2) + '%'
-                : d.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                : d.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (currency ? ` ${currency}` : '')}
             </div>
             {hasVol && d.volume > 0 && (
               <div style={{ color: 'var(--text-faint)', marginTop: 2 }}>
@@ -250,6 +251,9 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const [benchData, setBenchData] = useState([]);
   const [benchLoading, setBenchLoading] = useState(false);
   const [currency] = useState(item.currency || (item.symbol?.endsWith('.WA') ? 'PLN' : 'USD'));
+  const [prePost, setPrePost] = useState(false);
+  const [intradayData, setIntradayData] = useState([]);
+  const [intradayLoading, setIntradayLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('wykres');
   const [financialsMounted, setFinancialsMounted] = useState(false);
   const [wskaznikMounted, setWskaznikMounted] = useState(false);
@@ -296,6 +300,38 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
       .catch(() => {})
       .finally(() => setChartLoading(false));
   }, [item.symbol]);
+
+  // Intraday fetch for pre/post market (1W = 30m intervals, 1M = 1h intervals)
+  useEffect(() => {
+    const shortPeriod = chartPeriod === '1W' || chartPeriod === '1M';
+    if (!prePost || !shortPeriod) { setIntradayData([]); return; }
+    setIntradayLoading(true);
+    const range    = chartPeriod === '1W' ? '5d' : '1mo';
+    const interval = chartPeriod === '1W' ? '30m' : '1h';
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=${interval}&range=${range}&includePrePost=true`;
+    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(12000),
+      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
+    })
+      .then(r => r.json())
+      .then(json => {
+        const result = json?.chart?.result?.[0];
+        if (!result) return;
+        const timestamps = result.timestamp ?? [];
+        const closes  = result.indicators?.quote?.[0]?.close  ?? [];
+        const volumes = result.indicators?.quote?.[0]?.volume ?? [];
+        const tz = result.meta?.exchangeTimezoneName || 'Europe/Warsaw';
+        const pts = timestamps.map((ts, i) => {
+          const dt = new Date(ts * 1000);
+          const date = dt.toISOString().slice(0, 10);
+          const time = dt.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+          return { date, time, price: closes[i], volume: volumes[i] ?? null };
+        }).filter(p => p.price != null);
+        setIntradayData(pts);
+      })
+      .catch(() => setIntradayData([]))
+      .finally(() => setIntradayLoading(false));
+  }, [prePost, chartPeriod, item.symbol]);
 
   useEffect(() => {
     if (!benchSymbol) { setBenchData([]); return; }
@@ -451,45 +487,76 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             </div>
           ) : chartData.length >= 2 ? (
             <>
-              <MiniChart
-                data={chartData}
-                period={chartPeriod}
-                benchData={benchData}
-                benchLabel={benchSymbol === null ? '' : (BENCH_OPTS.find(b => b.key === benchSymbol)?.label ?? '')}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {PERIODS.map(p => (
-                    <button
-                      key={p.key}
-                      onClick={() => setChartPeriod(p.key)}
-                      style={{
-                        fontSize: 11, padding: '2px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                        background: chartPeriod === p.key ? 'var(--accent)' : 'var(--panel-2)',
-                        color: chartPeriod === p.key ? '#fff' : 'var(--text-dim)',
-                        fontWeight: chartPeriod === p.key ? 600 : 400,
-                        transition: 'background 0.15s',
-                      }}
-                    >{p.label}</button>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                  {BENCH_OPTS.map(b => (
-                    <button
-                      key={b.key ?? 'none'}
-                      onClick={() => setBenchSymbol(b.key)}
-                      style={{
-                        fontSize: 10, padding: '2px 7px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                        background: benchSymbol === b.key ? 'var(--panel-2)' : 'transparent',
-                        color: benchSymbol === b.key ? 'var(--text)' : 'var(--text-faint)',
-                        fontWeight: benchSymbol === b.key ? 600 : 400,
-                        transition: 'background 0.15s, color 0.15s',
-                        outline: benchSymbol === b.key ? '1px solid var(--border)' : 'none',
-                      }}
-                    >{b.key === null ? t('none_label') : b.label}{benchLoading && benchSymbol === b.key ? ' …' : ''}</button>
-                  ))}
-                </div>
-              </div>
+              {(() => {
+                const shortPeriod = chartPeriod === '1W' || chartPeriod === '1M';
+                const isIntraday  = prePost && shortPeriod;
+                const activeData  = isIntraday ? intradayData : chartData;
+                const loading     = isIntraday ? intradayLoading : false;
+                return (
+                  <>
+                    {loading
+                      ? <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('loading')}</span>
+                        </div>
+                      : <MiniChart
+                          data={activeData}
+                          period={chartPeriod}
+                          benchData={benchData}
+                          benchLabel={benchSymbol === null ? '' : (BENCH_OPTS.find(b => b.key === benchSymbol)?.label ?? '')}
+                          currency={currency}
+                          isIntraday={isIntraday}
+                        />
+                    }
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {PERIODS.map(p => (
+                          <button
+                            key={p.key}
+                            onClick={() => setChartPeriod(p.key)}
+                            style={{
+                              fontSize: 11, padding: '2px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                              background: chartPeriod === p.key ? 'var(--accent)' : 'var(--panel-2)',
+                              color: chartPeriod === p.key ? '#fff' : 'var(--text-dim)',
+                              fontWeight: chartPeriod === p.key ? 600 : 400,
+                              transition: 'background 0.15s',
+                            }}
+                          >{p.label}</button>
+                        ))}
+                        {shortPeriod && (
+                          <button
+                            onClick={() => setPrePost(v => !v)}
+                            title="Dane po godzinach i przed otwarciem (pre/post market)"
+                            style={{
+                              fontSize: 10, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer',
+                              background: prePost ? 'rgba(99,102,241,0.15)' : 'transparent',
+                              color: prePost ? 'var(--accent)' : 'var(--text-faint)',
+                              fontWeight: prePost ? 600 : 400,
+                              transition: 'all 0.15s',
+                              marginLeft: 4,
+                            }}
+                          >po godz.</button>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                        {BENCH_OPTS.map(b => (
+                          <button
+                            key={b.key ?? 'none'}
+                            onClick={() => setBenchSymbol(b.key)}
+                            style={{
+                              fontSize: 10, padding: '2px 7px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                              background: benchSymbol === b.key ? 'var(--panel-2)' : 'transparent',
+                              color: benchSymbol === b.key ? 'var(--text)' : 'var(--text-faint)',
+                              fontWeight: benchSymbol === b.key ? 600 : 400,
+                              transition: 'background 0.15s, color 0.15s',
+                              outline: benchSymbol === b.key ? '1px solid var(--border)' : 'none',
+                            }}
+                          >{b.key === null ? t('none_label') : b.label}{benchLoading && benchSymbol === b.key ? ' …' : ''}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </>
           ) : (
             <div style={{ height: 36, display: 'flex', alignItems: 'center' }}>

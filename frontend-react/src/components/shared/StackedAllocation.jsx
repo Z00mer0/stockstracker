@@ -38,13 +38,15 @@ function getColor(sector) {
   return SECTOR_COLORS[sector] || '#8a929d';
 }
 
-export default function StackedAllocation({ positions = [], totalValue }) {
+export default function StackedAllocation({ positions = [], totalValue, currency = 'PLN' }) {
   const t = useT();
   const { locale } = useLanguage();
 
+  const currencySymbol = currency === 'PLN' ? ' zł' : ` ${currency}`;
+
   function fmtK(n) {
     if (n == null) return '—';
-    return (n / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
+    return (n / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k' + currencySymbol;
   }
 
   const bySector = {};
@@ -76,7 +78,7 @@ export default function StackedAllocation({ positions = [], totalValue }) {
               style={{ flex: s.value, background: s.color }}
               title={`${s.label}: ${pct.toFixed(1)}%`}
             >
-              {pct > 8 ? Math.round(pct) + '%' : ''}
+              {pct > 5 ? Math.round(pct) + '%' : ''}
             </div>
           );
         })}

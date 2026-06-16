@@ -1584,7 +1584,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not get_username(self):
                 self.send_json(401, {'error': 'unauthorized'}); return
             qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
-            _sym_re = re.compile(r'^[A-Z0-9]{1,10}$')
+            _sym_re = re.compile(r'^[A-Z0-9.]{1,12}$')
             symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()]
             symbols = [s for s in symbols if _sym_re.match(s)][:_MAX_SYMBOLS]
             token   = os.environ.get('FINNHUB_TOKEN', '')
@@ -1592,27 +1592,58 @@ class Handler(SimpleHTTPRequestHandler):
             results = []
 
             for symbol in symbols:
-                # Tylko US stocks (bez przyrostka giełdowego)
                 if '.' in symbol:
-                    continue
-                try:
-                    url = f'https://finnhub.io/api/v1/stock/dividend2?symbol={symbol}&token={token}'
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req, timeout=6) as resp:
-                        data = json.loads(resp.read())
-                    upcoming = [d for d in data.get('data', []) if (d.get('payDate') or '') >= today]
-                    if upcoming:
-                        nxt = upcoming[0]
+                    # GPW / non-US — use Yahoo Finance calendarEvents
+                    try:
+                        yf_url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+                                  f'{urllib.parse.quote(symbol)}'
+                                  f'?modules=calendarEvents%2CdefaultKeyStatistics')
+                        req = urllib.request.Request(yf_url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
+                        with urllib.request.urlopen(req, timeout=8) as r:
+                            yf_data = json.loads(r.read())
+                        res0 = (yf_data.get('quoteSummary', {}).get('result') or [{}])[0]
+                        cal   = res0.get('calendarEvents', {})
+                        stats = res0.get('defaultKeyStatistics', {})
+                        ex_ts = cal.get('exDividendDate', {}).get('raw')
+                        if not ex_ts:
+                            continue
+                        ex_date = datetime.date.fromtimestamp(ex_ts).isoformat()
+                        if ex_date < today:
+                            continue
+                        pay_ts = cal.get('dividendDate', {}).get('raw')
+                        pay_date = datetime.date.fromtimestamp(pay_ts).isoformat() if pay_ts else None
+                        amount = (stats.get('trailingAnnualDividendRate') or {}).get('raw') \
+                              or (stats.get('dividendRate') or {}).get('raw')
                         results.append({
                             'symbol':   symbol,
-                            'exDate':   nxt.get('exDate'),
-                            'payDate':  nxt.get('payDate'),
-                            'amount':   nxt.get('amount'),
-                            'currency': 'USD',
+                            'exDate':   ex_date,
+                            'payDate':  pay_date,
+                            'amount':   amount,
+                            'currency': 'PLN',
                             'isManual': False,
                         })
-                except Exception as e:
-                    print(f'[dividends] {symbol}: {e}')
+                    except Exception as e:
+                        print(f'[dividends] {symbol}: {e}')
+                else:
+                    # US stock — Finnhub
+                    try:
+                        url = f'https://finnhub.io/api/v1/stock/dividend2?symbol={symbol}&token={token}'
+                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                        with urllib.request.urlopen(req, timeout=6) as resp:
+                            data = json.loads(resp.read())
+                        upcoming = [d for d in data.get('data', []) if (d.get('payDate') or '') >= today]
+                        if upcoming:
+                            nxt = upcoming[0]
+                            results.append({
+                                'symbol':   symbol,
+                                'exDate':   nxt.get('exDate'),
+                                'payDate':  nxt.get('payDate'),
+                                'amount':   nxt.get('amount'),
+                                'currency': 'USD',
+                                'isManual': False,
+                            })
+                    except Exception as e:
+                        print(f'[dividends] {symbol}: {e}')
 
             self.send_json(200, results)
 

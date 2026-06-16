@@ -846,11 +846,11 @@ export default function Portfolio() {
               <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
                 {t('portfolio_value_rail')}
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+              <div className="pv-total" style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
                 {fmt(totalValuePLN, 2, locale)} zł
               </div>
               {dailyChangePLN !== 0 && (
-                <div style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
+                <div className="pv-daily" style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
                   {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN, 2, locale)} zł {t('today')}
                 </div>
               )}

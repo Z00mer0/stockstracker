@@ -33,13 +33,13 @@ function toCalendarEvent(div) {
   };
 }
 
-// Pobierz nadchodzące dywidendy US z backendu (Finnhub)
-async function fetchAutoUS(usSymbols) {
-  if (!usSymbols.length) return [];
+// Pobierz nadchodzące dywidendy z backendu (Finnhub dla US, YF dla GPW)
+async function fetchAutoUpcoming(symbols) {
+  if (!symbols.length) return [];
   try {
     const res = await fetch(
-      `/api/dividends/upcoming?symbols=${usSymbols.join(',')}`,
-      { signal: AbortSignal.timeout(8000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } }
+      `/api/dividends/upcoming?symbols=${symbols.join(',')}`,
+      { signal: AbortSignal.timeout(12000), headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' } }
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -53,7 +53,7 @@ async function fetchAutoUS(usSymbols) {
       isManual: false,
     }));
   } catch (err) {
-    console.warn('[dividends] auto US fetch failed:', err.message);
+    console.warn('[dividends] auto fetch failed:', err.message);
     return [];
   }
 }
@@ -69,14 +69,13 @@ export default function useDividendEvents(portfolioSymbols = []) {
   const [autoEvents, setAutoEvents]           = useState([]);
   const [loading, setLoading]                 = useState(false);
 
-  // Pobierz auto-dywidendy US przy zmianie portfela
+  // Pobierz auto-dywidendy przy zmianie portfela
   useEffect(() => {
-    const usSymbols = portfolioSymbols.filter(s => !s.includes('.'));
-    if (!usSymbols.length) { setAutoEvents([]); return; }
+    if (!portfolioSymbols.length) { setAutoEvents([]); return; }
 
     let cancelled = false;
     setLoading(true);
-    fetchAutoUS(usSymbols).then(evs => {
+    fetchAutoUpcoming(portfolioSymbols).then(evs => {
       if (!cancelled) { setAutoEvents(evs); setLoading(false); }
     });
     return () => { cancelled = true; };

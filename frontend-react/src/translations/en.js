@@ -556,7 +556,7 @@ export default {
   stats_daily:          'Daily result',
   stats_beta:           'Portfolio beta',
   stats_positions:      'Positions',
-  alloc_section:        'Allocation',
+  alloc_section:        'Sector Allocation',
   filter_pl_label:      'Gain / loss',
   filter_all:           'All',
   filter_winners:       'Winners',
