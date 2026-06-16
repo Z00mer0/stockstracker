@@ -1183,15 +1183,12 @@ class Handler(SimpleHTTPRequestHandler):
             q = qs.get('q', '').strip()
             if len(q) < 1:
                 self.send_json(200, {'results': []}); return
-            url = (f'https://query1.finance.yahoo.com/v1/finance/search'
-                   f'?q={urllib.parse.quote(q)}&quotesCount=8&newsCount=0&enableNavLinks=false&lang=en-US')
-            req = urllib.request.Request(url, headers={
-                'User-Agent': _YF_UA,
-                'Accept': 'application/json',
-            })
             try:
-                with urllib.request.urlopen(req, timeout=8) as r:
-                    data = json.loads(r.read())
+                opener, _ = _get_yf_opener()
+                url = (f'https://query1.finance.yahoo.com/v1/finance/search'
+                       f'?q={urllib.parse.quote(q)}&quotesCount=8&newsCount=0&enableNavLinks=false&lang=en-US')
+                raw  = _yf_open(opener, url, {'Accept': 'application/json'}, timeout=8)
+                data = json.loads(raw)
                 results = []
                 for item in data.get('quotes', []):
                     sym = item.get('symbol', '')
