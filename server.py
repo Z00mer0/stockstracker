@@ -1464,9 +1464,15 @@ class Handler(SimpleHTTPRequestHandler):
                     age_days = (datetime.datetime.now(datetime.timezone.utc) - row['fetched_at']).days
                     cached = json.loads(row['data_json'])
                     # If stored data's actual period doesn't match request (e.g. quarterly key holds annual fallback),
-                    # treat as miss so the correct valuation data (with Biznesradar shares) gets fetched fresh.
+                    # delete the stale record so the re-fetch stores correctly.
                     actual_stored_period = cached.get('period', period)
-                    if age_days < 90 and actual_stored_period == period:
+                    if actual_stored_period != period:
+                        try:
+                            with _conn() as conn, conn.cursor() as cur:
+                                cur.execute("DELETE FROM financials WHERE symbol=%s AND period=%s", (symbol, period))
+                        except Exception:
+                            pass
+                    elif age_days < 90:
                         cached['source']    = row['source']
                         cached['fetchedAt'] = row['fetched_at'].isoformat()
                         self.send_json(200, cached); return
