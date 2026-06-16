@@ -303,16 +303,148 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
 }
 
 // ─── Peer Comparison ─────────────────────────────────────────────────────────
-const PEERS_DATA = [
-  { name: 'Jeronimo Martins', ticker: 'JMT.LS', pe: 17.2, netMargin: 2.1 },
-  { name: 'Eurocash',         ticker: 'EUR.WA', pe: 11.8, netMargin: 0.7 },
-];
+const SYMBOL_NAMES = {
+  'DNP.WA': 'Dino Polska',    'EUR.WA': 'Eurocash',        'CDR.WA': 'CD Projekt',
+  '11B.WA': '11 bit studios', 'PLW.WA': 'PlayWay',         'ATG.WA': 'Artifex Mundi',
+  'PKO.WA': 'PKO BP',         'PEO.WA': 'Bank Pekao',      'MBK.WA': 'mBank',
+  'SPL.WA': 'Santander Polska','ING.WA': 'ING Bank Śląski','LPP.WA': 'LPP',
+  'CCC.WA': 'CCC',            'KGH.WA': 'KGHM',            'PKN.WA': 'PKN Orlen',
+  'PZU.WA': 'PZU',            'ALE.WA': 'Allegro',         'OPL.WA': 'Orange Polska',
+  'JSW.WA': 'JSW',            'GPW.WA': 'GPW',             'PCO.WA': 'Pepco Group',
+  'EMP.WA': 'Emperia Holding','BDX.WA': 'Budimex',         'DOM.WA': 'Dom Development',
+  'DIA.WA': 'Diagnostyka',    'ENE.WA': 'Enel-Med',        'SNT.WA': 'Synektik',
+};
 
-function PeerComparison({ dinoPE, dinoNetMargin }) {
+const PEERS_BY_SYMBOL = {
+  'DNP.WA': [
+    { name: 'Jeronimo Martins', ticker: 'JMT.LS',  pe: 17.2, netMargin: 2.1 },
+    { name: 'Eurocash',         ticker: 'EUR.WA',  pe: 11.8, netMargin: 0.7 },
+    { name: 'Pepco Group',      ticker: 'PCO.WA',  pe: 18.5, netMargin: 1.9 },
+  ],
+  'EUR.WA': [
+    { name: 'Dino Polska',      ticker: 'DNP.WA',  pe: 22.1, netMargin: 4.2 },
+    { name: 'Jeronimo Martins', ticker: 'JMT.LS',  pe: 17.2, netMargin: 2.1 },
+    { name: 'Emperia Holding',  ticker: 'EMP.WA',  pe: 12.4, netMargin: 1.3 },
+  ],
+  'CDR.WA': [
+    { name: '11 bit studios',   ticker: '11B.WA',  pe: 33.5, netMargin: 28.4 },
+    { name: 'PlayWay',          ticker: 'PLW.WA',  pe: 21.8, netMargin: 41.2 },
+    { name: 'Artifex Mundi',    ticker: 'ATG.WA',  pe: 17.2, netMargin: 22.8 },
+  ],
+  '11B.WA': [
+    { name: 'CD Projekt',       ticker: 'CDR.WA',  pe: 39.2, netMargin: 18.1 },
+    { name: 'PlayWay',          ticker: 'PLW.WA',  pe: 21.8, netMargin: 41.2 },
+    { name: 'Artifex Mundi',    ticker: 'ATG.WA',  pe: 17.2, netMargin: 22.8 },
+  ],
+  'PLW.WA': [
+    { name: 'CD Projekt',       ticker: 'CDR.WA',  pe: 39.2, netMargin: 18.1 },
+    { name: '11 bit studios',   ticker: '11B.WA',  pe: 33.5, netMargin: 28.4 },
+    { name: 'Paradox Interac.', ticker: 'PDX.ST',  pe: 28.4, netMargin: 31.2 },
+  ],
+  'ATG.WA': [
+    { name: 'CD Projekt',       ticker: 'CDR.WA',  pe: 39.2, netMargin: 18.1 },
+    { name: '11 bit studios',   ticker: '11B.WA',  pe: 33.5, netMargin: 28.4 },
+    { name: 'PlayWay',          ticker: 'PLW.WA',  pe: 21.8, netMargin: 41.2 },
+  ],
+  'PKO.WA': [
+    { name: 'Bank Pekao',       ticker: 'PEO.WA',  pe: 9.1,  netMargin: 33.4 },
+    { name: 'mBank',            ticker: 'MBK.WA',  pe: 7.8,  netMargin: 28.6 },
+    { name: 'ING Bank Śląski',  ticker: 'ING.WA',  pe: 8.8,  netMargin: 30.1 },
+  ],
+  'PEO.WA': [
+    { name: 'PKO BP',           ticker: 'PKO.WA',  pe: 7.3,  netMargin: 36.2 },
+    { name: 'mBank',            ticker: 'MBK.WA',  pe: 7.8,  netMargin: 28.6 },
+    { name: 'Santander Polska', ticker: 'SPL.WA',  pe: 8.4,  netMargin: 31.5 },
+  ],
+  'MBK.WA': [
+    { name: 'PKO BP',           ticker: 'PKO.WA',  pe: 7.3,  netMargin: 36.2 },
+    { name: 'Bank Pekao',       ticker: 'PEO.WA',  pe: 9.1,  netMargin: 33.4 },
+    { name: 'ING Bank Śląski',  ticker: 'ING.WA',  pe: 8.8,  netMargin: 30.1 },
+  ],
+  'SPL.WA': [
+    { name: 'PKO BP',           ticker: 'PKO.WA',  pe: 7.3,  netMargin: 36.2 },
+    { name: 'Bank Pekao',       ticker: 'PEO.WA',  pe: 9.1,  netMargin: 33.4 },
+    { name: 'mBank',            ticker: 'MBK.WA',  pe: 7.8,  netMargin: 28.6 },
+  ],
+  'ING.WA': [
+    { name: 'PKO BP',           ticker: 'PKO.WA',  pe: 7.3,  netMargin: 36.2 },
+    { name: 'Bank Pekao',       ticker: 'PEO.WA',  pe: 9.1,  netMargin: 33.4 },
+    { name: 'mBank',            ticker: 'MBK.WA',  pe: 7.8,  netMargin: 28.6 },
+  ],
+  'LPP.WA': [
+    { name: 'CCC',              ticker: 'CCC.WA',  pe: 24.8, netMargin: 3.8 },
+    { name: 'Inditex (Zara)',   ticker: 'ITX.MC',  pe: 23.4, netMargin: 13.7 },
+    { name: 'H&M',              ticker: 'HM-B.ST', pe: 17.8, netMargin: 4.6 },
+  ],
+  'CCC.WA': [
+    { name: 'LPP',              ticker: 'LPP.WA',  pe: 31.4, netMargin: 8.2 },
+    { name: 'Inditex (Zara)',   ticker: 'ITX.MC',  pe: 23.4, netMargin: 13.7 },
+    { name: 'H&M',              ticker: 'HM-B.ST', pe: 17.8, netMargin: 4.6 },
+  ],
+  'KGH.WA': [
+    { name: 'Freeport-McMoRan', ticker: 'FCX',     pe: 17.5, netMargin: 13.8 },
+    { name: 'Antofagasta',      ticker: 'ANTO.L',  pe: 14.9, netMargin: 22.4 },
+    { name: 'Boliden',          ticker: 'BOL.ST',  pe: 13.2, netMargin: 10.8 },
+  ],
+  'PKN.WA': [
+    { name: 'MOL Group',        ticker: 'MOL.BD',  pe: 6.1,  netMargin: 3.9 },
+    { name: 'Repsol',           ticker: 'REP.MC',  pe: 5.8,  netMargin: 3.6 },
+    { name: 'OMV',              ticker: 'OMV.VI',  pe: 8.2,  netMargin: 4.1 },
+  ],
+  'PZU.WA': [
+    { name: 'Vienna Insurance', ticker: 'VIG.VI',  pe: 10.8, netMargin: 6.2 },
+    { name: 'Generali',         ticker: 'G.MI',    pe: 11.5, netMargin: 7.1 },
+    { name: 'Allianz',          ticker: 'ALV.DE',  pe: 12.8, netMargin: 8.4 },
+  ],
+  'ALE.WA': [
+    { name: 'InPost',           ticker: 'INPST.AS', pe: 33.8, netMargin: 11.7 },
+    { name: 'Zalando',          ticker: 'ZAL.DE',  pe: 28.4, netMargin: 2.1 },
+    { name: 'eBay',             ticker: 'EBAY',    pe: 13.2, netMargin: 22.4 },
+  ],
+  'OPL.WA': [
+    { name: 'Orange S.A.',      ticker: 'ORA.PA',  pe: 12.4, netMargin: 5.8 },
+    { name: 'Deutsche Telekom', ticker: 'DTE.DE',  pe: 13.8, netMargin: 7.2 },
+    { name: 'Proximus',         ticker: 'PROX.BR', pe: 11.2, netMargin: 8.9 },
+  ],
+  'JSW.WA': [
+    { name: 'Teck Resources',   ticker: 'TECK-B.TO', pe: 18.4, netMargin: 16.2 },
+    { name: 'Coal India',       ticker: 'COALINDIA.NS', pe: 9.2, netMargin: 21.8 },
+    { name: 'Warrior Met Coal', ticker: 'HCC',     pe: 7.8,  netMargin: 22.4 },
+  ],
+  'GPW.WA': [
+    { name: 'Deutsche Börse',   ticker: 'DB1.DE',  pe: 22.4, netMargin: 28.6 },
+    { name: 'Euronext',         ticker: 'ENX.PA',  pe: 18.2, netMargin: 24.1 },
+    { name: 'LSE Group',        ticker: 'LSEG.L',  pe: 31.5, netMargin: 22.8 },
+  ],
+  'BDX.WA': [
+    { name: 'Strabag',          ticker: 'STR.VI',  pe: 12.4, netMargin: 3.8 },
+    { name: 'Porr',             ticker: 'POS.VI',  pe: 10.8, netMargin: 2.4 },
+    { name: 'Hochtief',         ticker: 'HOT.DE',  pe: 14.2, netMargin: 2.1 },
+  ],
+  'DOM.WA': [
+    { name: 'Matexi (priv.)',   ticker: '—',       pe: null,  netMargin: null },
+    { name: 'Robyg',            ticker: 'ROB.WA',  pe: 11.4, netMargin: 12.8 },
+    { name: 'Develia',          ticker: 'DVL.WA',  pe: 9.8,  netMargin: 14.2 },
+  ],
+  'DIA.WA': [
+    { name: 'Enel-Med',         ticker: 'ENE.WA',  pe: 18.4, netMargin: 8.2 },
+    { name: 'Synektik',         ticker: 'SNT.WA',  pe: 24.1, netMargin: 11.4 },
+    { name: 'Quest Diagnostics',ticker: 'DGX',     pe: 14.2, netMargin: 12.3 },
+  ],
+};
+
+function PeerComparison({ symbol, pe, netMargin }) {
   const [tip, setTip] = useState(false);
-  if (dinoPE == null && dinoNetMargin == null) return null;
-  const dinoMarginPct = dinoNetMargin != null ? dinoNetMargin * 100 : 0;
-  const maxMarginPct  = Math.max(dinoMarginPct, ...PEERS_DATA.map(p => p.netMargin));
+  const peers = PEERS_BY_SYMBOL[symbol];
+  if (!peers || (pe == null && netMargin == null)) return null;
+
+  const companyName = SYMBOL_NAMES[symbol] || symbol;
+  const currentMarginPct = netMargin != null ? netMargin * 100 : 0;
+  const maxMarginPct = Math.max(
+    currentMarginPct,
+    ...peers.map(p => p.netMargin ?? 0),
+  );
+
   return (
     <Section title={
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -330,8 +462,7 @@ function PeerComparison({ dinoPE, dinoNetMargin }) {
               padding: '6px 10px', borderRadius: 6, width: 240, zIndex: 200,
               border: '1px solid #334155', boxShadow: '0 4px 16px rgba(0,0,0,0.35)', pointerEvents: 'none',
             }}>
-              <strong style={{ color: '#e2e8f0' }}>Premia za wzrost</strong><br/>
-              Dino handluje z premią do konkurencji ze względu na wyższe tempo wzrostu (~12–15% przychodów rocznie) i wyższe marże. Inwestorzy płacą więcej za spółkę z wyraźną trajektorią wzrostu.
+              Porównanie kluczowych wskaźników wyceny i rentowności z bezpośrednimi konkurentami branżowymi. Dane szacunkowe.
             </div>
           )}
         </span>
@@ -348,39 +479,41 @@ function PeerComparison({ dinoPE, dinoNetMargin }) {
         <tbody>
           <tr style={{ background: 'rgba(0,135,81,0.06)' }}>
             <td style={{ padding: '5px 0', color: 'var(--text)', fontWeight: 600 }}>
-              Dino <span style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 400 }}>DNP.WA</span>
+              {companyName} <span style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 400 }}>{symbol}</span>
             </td>
             <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-              {dinoPE != null ? `${dinoPE.toFixed(1)}x` : '—'}
+              {pe != null ? `${pe.toFixed(1)}x` : '—'}
             </td>
             <td style={{ textAlign: 'right', padding: '5px 0', color: '#008751', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (dinoMarginPct / maxMarginPct) * 100 : 0}%`, background: '#008751', borderRadius: 2 }} />
+                  <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (currentMarginPct / maxMarginPct) * 100 : 0}%`, background: '#008751', borderRadius: 2 }} />
                 </div>
-                {dinoNetMargin != null ? `${dinoMarginPct.toFixed(1)}%` : '—'}
+                {netMargin != null ? `${currentMarginPct.toFixed(1)}%` : '—'}
               </div>
             </td>
           </tr>
-          {PEERS_DATA.map(p => (
+          {peers.map(p => (
             <tr key={p.ticker}>
               <td style={{ padding: '5px 0', color: 'var(--text-dim)' }}>
                 {p.name} <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>{p.ticker}</span>
               </td>
-              <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{p.pe.toFixed(1)}x</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {p.pe != null ? `${p.pe.toFixed(1)}x` : '—'}
+              </td>
               <td style={{ textAlign: 'right', padding: '5px 0', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (p.netMargin / maxMarginPct) * 100 : 0}%`, background: '#64748b', borderRadius: 2 }} />
+                    <div style={{ height: '100%', width: `${maxMarginPct > 0 && p.netMargin != null ? (p.netMargin / maxMarginPct) * 100 : 0}%`, background: '#64748b', borderRadius: 2 }} />
                   </div>
-                  {p.netMargin.toFixed(1)}%
+                  {p.netMargin != null ? `${p.netMargin.toFixed(1)}%` : '—'}
                 </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 5 }}>Dane konkurencji: maj 2026 · szacunkowe</div>
+      <div style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 5 }}>Dane konkurencji: cze 2026 · szacunkowe</div>
     </Section>
   );
 }
@@ -679,7 +812,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
         </Section>
       )}
 
-      <PeerComparison dinoPE={peRatio} dinoNetMargin={netMargin} />
+      <PeerComparison symbol={symbol} pe={peRatio} netMargin={netMargin} />
 
       {hasChecklist && (
         <InvestmentChecklist psRatio={psRatio} roic={roic} netDebtEbitda={netDebtEbitda} />
