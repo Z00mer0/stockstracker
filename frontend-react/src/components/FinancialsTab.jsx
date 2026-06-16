@@ -572,9 +572,11 @@ export default function FinancialsTab({ symbol, livePrice }) {
     ?? (storedVal.marketCap && livePrice ? storedVal.marketCap / livePrice : null);
   const liveMarketCap = (livePrice && shares) ? livePrice * shares : null;
 
-  // For income statement items use TTM (sum of last 4 quarters) when in quarterly mode
+  // Show quarterly bar chart when on quarterly tab
   const isQuarterly = period === 'quarterly';
-  const last4 = isQuarterly ? sortedPeriods.slice(0, 4) : null;
+  // TTM sums 4 quarters only when data is genuinely quarterly-resolution
+  const hasQuarterlyData = data?.period === 'quarterly';
+  const last4 = (isQuarterly && hasQuarterlyData) ? sortedPeriods.slice(0, 4) : null;
   function ttmSum(field) {
     if (!last4) return lastPeriod?.[field] ?? null;
     const vals = last4.map(p => p[field]).filter(v => v != null);
