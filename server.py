@@ -375,8 +375,150 @@ def _normalize_financials(result, period):
     }
 
 
+def _fetch_biznesradar_financials(symbol):
+    """Scrape annual financial data from Biznesradar.pl for GPW (.WA) stocks.
+    Used as fallback when Yahoo Finance quoteSummary is unavailable from Render's IP."""
+    ticker = symbol.replace('.WA', '').replace('.', '').upper()
+
+    def _scrape(report_path):
+        url = f'https://www.biznesradar.pl/{report_path}/{ticker}'
+        req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept-Language': 'pl-PL,pl;q=0.9'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode('utf-8', errors='replace')
+        table_match = re.search(
+            r'<table[^>]*class="[^"]*report-table[^"]*"[^>]*>(.*?)</table>',
+            html, re.DOTALL
+        )
+        if not table_match:
+            return [], {}
+        # Parse column years from <th> headers
+        header_row = re.search(r'<tr[^>]*>(.*?)</tr>', table_match.group(1), re.DOTALL)
+        years = []
+        if header_row:
+            for th in re.findall(r'<th[^>]*>(.*?)</th>', header_row.group(1), re.DOTALL):
+                m = re.search(r'(\d{4})', re.sub(r'<[^>]+>', '', th))
+                if m:
+                    years.append(m.group(1))
+        # Parse data rows — values in thousands PLN
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_match.group(1), re.DOTALL)
+        data = {}
+        for row in rows[1:]:
+            cells = re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)
+            if len(cells) < 2:
+                continue
+            label = re.sub(r'<[^>]+>', '', cells[0]).strip()
+            if not label or label in data:
+                continue
+            vals = []
+            for c in cells[1:]:
+                raw = re.sub(r'<[^>]+>', '', c).strip()
+                num = re.split(r'r/r|~', raw)[0].strip().replace(' ', '').replace('\xa0', '')
+                try:
+                    vals.append(float(num) if num and num not in ('-', '') else None)
+                except ValueError:
+                    vals.append(None)
+            data[label] = vals
+        return years, data
+
+    try:
+        years, income = _scrape('raporty-finansowe-rachunek-zyskow-i-strat')
+        _,    balance = _scrape('raporty-finansowe-bilans')
+        _,    cashflow = _scrape('raporty-finansowe-przeplywy-pieniezne')
+    except Exception as e:
+        print(f'[biznesradar] {ticker}: {e}')
+        return None
+
+    if not years or not income:
+        return None
+
+    n = len(years)
+
+    def _col(src, *keys):
+        for k in keys:
+            if k in src:
+                return [v * 1000 if v is not None else None for v in src[k][:n]]
+        return [None] * n
+
+    rev_list  = _col(income,   'Przychody ze sprzedaży')
+    gp_list   = _col(income,   'Zysk ze sprzedaży')
+    ebit_list = _col(income,   'Zysk operacyjny (EBIT)')
+    ni_list   = _col(income,   'Zysk netto')
+    ebitda_l  = _col(income,   'EBITDA')
+    ta_list   = _col(balance,  'Aktywa razem')
+    eq_list   = _col(balance,  'Kapitał własny akcjonariuszy jednostki dominującej', 'Kapitał własny')
+    csh_list  = _col(balance,  'Środki pieniężne i inne aktywa pieniężne', 'Środki pieniężne')
+    cfo_list  = _col(cashflow, 'Przepływy pieniężne z działalności operacyjne')
+    cap_list  = _col(cashflow, 'CAPEX (niematerialne i rzeczowe)', 'CAPEX')
+    fcf_list  = _col(cashflow, 'Free Cash Flow')
+
+    # Build periods newest-first (Biznesradar is oldest-first, reverse it)
+    indices = list(reversed(range(n)))
+    periods = []
+    for rank, i in enumerate(indices):
+        rev = rev_list[i]
+        if not rev:
+            continue
+        gp    = gp_list[i]
+        ebit  = ebit_list[i]
+        ni    = ni_list[i]
+        ebitda = ebitda_l[i]
+        ta    = ta_list[i]
+        eq    = eq_list[i]
+        csh   = csh_list[i]
+        cfo   = cfo_list[i]
+        cap   = cap_list[i]
+        fcf   = fcf_list[i]
+        if fcf is None and cfo is not None and cap is not None:
+            fcf = cfo - abs(cap)
+
+        gm   = (gp  / rev) if gp   is not None and rev else None
+        om   = (ebit / rev) if ebit is not None and rev else None
+        em   = (ebitda / rev) if ebitda is not None and rev else None
+        tl   = (ta - eq) if ta is not None and eq is not None else None
+
+        # YoY revenue growth (rank+1 = one year older)
+        prev_i = indices[rank + 1] if rank + 1 < len(indices) else None
+        rev_prev = rev_list[prev_i] if prev_i is not None else None
+        rev_yoy = ((rev - rev_prev) / abs(rev_prev)) if rev_prev else None
+
+        periods.append({
+            'label':            f'FY{years[i]}',
+            'date':             f'{years[i]}-12-31',
+            'revenue':          rev,
+            'revenueGrowthYoY': rev_yoy,
+            'grossProfit':      gp,
+            'grossMargin':      gm,
+            'operatingCost':    None,
+            'operatingIncome':  ebit,
+            'ebitda':           ebitda,
+            'ebitdaMargin':     em,
+            'netIncome':        ni,
+            'netDebt':          None,
+            'totalAssets':      ta,
+            'totalLiabilities': tl,
+            'equity':           eq,
+            'cashAndEquivalents': csh,
+            'totalDebt':        None,
+            'operatingCashFlow': cfo,
+            'capex':            cap,
+            'fcf':              fcf,
+            'shareRepurchases': None,
+        })
+
+    if not periods:
+        return None
+
+    return {
+        'periods':   periods,
+        'valuation': {'netDebtLatest': None},
+        'currency':  'PLN',
+        'period':    'annual',
+        'source':    'biznesradar',
+    }
+
+
 def _fetch_yahoo_financials(symbol, period):
-    """Fetch and normalise financial data from Yahoo Finance quoteSummary."""
+    """Fetch and normalise financial data from Yahoo Finance, with Biznesradar fallback for .WA."""
     suffix  = 'Quarterly' if period == 'quarterly' else ''
     modules = (
         f'incomeStatementHistory{suffix},'
@@ -384,10 +526,37 @@ def _fetch_yahoo_financials(symbol, period):
         f'cashflowStatementHistory{suffix},'
         'defaultKeyStatistics,summaryDetail'
     )
-    result = _yf_quotesummary(symbol, modules)
-    if not result:
-        return None
-    return _normalize_financials(result, period)
+    try:
+        result = _yf_quotesummary(symbol, modules)
+        if result:
+            data = _normalize_financials(result, period)
+            if data and data.get('periods'):
+                return data
+    except Exception as e:
+        print(f'[financials/yf] {symbol}/{period}: {e}')
+
+    # Quarterly failed — try YF annual as intermediate fallback
+    if period == 'quarterly':
+        try:
+            result = _yf_quotesummary(symbol, (
+                'incomeStatementHistory,balanceSheetHistory,'
+                'cashflowStatementHistory,defaultKeyStatistics,summaryDetail'
+            ))
+            if result:
+                data = _normalize_financials(result, 'annual')
+                if data and data.get('periods'):
+                    return data
+        except Exception:
+            pass
+
+    # YF unavailable — scrape Biznesradar for .WA stocks (annual data)
+    if symbol.endswith('.WA'):
+        try:
+            return _fetch_biznesradar_financials(symbol)
+        except Exception as e:
+            print(f'[financials/br] {symbol}: {e}')
+
+    return None
 
 
 def _refresh_financials_background(symbols=None):
