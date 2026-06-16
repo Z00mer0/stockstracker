@@ -390,6 +390,70 @@ def _fetch_yahoo_financials(symbol, period):
     return _normalize_financials(result, period)
 
 
+def _refresh_financials_background(symbols=None):
+    """Background: fetch & cache quarterly+annual financials for all portfolio symbols.
+    Only refreshes entries missing or older than 14 days to avoid hammering Yahoo Finance."""
+    if not DATABASE_URL:
+        return
+    try:
+        if symbols is None:
+            with _conn() as conn, conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT symbol FROM portfolio_holdings WHERE qty > 0")
+                symbols = [r[0] for r in cur.fetchall()]
+        if not symbols:
+            return
+        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=14)
+        to_refresh = []
+        for sym in symbols:
+            for period in ('quarterly', 'annual'):
+                try:
+                    with _conn() as conn, conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT fetched_at FROM financials WHERE symbol=%s AND period=%s",
+                            (sym, period)
+                        )
+                        row = cur.fetchone()
+                    stale = (not row) or (
+                        row[0] and row[0].replace(tzinfo=datetime.timezone.utc) < cutoff
+                    )
+                    if stale:
+                        to_refresh.append((sym, period))
+                except Exception:
+                    to_refresh.append((sym, period))
+        if not to_refresh:
+            print(f'[financials/bg] All {len(symbols)} symbols up to date')
+            return
+        unique = list({s for s, _ in to_refresh})
+        print(f'[financials/bg] Refreshing {len(to_refresh)} entries for: {unique}')
+        import concurrent.futures as _cf
+        def _fetch_one(sym_period):
+            sym, period = sym_period
+            try:
+                data = _fetch_yahoo_financials(sym, period)
+                if not data or not data.get('periods'):
+                    print(f'[financials/bg] {sym}/{period}: no data from Yahoo Finance')
+                    return
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO financials (symbol, period, data_json, source, fetched_at)
+                           VALUES (%s, %s, %s, 'yahoo', NOW())
+                           ON CONFLICT (symbol, period) DO UPDATE
+                               SET data_json=EXCLUDED.data_json,
+                                   source='yahoo',
+                                   fetched_at=NOW()""",
+                        (sym, period, json.dumps(data))
+                    )
+                print(f'[financials/bg] {sym}/{period}: {len(data["periods"])} periods stored')
+            except Exception as e:
+                print(f'[financials/bg] {sym}/{period}: {e}')
+        with _cf.ThreadPoolExecutor(max_workers=3) as ex:
+            list(ex.map(_fetch_one, to_refresh))
+        print('[financials/bg] Done')
+    except Exception as e:
+        import traceback
+        print(f'[financials/bg] Error: {e}\n{traceback.format_exc()}')
+
+
 # Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
 _env = BASE / '.env'
 if _env.exists():
@@ -1688,13 +1752,33 @@ class Handler(SimpleHTTPRequestHandler):
                     except Exception as e:
                         print(f'[espi/yf_fin] {sym}: {e}')
                         return {}
+                def _fetch_db_fin(sym):
+                    """Read cached quarterly financials from DB for enriched AI context."""
+                    if not DATABASE_URL:
+                        return []
+                    try:
+                        with _conn() as conn, conn.cursor() as cur:
+                            cur.execute(
+                                "SELECT data_json FROM financials WHERE symbol=%s AND period='quarterly'",
+                                (sym,)
+                            )
+                            row = cur.fetchone()
+                        if not row:
+                            return []
+                        return json.loads(row[0]).get('periods', [])[:4]
+                    except Exception:
+                        return []
+
                 with _cf.ThreadPoolExecutor(max_workers=8) as ex:
                     news_futures = [ex.submit(_fetch_yf_news, s) for s in wa_syms]
                     fin_futures  = [ex.submit(_fetch_yf_fin, s)  for s in wa_syms]
+                    db_futures   = [ex.submit(_fetch_db_fin, s)  for s in wa_syms]
                     news_list = [f.result() for f in news_futures]
                     fin_list  = [f.result() for f in fin_futures]
+                    db_list   = [f.result() for f in db_futures]
                 news_map = dict(zip(wa_syms, news_list))
                 fin_map  = dict(zip(wa_syms, fin_list))
+                db_map   = dict(zip(wa_syms, db_list))
 
                 def _gv(d, k):
                     v = d.get(k)
@@ -1764,6 +1848,27 @@ class Handler(SimpleHTTPRequestHandler):
                             lines.append(f'Rewizje EPS 30d: ↑{eps_up or 0} ↓{eps_dn or 0}')
                     else:
                         lines.append('[BRAK DANYCH FUNDAMENTALNYCH — nie podawaj żadnych liczb ani cen akcji]')
+
+                    # Enrich with historical quarterly data from DB (4 most recent quarters)
+                    db_periods = db_map.get(sym, [])
+                    if db_periods:
+                        lines.append('Dane kwartalne (najnowszy kwartał = pierwszy):')
+                        for p in db_periods:
+                            parts = [p.get('label', '')]
+                            r = p.get('revenue')
+                            rg = p.get('revenueGrowthYoY')
+                            if r: parts.append(f'Rev={_bfmt(r)}' + (f'({rg*100:+.1f}%r/r)' if rg is not None else ''))
+                            gm2 = p.get('grossMargin')
+                            em = p.get('ebitdaMargin')
+                            if gm2 is not None: parts.append(f'GM={gm2*100:.1f}%')
+                            if em  is not None: parts.append(f'EBITDA-M={em*100:.1f}%')
+                            ni = p.get('netIncome')
+                            fc = p.get('fcf')
+                            nd = p.get('netDebt')
+                            if ni is not None: parts.append(f'NI={_bfmt(ni)}')
+                            if fc is not None: parts.append(f'FCF={_bfmt(fc)}')
+                            if nd is not None: parts.append(f'DługNetto={_bfmt(nd)}')
+                            lines.append('  ' + ' | '.join(parts))
 
                     headlines = news_map.get(sym, [])
                     if headlines:
@@ -2683,6 +2788,16 @@ def _run_daily_snapshots():
                   f'(no prices available): {skipped}')
         print(f'[snapshot] Done — {saved}/{len(all_pids)} portfolios saved for {today}')
 
+        # Refresh stale financial data for all portfolio symbols in a background thread
+        import threading as _threading
+        _threading.Thread(
+            target=_refresh_financials_background,
+            args=(list(all_symbols),),
+            daemon=True,
+            name='financials-daily-refresh'
+        ).start()
+        print(f'[snapshot] Financials refresh started for {len(all_symbols)} symbols')
+
     except Exception as e:
         import traceback
         print(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
@@ -2737,6 +2852,11 @@ if __name__ == '__main__':
             target=_snapshot_scheduler, daemon=True, name='snapshot-scheduler'
         )
         _snap_thread.start()
+        # On startup: proactively refresh financial data for all portfolio stocks
+        _threading.Thread(
+            target=_refresh_financials_background,
+            daemon=True, name='financials-startup'
+        ).start()
 
     server = HTTPServer(('0.0.0.0', PORT), Handler)
     ip = local_ip()
