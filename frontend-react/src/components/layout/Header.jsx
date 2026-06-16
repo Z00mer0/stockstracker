@@ -225,14 +225,37 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
+  const [externalResults, setExternalResults] = useState([]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setExternalResults([]); return; }
+    const id = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) return;
+        const { results } = await res.json();
+        // Only show external results for symbols not already in portfolio
+        const portfolioSymbols = new Set((portfolio ?? []).map(p => p.symbol));
+        setExternalResults((results ?? []).filter(r => !portfolioSymbols.has(r.symbol)).slice(0, 4));
+      } catch {}
+    }, 350);
+    return () => clearTimeout(id);
+  }, [query, portfolio]);
+
   const q = query.trim().toLowerCase();
-  const searchResults = q.length < 1 ? (portfolio ?? []).slice(0, 6) : (portfolio ?? []).filter(p =>
-    p.symbol?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q)
-  ).slice(0, 8);
+  const portfolioResults = q.length < 1
+    ? (portfolio ?? []).slice(0, 6)
+    : (portfolio ?? []).filter(p => p.symbol?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q)).slice(0, 6);
+  const searchResults = portfolioResults;
+  const showExternal = externalResults.length > 0 && q.length >= 2;
 
   function handleSearchSelect(item) {
-    setSearchOpen(false); setQuery('');
+    setSearchOpen(false); setQuery(''); setExternalResults([]);
     setSelectedStock(item);
+  }
+  function handleExternalSelect(item) {
+    setSearchOpen(false); setQuery(''); setExternalResults([]);
+    setSelectedStock({ symbol: item.symbol, name: item.name, qty: 0, currency: item.exchange?.includes('Warsaw') || item.symbol.endsWith('.WA') ? 'PLN' : 'USD' });
   }
 
   const iconBtn = {
@@ -289,36 +312,52 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
             fontFamily: 'JetBrains Mono, monospace', pointerEvents: 'none',
           }}>⌘K</kbd>
         )}
-        {searchOpen && searchResults.length > 0 && (
+        {searchOpen && (searchResults.length > 0 || showExternal) && (
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
             background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8,
             boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 100, overflow: 'hidden',
           }}>
-            {!query && <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('your_portfolio')}</div>}
-            {searchResults.map(item => (
-              <div key={item.symbol}
-                onMouseDown={() => handleSearchSelect(item)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px', cursor: 'pointer',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <span style={{
-                  width: 28, height: 28, borderRadius: 6, background: 'var(--panel-2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-                }}>{item.symbol?.slice(0, 2)}</span>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.symbol}</div>
-                  {item.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>}
-                </div>
-                <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{item.qty} szt.</span>
-              </div>
-            ))}
+            {searchResults.length > 0 && (
+              <>
+                {!query && <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('your_portfolio')}</div>}
+                {searchResults.map(item => (
+                  <div key={item.symbol}
+                    onMouseDown={() => handleSearchSelect(item)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--panel-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{item.symbol?.slice(0, 2)}</span>
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.symbol}</div>
+                      {item.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>}
+                    </div>
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{item.qty} szt.</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {showExternal && (
+              <>
+                <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', borderTop: searchResults.length > 0 ? '1px solid var(--border)' : 'none' }}>Giełda</div>
+                {externalResults.map(item => (
+                  <div key={item.symbol}
+                    onMouseDown={() => handleExternalSelect(item)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--panel-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', flexShrink: 0 }}>{item.symbol?.slice(0, 2)}</span>
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.symbol}</div>
+                      {item.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>}
+                    </div>
+                    <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{item.exchange}</span>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>

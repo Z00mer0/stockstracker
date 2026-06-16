@@ -58,7 +58,7 @@ function RevenueChart({ periods, currency }) {
     return () => obs.disconnect();
   }, []);
 
-  const pts = periods.filter(p => p.revenue != null).slice(-8);
+  const pts = periods.filter(p => p.revenue != null);
   if (pts.length < 2) return null;
 
   const revenues = pts.map(p => p.revenue);
@@ -141,7 +141,7 @@ function TableRow({ label, values, fmt, locale = 'pl-PL' }) {
       {cols.map((v, i) => (
         <span key={i} style={{
           color: 'var(--text)',
-          fontWeight: i === 0 ? 700 : 400,
+          fontWeight: i === cols.length - 1 ? 700 : 400,
           fontFamily: 'JetBrains Mono, monospace',
           fontSize: 11,
         }}>{fmtFn(v)}</span>
@@ -191,7 +191,7 @@ function ColumnHeaders({ periods }) {
     }}>
       <span />
       {cols.map((p, i) => (
-        <span key={i} style={{ fontWeight: i === 0 ? 700 : 400, color: i === 0 ? 'var(--text-dim)' : 'var(--text-faint)' }}>
+        <span key={i} style={{ fontWeight: i === cols.length - 1 ? 700 : 400, color: i === cols.length - 1 ? 'var(--text-dim)' : 'var(--text-faint)' }}>
           {p.label}
         </span>
       ))}
@@ -554,15 +554,27 @@ export default function FinancialsTab({ symbol, livePrice }) {
   const periods  = data?.periods ?? [];
   const currency = data?.currency ?? '';
 
+  // Sort newest-first (handles both Yahoo newest-first and CSV oldest-first sources)
+  const sortedPeriods = [...periods].sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return b.date.localeCompare(a.date);
+  });
+  // Display: 4 most recent periods, oldest on the left → newest on the right
+  const displayPeriods = sortedPeriods.slice(0, 4).reverse();
+
   // auto-compute valuation from live price + stored shares; fall back to stored values
   const storedVal = data?.valuation ?? {};
-  const lastPeriod = periods.length > 0 ? periods[periods.length - 1] : null;
-  const shares = storedVal.sharesOutstanding ?? null; // raw units
+  const lastPeriod = sortedPeriods.length > 0 ? sortedPeriods[0] : null;
+  // Derive shares from marketCap/livePrice when sharesOutstanding isn't available (e.g. many .WA stocks)
+  const shares = storedVal.sharesOutstanding
+    ?? (storedVal.marketCap && livePrice ? storedVal.marketCap / livePrice : null);
   const liveMarketCap = (livePrice && shares) ? livePrice * shares : null;
 
   // For income statement items use TTM (sum of last 4 quarters) when in quarterly mode
   const isQuarterly = period === 'quarterly';
-  const last4 = isQuarterly ? periods.slice(-4) : null;
+  const last4 = isQuarterly ? sortedPeriods.slice(0, 4) : null;
   function ttmSum(field) {
     if (!last4) return lastPeriod?.[field] ?? null;
     const vals = last4.map(p => p[field]).filter(v => v != null);
@@ -589,7 +601,7 @@ export default function FinancialsTab({ symbol, livePrice }) {
     netDebtLatest:   liveNetDebt   ?? storedVal.netDebtLatest,
   };
   const sourceLabel = data
-    ? `${data.source === 'yahoo' ? 'Yahoo Finance' : data.source === 'manual' ? 'CSV' : 'Screenshot'} · ${periods[0]?.label ?? ''}`
+    ? `${data.source === 'yahoo' ? 'Yahoo Finance' : data.source === 'manual' ? 'CSV' : 'Screenshot'} · ${sortedPeriods[0]?.label ?? ''}`
     : '';
 
   if (loading) {
@@ -736,53 +748,53 @@ export default function FinancialsTab({ symbol, livePrice }) {
           {/* Revenue chart + LFL KPI */}
           {isQuarterly && (
             <div style={{ background: 'var(--panel)', borderRadius: 8, marginBottom: 6, overflow: 'hidden' }}>
-              <RevenueChart periods={periods} currency={currency} />
+              <RevenueChart periods={displayPeriods} currency={currency} />
             </div>
           )}
 
           {/* RZiS */}
           <Accordion title="Rachunek Zysków i Strat" unit={`mln ${currency}`} defaultOpen={true}>
-            <ColumnHeaders periods={periods} />
-            <TableRow label="Przychody" values={periods.map(p => p.revenue)} locale={locale} />
-            <SubRow label="Wzrost r/r" values={periods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
+            <ColumnHeaders periods={displayPeriods} />
+            <TableRow label="Przychody" values={displayPeriods.map(p => p.revenue)} locale={locale} />
+            <SubRow label="Wzrost r/r" values={displayPeriods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
             {LFL_DATA[symbol] && (
-              <SubRow label="Wzrost LFL (r/r)" values={periods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
+              <SubRow label="Wzrost LFL (r/r)" values={displayPeriods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
             )}
-            <TableRow label="Zysk brutto" values={periods.map(p => p.grossProfit)} locale={locale} />
-            <SubRow label="Marża brutto" values={periods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
-            <TableRow label="Koszty oper." values={periods.map(p => p.operatingCost)} locale={locale} />
-            <TableRow label="Zysk oper." values={periods.map(p => p.operatingIncome)} locale={locale} />
-            <TableRow label="EBITDA" values={periods.map(p => p.ebitda)} locale={locale} />
-            <SubRow label="Marża EBITDA" values={periods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
-            <TableRow label="Zysk netto" values={periods.map(p => p.netIncome)} locale={locale} />
-            <TableRow label="Dług netto" values={periods.map(p => p.netDebt)} locale={locale} />
+            <TableRow label="Zysk brutto" values={displayPeriods.map(p => p.grossProfit)} locale={locale} />
+            <SubRow label="Marża brutto" values={displayPeriods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
+            <TableRow label="Koszty oper." values={displayPeriods.map(p => p.operatingCost)} locale={locale} />
+            <TableRow label="Zysk oper." values={displayPeriods.map(p => p.operatingIncome)} locale={locale} />
+            <TableRow label="EBITDA" values={displayPeriods.map(p => p.ebitda)} locale={locale} />
+            <SubRow label="Marża EBITDA" values={displayPeriods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
+            <TableRow label="Zysk netto" values={displayPeriods.map(p => p.netIncome)} locale={locale} />
+            <TableRow label="Dług netto" values={displayPeriods.map(p => p.netDebt)} locale={locale} />
           </Accordion>
 
           {/* Bilans */}
           <Accordion title="Bilans" unit={`mln ${currency}`} defaultOpen={false}>
-            <ColumnHeaders periods={periods} />
-            <TableRow label="Aktywa obrotowe" values={periods.map(p => p.totalCurrentAssets)} locale={locale} />
-            <TableRow label="Aktywa ogółem" values={periods.map(p => p.totalAssets)} locale={locale} />
-            <TableRow label="Zob. bieżące" values={periods.map(p => p.totalCurrentLiabilities)} locale={locale} />
-            <TableRow label="Zobowiązania" values={periods.map(p => p.totalLiabilities)} locale={locale} />
-            <TableRow label="Kapitał własny" values={periods.map(p => p.equity)} locale={locale} />
-            <TableRow label="Gotówka" values={periods.map(p => p.cashAndEquivalents)} locale={locale} />
-            <TableRow label="Dług całkowity" values={periods.map(p => p.totalDebt)} locale={locale} />
+            <ColumnHeaders periods={displayPeriods} />
+            <TableRow label="Aktywa obrotowe" values={displayPeriods.map(p => p.totalCurrentAssets)} locale={locale} />
+            <TableRow label="Aktywa ogółem" values={displayPeriods.map(p => p.totalAssets)} locale={locale} />
+            <TableRow label="Zob. bieżące" values={displayPeriods.map(p => p.totalCurrentLiabilities)} locale={locale} />
+            <TableRow label="Zobowiązania" values={displayPeriods.map(p => p.totalLiabilities)} locale={locale} />
+            <TableRow label="Kapitał własny" values={displayPeriods.map(p => p.equity)} locale={locale} />
+            <TableRow label="Gotówka" values={displayPeriods.map(p => p.cashAndEquivalents)} locale={locale} />
+            <TableRow label="Dług całkowity" values={displayPeriods.map(p => p.totalDebt)} locale={locale} />
           </Accordion>
 
           {/* Przepływy */}
           <Accordion title="Przepływy pieniężne" unit={`mln ${currency}`} defaultOpen={false}>
-            <ColumnHeaders periods={periods} />
-            <TableRow label="CFO (oper.)" values={periods.map(p => p.operatingCashFlow)} locale={locale} />
-            <TableRow label="CAPEX / Inwest." values={periods.map(p => p.capex)} locale={locale} />
-            <SubRow label="Stopa Reinwest." values={periods.map(p =>
+            <ColumnHeaders periods={displayPeriods} />
+            <TableRow label="CFO (oper.)" values={displayPeriods.map(p => p.operatingCashFlow)} locale={locale} />
+            <TableRow label="CAPEX / Inwest." values={displayPeriods.map(p => p.capex)} locale={locale} />
+            <SubRow label="Stopa Reinwest." values={displayPeriods.map(p =>
               p.capex != null && p.operatingCashFlow != null && Math.abs(p.operatingCashFlow) > 0
                 ? Math.abs(p.capex) / Math.abs(p.operatingCashFlow)
                 : null
             )} fmt={v => v == null ? '—' : (v * 100).toFixed(0) + '%'} />
-            <TableRow label="Finansowanie" values={periods.map(p => p.cashFromFinancing)} locale={locale} />
-            <TableRow label="FCF" values={periods.map(p => p.fcf)} locale={locale} />
-            <TableRow label="Skup akcji" values={periods.map(p => p.shareRepurchases)} locale={locale} />
+            <TableRow label="Finansowanie" values={displayPeriods.map(p => p.cashFromFinancing)} locale={locale} />
+            <TableRow label="FCF" values={displayPeriods.map(p => p.fcf)} locale={locale} />
+            <TableRow label="Skup akcji" values={displayPeriods.map(p => p.shareRepurchases)} locale={locale} />
           </Accordion>
 
           {/* Wycena */}

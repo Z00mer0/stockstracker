@@ -1176,6 +1176,36 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
+        elif path == '/api/search':
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            q = qs.get('q', '').strip()
+            if len(q) < 1:
+                self.send_json(200, {'results': []}); return
+            url = (f'https://query1.finance.yahoo.com/v1/finance/search'
+                   f'?q={urllib.parse.quote(q)}&quotesCount=8&newsCount=0&enableNavLinks=false&lang=en-US')
+            req = urllib.request.Request(url, headers={
+                'User-Agent': _YF_UA,
+                'Accept': 'application/json',
+            })
+            try:
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    data = json.loads(r.read())
+                results = []
+                for item in data.get('quotes', []):
+                    sym = item.get('symbol', '')
+                    if not sym or item.get('quoteType') not in ('EQUITY', 'ETF'):
+                        continue
+                    results.append({
+                        'symbol':   sym,
+                        'name':     item.get('longname') or item.get('shortname') or sym,
+                        'exchange': item.get('fullExchangeName') or item.get('exchange', ''),
+                        'type':     item.get('quoteType', ''),
+                    })
+                self.send_json(200, {'results': results})
+            except Exception as e:
+                print(f'[search] {q}: {e}')
+                self.send_json(200, {'results': []})
+
         elif path == '/api/logos':
             username = get_username(self)
             if not username:
@@ -1467,7 +1497,9 @@ class Handler(SimpleHTTPRequestHandler):
                         shares   = val.get('sharesOutstanding')
                         out.setdefault('sharesOutstanding', shares)
                         if periods:
-                            last4 = periods[-4:] if period == 'quarterly' else periods[-1:]
+                            # Sort newest-first — handles Yahoo (already newest-first) and CSV/Biznesradar sources
+                            sorted_p = sorted(periods, key=lambda p: p.get('date', '') or '', reverse=True)
+                            last4 = sorted_p[:4] if period == 'quarterly' else sorted_p[:1]
                             def _ttm(field):
                                 vals = [p[field] for p in last4 if p.get(field) is not None]
                                 return sum(vals) if vals else None
@@ -1482,7 +1514,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 if f is not None:
                                     fcf_vals.append(f)
                             out.setdefault('ttmFcf', sum(fcf_vals) if fcf_vals else None)
-                            last = periods[-1]
+                            last = sorted_p[0]  # most recent period
                             out.setdefault('totalDebt',           last.get('totalDebt'))
                             out.setdefault('cashAndEquivalents',  last.get('cashAndEquivalents'))
                             equity = last.get('equity')
@@ -1491,8 +1523,8 @@ class Handler(SimpleHTTPRequestHandler):
                             if equity is not None and shares:
                                 out.setdefault('bookPerShare', equity / shares)
                             # Revenue growth YoY (TTM vs prior year TTM)
-                            if period == 'quarterly' and len(periods) >= 8:
-                                prev4 = periods[-8:-4]
+                            if period == 'quarterly' and len(sorted_p) >= 8:
+                                prev4 = sorted_p[4:8]
                                 ttm_curr = _ttm('revenue')
                                 prev_vals = [p['revenue'] for p in prev4 if p.get('revenue') is not None]
                                 ttm_prev = sum(prev_vals) if len(prev_vals) == 4 else None
@@ -1596,14 +1628,15 @@ class Handler(SimpleHTTPRequestHandler):
                         val = fin.get('valuation', {})
                         m['shares'] = val.get('sharesOutstanding')
                         if ps:
-                            last4 = ps[-4:] if period == 'quarterly' else ps[-1:]
+                            sorted_ps = sorted(ps, key=lambda p: p.get('date', '') or '', reverse=True)
+                            last4 = sorted_ps[:4] if period == 'quarterly' else sorted_ps[:1]
                             def _s(field):
                                 vs = [p[field] for p in last4 if p.get(field) is not None]
                                 return sum(vs) if vs else None
                             m['revenue']    = _s('revenue')
                             m['netIncome']  = _s('netIncome')
                             m['ebitda']     = _s('ebitda')
-                            last = ps[-1]
+                            last = sorted_ps[0]  # most recent period
                             m['equity']     = last.get('equity')
                             m['totalDebt']  = last.get('totalDebt')
                             m['cash']       = last.get('cashAndEquivalents')
@@ -1616,8 +1649,8 @@ class Handler(SimpleHTTPRequestHandler):
                                 if f is not None: fcf_vs.append(f)
                             m['fcf'] = sum(fcf_vs) if fcf_vs else None
                             # Revenue growth YoY
-                            if period == 'quarterly' and len(ps) >= 8:
-                                prev4 = ps[-8:-4]
+                            if period == 'quarterly' and len(sorted_ps) >= 8:
+                                prev4 = sorted_ps[4:8]
                                 pv = [p['revenue'] for p in prev4 if p.get('revenue') is not None]
                                 if m['revenue'] and len(pv) == 4:
                                     m['revGrowth'] = (m['revenue'] - sum(pv)) / sum(pv)
@@ -2719,10 +2752,12 @@ async function doRecover() {
             currency = fin_data.get('currency', 'PLN')
             # Build prompt
             system_prompt = (
-                'Jesteś profesjonalnym analitykiem giełdowym (Equity Research Analyst). '
+                'Jesteś profesjonalnym analitykiem giełdowym (Equity Research Analyst) specjalizującym się w GPW i rynkach europejskich. '
                 'Przeprowadzasz rygorystyczną analizę fundamentalną spółki na podstawie danych finansowych. '
                 'Bądź krytyczny, szukaj anomalii, unikaj ogólników. '
-                'Skup się wyłącznie na liczbach, trendach i faktach. '
+                'Skup się na liczbach, trendach i faktach — ale zawsze osadzaj analizę w kontekście branży i makroekonomii. '
+                'Na podstawie symbolu spółki i danych finansowych zidentyfikuj jej sektor i branżę. '
+                'Oceń perspektywy wzrostu całej branży, wskaż strukturalne trendy, czynniki napędowe i zagrożenia sektorowe. '
                 'Odpowiadaj wyłącznie w języku polskim. '
                 'Używaj profesjonalnego słownictwa finansowego. '
                 'Formatuj odpowiedź w Markdownie.'
@@ -2731,7 +2766,8 @@ async function doRecover() {
                 f'Dane finansowe spółki {symbol} (dane {period}, waluta: {currency}):\n\n'
                 f'{json.dumps(fin_data, ensure_ascii=False)}\n\n'
                 'Wygeneruj raport według struktury:\n\n'
-                '### 1. TEZA INWESTYCYJNA I FOSA (Moat)\n'
+                '### 1. TEZA INWESTYCYJNA, FOSA I PERSPEKTYWY BRANŻY\n'
+                '(zidentyfikuj sektor/branżę, oceń perspektywy wzrostu całej branży, wskaż moat spółki na tle sektora)\n'
                 '### 2. ANALIZA PRZYCHODÓW I MARŻ\n'
                 '### 3. ZDROWIE BILANSU I ZADŁUŻENIE\n'
                 '### 4. JAKOŚĆ PRZEPŁYWÓW GOTÓWKOWYCH\n'
