@@ -1556,7 +1556,8 @@ class Handler(SimpleHTTPRequestHandler):
                         periods  = fin.get('periods', [])
                         val      = fin.get('valuation', {})
                         shares   = val.get('sharesOutstanding')
-                        out.setdefault('sharesOutstanding', shares)
+                        if shares and not out.get('sharesOutstanding'):
+                            out['sharesOutstanding'] = shares
                         # Use the actual period stored in JSON (may differ from DB key if fallback occurred)
                         actual_period = fin.get('period', period)
                         if periods:
@@ -1582,9 +1583,10 @@ class Handler(SimpleHTTPRequestHandler):
                             out.setdefault('cashAndEquivalents',  last.get('cashAndEquivalents'))
                             equity = last.get('equity')
                             out.setdefault('equity', equity)
-                            # Book per share
-                            if equity is not None and shares:
-                                out.setdefault('bookPerShare', equity / shares)
+                            # Book per share (use most recently resolved shares)
+                            eff_shares = out.get('sharesOutstanding') or shares
+                            if equity is not None and eff_shares:
+                                out.setdefault('bookPerShare', equity / eff_shares)
                             # Revenue growth YoY (TTM vs prior year TTM)
                             if actual_period == 'quarterly' and len(sorted_p) >= 8:
                                 prev4 = sorted_p[4:8]
@@ -1593,7 +1595,6 @@ class Handler(SimpleHTTPRequestHandler):
                                 ttm_prev = sum(prev_vals) if len(prev_vals) == 4 else None
                                 if ttm_curr and ttm_prev:
                                     out.setdefault('revenueGrowthYoY', (ttm_curr - ttm_prev) / ttm_prev)
-                        break
             except Exception as e:
                 print(f'[keystats/db] {symbol}: {e}')
 
