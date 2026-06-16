@@ -519,6 +519,37 @@ def _fetch_biznesradar_financials(symbol):
     }
 
 
+def _fetch_biznesradar_valuation(symbol):
+    """Scrape market cap, shares outstanding, and EV from Biznesradar profile page for .WA stocks."""
+    ticker = symbol.replace('.WA', '').replace('.', '').upper()
+    url = f'https://www.biznesradar.pl/notowania/{ticker}'
+    req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept-Language': 'pl-PL,pl;q=0.9'})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode('utf-8', errors='replace')
+    except Exception:
+        return {}
+
+    def _parse_num(pattern):
+        m = re.search(pattern, html, re.DOTALL)
+        if not m:
+            return None
+        raw = re.sub(r'<[^>]+>', '', m.group(1)).strip().replace('\xa0', '').replace(' ', '')
+        try:
+            return float(raw)
+        except ValueError:
+            return None
+
+    shares    = _parse_num(r'Liczba\s+akcji.*?<td[^>]*>.*?(\d[\d\s]+)</a>')
+    mkt_cap   = _parse_num(r'Kapitalizacja:.*?<td[^>]*>([\d\s]+)</td>')
+    ev_raw    = _parse_num(r'Enterprise\s+Value:.*?>([\d\s]+)</span>')
+    return {k: v for k, v in {
+        'sharesOutstanding': shares,
+        'marketCap':         mkt_cap,
+        'enterpriseValue':   ev_raw,
+    }.items() if v is not None}
+
+
 def _fetch_yahoo_financials(symbol, period):
     """Fetch and normalise financial data from Yahoo Finance, with Biznesradar fallback for .WA."""
     suffix  = 'Quarterly' if period == 'quarterly' else ''
@@ -528,37 +559,52 @@ def _fetch_yahoo_financials(symbol, period):
         f'cashflowStatementHistory{suffix},'
         'defaultKeyStatistics,summaryDetail,price'
     )
+    data = None
     try:
         result = _yf_quotesummary(symbol, modules)
         if result:
             data = _normalize_financials(result, period)
-            if data and data.get('periods'):
-                return data
+            if not (data and data.get('periods')):
+                data = None
     except Exception as e:
         print(f'[financials/yf] {symbol}/{period}: {e}')
 
     # Quarterly failed — try YF annual as intermediate fallback
-    if period == 'quarterly':
+    if data is None and period == 'quarterly':
         try:
             result = _yf_quotesummary(symbol, (
                 'incomeStatementHistory,balanceSheetHistory,'
                 'cashflowStatementHistory,defaultKeyStatistics,summaryDetail'
             ))
             if result:
-                data = _normalize_financials(result, 'annual')
-                if data and data.get('periods'):
-                    return data
+                d = _normalize_financials(result, 'annual')
+                if d and d.get('periods'):
+                    data = d
         except Exception:
             pass
 
     # YF unavailable — scrape Biznesradar for .WA stocks (annual data)
-    if symbol.endswith('.WA'):
+    if data is None and symbol.endswith('.WA'):
         try:
-            return _fetch_biznesradar_financials(symbol)
+            data = _fetch_biznesradar_financials(symbol)
         except Exception as e:
             print(f'[financials/br] {symbol}: {e}')
 
-    return None
+    # For .WA stocks, fill valuation gaps (marketCap, sharesOutstanding) from Biznesradar profile
+    if data and symbol.endswith('.WA'):
+        val = data.get('valuation', {})
+        if not val.get('marketCap') or not val.get('sharesOutstanding'):
+            try:
+                br_val = _fetch_biznesradar_valuation(symbol)
+                if br_val:
+                    val.setdefault('marketCap',         br_val.get('marketCap'))
+                    val.setdefault('sharesOutstanding', br_val.get('sharesOutstanding'))
+                    val.setdefault('ev',                br_val.get('enterpriseValue'))
+                    data['valuation'] = val
+            except Exception as e:
+                print(f'[financials/br_val] {symbol}: {e}')
+
+    return data
 
 
 def _refresh_financials_background(symbols=None):
@@ -1431,7 +1477,7 @@ class Handler(SimpleHTTPRequestHandler):
                             SET data_json  = EXCLUDED.data_json,
                                 source     = 'yahoo',
                                 fetched_at = NOW()
-                    """, (symbol, period, json.dumps(data)))
+                    """, (symbol, data.get('period', period), json.dumps(data)))
             except Exception as e:
                 print(f'[financials] db write error: {e}')
             data['source']    = 'yahoo'
@@ -1502,10 +1548,12 @@ class Handler(SimpleHTTPRequestHandler):
                         val      = fin.get('valuation', {})
                         shares   = val.get('sharesOutstanding')
                         out.setdefault('sharesOutstanding', shares)
+                        # Use the actual period stored in JSON (may differ from DB key if fallback occurred)
+                        actual_period = fin.get('period', period)
                         if periods:
                             # Sort newest-first — handles Yahoo (already newest-first) and CSV/Biznesradar sources
                             sorted_p = sorted(periods, key=lambda p: p.get('date', '') or '', reverse=True)
-                            last4 = sorted_p[:4] if period == 'quarterly' else sorted_p[:1]
+                            last4 = sorted_p[:4] if actual_period == 'quarterly' else sorted_p[:1]
                             def _ttm(field):
                                 vals = [p[field] for p in last4 if p.get(field) is not None]
                                 return sum(vals) if vals else None
@@ -1529,7 +1577,7 @@ class Handler(SimpleHTTPRequestHandler):
                             if equity is not None and shares:
                                 out.setdefault('bookPerShare', equity / shares)
                             # Revenue growth YoY (TTM vs prior year TTM)
-                            if period == 'quarterly' and len(sorted_p) >= 8:
+                            if actual_period == 'quarterly' and len(sorted_p) >= 8:
                                 prev4 = sorted_p[4:8]
                                 ttm_curr = _ttm('revenue')
                                 prev_vals = [p['revenue'] for p in prev4 if p.get('revenue') is not None]
@@ -1633,9 +1681,11 @@ class Handler(SimpleHTTPRequestHandler):
                         ps  = fin.get('periods', [])
                         val = fin.get('valuation', {})
                         m['shares'] = val.get('sharesOutstanding')
+                        # Use actual period from JSON (may differ from DB key if fallback occurred)
+                        actual_period = fin.get('period', period)
                         if ps:
                             sorted_ps = sorted(ps, key=lambda p: p.get('date', '') or '', reverse=True)
-                            last4 = sorted_ps[:4] if period == 'quarterly' else sorted_ps[:1]
+                            last4 = sorted_ps[:4] if actual_period == 'quarterly' else sorted_ps[:1]
                             def _s(field):
                                 vs = [p[field] for p in last4 if p.get(field) is not None]
                                 return sum(vs) if vs else None
@@ -1655,7 +1705,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 if f is not None: fcf_vs.append(f)
                             m['fcf'] = sum(fcf_vs) if fcf_vs else None
                             # Revenue growth YoY
-                            if period == 'quarterly' and len(sorted_ps) >= 8:
+                            if actual_period == 'quarterly' and len(sorted_ps) >= 8:
                                 prev4 = sorted_ps[4:8]
                                 pv = [p['revenue'] for p in prev4 if p.get('revenue') is not None]
                                 if m['revenue'] and len(pv) == 4:
