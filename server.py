@@ -1184,21 +1184,27 @@ class Handler(SimpleHTTPRequestHandler):
             if len(q) < 1:
                 self.send_json(200, {'results': []}); return
             try:
-                opener, _ = _get_yf_opener()
-                url = (f'https://query1.finance.yahoo.com/v1/finance/search'
-                       f'?q={urllib.parse.quote(q)}&quotesCount=8&newsCount=0&enableNavLinks=false&lang=en-US')
-                raw  = _yf_open(opener, url, {'Accept': 'application/json'}, timeout=8)
-                data = json.loads(raw)
+                # v6/autocomplete works from server IPs without cookie auth
+                url = (f'https://query2.finance.yahoo.com/v6/finance/autocomplete'
+                       f'?query={urllib.parse.quote(q)}&lang=en-US&region=US')
+                req = urllib.request.Request(url, headers={
+                    'User-Agent': _YF_UA,
+                    'Referer': 'https://finance.yahoo.com',
+                    'Accept': 'application/json',
+                })
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    data = json.loads(r.read())
                 results = []
-                for item in data.get('quotes', []):
+                for item in data.get('ResultSet', {}).get('Result', []):
                     sym = item.get('symbol', '')
-                    if not sym or item.get('quoteType') not in ('EQUITY', 'ETF'):
+                    typ = item.get('type', '')  # S=stock, E=ETF, M=mutual fund, O=option
+                    if not sym or typ not in ('S', 'E'):
                         continue
                     results.append({
                         'symbol':   sym,
-                        'name':     item.get('longname') or item.get('shortname') or sym,
-                        'exchange': item.get('fullExchangeName') or item.get('exchange', ''),
-                        'type':     item.get('quoteType', ''),
+                        'name':     item.get('name') or sym,
+                        'exchange': item.get('exchDisp') or item.get('exch', ''),
+                        'type':     'EQUITY' if typ == 'S' else 'ETF',
                     })
                 self.send_json(200, {'results': results})
             except Exception as e:
