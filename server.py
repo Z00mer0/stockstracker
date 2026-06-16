@@ -1230,27 +1230,36 @@ class Handler(SimpleHTTPRequestHandler):
             if len(q) < 1:
                 self.send_json(200, {'results': []}); return
             try:
-                # v6/autocomplete works from server IPs without cookie auth
-                url = (f'https://query2.finance.yahoo.com/v6/finance/autocomplete'
-                       f'?query={urllib.parse.quote(q)}&lang=en-US&region=US')
-                req = urllib.request.Request(url, headers={
-                    'User-Agent': _YF_UA,
-                    'Referer': 'https://finance.yahoo.com',
-                    'Accept': 'application/json',
-                })
+                # Twelve Data free symbol_search — works from server IPs, no auth needed
+                _MIC_SUFFIX = {
+                    'XWAR': '.WA', 'XLON': '.L',  'XETR': '.DE', 'XPAR': '.PA',
+                    'XAMS': '.AS', 'XMIL': '.MI', 'XMAD': '.MC', 'XHEL': '.HE',
+                    'XSTO': '.ST', 'XOSL': '.OL', 'XSWX': '.SW', 'XIST': '.IS',
+                }
+                url = (f'https://api.twelvedata.com/symbol_search'
+                       f'?symbol={urllib.parse.quote(q)}&outputsize=10')
+                req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
                 with urllib.request.urlopen(req, timeout=8) as r:
                     data = json.loads(r.read())
                 results = []
-                for item in data.get('ResultSet', {}).get('Result', []):
-                    sym = item.get('symbol', '')
-                    typ = item.get('type', '')  # S=stock, E=ETF, M=mutual fund, O=option
-                    if not sym or typ not in ('S', 'E'):
+                seen = set()
+                for item in data.get('data', []):
+                    sym_raw  = item.get('symbol', '')
+                    mic      = item.get('mic_code', '')
+                    typ      = item.get('instrument_type', '')
+                    exchange = item.get('exchange', '')
+                    if not sym_raw or typ not in ('Common Stock', 'ETF'):
                         continue
+                    suffix = _MIC_SUFFIX.get(mic, '')
+                    symbol = sym_raw + suffix if suffix else sym_raw
+                    if symbol in seen:
+                        continue
+                    seen.add(symbol)
                     results.append({
-                        'symbol':   sym,
-                        'name':     item.get('name') or sym,
-                        'exchange': item.get('exchDisp') or item.get('exch', ''),
-                        'type':     'EQUITY' if typ == 'S' else 'ETF',
+                        'symbol':   symbol,
+                        'name':     item.get('instrument_name') or symbol,
+                        'exchange': exchange,
+                        'type':     'EQUITY' if typ == 'Common Stock' else 'ETF',
                     })
                 self.send_json(200, {'results': results})
             except Exception as e:
