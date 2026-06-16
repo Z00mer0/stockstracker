@@ -1462,8 +1462,11 @@ class Handler(SimpleHTTPRequestHandler):
                     row = cur.fetchone()
                 if row and not force:
                     age_days = (datetime.datetime.now(datetime.timezone.utc) - row['fetched_at']).days
-                    if age_days < 90:
-                        cached = json.loads(row['data_json'])
+                    cached = json.loads(row['data_json'])
+                    # If stored data's actual period doesn't match request (e.g. quarterly key holds annual fallback),
+                    # treat as miss so the correct valuation data (with Biznesradar shares) gets fetched fresh.
+                    actual_stored_period = cached.get('period', period)
+                    if age_days < 90 and actual_stored_period == period:
                         cached['source']    = row['source']
                         cached['fetchedAt'] = row['fetched_at'].isoformat()
                         self.send_json(200, cached); return
