@@ -351,7 +351,9 @@ def _normalize_financials(result, period):
         if len(q_fcfs) == 4:
             ttm_fcf = sum(q_fcfs)
 
-    market_cap = _raw(summary, 'marketCap')
+    price_mod  = result.get('price', {})
+    market_cap = _raw(summary, 'marketCap') or _raw(price_mod, 'marketCap')
+    shares_out = _raw(key_stats, 'sharesOutstanding') or _raw(price_mod, 'sharesOutstanding')
     ev         = _raw(key_stats, 'enterpriseValue')
     pfcf       = (market_cap / ttm_fcf) if market_cap and ttm_fcf and ttm_fcf > 0 else None
 
@@ -361,7 +363,7 @@ def _normalize_financials(result, period):
         'evEbitda':          _raw(key_stats, 'enterpriseToEbitda'),
         'ps':                _raw(summary,   'priceToSalesTrailing12Months'),
         'marketCap':         market_cap,
-        'sharesOutstanding': _raw(key_stats, 'sharesOutstanding'),
+        'sharesOutstanding': shares_out,
         'ev':                ev,
         'pfcf':              pfcf,
         'netDebtLatest':     periods[0]['netDebt'] if periods else None,
@@ -524,7 +526,7 @@ def _fetch_yahoo_financials(symbol, period):
         f'incomeStatementHistory{suffix},'
         f'balanceSheetHistory{suffix},'
         f'cashflowStatementHistory{suffix},'
-        'defaultKeyStatistics,summaryDetail'
+        'defaultKeyStatistics,summaryDetail,price'
     )
     try:
         result = _yf_quotesummary(symbol, modules)
