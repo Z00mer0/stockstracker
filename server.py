@@ -1389,11 +1389,12 @@ class Handler(SimpleHTTPRequestHandler):
             qs     = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             symbol = qs.get('symbol', '').upper()
             period = qs.get('period', 'quarterly')
+            force  = qs.get('force', '') == '1'
             if not re.fullmatch(r'[A-Z0-9.\-]{1,15}', symbol):
                 self.send_json(400, {'error': 'invalid symbol'}); return
             if period not in ('quarterly', 'annual'):
                 self.send_json(400, {'error': 'invalid period'}); return
-            # Cache check
+            # Cache check (skip when force=1)
             try:
                 with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
@@ -1401,7 +1402,7 @@ class Handler(SimpleHTTPRequestHandler):
                         (symbol, period)
                     )
                     row = cur.fetchone()
-                if row:
+                if row and not force:
                     age_days = (datetime.datetime.now(datetime.timezone.utc) - row['fetched_at']).days
                     if age_days < 90:
                         cached = json.loads(row['data_json'])
