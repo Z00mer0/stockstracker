@@ -590,33 +590,27 @@ def _fetch_sec_edgar_financials(symbol, period):
 
     usgaap = facts.get('facts', {}).get('us-gaap', {})
 
-    def _get(concepts, unit='USD'):
-        for k in concepts:
-            vals = usgaap.get(k, {}).get('units', {}).get(unit, [])
-            if vals:
-                return vals
-        return []
-
     is_quarterly = period == 'quarterly'
 
     def _by_date(concepts, unit='USD'):
-        """Return {end_date: value} for the requested period type (FY or Q1-Q4)."""
+        """Return {end_date: value} for the requested period type (FY or Q1-Q4).
+        Tries all concepts so a non-matching concept doesn't shadow a matching one."""
         out = {}
-        for f in _get(concepts, unit):
-            fp = f.get('fp', '')
-            form = f.get('form', '')
-            if is_quarterly:
-                ok = fp in ('Q1', 'Q2', 'Q3', 'Q4') and '10-Q' in form
-                # Also accept Q4 from 10-K when fp explicitly is Q4
-                ok = ok or (fp == 'Q4' and '10-K' in form)
-            else:
-                ok = fp == 'FY' and '10-K' in form
-            if not ok:
-                continue
-            d = f.get('end', '')
-            filed = f.get('filed', '')
-            if d not in out or filed > out[d][1]:
-                out[d] = (f.get('val'), filed)
+        for k in concepts:
+            for f in usgaap.get(k, {}).get('units', {}).get(unit, []):
+                fp = f.get('fp', '')
+                form = f.get('form', '')
+                if is_quarterly:
+                    ok = fp in ('Q1', 'Q2', 'Q3', 'Q4') and '10-Q' in form
+                    ok = ok or (fp == 'Q4' and '10-K' in form)
+                else:
+                    ok = fp == 'FY' and '10-K' in form
+                if not ok:
+                    continue
+                d = f.get('end', '')
+                filed = f.get('filed', '')
+                if d not in out or filed > out[d][1]:
+                    out[d] = (f.get('val'), filed)
         return {d: v[0] for d, v in out.items()}
 
     revenues  = _by_date(['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'])
@@ -636,7 +630,7 @@ def _fetch_sec_edgar_financials(symbol, period):
     capex_raw = _by_date(['PaymentsToAcquirePropertyPlantAndEquipment'])
 
     # Shares outstanding (point-in-time)
-    shares_raw = _get(['CommonStockSharesOutstanding'], 'shares')
+    shares_raw = usgaap.get('CommonStockSharesOutstanding', {}).get('units', {}).get('shares', [])
     shares_map = {}
     for f in shares_raw:
         d = f.get('end', '')
