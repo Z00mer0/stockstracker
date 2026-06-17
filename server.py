@@ -283,11 +283,11 @@ def _normalize_financials(result, period):
             continue
 
         rev = _raw(row, 'totalRevenue')
-        # YoY: Yahoo returns newest-first; quarterly: i+4 is same quarter one year ago; annual: i+1
+        # YoY: Yahoo returns oldest-first; quarterly: i-4 is same quarter one year ago; annual: i-1
         rev_yoy = None
         yoy_step = 4 if period == 'quarterly' else 1
-        if i + yoy_step < len(income_list) and rev is not None:
-            prev_rev = _raw(income_list[i + yoy_step], 'totalRevenue')
+        if i >= yoy_step and rev is not None:
+            prev_rev = _raw(income_list[i - yoy_step], 'totalRevenue')
             if prev_rev:
                 rev_yoy = (rev - prev_rev) / abs(prev_rev)
 
