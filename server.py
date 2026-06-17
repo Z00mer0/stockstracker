@@ -550,6 +550,168 @@ def _fetch_biznesradar_valuation(symbol):
     }.items() if v is not None}
 
 
+_SEC_TICKERS_CACHE = {'data': None, 'ts': 0}
+_SEC_TICKERS_TTL   = 86400  # 1 day
+
+def _sec_get_cik(symbol):
+    """Return zero-padded CIK string for a US ticker, or None if not found."""
+    now = time.time()
+    if not _SEC_TICKERS_CACHE['data'] or now - _SEC_TICKERS_CACHE['ts'] > _SEC_TICKERS_TTL:
+        req = urllib.request.Request(
+            'https://www.sec.gov/files/company_tickers.json',
+            headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
+        try:
+            raw = urllib.request.urlopen(req, timeout=12).read()
+            _SEC_TICKERS_CACHE['data'] = json.loads(raw)
+            _SEC_TICKERS_CACHE['ts']   = now
+        except Exception as e:
+            print(f'[sec/tickers] {e}')
+            return None
+    entry = next((v for v in _SEC_TICKERS_CACHE['data'].values()
+                  if v.get('ticker', '').upper() == symbol.upper()), None)
+    return str(entry['cik_str']).zfill(10) if entry else None
+
+
+def _fetch_sec_edgar_financials(symbol, period):
+    """Fetch financial data from SEC EDGAR XBRL API for US-listed stocks.
+    Works from any IP — no API key, no rate-limiting issues."""
+    cik = _sec_get_cik(symbol)
+    if not cik:
+        return None
+    try:
+        req = urllib.request.Request(
+            f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json',
+            headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
+        facts = json.loads(urllib.request.urlopen(req, timeout=20).read())
+    except Exception as e:
+        print(f'[sec/facts] {symbol}: {e}')
+        return None
+
+    usgaap = facts.get('facts', {}).get('us-gaap', {})
+
+    def _get(concepts, unit='USD'):
+        for k in concepts:
+            vals = usgaap.get(k, {}).get('units', {}).get(unit, [])
+            if vals:
+                return vals
+        return []
+
+    is_quarterly = period == 'quarterly'
+
+    def _by_date(concepts, unit='USD'):
+        """Return {end_date: value} for the requested period type (FY or Q1-Q4)."""
+        out = {}
+        for f in _get(concepts, unit):
+            fp = f.get('fp', '')
+            form = f.get('form', '')
+            if is_quarterly:
+                ok = fp in ('Q1', 'Q2', 'Q3', 'Q4') and '10-Q' in form
+                # Also accept Q4 from 10-K when fp explicitly is Q4
+                ok = ok or (fp == 'Q4' and '10-K' in form)
+            else:
+                ok = fp == 'FY' and '10-K' in form
+            if not ok:
+                continue
+            d = f.get('end', '')
+            filed = f.get('filed', '')
+            if d not in out or filed > out[d][1]:
+                out[d] = (f.get('val'), filed)
+        return {d: v[0] for d, v in out.items()}
+
+    revenues  = _by_date(['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'])
+    gp        = _by_date(['GrossProfit'])
+    op_inc    = _by_date(['OperatingIncomeLoss'])
+    net_inc   = _by_date(['NetIncomeLoss'])
+    da        = _by_date(['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization'])
+    assets    = _by_date(['Assets'])
+    liabs     = _by_date(['Liabilities'])
+    equity    = _by_date(['StockholdersEquity',
+                           'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest'])
+    cash      = _by_date(['CashAndCashEquivalentsAtCarryingValue',
+                           'CashCashEquivalentsAndShortTermInvestments'])
+    lt_debt   = _by_date(['LongTermDebtNoncurrent', 'LongTermDebt'])
+    st_debt   = _by_date(['DebtCurrent', 'ShortTermBorrowings'])
+    op_cf     = _by_date(['NetCashProvidedByUsedInOperatingActivities'])
+    capex_raw = _by_date(['PaymentsToAcquirePropertyPlantAndEquipment'])
+
+    # Shares outstanding (point-in-time)
+    shares_raw = _get(['CommonStockSharesOutstanding'], 'shares')
+    shares_map = {}
+    for f in shares_raw:
+        d = f.get('end', '')
+        filed = f.get('filed', '')
+        if d not in shares_map or filed > shares_map[d][1]:
+            shares_map[d] = (f.get('val'), filed)
+    shares_by_date = {d: v[0] for d, v in shares_map.items()}
+
+    all_dates = sorted(set(revenues) | set(net_inc), reverse=True)
+    if not all_dates:
+        return None
+
+    periods_out = []
+    prev_rev = None
+    for date in all_dates[:8]:
+        rev  = revenues.get(date)
+        ni   = net_inc.get(date)
+        oi   = op_inc.get(date)
+        da_v = da.get(date)
+        ebitda = (oi + da_v) if (oi is not None and da_v is not None) else None
+        ocf  = op_cf.get(date)
+        cpx  = capex_raw.get(date)
+        fcf  = (ocf - abs(cpx)) if (ocf is not None and cpx is not None) else None
+        ltd  = lt_debt.get(date) or 0
+        std  = st_debt.get(date) or 0
+        total_debt = (ltd + std) if (ltd or std) else None
+        ca   = cash.get(date)
+        net_debt = (total_debt - ca) if (total_debt is not None and ca is not None) else None
+
+        if is_quarterly:
+            try:
+                import datetime as _dt
+                m = int(date[5:7])
+                q = (m - 1) // 3 + 1
+                yr = date[:4]
+                label = f'Q{q} \'{yr[-2:]}'
+            except Exception:
+                label = date
+        else:
+            label = f'FY{date[:4]}'
+
+        p = {
+            'date': date, 'label': label,
+            'revenue': rev, 'grossProfit': gp.get(date),
+            'operatingIncome': oi, 'ebitda': ebitda, 'netIncome': ni,
+            'fcf': fcf, 'totalAssets': assets.get(date),
+            'totalLiabilities': liabs.get(date), 'equity': equity.get(date),
+            'cashAndEquivalents': ca, 'totalDebt': total_debt, 'netDebt': net_debt,
+            'operatingCashFlow': ocf, 'capex': cpx,
+        }
+        if rev and gp.get(date):    p['grossMargin']  = gp[date] / rev
+        if rev and ni:              p['netMargin']    = ni / rev
+        if rev and ebitda:          p['ebitdaMargin'] = ebitda / rev
+        if prev_rev and rev:        p['revenueGrowthYoY'] = (rev - prev_rev) / abs(prev_rev)
+        prev_rev = rev
+        periods_out.append(p)
+
+    # Most-recent shares outstanding
+    latest_shares = None
+    if shares_by_date:
+        latest_shares = shares_by_date[max(shares_by_date)]
+
+    return {
+        'period': period,
+        'currency': 'USD',
+        'source': 'sec',
+        'periods': periods_out,
+        'valuation': {
+            'sharesOutstanding': latest_shares,
+            'peRatio': None, 'forwardPE': None, 'evEbitda': None,
+            'ps': None, 'pfcf': None, 'marketCap': None, 'ev': None,
+            'netDebtLatest': net_debt if periods_out else None,
+        },
+    }
+
+
 def _fetch_yahoo_financials(symbol, period):
     """Fetch and normalise financial data from Yahoo Finance, with Biznesradar fallback for .WA."""
     suffix  = 'Quarterly' if period == 'quarterly' else ''
@@ -589,6 +751,13 @@ def _fetch_yahoo_financials(symbol, period):
             data = _fetch_biznesradar_financials(symbol)
         except Exception as e:
             print(f'[financials/br] {symbol}: {e}')
+
+    # YF unavailable — use SEC EDGAR XBRL for US-listed stocks (no IP blocking)
+    if data is None and not symbol.endswith('.WA') and '.' not in symbol:
+        try:
+            data = _fetch_sec_edgar_financials(symbol, period)
+        except Exception as e:
+            print(f'[financials/sec] {symbol}: {e}')
 
     # For .WA stocks, fill valuation gaps (marketCap, sharesOutstanding) from Biznesradar profile
     if data and symbol.endswith('.WA'):
