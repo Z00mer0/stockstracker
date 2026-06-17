@@ -353,7 +353,8 @@ def _normalize_financials(result, period):
 
     price_mod  = result.get('price', {})
     market_cap = _raw(summary, 'marketCap') or _raw(price_mod, 'marketCap')
-    shares_out = _raw(key_stats, 'sharesOutstanding') or _raw(price_mod, 'sharesOutstanding')
+    shares_out = (_raw(key_stats, 'sharesOutstanding') or _raw(price_mod, 'sharesOutstanding')
+                  or _raw(key_stats, 'floatShares') or _raw(key_stats, 'impliedSharesOutstanding'))
     ev         = _raw(key_stats, 'enterpriseValue')
     pfcf       = (market_cap / ttm_fcf) if market_cap and ttm_fcf and ttm_fcf > 0 else None
 
@@ -752,10 +753,29 @@ def _fetch_yahoo_financials(symbol, period):
         except Exception as e:
             print(f'[financials/br] {symbol}: {e}')
 
-    # YF unavailable — use SEC EDGAR XBRL for US-listed stocks (no IP blocking)
-    if data is None and not symbol.endswith('.WA') and '.' not in symbol:
+    # YF unavailable or missing revenue — use SEC EDGAR XBRL for US-listed stocks (no IP blocking)
+    has_revenue = data and any(p.get('revenue') for p in data.get('periods', []))
+    if (data is None or not has_revenue) and not symbol.endswith('.WA') and '.' not in symbol:
         try:
-            data = _fetch_sec_edgar_financials(symbol, period)
+            sec_data = _fetch_sec_edgar_financials(symbol, period)
+            if sec_data and sec_data.get('periods'):
+                if data is None:
+                    data = sec_data
+                else:
+                    # Merge: fill missing revenue/ebitda/operatingIncome from SEC into Yahoo periods
+                    sec_by_date = {p['date'][:7]: p for p in sec_data.get('periods', [])}
+                    for p in data.get('periods', []):
+                        sec_p = sec_by_date.get(p.get('date', '')[:7])
+                        if sec_p:
+                            for field in ('revenue', 'grossProfit', 'operatingIncome', 'ebitda',
+                                          'ebitdaMargin', 'grossMargin', 'capex', 'revenueGrowthYoY'):
+                                if p.get(field) is None and sec_p.get(field) is not None:
+                                    p[field] = sec_p[field]
+                    # Fill missing shares from SEC
+                    val = data.get('valuation', {})
+                    if not val.get('sharesOutstanding') and sec_data.get('valuation', {}).get('sharesOutstanding'):
+                        val['sharesOutstanding'] = sec_data['valuation']['sharesOutstanding']
+                        data['valuation'] = val
         except Exception as e:
             print(f'[financials/sec] {symbol}: {e}')
 
