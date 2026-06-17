@@ -378,6 +378,180 @@ def _normalize_financials(result, period):
     }
 
 
+_BANKIER_MONTHS = {
+    'Sty': ('01', '31'), 'Lut': ('02', '28'), 'Mar': ('03', '31'),
+    'Kwi': ('04', '30'), 'Maj': ('05', '31'), 'Cze': ('06', '30'),
+    'Lip': ('07', '31'), 'Sie': ('08', '31'), 'Wrz': ('09', '30'),
+    'Paź': ('10', '31'), 'Lis': ('11', '30'), 'Gru': ('12', '31'),
+}
+_BANKIER_QUARTER = {'01': 'Q1', '02': 'Q1', '03': 'Q1',
+                    '04': 'Q2', '05': 'Q2', '06': 'Q2',
+                    '07': 'Q3', '08': 'Q3', '09': 'Q3',
+                    '10': 'Q4', '11': 'Q4', '12': 'Q4'}
+
+
+def _fetch_bankier_quarterly_financials(symbol):
+    """Scrape quarterly financial data from Bankier.pl for GPW (.WA) stocks."""
+    ticker = symbol.replace('.WA', '').replace('.', '').upper()
+    url = f'https://www.bankier.pl/gielda/notowania/akcje/{ticker}/wyniki-finansowe'
+    req = urllib.request.Request(url, headers={
+        'User-Agent': _YF_UA, 'Accept-Language': 'pl-PL,pl;q=0.9',
+    })
+    with urllib.request.urlopen(req, timeout=12) as r:
+        html = r.read().decode('utf-8', errors='replace')
+
+    table_match = re.search(r'<table[^>]*m-quotes-data-table[^>]*>(.*?)</table>', html, re.DOTALL)
+    if not table_match:
+        return None
+
+    header_row = re.search(r'<tr[^>]*>(.*?)</tr>', table_match.group(1), re.DOTALL)
+    if not header_row:
+        return None
+    ths = re.findall(r'<th[^>]*>(.*?)</th>', header_row.group(1), re.DOTALL)
+    headers = [re.sub(r'<[^>]+>', '', h).replace('\xa0', ' ').strip() for h in ths]
+
+    # Build column index → (date_str, label) mapping
+    col_meta = []
+    for h in headers[1:]:  # skip first col (label col)
+        m = re.match(r'([A-Za-zÀ-žŁ-łŚ-śŻ-žóÓ]+)\s+(\d{4})', h)
+        if m:
+            mon_pl, year = m.group(1)[:3], m.group(2)
+            mon_info = _BANKIER_MONTHS.get(mon_pl) or _BANKIER_MONTHS.get(mon_pl[:2])
+            if mon_info:
+                mm, day = mon_info
+                date_str = f'{year}-{mm}-{day}'
+                q = _BANKIER_QUARTER[mm]
+                col_meta.append((date_str, f"{q} '{year[2:]}"))
+            else:
+                col_meta.append(None)
+        else:
+            col_meta.append(None)
+
+    # Parse all data rows into a dict keyed by row label
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_match.group(1), re.DOTALL)
+    row_data = {}
+    for row in rows[1:]:
+        cells = re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)
+        if not cells:
+            continue
+        label = re.sub(r'<[^>]+>', '', cells[0]).replace('\xa0', ' ').strip()
+        vals = []
+        for c in cells[1:]:
+            raw = re.sub(r'<[^>]+>', '', c).replace('\xa0', '').strip()
+            num_str = re.split(r'r/r|~|zł', raw)[0].strip().replace(' ', '').replace(',', '.')
+            try:
+                vals.append(float(num_str) * 1000 if num_str and num_str != '----' else None)
+            except ValueError:
+                vals.append(None)
+        if label and label not in row_data:
+            row_data[label] = vals
+
+    def _col(raw_label):
+        for k, v in row_data.items():
+            if raw_label.lower() in k.lower():
+                return v
+        return None
+
+    rev_vals   = _col('przychody netto ze sprzeda')
+    ebit_vals  = _col('zysk (strata) z dział. operacy')
+    ebitda_vals = _col('ebitda')
+    ni_vals    = _col('zysk (strata) nettoprezent') or _col('zysk (strata) netto')
+    ta_vals    = _col('aktywa')
+    cash_vals  = _col('środk') or _col('rodki pieni')  # środki pieniężne
+    eq_vals    = _col('kapitał własny') or _col('kapita')
+    ltd_vals   = _col('zobowiązania długoterminowe') or _col('zobowi')
+    std_vals   = _col('zobowiązania krótkoterminowe')
+    cfo_vals   = _col('przepływy z działalności operacyjne') or _col('przepływy z działalności operacyjne')
+    capex_vals = _col('przepływy z działalności inwestycyj') or _col('przepływy z działalności inwestycyj')
+
+    if not rev_vals:
+        return None
+
+    # Collect valid (non-None, non-zero) quarterly periods, newest-first
+    n = min(len(col_meta), len(rev_vals))
+    # Take last 12 columns max (most recent)
+    start = max(0, n - 12)
+    all_periods = []
+    for i in range(start, n):
+        meta = col_meta[i] if i < len(col_meta) else None
+        if meta is None:
+            continue
+        date_str, label = meta
+        rev = rev_vals[i] if rev_vals and i < len(rev_vals) else None
+        if rev is None:
+            continue
+        ebit  = ebit_vals[i]  if ebit_vals  and i < len(ebit_vals)  else None
+        ebitda= ebitda_vals[i] if ebitda_vals and i < len(ebitda_vals) else None
+        ni    = ni_vals[i]    if ni_vals    and i < len(ni_vals)    else None
+        ta    = ta_vals[i]    if ta_vals    and i < len(ta_vals)    else None
+        cash  = cash_vals[i]  if cash_vals  and i < len(cash_vals)  else None
+        eq    = eq_vals[i]    if eq_vals    and i < len(eq_vals)    else None
+        ltd   = ltd_vals[i]   if ltd_vals   and i < len(ltd_vals)   else None
+        std   = std_vals[i]   if std_vals   and i < len(std_vals)   else None
+        cfo   = cfo_vals[i]   if cfo_vals   and i < len(cfo_vals)   else None
+        cap   = capex_vals[i] if capex_vals and i < len(capex_vals) else None
+
+        tl    = (ta - eq) if ta is not None and eq is not None else None
+        td    = (ltd or 0) + (std or 0) if (ltd is not None or std is not None) else None
+        nd    = (td - cash) if td is not None and cash is not None else None
+        ebitda_margin = (ebitda / rev) if ebitda and rev else None
+        fcf   = (cfo - abs(cap)) if cfo is not None and cap is not None else None
+
+        all_periods.append({
+            'label':             label,
+            'date':              date_str,
+            'revenue':           rev,
+            'revenueGrowthYoY':  None,  # filled below
+            'grossProfit':       None,
+            'grossMargin':       None,
+            'operatingCost':     None,
+            'operatingIncome':   ebit,
+            'ebitda':            ebitda,
+            'ebitdaMargin':      ebitda_margin,
+            'netIncome':         ni,
+            'netDebt':           nd,
+            'totalAssets':       ta,
+            'totalLiabilities':  tl,
+            'equity':            eq,
+            'cashAndEquivalents': cash,
+            'totalDebt':         td,
+            'operatingCashFlow': cfo,
+            'capex':             cap,
+            'fcf':               fcf,
+            'shareRepurchases':  None,
+        })
+
+    if not all_periods:
+        return None
+
+    # YoY growth: iterate oldest→newest, compare same quarter one year ago
+    # all_periods is already ordered oldest→newest (we iterated i from start to n)
+    for j in range(len(all_periods)):
+        curr = all_periods[j]
+        curr_rev = curr['revenue']
+        curr_date = curr['date']  # YYYY-MM-DD
+        # Find same quarter one year ago
+        try:
+            cy, cm = int(curr_date[:4]), curr_date[5:7]
+            prev_date_prefix = f'{cy-1}-{cm}'
+            prev_period = next((p for p in all_periods[:j] if p['date'].startswith(prev_date_prefix)), None)
+            if prev_period and prev_period['revenue']:
+                curr['revenueGrowthYoY'] = (curr_rev - prev_period['revenue']) / abs(prev_period['revenue'])
+        except Exception:
+            pass
+
+    # Return newest-first
+    all_periods.reverse()
+
+    return {
+        'periods':   all_periods,
+        'valuation': {},
+        'currency':  'PLN',
+        'period':    'quarterly',
+        'source':    'bankier',
+    }
+
+
 def _fetch_biznesradar_financials(symbol):
     """Scrape annual financial data from Biznesradar.pl for GPW (.WA) stocks.
     Used as fallback when Yahoo Finance quoteSummary is unavailable from Render's IP."""
@@ -735,6 +909,16 @@ def _fetch_yahoo_financials(symbol, period):
                 data = None
     except Exception as e:
         print(f'[financials/yf] {symbol}/{period}: {e}')
+
+    # Quarterly failed for .WA — try Bankier.pl quarterly before falling back to annual
+    if data is None and period == 'quarterly' and symbol.endswith('.WA'):
+        try:
+            data = _fetch_bankier_quarterly_financials(symbol)
+            if not (data and data.get('periods')):
+                data = None
+        except Exception as e:
+            print(f'[financials/bankier] {symbol}: {e}')
+            data = None
 
     # Quarterly failed — try YF annual as intermediate fallback
     if data is None and period == 'quarterly':
