@@ -689,9 +689,14 @@ def _fetch_sec_edgar_financials(symbol, period):
         if rev and gp.get(date):    p['grossMargin']  = gp[date] / rev
         if rev and ni:              p['netMargin']    = ni / rev
         if rev and ebitda:          p['ebitdaMargin'] = ebitda / rev
-        if prev_rev and rev:        p['revenueGrowthYoY'] = (rev - prev_rev) / abs(prev_rev)
-        prev_rev = rev
         periods_out.append(p)
+
+    # YoY growth: periods_out is newest-to-oldest; each entry's "previous year" is the next item
+    for i in range(len(periods_out) - 1):
+        curr_rev = periods_out[i].get('revenue')
+        prev_rev = periods_out[i + 1].get('revenue')
+        if curr_rev and prev_rev:
+            periods_out[i]['revenueGrowthYoY'] = (curr_rev - prev_rev) / abs(prev_rev)
 
     # Most-recent shares outstanding
     latest_shares = None
