@@ -594,7 +594,8 @@ export default function FinancialsTab({ symbol, livePrice }) {
   const val = {
     peRatio:         liveMarketCap && ttmNetIncome ? liveMarketCap / ttmNetIncome : storedVal.peRatio,
     forwardPE:       storedVal.forwardPE,
-    evEbitda:        liveEV        && ttmEbitda    ? liveEV        / ttmEbitda    : storedVal.evEbitda,
+    evEbitda:        liveEV        && ttmEbitda    ? liveEV        / ttmEbitda
+                   : (storedVal.ev && ttmEbitda   ? storedVal.ev  / ttmEbitda   : storedVal.evEbitda),
     ps:              liveMarketCap && ttmRevenue   ? liveMarketCap / ttmRevenue   : storedVal.ps,
     pfcf:            liveMarketCap && ttmFcf       ? liveMarketCap / ttmFcf       : storedVal.pfcf,
     marketCap:       liveMarketCap ?? storedVal.marketCap,
