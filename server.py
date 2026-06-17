@@ -768,8 +768,10 @@ def _fetch_sec_edgar_financials(symbol, period):
 
     def _by_date(concepts, unit='USD'):
         """Return {end_date: value} for the requested period type (FY or Q1-Q4).
-        Tries all concepts so a non-matching concept doesn't shadow a matching one."""
-        out = {}
+        When multiple entries share the same end_date (e.g. single-quarter vs YTD cumulative),
+        prefer the entry whose period length is closest to 91 days (one quarter)."""
+        import datetime as _dt2
+        out = {}  # date -> (val, filed, period_days)
         for k in concepts:
             for f in usgaap.get(k, {}).get('units', {}).get(unit, []):
                 fp = f.get('fp', '')
@@ -783,8 +785,22 @@ def _fetch_sec_edgar_financials(symbol, period):
                     continue
                 d = f.get('end', '')
                 filed = f.get('filed', '')
-                if d not in out or filed > out[d][1]:
-                    out[d] = (f.get('val'), filed)
+                period_days = None
+                if is_quarterly and f.get('start') and d:
+                    try:
+                        period_days = (_dt2.date.fromisoformat(d) - _dt2.date.fromisoformat(f['start'])).days
+                    except Exception:
+                        pass
+                if d not in out:
+                    out[d] = (f.get('val'), filed, period_days)
+                else:
+                    ex_val, ex_filed, ex_days = out[d]
+                    if filed > ex_filed:
+                        out[d] = (f.get('val'), filed, period_days)
+                    elif filed == ex_filed and is_quarterly:
+                        # Same filing — prefer the entry closer to a single quarter (91 days)
+                        if period_days is not None and (ex_days is None or abs(period_days - 91) < abs(ex_days - 91)):
+                            out[d] = (f.get('val'), filed, period_days)
         return {d: v[0] for d, v in out.items()}
 
     revenues  = _by_date(['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'])
@@ -865,12 +881,20 @@ def _fetch_sec_edgar_financials(symbol, period):
         if rev and ebitda:          p['ebitdaMargin'] = ebitda / rev
         periods_out.append(p)
 
-    # YoY growth: periods_out is newest-to-oldest; each entry's "previous year" is the next item
-    for i in range(len(periods_out) - 1):
-        curr_rev = periods_out[i].get('revenue')
-        prev_rev = periods_out[i + 1].get('revenue')
-        if curr_rev and prev_rev:
-            periods_out[i]['revenueGrowthYoY'] = (curr_rev - prev_rev) / abs(prev_rev)
+    # YoY growth: compare same quarter one year ago (match by YYYY-MM prefix shifted by 1 year)
+    for i in range(len(periods_out)):
+        curr = periods_out[i]
+        curr_rev = curr.get('revenue')
+        curr_date = curr.get('date', '')
+        if not curr_rev or len(curr_date) < 7:
+            continue
+        try:
+            prev_year_prefix = f'{int(curr_date[:4]) - 1}-{curr_date[5:7]}'
+            prev = next((p for p in periods_out[i + 1:] if p.get('date', '').startswith(prev_year_prefix)), None)
+            if prev and prev.get('revenue'):
+                curr['revenueGrowthYoY'] = (curr_rev - prev['revenue']) / abs(prev['revenue'])
+        except Exception:
+            pass
 
     # Most-recent shares outstanding
     latest_shares = None
