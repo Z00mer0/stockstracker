@@ -629,21 +629,19 @@ def _fetch_sec_edgar_financials(symbol, period):
     op_cf     = _by_date(['NetCashProvidedByUsedInOperatingActivities'])
     capex_raw = _by_date(['PaymentsToAcquirePropertyPlantAndEquipment'])
 
-    # Shares outstanding — fall back to diluted weighted average for multi-class structures
+    # Shares outstanding — combine all concepts, keep most recent entry per date
+    # WeightedAverage concepts fill gaps left by CommonStockSharesOutstanding (e.g. multi-class stocks)
+    shares_map = {}
     for _shares_concept in ('CommonStockSharesOutstanding',
                             'WeightedAverageNumberOfDilutedSharesOutstanding',
                             'WeightedAverageNumberOfSharesOutstandingBasic'):
-        shares_raw = usgaap.get(_shares_concept, {}).get('units', {}).get('shares', [])
-        if shares_raw and any(f.get('val', 0) > 1e6 for f in shares_raw):
-            break
-    shares_map = {}
-    for f in shares_raw:
-        if f.get('val', 0) <= 0:
-            continue
-        d = f.get('end', '')
-        filed = f.get('filed', '')
-        if d not in shares_map or filed > shares_map[d][1]:
-            shares_map[d] = (f.get('val'), filed)
+        for f in usgaap.get(_shares_concept, {}).get('units', {}).get('shares', []):
+            if f.get('val', 0) <= 0:
+                continue
+            d = f.get('end', '')
+            filed = f.get('filed', '')
+            if d not in shares_map or filed > shares_map[d][1]:
+                shares_map[d] = (f.get('val'), filed)
     shares_by_date = {d: v[0] for d, v in shares_map.items()}
 
     all_dates = sorted(set(revenues) | set(net_inc), reverse=True)
