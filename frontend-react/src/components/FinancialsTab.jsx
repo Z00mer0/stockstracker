@@ -479,7 +479,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
     }
   }
 
-  async function generateAnalysis() {
+  async function generateAnalysis(force = false) {
     setAnalysisLoading(true);
     setAnalysis('');
     setAnalysisError('');
@@ -488,7 +488,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
       const resp = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
-        body: JSON.stringify({ symbol, period, companyName: companyName || '' }),
+        body: JSON.stringify({ symbol, period, companyName: companyName || '', force }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
@@ -848,7 +848,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
           </h3>
           {(analysisLoaded || analysisError) && !analysisLoading && (
             <button
-              onClick={generateAnalysis}
+              onClick={() => generateAnalysis(true)}
               style={{ fontSize: 11, padding: '3px 10px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--card)', color: 'var(--text)', cursor: 'pointer' }}
             >
               ↻ {t('ai_analysis_refresh')}

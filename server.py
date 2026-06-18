@@ -3174,21 +3174,24 @@ async function doRecover() {
             symbol = body.get('symbol', '')
             period = body.get('period', '')
             company_name = str(body.get('companyName', '')).strip()[:120]
+            force = body.get('force', False)
             import re as _re
             if not _re.match(r'^[A-Z0-9.\-]{1,15}$', symbol) or period not in ('annual', 'quarterly'):
                 self.send_json(400, {'error': 'invalid_params'}); return
 
-            # Check DB cache
-            try:
-                with _conn() as c, c.cursor() as cur:
-                    cur.execute(
-                        "SELECT analysis FROM financial_analyses WHERE symbol=%s AND period=%s AND created_at > NOW() - INTERVAL '7 days'",
-                        (symbol, period)
-                    )
-                    row = cur.fetchone()
-            except Exception as e:
-                print(f'[analyze] db error: {e}')
-                self.send_json(500, {'error': 'err_db'}); return
+            # Check DB cache (skip if force=true)
+            row = None
+            if not force:
+                try:
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute(
+                            "SELECT analysis FROM financial_analyses WHERE symbol=%s AND period=%s AND created_at > NOW() - INTERVAL '7 days'",
+                            (symbol, period)
+                        )
+                        row = cur.fetchone()
+                except Exception as e:
+                    print(f'[analyze] db error: {e}')
+                    self.send_json(500, {'error': 'err_db'}); return
 
             if row:
                 cached_text = row[0]
