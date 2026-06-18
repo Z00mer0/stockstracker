@@ -242,7 +242,7 @@ function ValuationCard({ label, value, sub }) {
   );
 }
 
-export default function FinancialsTab({ symbol, livePrice }) {
+export default function FinancialsTab({ symbol, livePrice, companyName }) {
   const { locale } = useLanguage();
   const t = useT();
   const fmtL = (val) => fmtLarge(val, locale);
@@ -488,7 +488,7 @@ export default function FinancialsTab({ symbol, livePrice }) {
       const resp = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
-        body: JSON.stringify({ symbol, period }),
+        body: JSON.stringify({ symbol, period, companyName: companyName || '' }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));

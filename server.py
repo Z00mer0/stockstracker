@@ -3173,6 +3173,7 @@ async function doRecover() {
                 self.send_json(400, {'error': 'invalid_json'}); return
             symbol = body.get('symbol', '')
             period = body.get('period', '')
+            company_name = str(body.get('companyName', '')).strip()[:120]
             import re as _re
             if not _re.match(r'^[A-Z0-9.\-]{1,15}$', symbol) or period not in ('annual', 'quarterly'):
                 self.send_json(400, {'error': 'invalid_params'}); return
@@ -3227,19 +3228,20 @@ async function doRecover() {
             fin_data = fin_row[0] if isinstance(fin_row[0], dict) else json.loads(fin_row[0])
             currency = fin_data.get('currency', 'PLN')
             # Build prompt
+            company_display = f'{company_name} ({symbol})' if company_name else symbol
             system_prompt = (
                 'Jesteś profesjonalnym analitykiem giełdowym (Equity Research Analyst) specjalizującym się w GPW i rynkach europejskich. '
                 'Przeprowadzasz rygorystyczną analizę fundamentalną spółki na podstawie danych finansowych. '
                 'Bądź krytyczny, szukaj anomalii, unikaj ogólników. '
                 'Skup się na liczbach, trendach i faktach — ale zawsze osadzaj analizę w kontekście branży i makroekonomii. '
-                'Na podstawie symbolu spółki i danych finansowych zidentyfikuj jej sektor i branżę. '
+                'Sektor i branżę spółki MUSISZ wywnioskować z jej pełnej nazwy — nie zgaduj na podstawie skrótu giełdowego. '
                 'Oceń perspektywy wzrostu całej branży, wskaż strukturalne trendy, czynniki napędowe i zagrożenia sektorowe. '
                 'Odpowiadaj wyłącznie w języku polskim. '
                 'Używaj profesjonalnego słownictwa finansowego. '
                 'Formatuj odpowiedź w Markdownie.'
             )
             user_prompt = (
-                f'Dane finansowe spółki {symbol} (dane {period}, waluta: {currency}):\n\n'
+                f'Dane finansowe spółki {company_display} (dane {period}, waluta: {currency}):\n\n'
                 f'{json.dumps(fin_data, ensure_ascii=False)}\n\n'
                 'Wygeneruj raport według struktury:\n\n'
                 '### 1. TEZA INWESTYCYJNA, FOSA I PERSPEKTYWY BRANŻY\n'
