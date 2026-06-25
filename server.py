@@ -1200,6 +1200,11 @@ if DATABASE_URL:
                     snapshot_json TEXT NOT NULL,
                     PRIMARY KEY (portfolio_id, import_id)
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_layouts (
+                    portfolio_id TEXT PRIMARY KEY,
+                    layout_json  TEXT NOT NULL
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1345,6 +1350,19 @@ if DATABASE_URL:
             for imp_id, snap in import_snapshots.items():
                 cur.execute("INSERT INTO portfolio_import_snapshots (portfolio_id, import_id, snapshot_json) VALUES (%s,%s,%s)",
                             (portfolio_id, imp_id, json.dumps(snap, ensure_ascii=False)))
+
+    def load_layout(portfolio_id):
+        with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT layout_json FROM portfolio_layouts WHERE portfolio_id=%s", (portfolio_id,))
+            row = cur.fetchone()
+        return json.loads(row['layout_json']) if row else None
+
+    def save_layout(portfolio_id, layout):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("""
+                INSERT INTO portfolio_layouts (portfolio_id, layout_json) VALUES (%s, %s)
+                ON CONFLICT (portfolio_id) DO UPDATE SET layout_json = EXCLUDED.layout_json
+            """, (portfolio_id, json.dumps(layout, ensure_ascii=False)))
 
     def load_watchlist(username):
         with _conn() as c, c.cursor() as cur:
@@ -1754,6 +1772,17 @@ class Handler(SimpleHTTPRequestHandler):
                         self.send_json(403, {'error': 'forbidden'}); return
                     data = load_portfolio_data(pid)
                 self.send_json(200, data)
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path.startswith('/api/portfolios/') and path.endswith('/layout'):
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            pid = path[len('/api/portfolios/'):-len('/layout')]
+            try:
+                layout = load_layout(pid) if DATABASE_URL else None
+                self.send_json(200, {'layout': layout})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
@@ -2999,6 +3028,22 @@ async function doRecover() {
                 self.send_json(200, {'ok': True})
             except (ValueError, json.JSONDecodeError) as e:
                 self.send_json(400, {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path.startswith('/api/portfolios/') and path.endswith('/layout'):
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            pid = path[len('/api/portfolios/'):-len('/layout')]
+            try:
+                body = self.read_json(max_size=32 * 1024)
+                layout = body.get('layout')
+                if layout is None:
+                    self.send_json(400, {'error': 'missing layout'}); return
+                if DATABASE_URL:
+                    save_layout(pid, layout)
+                self.send_json(200, {'ok': True})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
