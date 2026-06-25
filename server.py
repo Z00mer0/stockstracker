@@ -2141,12 +2141,18 @@ class Handler(SimpleHTTPRequestHandler):
                 if abs(v) >= 1e6:  return f'{v/1e6:.2f} M'
                 return f'{v:.2f}'
 
-            # Best-effort: fetch analyst targets + forward estimates for richer prompt
+            # Best-effort: fetch company profile + analyst targets + forward estimates
             try:
-                yf_res = _yf_quotesummary(symbol, 'financialData,earningsTrend')
+                yf_res = _yf_quotesummary(symbol, 'assetProfile,financialData,earningsTrend')
                 if yf_res:
                     def _gv2(d, k):
                         v = d.get(k); return v.get('raw') if isinstance(v, dict) else v
+                    ap2 = yf_res.get('assetProfile', {})
+                    m['bizSummary'] = ap2.get('longBusinessSummary', '')
+                    m['sector']     = ap2.get('sector', '')
+                    m['industry']   = ap2.get('industry', '')
+                    m['country']    = ap2.get('country', '')
+                    m['employees']  = ap2.get('fullTimeEmployees')
                     fd2 = yf_res.get('financialData', {})
                     m['targetPrice'] = _gv2(fd2, 'targetMeanPrice')
                     m['recKey']      = fd2.get('recommendationKey')
@@ -2166,7 +2172,19 @@ class Handler(SimpleHTTPRequestHandler):
                 'strong_buy': 'Silne kupno', 'buy': 'Kupno', 'hold': 'Trzymaj',
                 'underperform': 'Sprzedaj', 'sell': 'Silna sprzedaż',
             }
-            lines = [f'Analiza finansowa spółki {symbol} (dane TTM/ostatni kwartał):']
+            # Build company context block
+            ctx_lines = []
+            if m.get('bizSummary'):
+                ctx_lines.append(f'Opis spółki: {m["bizSummary"][:800]}')
+            if m.get('sector'):
+                ctx_lines.append(f'Sektor: {m["sector"]}' + (f' / {m["industry"]}' if m.get('industry') else ''))
+            if m.get('country'):
+                ctx_lines.append(f'Kraj: {m["country"]}')
+            if m.get('employees'):
+                ctx_lines.append(f'Pracownicy: {m["employees"]:,}')
+
+            # Build financial data block
+            lines = [f'Dane finansowe {symbol} (TTM/ostatni kwartał):']
             if m.get('revenue'):    lines.append(f'- Przychody TTM: {_b(m["revenue"])}')
             if m.get('netIncome'):  lines.append(f'- Zysk netto TTM: {_b(m["netIncome"])}')
             if m.get('revenue') and m.get('netIncome'):
@@ -2195,14 +2213,21 @@ class Handler(SimpleHTTPRequestHandler):
             if dcf_val:
                 lines.append(f'- Wycena DCF (szacowana): {dcf_val:.2f}')
 
-            if len(lines) == 1:
+            if len(lines) == 1 and not ctx_lines:
                 self.send_json(422, {'error': 'no financial data — load financials first'}); return
 
-            prompt = '\n'.join(lines) + (
-                '\n\nNapisz po polsku podsumowanie (5-6 zdań) w stylu raportu analitycznego. '
-                'Opisz: (1) czym jest spółka i jej pozycję rynkową, (2) kluczowe wyniki i trendy finansowe, '
-                '(3) perspektywy wzrostu i wycenę w odniesieniu do rynku, (4) główne ryzyka lub szanse. '
-                'Nie używaj nagłówków ani wypunktowań. Bądź konkretny i obiektywny.'
+            ctx_block = ('\n'.join(ctx_lines) + '\n\n') if ctx_lines else ''
+            fin_block = '\n'.join(lines)
+            prompt = (
+                f'{ctx_block}{fin_block}\n\n'
+                'Napisz po polsku konkretną analizę fundamentalną tej spółki (8-10 zdań), '
+                'strukturyzując ją w 3 akapity:\n'
+                '1. Kim jest spółka, czym konkretnie się zajmuje, jaka jest jej pozycja rynkowa i przewagi konkurencyjne.\n'
+                '2. Kluczowe wyniki finansowe: przychody, marże, FCF, zadłużenie — podaj konkretne liczby z danych powyżej.\n'
+                '3. Wycena vs rynek, rekomendacje analityków, główne katalizatory wzrostu lub ryzyka.\n\n'
+                'ZASADY: Używaj wyłącznie faktów z dostarczonych danych. '
+                'Całkowicie zakazane słowa: prawdopodobnie, może, być może, wydaje się, sugeruje, potencjalnie, możliwe że. '
+                'Pisz w trybie oznajmującym. Nie używaj wypunktowań ani nagłówków.'
             )
 
             api_key = os.environ.get('GROQ_API_KEY', '').strip()
@@ -2214,7 +2239,7 @@ class Handler(SimpleHTTPRequestHandler):
                 client = _GroqClient(api_key=api_key)
                 resp = client.chat.completions.create(
                     model='llama-3.3-70b-versatile',
-                    max_tokens=600,
+                    max_tokens=1200,
                     messages=[{'role': 'user', 'content': prompt}],
                 )
                 text = resp.choices[0].message.content
