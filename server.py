@@ -1193,6 +1193,13 @@ if DATABASE_URL:
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     PRIMARY KEY (symbol, period)
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_import_snapshots (
+                    portfolio_id TEXT NOT NULL,
+                    import_id    TEXT NOT NULL,
+                    snapshot_json TEXT NOT NULL,
+                    PRIMARY KEY (portfolio_id, import_id)
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1277,9 +1284,16 @@ if DATABASE_URL:
             other_assets = [{'id': r['id'], 'name': r['name'], 'category': r['category'],
                              'value': float(r['value']), 'currency': r['currency'],
                              'note': r['note'], 'updatedAt': r['updated_at']} for r in cur.fetchall()]
+            cur.execute("SELECT import_id, snapshot_json FROM portfolio_import_snapshots WHERE portfolio_id=%s", (portfolio_id,))
+            import_snapshots = {}
+            for r in cur.fetchall():
+                try:
+                    import_snapshots[r['import_id']] = json.loads(r['snapshot_json'])
+                except Exception:
+                    pass
         return {'portfolio': {'holdings': holdings}, 'transactions': transactions,
                 'snapshots': snapshots, 'snapshotsInvested': snapshots_inv, 'cash': cash,
-                'otherAssets': other_assets}
+                'otherAssets': other_assets, 'importSnapshots': import_snapshots}
 
     def save_portfolio_data(portfolio_id, data):
         holdings = data.get('portfolio', {}).get('holdings', [])
@@ -1326,6 +1340,11 @@ if DATABASE_URL:
                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
                             (a.get('id', secrets.token_hex(8)), portfolio_id, a.get('name',''), a.get('category','Inne'),
                              a.get('value', 0), a.get('currency','PLN'), a.get('note',''), a.get('updatedAt','')))
+            import_snapshots = data.get('importSnapshots', {})
+            cur.execute("DELETE FROM portfolio_import_snapshots WHERE portfolio_id=%s", (portfolio_id,))
+            for imp_id, snap in import_snapshots.items():
+                cur.execute("INSERT INTO portfolio_import_snapshots (portfolio_id, import_id, snapshot_json) VALUES (%s,%s,%s)",
+                            (portfolio_id, imp_id, json.dumps(snap, ensure_ascii=False)))
 
     def load_watchlist(username):
         with _conn() as c, c.cursor() as cur:
