@@ -1083,6 +1083,7 @@ if _env.exists():
 
 SESSIONS     = {}
 _ESPI_CACHE  = {}   # { cache_key: {'ts': float, 'data': dict} }
+_NEWS_CACHE  = {}   # { cache_key: {'ts': float, 'data': dict} }
 _logo_cache  = {}  # symbol → domain (in-memory, populated by /api/logos)
 PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -2702,6 +2703,186 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as _top_e:
                 import traceback
                 print(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
+                self.send_json(500, {'error': str(_top_e)})
+
+        elif path == '/api/newsfeed':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+                raw = qs.get('symbols', '')
+                seen_syms = set()
+                symbols = []
+                for s in raw.split(','):
+                    sym = s.strip().upper()
+                    if sym and sym not in seen_syms:
+                        seen_syms.add(sym)
+                        symbols.append(sym)
+                symbols = symbols[:40]
+                if not symbols:
+                    self.send_json(200, {
+                        'items': [],
+                        'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    })
+                    return
+
+                cache_key = ','.join(sorted(symbols))
+                cached = _NEWS_CACHE.get(cache_key)
+                if cached and time.time() - cached['ts'] < 1800:
+                    self.send_json(200, cached['data']); return
+
+                import concurrent.futures as _cf
+
+                def _fetch_finnhub_news(sym):
+                    token = os.environ.get('FINNHUB_TOKEN', '')
+                    if not token:
+                        return []
+                    try:
+                        today_dt = datetime.datetime.now(datetime.timezone.utc).date()
+                        from_dt = today_dt - datetime.timedelta(days=7)
+                        url = (f'https://finnhub.io/api/v1/company-news?symbol={sym}'
+                               f'&from={from_dt.isoformat()}&to={today_dt.isoformat()}&token={token}')
+                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                        with urllib.request.urlopen(req, timeout=8) as r:
+                            data = json.loads(r.read().decode())
+                        out = []
+                        for n in data:
+                            ts = n.get('datetime')
+                            if not ts or not n.get('headline'):
+                                continue
+                            out.append({
+                                'symbol': sym,
+                                'title': n.get('headline'),
+                                'url': n.get('url'),
+                                'source': n.get('source'),
+                                'publishedAt': datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).isoformat(),
+                                'origin': 'finnhub',
+                            })
+                        return out
+                    except Exception as e:
+                        print(f'[newsfeed/finnhub] {sym}: {e}')
+                        return []
+
+                def _fetch_yahoo_news(sym):
+                    try:
+                        url = (f'https://query1.finance.yahoo.com/v1/finance/search'
+                               f'?q={sym}&newsCount=8&quotesCount=0&lang=pl-PL&region=PL')
+                        req = urllib.request.Request(url, headers={
+                            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:125.0)',
+                            'Accept': 'application/json',
+                        })
+                        with urllib.request.urlopen(req, timeout=8) as r:
+                            data = json.loads(r.read().decode())
+                        out = []
+                        for n in data.get('news', []):
+                            if not n.get('title'):
+                                continue
+                            related = n.get('relatedTickers')
+                            if related and sym not in related:
+                                continue
+                            ts = n.get('providerPublishTime')
+                            if not ts:
+                                continue
+                            out.append({
+                                'symbol': sym,
+                                'title': n.get('title'),
+                                'url': n.get('link'),
+                                'source': n.get('publisher'),
+                                'publishedAt': datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).isoformat(),
+                                'origin': 'yahoo',
+                            })
+                        return out[:5]
+                    except Exception as e:
+                        print(f'[newsfeed/yahoo] {sym}: {e}')
+                        return []
+
+                with _cf.ThreadPoolExecutor(max_workers=10) as ex:
+                    finnhub_futures = [ex.submit(_fetch_finnhub_news, s) for s in symbols]
+                    yahoo_futures   = [ex.submit(_fetch_yahoo_news, s)   for s in symbols]
+                    finnhub_list = [f.result() for f in finnhub_futures]
+                    yahoo_list   = [f.result() for f in yahoo_futures]
+                finnhub_map = dict(zip(symbols, finnhub_list))
+                yahoo_map   = dict(zip(symbols, yahoo_list))
+
+                def _norm_title(t):
+                    return re.sub(r'[^a-z0-9]+', '', (t or '').lower())
+
+                merged = []
+                for sym in symbols:
+                    combined = (finnhub_map.get(sym) or []) + (yahoo_map.get(sym) or [])
+                    combined.sort(key=lambda n: n['publishedAt'], reverse=True)
+                    dedup = []
+                    seen_titles = set()
+                    for n in combined:
+                        key = _norm_title(n['title'])
+                        if key in seen_titles:
+                            continue
+                        seen_titles.add(key)
+                        dedup.append(n)
+                    merged.extend(dedup[:5])
+
+                merged.sort(key=lambda n: n['publishedAt'], reverse=True)
+                merged = merged[:60]
+
+                api_key = os.environ.get('GROQ_API_KEY', '').strip()
+                if merged and api_key:
+                    try:
+                        from groq import Groq as _GroqClient
+                        client = _GroqClient(api_key=api_key)
+                        ai_input = [
+                            {'i': i, 'symbol': n['symbol'], 'title': n['title']}
+                            for i, n in enumerate(merged)
+                        ]
+                        prompt = (
+                            'Jesteś analitykiem finansowym. Dla każdej poniższej wiadomości '
+                            'przetłumacz/streść nagłówek na 1-2 zwięzłe zdania w języku polskim '
+                            'oraz sklasyfikuj sentyment DLA KONKRETNEJ SPÓŁKI ("symbol"), '
+                            'której dotyczy wiadomość — nagłówek może być neutralny dla rynku, '
+                            'ale pozytywny lub negatywny dla tej konkretnej spółki.\n\n'
+                            'Odpowiedz WYŁĄCZNIE w ścisłym formacie JSON, dokładnie w tym kształcie:\n'
+                            '{"items": [{"i": 0, "sentiment": "positive", "summary": '
+                            '"Krótkie polskie podsumowanie 1-2 zdania."}, ...]}\n\n'
+                            'sentiment musi być jedną z wartości: "positive", "negative", "neutral".\n\n'
+                            'Dane wejściowe:\n' + json.dumps(ai_input, ensure_ascii=False)
+                        )
+                        resp = client.chat.completions.create(
+                            model='llama-3.3-70b-versatile',
+                            max_tokens=4000,
+                            temperature=0.3,
+                            response_format={'type': 'json_object'},
+                            messages=[{'role': 'user', 'content': prompt}],
+                        )
+                        parsed = json.loads(resp.choices[0].message.content)
+                        for entry in parsed.get('items', []):
+                            idx = entry.get('i')
+                            if isinstance(idx, int) and 0 <= idx < len(merged):
+                                merged[idx]['summary'] = entry.get('summary')
+                                merged[idx]['sentiment'] = entry.get('sentiment')
+                    except Exception as e:
+                        print(f'[newsfeed/ai] {e}')
+
+                items = []
+                for n in merged:
+                    items.append({
+                        'symbol': n['symbol'],
+                        'title': n['title'],
+                        'summary': n.get('summary'),
+                        'sentiment': n.get('sentiment'),
+                        'source': n['source'],
+                        'url': n['url'],
+                        'publishedAt': n['publishedAt'],
+                    })
+
+                result = {
+                    'items': items,
+                    'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                }
+                _NEWS_CACHE[cache_key] = {'ts': time.time(), 'data': result}
+                self.send_json(200, result)
+            except Exception as _top_e:
+                import traceback
+                print(f'[newsfeed/top] {_top_e}\n{traceback.format_exc()}')
                 self.send_json(500, {'error': str(_top_e)})
 
         elif path in ('/', '/index.html', '/myfund.html'):

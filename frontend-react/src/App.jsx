@@ -15,8 +15,10 @@ import Calendar     from './pages/Calendar';
 import Watchlist    from './pages/Watchlist';
 import ScenarioLab  from './pages/ScenarioLab';
 import Analysis     from './pages/Analysis';
-import AiInsights   from './pages/AiInsights';
-import Settings     from './pages/Settings';
+import AiInsights      from './pages/AiInsights';
+import News            from './pages/News';
+import ClosedPositions from './pages/ClosedPositions';
+import Settings        from './pages/Settings';
 
 function AppRoutes() {
   const { isAuthenticated, login, portfolio } = useApp();
@@ -37,12 +39,14 @@ function AppRoutes() {
           <Route path="portfolio"   element={<Portfolio />} />
           <Route path="history"     element={<History />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="closed"      element={<ClosedPositions />} />
           <Route path="dividends"   element={<Dividends />} />
           <Route path="calendar"    element={<Calendar />} />
           <Route path="watchlist"   element={<Watchlist />} />
           <Route path="scenario"    element={<ScenarioLab />} />
           <Route path="analysis"    element={<Analysis />} />
           <Route path="ai"          element={<AiInsights />} />
+          <Route path="news"        element={<News />} />
           <Route path="settings"    element={<Settings />} />
           <Route path="*"           element={<Navigate to="/" replace />} />
         </Route>
