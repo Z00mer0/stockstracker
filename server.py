@@ -1206,6 +1206,19 @@ if DATABASE_URL:
                     portfolio_id TEXT PRIMARY KEY,
                     layout_json  TEXT NOT NULL
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS fx_rates_history (
+                    currency TEXT NOT NULL,
+                    date     DATE NOT NULL,
+                    rate     NUMERIC NOT NULL,
+                    PRIMARY KEY (currency, date)
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    token      TEXT PRIMARY KEY,
+                    username   TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1569,7 +1582,19 @@ def get_username(handler):
     token = handler.headers.get('X-Auth-Token', '')
     if not isinstance(token, str) or len(token) > 100:
         return None
-    return SESSIONS.get(token)
+    username = SESSIONS.get(token)
+    if username is None and DATABASE_URL:
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("SELECT username FROM sessions WHERE token=%s", (token,))
+                row = cur.fetchone()
+                if row:
+                    username = row[0]
+                    SESSIONS[token] = username
+        except Exception as e:
+            print(f'[sessions] lookup failed: {e}')
+            return None
+    return username
 
 
 # ── HTTP HANDLER ───────────────────────────────────────────────────────────────
@@ -2705,6 +2730,72 @@ class Handler(SimpleHTTPRequestHandler):
                 print(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
                 self.send_json(500, {'error': str(_top_e)})
 
+        elif path == '/api/fx-rate':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+                currency = qs.get('currency', '').strip().upper()
+                if not re.match(r'^[A-Z]{3}$', currency):
+                    self.send_json(400, {'error': 'invalid currency'}); return
+                dates = sorted(set(d.strip() for d in qs.get('dates', '').split(',') if d.strip()))[:500]
+                if not dates:
+                    self.send_json(200, {'currency': currency, 'rates': {}}); return
+
+                if currency == 'PLN':
+                    self.send_json(200, {'currency': currency, 'rates': {d: 1.0 for d in dates}}); return
+
+                rates = {}
+                if DATABASE_URL:
+                    with _conn() as conn, conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT date, rate FROM fx_rates_history WHERE currency=%s AND date = ANY(%s)",
+                            (currency, dates)
+                        )
+                        for d, r in cur.fetchall():
+                            rates[d.isoformat()] = float(r)
+
+                missing = [d for d in dates if d not in rates]
+
+                def _fetch_nbp(date_str):
+                    base = datetime.date.fromisoformat(date_str)
+                    for offset in range(8):
+                        d = base - datetime.timedelta(days=offset)
+                        url = (f'https://api.nbp.pl/api/exchangerates/rates/A/{currency}/'
+                               f'{d.isoformat()}/?format=json')
+                        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+                        try:
+                            with urllib.request.urlopen(req, timeout=6) as resp:
+                                data = json.loads(resp.read().decode())
+                            rate = data.get('rates', [{}])[0].get('mid')
+                            if rate:
+                                return date_str, float(rate)
+                        except Exception:
+                            continue
+                    return date_str, None
+
+                if missing:
+                    import concurrent.futures as _cf
+                    with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+                        results = list(ex.map(_fetch_nbp, missing))
+                    to_insert = [(currency, d, r) for d, r in results if r is not None]
+                    for d, r in results:
+                        if r is not None:
+                            rates[d] = r
+                    if to_insert and DATABASE_URL:
+                        with _conn() as conn, conn.cursor() as cur:
+                            cur.executemany(
+                                "INSERT INTO fx_rates_history (currency, date, rate) "
+                                "VALUES (%s,%s,%s) ON CONFLICT (currency,date) DO NOTHING",
+                                to_insert
+                            )
+
+                self.send_json(200, {'currency': currency, 'rates': {d: rates.get(d) for d in dates}})
+            except Exception as e:
+                print(f'[fx-rate] {e}')
+                self.send_json(500, {'error': str(e)})
+
         elif path == '/api/newsfeed':
             username = get_username(self)
             if not username:
@@ -3073,6 +3164,12 @@ async function doRecover() {
                 if authenticated:
                     token = secrets.token_hex(24)
                     SESSIONS[token] = username
+                    if DATABASE_URL:
+                        try:
+                            with _conn() as c, c.cursor() as cur:
+                                cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
+                        except Exception as e:
+                            print(f'[sessions] persist failed: {e}')
                     self.send_json(200, {'ok': True, 'token': token,
                                          'display_name': users[username]['display_name']})
                 else:
@@ -3099,6 +3196,12 @@ async function doRecover() {
                 save_user(username, display_name or username, hash_password(password))
                 token = secrets.token_hex(24)
                 SESSIONS[token] = username
+                if DATABASE_URL:
+                    try:
+                        with _conn() as c, c.cursor() as cur:
+                            cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
+                    except Exception as e:
+                        print(f'[sessions] persist failed: {e}')
                 self.send_json(200, {'ok': True, 'token': token,
                                       'display_name': display_name or username})
             except ValueError as e:
@@ -3107,7 +3210,14 @@ async function doRecover() {
                 self.send_json(400, {'ok': False, 'error': 'Bad request'})
 
         elif path == '/api/logout':
-            SESSIONS.pop(self.headers.get('X-Auth-Token', ''), None)
+            token = self.headers.get('X-Auth-Token', '')
+            SESSIONS.pop(token, None)
+            if DATABASE_URL:
+                try:
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute("DELETE FROM sessions WHERE token=%s", (token,))
+                except Exception as e:
+                    print(f'[sessions] delete failed: {e}')
             self.send_json(200, {'ok': True})
 
         elif path == '/api/change-password':

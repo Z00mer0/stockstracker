@@ -1,34 +1,24 @@
 import { useState, useEffect } from 'react';
 
-// NBP free public API — returns mid rate for a given currency/date in PLN
-// Retries up to 7 days back to handle weekends/holidays
-async function fetchNbpRate(currency, date) {
-  const cacheKey = `nbp_${currency}_${date}`;
-  try {
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) return parseFloat(cached);
-  } catch {}
+function authHeader() {
+  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+}
 
-  for (let offset = 0; offset <= 7; offset++) {
-    const d = new Date(date);
-    d.setDate(d.getDate() - offset);
-    const ds = d.toISOString().slice(0, 10);
-    try {
-      const res = await fetch(
-        `https://api.nbp.pl/api/exchangerates/rates/A/${currency}/${ds}/?format=json`,
-        { signal: AbortSignal.timeout(6000), headers: { Accept: 'application/json' } }
-      );
-      if (res.ok) {
-        const json = await res.json();
-        const rate = json?.rates?.[0]?.mid;
-        if (rate) {
-          try { sessionStorage.setItem(cacheKey, String(rate)); } catch {}
-          return rate;
-        }
-      }
-    } catch {}
+// Fetches a { date: rate } map for one currency in a single batched backend call.
+// Backend caches historical rates permanently in Postgres.
+async function fetchFxRates(currency, dates) {
+  const base = import.meta.env.VITE_API_URL ?? '';
+  try {
+    const res = await fetch(
+      `${base}/api/fx-rate?currency=${currency}&dates=${encodeURIComponent([...dates].join(','))}`,
+      { headers: authHeader(), signal: AbortSignal.timeout(20000) }
+    );
+    if (!res.ok) return {};
+    const json = await res.json();
+    return json?.rates || {};
+  } catch {
+    return {};
   }
-  return null;
 }
 
 // Accepts enriched positions (with .price, .avgPrice, .currency, .symbol)
@@ -51,35 +41,54 @@ export function useFxBreakdown(enrichedPositions, transactions, fxRates) {
 
     setFxLoading(true);
 
-    Promise.all(fxPositions.map(async (pos) => {
+    // Collect all unique (currency, date) pairs needed, grouped by currency.
+    const datesByCurrency = {};
+    const buysByPosition = {};
+    fxPositions.forEach(pos => {
       const buys = transactions.filter(
         t => t.symbol === pos.symbol && t.type === 'BUY' && (t.qty ?? 0) > 0 && (t.price ?? 0) > 0
       );
-      if (!buys.length) return null;
+      buysByPosition[pos.symbol] = buys;
+      if (!buys.length) return;
+      if (!datesByCurrency[pos.currency]) datesByCurrency[pos.currency] = new Set();
+      buys.forEach(t => datesByCurrency[pos.currency].add(t.date));
+    });
 
-      const rates = await Promise.all(buys.map(t => fetchNbpRate(pos.currency, t.date)));
+    const currencies = Object.keys(datesByCurrency);
 
-      // Weighted average purchase FX rate (PLN per 1 unit of currency)
-      let totalQty = 0, weightedFx = 0;
-      buys.forEach((t, i) => {
-        if (rates[i] != null) { totalQty += t.qty; weightedFx += t.qty * rates[i]; }
-      });
-      if (!totalQty) return null;
+    Promise.all(currencies.map(currency =>
+      fetchFxRates(currency, datesByCurrency[currency]).then(rates => ({ currency, rates }))
+    )).then(results => {
+      // Build { [currency]: { [date]: rate } } lookup map
+      const lookup = {};
+      results.forEach(({ currency, rates }) => { lookup[currency] = rates; });
 
-      const purchaseFx = weightedFx / totalQty;
-      const currentFx  = fxRates[pos.currency] ?? 1;
-
-      // Asset return = how the stock itself performed in its native currency
-      const assetReturn = (pos.price / pos.avgPrice - 1) * 100;
-      // FX return = how the currency moved relative to PLN since purchase
-      const fxReturn    = (currentFx / purchaseFx - 1) * 100;
-      // Combined PLN return (multiplicative, not additive)
-      const totalReturn = ((1 + assetReturn / 100) * (1 + fxReturn / 100) - 1) * 100;
-
-      return { symbol: pos.symbol, currency: pos.currency, purchaseFx, currentFx, assetReturn, fxReturn, totalReturn };
-    })).then(results => {
       const map = {};
-      results.filter(Boolean).forEach(r => { map[r.symbol] = r; });
+      fxPositions.forEach(pos => {
+        const buys = buysByPosition[pos.symbol];
+        if (!buys.length) return;
+        const currencyRates = lookup[pos.currency] || {};
+
+        // Weighted average purchase FX rate (PLN per 1 unit of currency)
+        let totalQty = 0, weightedFx = 0;
+        buys.forEach(t => {
+          const rate = currencyRates[t.date];
+          if (rate != null) { totalQty += t.qty; weightedFx += t.qty * rate; }
+        });
+        if (!totalQty) return;
+
+        const purchaseFx = weightedFx / totalQty;
+        const currentFx  = fxRates[pos.currency] ?? 1;
+
+        // Asset return = how the stock itself performed in its native currency
+        const assetReturn = (pos.price / pos.avgPrice - 1) * 100;
+        // FX return = how the currency moved relative to PLN since purchase
+        const fxReturn    = (currentFx / purchaseFx - 1) * 100;
+        // Combined PLN return (multiplicative, not additive)
+        const totalReturn = ((1 + assetReturn / 100) * (1 + fxReturn / 100) - 1) * 100;
+
+        map[pos.symbol] = { symbol: pos.symbol, currency: pos.currency, purchaseFx, currentFx, assetReturn, fxReturn, totalReturn };
+      });
       setBreakdown(map);
     }).catch(() => {}).finally(() => setFxLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
