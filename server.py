@@ -1741,7 +1741,7 @@ class Handler(SimpleHTTPRequestHandler):
             logos = {}
             uncached = [s for s in symbols if s not in _logo_cache]
             if uncached:
-                from concurrent.futures import ThreadPoolExecutor, as_completed
+                from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as _FutTimeout
                 def _fetch_logo(sym):
                     try:
                         res = _yf_quotesummary(sym, 'assetProfile')
@@ -1757,15 +1757,18 @@ class Handler(SimpleHTTPRequestHandler):
                         print(f'[logos] {sym}: {e}')
                     _logo_cache[sym] = None
                     return sym, None
-                with ThreadPoolExecutor(max_workers=6) as ex:
-                    futs = {ex.submit(_fetch_logo, s): s for s in uncached}
-                    for f in as_completed(futs, timeout=15):
-                        try:
-                            sym, domain = f.result()
-                            if domain:
-                                logos[sym] = domain
-                        except Exception:
-                            pass
+                try:
+                    with ThreadPoolExecutor(max_workers=6) as ex:
+                        futs = {ex.submit(_fetch_logo, s): s for s in uncached}
+                        for f in as_completed(futs, timeout=15):
+                            try:
+                                sym, domain = f.result()
+                                if domain:
+                                    logos[sym] = domain
+                            except Exception:
+                                pass
+                except _FutTimeout:
+                    print(f'[logos] timed out waiting for {len(uncached)} symbols, returning partial results')
             for s in symbols:
                 if s in _logo_cache and _logo_cache[s]:
                     logos.setdefault(s, _logo_cache[s])
