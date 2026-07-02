@@ -2750,7 +2750,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if DATABASE_URL:
                     with _conn() as conn, conn.cursor() as cur:
                         cur.execute(
-                            "SELECT date, rate FROM fx_rates_history WHERE currency=%s AND date = ANY(%s)",
+                            "SELECT date, rate FROM fx_rates_history WHERE currency=%s AND date = ANY(%s::date[])",
                             (currency, dates)
                         )
                         for d, r in cur.fetchall():
