@@ -3318,6 +3318,23 @@ async function doRecover() {
                     self.send_json(413, {'error': 'too large'}); return
                 raw = self.rfile.read(max(0, length))
                 data = json.loads(raw)
+                # Safety net: refuse writes that would silently wipe most of a
+                # portfolio's transaction history (e.g. frontend race conditions
+                # writing with a stale/empty rawData snapshot). Legitimate large
+                # deletions (broker-import undo) rarely remove more than half of
+                # all transactions at once, so this only blocks runaway data loss.
+                if DATABASE_URL:
+                    with _conn() as _c, _c.cursor() as _cur:
+                        _cur.execute("SELECT count(*) FROM portfolio_transactions WHERE portfolio_id=%s", (pid,))
+                        existing_count = _cur.fetchone()[0]
+                    new_count = len(data.get('transactions', []))
+                    if existing_count >= 50 and new_count < existing_count * 0.5:
+                        self.send_json(409, {'error': (
+                            f'Odrzucono zapis: nowa liczba transakcji ({new_count}) jest znacznie mniejsza '
+                            f'niż obecna w bazie ({existing_count}). Wygląda na utratę danych po stronie klienta — '
+                            f'odśwież stronę i spróbuj ponownie.'
+                        )})
+                        return
                 save_portfolio_data(pid, data)
                 self.send_json(200, {'ok': True})
             except (ValueError, json.JSONDecodeError) as e:
