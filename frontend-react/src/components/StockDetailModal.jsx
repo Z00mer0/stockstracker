@@ -4,6 +4,7 @@ import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
 import TickerLogo from './shared/TickerLogo';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { getPositionNote, setPositionNote } from '../utils/positionNotes';
 
 const PERIODS_BASE = [
   { key: '1W', pl: '1T', en: '1W', days: 7 },
@@ -258,7 +259,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const [financialsMounted, setFinancialsMounted] = useState(false);
   const [wskaznikMounted, setWskaznikMounted] = useState(false);
   const [summaryMounted, setSummaryMounted] = useState(false);
-  const [note, setNote] = useState(() => localStorage.getItem(`myfund_note_${item.symbol}`) || '');
+  const [note, setNote] = useState(() => getPositionNote(item.symbol));
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   function switchTab(tab) {
@@ -275,7 +276,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
     setSummaryMounted(false);
     setBenchSymbol(null);
     setBenchData([]);
-    setNote(localStorage.getItem(`myfund_note_${item.symbol}`) || '');
+    setNote(getPositionNote(item.symbol));
   }, [item.symbol]);
 
   useEffect(() => {
@@ -594,7 +595,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             </p>
             <textarea
               value={note}
-              onChange={e => { setNote(e.target.value); localStorage.setItem(`myfund_note_${item.symbol}`, e.target.value); }}
+              onChange={e => { setNote(e.target.value); setPositionNote(item.symbol, e.target.value); }}
               placeholder={`Notatki do ${item.symbol}…`}
               style={{
                 width: '100%', minHeight: 160, padding: '10px 12px',
@@ -607,7 +608,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             {note && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                 <button
-                  onClick={() => { setNote(''); localStorage.removeItem(`myfund_note_${item.symbol}`); }}
+                  onClick={() => { setNote(''); setPositionNote(item.symbol, ''); }}
                   style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Wyczyść notatkę

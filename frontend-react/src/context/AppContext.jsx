@@ -44,6 +44,7 @@ export function AppProvider({ children }) {
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
   const [logoMap, setLogoMap]       = useState({});
   const writeInProgressRef          = useRef(false);
+  const fetchIdRef                  = useRef(0);
 
   const ACTIVE_PORTFOLIO_KEY = 'myfund_active_portfolio';
 
@@ -88,6 +89,11 @@ export function AppProvider({ children }) {
   const fetchData = useCallback(async () => {
     if (!token) return;
     if (writeInProgressRef.current) return;
+    // Guard against out-of-order responses: if activePortfolioId changes while a
+    // fetch is in flight, an older (e.g. "all") request can resolve AFTER a newer
+    // one and overwrite rawData with the wrong portfolio's data. Only the response
+    // matching the most recently started fetch is applied.
+    const myFetchId = ++fetchIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -97,9 +103,11 @@ export function AppProvider({ children }) {
           ? '/api/portfolios/all/data'
           : `/api/portfolios/${activePortfolioId}/data`),
       ]);
+      if (myFetchId !== fetchIdRef.current) return; // stale response, ignore
       setPortfolios(portfoliosRes.data);
       setRawData(dataRes.data);
     } catch (err) {
+      if (myFetchId !== fetchIdRef.current) return; // stale error, ignore
       if (err.response?.status === 401) {
         logout();
       } else if (err.response?.status === 403 && activePortfolioId !== 'all') {
@@ -109,7 +117,7 @@ export function AppProvider({ children }) {
         setError(err.response?.data?.error ?? err.message);
       }
     } finally {
-      setLoading(false);
+      if (myFetchId === fetchIdRef.current) setLoading(false);
     }
   }, [token, activePortfolioId]);
 
@@ -161,6 +169,14 @@ export function AppProvider({ children }) {
     : `/api/portfolios/${activePortfolioId}/data`;
   const canWrite = activePortfolioId !== 'all';
 
+  // Guards against writing while rawData hasn't loaded yet (e.g. slow/cold backend on
+  // first page load) — spreading `{ ...null, ... }` silently drops every other field,
+  // wiping the portfolio record instead of throwing. Every write function must call
+  // this before touching rawData.
+  function assertLoaded() {
+    if (!rawData) throw new Error('Dane portfela jeszcze się nie załadowały — spróbuj ponownie za chwilę.');
+  }
+
   const snapshotsInv = rawData?.snapshotsInvested ?? {};
   const snapshots = rawData?.snapshots
     ? Object.entries(rawData.snapshots)
@@ -176,12 +192,14 @@ export function AppProvider({ children }) {
 
   async function saveCash(newCash) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
     setRawData(prev => ({ ...prev, cash: newCash }));
     await api.post(dataUrl, { ...rawData, cash: newCash });
   }
 
   async function saveHoldings(newHoldings) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
     const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings } };
     setRawData(updated);
     await api.post(dataUrl, updated);
@@ -189,6 +207,7 @@ export function AppProvider({ children }) {
 
   async function saveTransactions(newTransactions) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać transakcję');
+    assertLoaded();
     const updated = { ...rawData, transactions: newTransactions };
     setRawData(updated);
     await api.post(dataUrl, updated);
@@ -196,6 +215,7 @@ export function AppProvider({ children }) {
 
   async function renameSymbol(oldSymbol, newSymbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zmienić symbol');
+    assertLoaded();
     const holdings = rawData?.portfolio?.holdings ?? [];
     const src = holdings.find(h => h.symbol === oldSymbol);
     const dst = holdings.find(h => h.symbol === newSymbol);
@@ -224,6 +244,7 @@ export function AppProvider({ children }) {
 
   async function editPosition({ symbol, qty, avgPrice }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby edytować pozycję');
+    assertLoaded();
     const holdings = rawData?.portfolio?.holdings ?? [];
     const updated = {
       ...rawData,
@@ -238,6 +259,7 @@ export function AppProvider({ children }) {
 
   async function removePosition(symbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć pozycję');
+    assertLoaded();
     const holdings = rawData?.portfolio?.holdings ?? [];
     const updated = {
       ...rawData,
@@ -249,6 +271,7 @@ export function AppProvider({ children }) {
 
   async function sellPosition({ symbol, qty, price, currency, date, note, overridePL }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby sprzedać pozycję');
+    assertLoaded();
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
     const existing = holdings.find(h => h.symbol === symbol);
@@ -273,6 +296,7 @@ export function AppProvider({ children }) {
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać pozycję');
+    assertLoaded();
     const holdings = rawData?.portfolio?.holdings ?? [];
     const transactions = rawData?.transactions ?? [];
     const cash = rawData?.cash ?? {};
@@ -330,10 +354,9 @@ export function AppProvider({ children }) {
   }
 
   async function importBrokerTransactions(newTxs) {
-    const holdings = rawData?.portfolio?.holdings ?? [];
+    assertLoaded();
     const importId = `imp_${Date.now()}`;
     const tagged = newTxs.map(t => ({ ...t, importId }));
-    const allTransactions = [...(rawData?.transactions ?? []), ...tagged];
 
     // Normalize symbol for matching: strip exchange suffixes so XTB.PL matches XTB.WA
     function baseSymbol(sym) {
@@ -343,8 +366,40 @@ export function AppProvider({ children }) {
       return arr.findIndex(h => h.symbol === symbol || baseSymbol(h.symbol) === baseSymbol(symbol));
     }
 
-    let newHoldings = [...holdings];
-    let newCash = { ...(rawData?.cash ?? {}) };
+    // For snapshot imports: auto-replace any existing snapshot for the same date.
+    // Restores portfolio to the state before the earliest old import for that date,
+    // so re-importing the same quarter never stacks on top of old data.
+    const isSnapshot = newTxs.length > 0 && newTxs.every(t => t.fromSnapshot);
+    const snapshotDate = isSnapshot ? newTxs[0]?.date : null;
+
+    let baseTransactions = rawData?.transactions ?? [];
+    let baseHoldings = rawData?.portfolio?.holdings ?? [];
+    let baseCash = rawData?.cash ?? {};
+    let baseSnapshots = { ...(rawData?.importSnapshots ?? {}) };
+
+    if (isSnapshot && snapshotDate) {
+      const oldIds = [...new Set(
+        baseTransactions
+          .filter(t => t.fromSnapshot && t.date === snapshotDate && t.importId)
+          .map(t => t.importId)
+      )].sort(); // chronological (imp_<timestamp>)
+
+      if (oldIds.length > 0) {
+        // Restore to the state before the earliest old snapshot import
+        const earliestId = oldIds[0];
+        if (baseSnapshots[earliestId]) {
+          baseHoldings = baseSnapshots[earliestId].holdings;
+          baseCash = baseSnapshots[earliestId].cash;
+        }
+        // Remove all old snapshot transactions and their undo-snapshots for this date
+        baseTransactions = baseTransactions.filter(t => !oldIds.includes(t.importId));
+        oldIds.forEach(id => delete baseSnapshots[id]);
+      }
+    }
+
+    const allTransactions = [...baseTransactions, ...tagged];
+    let newHoldings = [...baseHoldings];
+    let newCash = { ...baseCash };
     const sorted = [...tagged].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     for (const tx of sorted) {
@@ -355,9 +410,14 @@ export function AppProvider({ children }) {
         const idx = findHolding(newHoldings, tx.symbol);
         if (idx >= 0 && !tx.fromClosedPosition) {
           const h = newHoldings[idx];
-          const newQty = h.qty + tx.qty;
-          const newAvg = (h.qty * h.avgPrice + tx.qty * tx.price) / newQty;
-          newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty, avgPrice: newAvg } : h2);
+          if (tx.fromSnapshot) {
+            // Snapshot = authoritative state: replace holding entirely (avoids mixing currencies / stale symbols)
+            newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur } : h2);
+          } else {
+            const newQty = h.qty + tx.qty;
+            const newAvg = (h.qty * h.avgPrice + tx.qty * tx.price) / newQty;
+            newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty, avgPrice: newAvg } : h2);
+          }
         } else if (idx < 0) {
           newHoldings = [...newHoldings, {
             id: Math.random().toString(36).slice(2, 10),
@@ -374,8 +434,8 @@ export function AppProvider({ children }) {
             ? newHoldings.filter((_, i) => i !== idx)
             : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
         }
-        // Add sale proceeds to cash (skip historical closed-position SELLs — cash already in account)
-        if (!tx.fromClosedPosition) {
+        // Add sale proceeds to cash (skip closed-position SELLs and broker historical imports)
+        if (!tx.fromClosedPosition && !tx.skipCashAdjust) {
           newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
         }
       }
@@ -383,8 +443,8 @@ export function AppProvider({ children }) {
 
     // Snapshot pre-import state so undo can fully revert
     const preSnapshot = {
-      holdings: JSON.parse(JSON.stringify(rawData?.portfolio?.holdings ?? [])),
-      cash: JSON.parse(JSON.stringify(rawData?.cash ?? {})),
+      holdings: JSON.parse(JSON.stringify(baseHoldings)),
+      cash: JSON.parse(JSON.stringify(baseCash)),
     };
 
     const updated = {
@@ -392,7 +452,7 @@ export function AppProvider({ children }) {
       portfolio: { ...rawData.portfolio, holdings: newHoldings },
       transactions: allTransactions,
       cash: newCash,
-      importSnapshots: { ...(rawData.importSnapshots ?? {}), [importId]: preSnapshot },
+      importSnapshots: { ...baseSnapshots, [importId]: preSnapshot },
     };
 
     writeInProgressRef.current = true;
@@ -405,6 +465,7 @@ export function AppProvider({ children }) {
   }
 
   async function clearBrokerImport(importId) {
+    assertLoaded();
     const filtered = (rawData?.transactions ?? []).filter(t =>
       importId ? t.importId !== importId : !String(t.note ?? '').startsWith('Import brokera')
     );
@@ -437,6 +498,7 @@ export function AppProvider({ children }) {
   }
 
   async function deleteSnapshot(date) {
+    assertLoaded();
     const newSnapshots = { ...(rawData?.snapshots ?? {}) };
     const newSnapshotsInv = { ...(rawData?.snapshotsInvested ?? {}) };
     delete newSnapshots[date];
@@ -447,6 +509,7 @@ export function AppProvider({ children }) {
   }
 
   async function setSnapshot(date, totalValue, investedValue) {
+    assertLoaded();
     const updated = {
       ...rawData,
       snapshots: { ...(rawData.snapshots ?? {}), [date]: totalValue },
@@ -458,6 +521,7 @@ export function AppProvider({ children }) {
 
   async function saveSnapshot(totalValue, investedValue) {
     if (!canWrite) return; // "all" view cannot save directly — use saveBatchSnapshots instead
+    assertLoaded();
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
       ...rawData,
@@ -474,6 +538,7 @@ export function AppProvider({ children }) {
   }
 
   async function addOtherAsset({ name, category, value: val, currency, note }) {
+    assertLoaded();
     const assets = rawData?.otherAssets ?? [];
     const newAsset = {
       id: Math.random().toString(36).slice(2, 10),
@@ -487,6 +552,7 @@ export function AppProvider({ children }) {
   }
 
   async function editOtherAsset(id, changes) {
+    assertLoaded();
     const assets = rawData?.otherAssets ?? [];
     const updated = {
       ...rawData,
@@ -497,6 +563,7 @@ export function AppProvider({ children }) {
   }
 
   async function deleteOtherAsset(id) {
+    assertLoaded();
     const assets = rawData?.otherAssets ?? [];
     const updated = { ...rawData, otherAssets: assets.filter(a => a.id !== id) };
     setRawData(updated);

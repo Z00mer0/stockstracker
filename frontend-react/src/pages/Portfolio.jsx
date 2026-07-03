@@ -1,5 +1,8 @@
 // frontend-react/src/pages/Portfolio.jsx
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import GridLayout, { noCompactor } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import { useApp } from '../context/AppContext';
 import CsvImportModal from '../components/CsvImportModal';
 import AddStockModal from '../components/AddStockModal';
@@ -14,16 +17,29 @@ import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import {
-  COLUMN_DEFS, getColLabel, loadColumnConfig, saveColumnConfig,
+  COLUMN_DEFS, getColLabel, loadColumnConfig, saveColumnConfig, SORT_GETTERS,
 } from '../utils/portfolioColumns';
+import { loadPositionNotes, savePositionNotes, migrateLegacyNotes } from '../utils/positionNotes';
 import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
+import PortfolioPieChart from '../components/PortfolioPieChart';
 import Card from '../components/shared/Card';
 import * as XLSX from 'xlsx';
 import HistoryChart from '../components/HistoryChart';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v5';
+const DASH_ROW_H = 30;
+const DASH_MARGIN = [12, 12];
+const DASH_DEFAULT_LAYOUT = [
+  { i: 'chart',   x: 0, y: 0,  w: 8,  h: 9, minW: 4, minH: 5, maxH: 15 },
+  { i: 'stats',   x: 8, y: 0,  w: 4,  h: 9, minW: 2, minH: 4, maxH: 15 },
+  { i: 'pie',     x: 0, y: 9,  w: 6,  h: 8, minW: 3, minH: 4, maxH: 15 },
+  { i: 'alloc',   x: 6, y: 9,  w: 6,  h: 8, minW: 3, minH: 4, maxH: 15 },
+  { i: 'realytd', x: 0, y: 17, w: 12, h: 8, minW: 4, minH: 5, maxH: 15 },
+];
 
 const CRYPTO_OPTIONS = [
   'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','AVAX',
@@ -115,14 +131,6 @@ function toggleWatchlist(symbol) {
 }
 function isWatched(symbol) {
   return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]').includes(symbol);
-}
-
-const NOTES_KEY = 'myfund_position_notes';
-function loadNotes() {
-  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); } catch { return {}; }
-}
-function saveNotes(data) {
-  localStorage.setItem(NOTES_KEY, JSON.stringify(data));
 }
 
 const ALERTS_KEY = 'myfund_price_alerts';
@@ -223,8 +231,13 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 
 const CUR_FLAG = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 
-function renderCell(key, pos, fxRates, divBySymbol, locale) {
+function renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency = 'PLN') {
   const flag = CUR_FLAG[pos.currency] ?? pos.currency;
+  const isPLN = displayCurrency === 'PLN';
+  const currLabel = isPLN ? 'zł' : displayCurrency;
+  // Convert PLN-based metric to display currency
+  const toDisp = (plnVal) => plnVal == null ? null : plnVal / (fxRates[displayCurrency] ?? 1);
+
   switch (key) {
     case 'qty':
       return (
@@ -247,18 +260,23 @@ function renderCell(key, pos, fxRates, divBySymbol, locale) {
     case 'dailyChg':
       if (pos.dailyChg == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       return <Chip value={pos.dailyChg} />;
-    case 'costPLN':
-      return <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.costPLN, 2, locale)} zł</span>;
-    case 'valuePLN':
-      return pos.valuePLN != null
-        ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(pos.valuePLN, 2, locale)} zł</span>
+    case 'costPLN': {
+      const v = toDisp(pos.costPLN);
+      return <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(v, 2, locale)} {currLabel}</span>;
+    }
+    case 'valuePLN': {
+      const v = toDisp(pos.valuePLN);
+      return v != null
+        ? <span style={{ color: 'var(--text)', fontWeight: 600 }}>{fmt(v, 2, locale)} {currLabel}</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
+    }
     case 'plPLN': {
-      if (pos.plPLN == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
-      const up = pos.plPLN >= 0;
+      const v = toDisp(pos.plPLN);
+      if (v == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
+      const up = v >= 0;
       return (
         <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-          {up ? '+' : ''}{fmt(pos.plPLN, 2, locale)} zł
+          {up ? '+' : ''}{fmt(v, 2, locale)} {currLabel}
         </span>
       );
     }
@@ -292,10 +310,11 @@ function renderCell(key, pos, fxRates, divBySymbol, locale) {
     case 'divYoc': {
       const totalDiv = divBySymbol[pos.symbol] ?? 0;
       if (!totalDiv) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
-      const yoc = pos.costPLN > 0 ? (totalDiv / pos.costPLN) * 100 : null;
+      const dispCost = toDisp(pos.costPLN);
+      const yoc = dispCost > 0 ? (toDisp(totalDiv) / dispCost) * 100 : null;
       return (
         <span style={{ color: 'var(--warn)', fontWeight: 600 }}>
-          {fmt(totalDiv, 0, locale)} zł{yoc != null ? <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.75 }}>({fmt(yoc, 1, locale)}%)</span> : null}
+          {fmt(toDisp(totalDiv), 2, locale)} {currLabel}{yoc != null ? <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.75 }}>({fmt(yoc, 1, locale)}%)</span> : null}
         </span>
       );
     }
@@ -305,17 +324,10 @@ function renderCell(key, pos, fxRates, divBySymbol, locale) {
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId } = useApp();
   const { locale } = useLanguage();
   const t = useT();
   const ASSET_CATEGORIES = getAssetCategories(t);
-
-  const SORT_LABELS = {
-    cost: t('sort_by_cost'),
-    symbol: t('sort_az'),
-    qty: t('sort_by_qty'),
-    pl: t('sort_by_pl'),
-  };
 
   const [showImport, setShowImport]   = useState(false);
   const [showAdd, setShowAdd]         = useState(false);
@@ -324,12 +336,13 @@ export default function Portfolio() {
   const [sellTarget, setSellTarget]   = useState(null);
   const [divTarget, setDivTarget]     = useState(null);
   const [menuSym, setMenuSym]         = useState(null);
+  const [menuPos, setMenuPos]         = useState({ x: 0, y: 0 });
   const [editTarget, setEditTarget]   = useState(null);
   const [confirmDel, setConfirmDel]   = useState(null);
   const [toast, setToast]             = useState('');
   const [editTicker, setEditTicker]   = useState(null); // { oldSymbol, value }
   const [selectedItem, setSelectedItem] = useState(null);
-  const [notes, setNotes]             = useState(loadNotes);
+  const [notes, setNotes]             = useState(() => { migrateLegacyNotes(); return loadPositionNotes(); });
   const [noteEditing, setNoteEditing] = useState(null);
   const [alerts, setAlerts] = useState(loadAlerts);
   const [alertTarget, setAlertTarget] = useState(null); // { symbol, price }
@@ -337,10 +350,49 @@ export default function Portfolio() {
   const exportMenuRef = useRef(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterMenuRef = useRef(null);
-  const [showSortMenu, setShowSortMenu] = useState(false);
-  const sortMenuRef = useRef(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addMenuRef = useRef(null);
+
+  // Dashboard grid layout
+  const [dashLayout, setDashLayout] = useState(DASH_DEFAULT_LAYOUT);
+  const [editMode, setEditMode] = useState(false);
+  const [gridWidth, setGridWidth] = useState(0);
+  const gridRoRef = useRef(null);
+  const saveLayoutTimer = useRef(null);
+
+  const gridRef = useCallback(node => {
+    if (gridRoRef.current) { gridRoRef.current.disconnect(); gridRoRef.current = null; }
+    if (!node) return;
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w > 0) setGridWidth(Math.floor(w));
+    });
+    ro.observe(node);
+    gridRoRef.current = ro;
+  }, []);
+
+  useEffect(() => {
+    if (!activePortfolioId) return;
+    try {
+      const saved = localStorage.getItem(`${DASH_LAYOUT_KEY}_${activePortfolioId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const valid = Array.isArray(parsed) && parsed.every(item => item.h <= 15 && item.w <= 12 && item.h >= 1);
+        setDashLayout(valid ? parsed : DASH_DEFAULT_LAYOUT);
+      } else {
+        setDashLayout(DASH_DEFAULT_LAYOUT);
+      }
+    } catch {
+      setDashLayout(DASH_DEFAULT_LAYOUT);
+    }
+  }, [activePortfolioId]);
+
+  const saveLayoutToServer = useCallback((newLayout) => {
+    if (!activePortfolioId) return;
+    try {
+      localStorage.setItem(`${DASH_LAYOUT_KEY}_${activePortfolioId}`, JSON.stringify(newLayout));
+    } catch {}
+  }, [activePortfolioId]);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -385,20 +437,16 @@ export default function Portfolio() {
   }, [showFilterMenu]);
 
   useEffect(() => {
-    if (!showSortMenu) return;
-    function handler(e) { if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) setShowSortMenu(false); }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showSortMenu]);
-
-  useEffect(() => {
     if (!showAddMenu) return;
     function handler(e) { if (addMenuRef.current && !addMenuRef.current.contains(e.target)) setShowAddMenu(false); }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showAddMenu]);
   const { openChart } = useChart();
-  const [sortBy, setSortBy] = useState('cost');
+  const [sortCol, setSortCol] = useState('costPLN');
+  const [sortDir, setSortDir] = useState('desc');
+  const [dragCol, setDragCol] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
   const [tfPortfolio, setTfPortfolio] = useState('MAX');
   const [filterChip, setFilterChip] = useState('all');
   const [filterGpw, setFilterGpw] = useState(false);
@@ -414,14 +462,38 @@ export default function Portfolio() {
       if (type !== 'DIV' && type !== 'DIVIDEND') continue;
       const sym = tx.symbol;
       if (!sym) continue;
-      // amount = qty * price (if qty present), else just price
+      // amount = qty * price (if qty present), else just price, converted to PLN
       const amount = tx.qty != null && tx.qty > 0
         ? (tx.qty * (tx.price ?? 0))
         : (tx.price ?? 0);
-      map[sym] = (map[sym] ?? 0) + amount;
+      const amountPLN = amount * (fxRates[tx.currency] ?? 1);
+      map[sym] = (map[sym] ?? 0) + amountPLN;
     }
     return map;
-  }, [transactions]);
+  }, [transactions, fxRates]);
+
+  const ytdChartData = useMemo(() => {
+    const jan1 = `${new Date().getFullYear()}-01-01`;
+    const dispFx = fxRates[displayCurrency] ?? 1;
+    const sells = transactions
+      .filter(tx => tx.type === 'SELL' && tx.date >= jan1 && tx.costBasis != null)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let cum = 0;
+    const points = [];
+    for (const tx of sells) {
+      const plNative = tx.overridePL != null
+        ? tx.overridePL
+        : (tx.price - tx.costBasis) * (tx.qty ?? 0);
+      const plDisp = plNative * (fxRates[tx.currency] ?? 1) / dispFx;
+      cum += plDisp;
+      if (points.length && points[points.length - 1].date === tx.date) {
+        points[points.length - 1].pl = cum;
+      } else {
+        points.push({ date: tx.date, pl: parseFloat(cum.toFixed(2)) });
+      }
+    }
+    return points;
+  }, [transactions, fxRates, displayCurrency]);
 
   function handleColChange(newCols) {
     setCols(newCols);
@@ -459,6 +531,9 @@ export default function Portfolio() {
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
   const totalValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
+  const portFx = fxRates[displayCurrency] ?? 1;
+  const portCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
+  const portToDisp = v => v / portFx;
 
   const dailyChangePLN = enriched.reduce((sum, pos) => {
     if (pos.valuePLN != null && pos.dailyChg != null) {
@@ -475,15 +550,39 @@ export default function Portfolio() {
     return snapshotsSorted.filter(s => s.date >= cutoff);
   })();
 
+  function handleSort(key) {
+    if (sortCol === key) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortCol(key);
+      setSortDir('desc');
+    }
+  }
+
+  function handleColDrop(targetKey) {
+    if (!dragCol || dragCol === targetKey) return;
+    const from = cols.indexOf(dragCol);
+    const to = cols.indexOf(targetKey);
+    if (from === -1 || to === -1) return;
+    const next = [...cols];
+    next.splice(from, 1);
+    next.splice(to, 0, dragCol);
+    handleColChange(next);
+  }
+
   const sorted = useMemo(() => {
     return [...enriched].sort((a, b) => {
-      if (sortBy === 'cost')   return (b.costPLN ?? 0) - (a.costPLN ?? 0);
-      if (sortBy === 'symbol') return a.symbol.localeCompare(b.symbol);
-      if (sortBy === 'qty')    return b.qty - a.qty;
-      if (sortBy === 'pl')     return (b.plPLN ?? -Infinity) - (a.plPLN ?? -Infinity);
-      return 0;
+      if (sortCol === 'symbol') {
+        const cmp = a.symbol.localeCompare(b.symbol);
+        return sortDir === 'asc' ? cmp : -cmp;
+      }
+      const getter = SORT_GETTERS[sortCol];
+      if (!getter) return 0;
+      const va = getter(a);
+      const vb = getter(b);
+      return sortDir === 'asc' ? va - vb : vb - va;
     });
-  }, [enriched, sortBy]);
+  }, [enriched, sortCol, sortDir]);
 
   const filteredSorted = useMemo(() => {
     let base = sorted;
@@ -583,7 +682,7 @@ export default function Portfolio() {
         </td>
         {cols.map(key => (
           <td key={key} className="right mono">
-            {renderCell(key, pos, fxRates, divBySymbol, locale)}
+            {renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency)}
           </td>
         ))}
         <td className="right mono">
@@ -597,9 +696,9 @@ export default function Portfolio() {
           </div>
         </td>
         {/* ⋯ action menu */}
-        <td style={{ padding: '12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
+        <td style={{ padding: '12px' }} onClick={e => e.stopPropagation()}>
           <button
-            onClick={() => setMenuSym(menuOpen ? null : pos.symbol)}
+            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setMenuPos({ x: r.right, top: r.top, bottom: r.bottom }); setMenuSym(menuOpen ? null : pos.symbol); }}
             style={{
               width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 8, color: 'var(--text-faint)', background: 'transparent',
@@ -610,51 +709,6 @@ export default function Portfolio() {
           >
             ⋯
           </button>
-          {menuOpen && (
-            <div
-              ref={menuRef}
-              style={{
-                position: 'absolute', right: 0, top: 36, zIndex: 30,
-                background: 'var(--panel)', border: '1px solid var(--border)',
-                borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                width: 176, padding: '4px 0', fontSize: 14,
-              }}
-            >
-              {[
-                { icon: '+', label: t('buy_more'), action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
-                { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
-                { icon: '✏', label: t('edit_position'), action: () => { setEditTarget(pos); setMenuSym(null); } },
-                { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
-                { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`); setMenuSym(null); } },
-                { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
-                { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
-                null,
-                { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
-                { icon: '✕', label: t('delete_position'), action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
-              ].map((item, i) =>
-                item === null ? (
-                  <div key={i} style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                ) : (
-                  <button
-                    key={item.label}
-                    onClick={item.action}
-                    style={{
-                      width: '100%', textAlign: 'left', padding: '8px 16px',
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      background: 'transparent', border: 'none', cursor: 'pointer',
-                      color: item.danger ? 'var(--down)' : 'var(--text)',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-2)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
-                    {item.label}
-                  </button>
-                )
-              )}
-            </div>
-          )}
         </td>
       </tr>
       {noteEditing === pos.symbol && (
@@ -668,7 +722,7 @@ export default function Portfolio() {
                   ? { ...notes, [pos.symbol]: { text: text.trim(), updatedAt: new Date().toISOString() } }
                   : (() => { const n = { ...notes }; delete n[pos.symbol]; return n; })();
                 setNotes(updated);
-                saveNotes(updated);
+                savePositionNotes(updated);
                 setNoteEditing(null);
               }}
               onCancel={() => setNoteEditing(null)}
@@ -805,7 +859,7 @@ export default function Portfolio() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{ overflowX: 'hidden' }}>
       {/* Split alerts */}
       {splitAlerts.map(alert => (
         <div key={alert.key} style={{
@@ -838,76 +892,193 @@ export default function Portfolio() {
         </div>
       ))}
 
-      {/* Chart + rail */}
-      <div className="detail-grid" style={{ gridTemplateColumns: '1fr 340px', gap: 16, marginBottom: 16 }}>
-        <div className="card">
-          <div style={{ padding: '18px 20px 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
-            <div>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
-                {t('portfolio_value_rail')}
-              </div>
-              <div className="pv-total" style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                {fmt(totalValuePLN, 2, locale)} zł
-              </div>
-              {dailyChangePLN !== 0 && (
-                <div className="pv-daily" style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
-                  {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN, 2, locale)} zł {t('today')}
+      {/* Dashboard grid — draggable/resizable cards */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        {editMode && (
+          <button
+            onClick={() => { setDashLayout(DASH_DEFAULT_LAYOUT); saveLayoutToServer(DASH_DEFAULT_LAYOUT); }}
+            style={{ fontSize: 11, padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'var(--panel-2)', color: 'var(--text-dim)' }}
+          >
+            ↺ Resetuj
+          </button>
+        )}
+        <button
+          onClick={() => setEditMode(v => !v)}
+          style={{
+            fontSize: 12, padding: '6px 14px', borderRadius: 7, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500,
+            border: editMode ? 'none' : '1px solid var(--border)',
+            background: editMode ? 'var(--accent)' : 'var(--panel-2)',
+            color: editMode ? '#fff' : 'var(--text)',
+            boxShadow: editMode ? '0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent)' : 'none',
+          }}
+        >
+          {editMode ? '✓ Gotowe' : '⊞ Edytuj układ'}
+        </button>
+      </div>
+      <div ref={gridRef} className={editMode ? 'rgl-edit' : ''} style={{ marginBottom: 16, overflow: 'hidden' }}>
+        {gridWidth > 0 && <GridLayout
+          layout={dashLayout}
+          width={gridWidth}
+          gridConfig={{ cols: 12, rowHeight: DASH_ROW_H, margin: DASH_MARGIN, containerPadding: [0, 0] }}
+          dragConfig={{ enabled: editMode, handle: '.card-head' }}
+          resizeConfig={{ enabled: editMode, handles: ['se', 'sw', 'ne', 'nw'] }}
+          compactor={noCompactor}
+          onLayoutChange={newLayout => { if (editMode) { setDashLayout(newLayout); saveLayoutToServer(newLayout); } }}
+        >
+          <div key="chart">
+            <div className="card" style={{ height: '100%', overflow: 'hidden' }}>
+              <div className="card-head" style={{
+                cursor: editMode ? 'grab' : undefined,
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, padding: '14px 20px 4px',
+                outline: editMode ? '2px solid transparent' : undefined,
+              }}>
+                <div>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
+                    {t('portfolio_value_rail')}
+                  </div>
+                  <div className="pv-total" style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                    {fmt(portToDisp(totalValuePLN), 2, locale)} {portCurrLabel}
+                  </div>
+                  {dailyChangePLN !== 0 && (
+                    <div className="pv-daily" style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
+                      {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel} {t('today')}
+                    </div>
+                  )}
                 </div>
-              )}
+                <SegmentedControl
+                  options={['1T', '1M', '3M', '6M', '1R', 'MAX']}
+                  value={tfPortfolio}
+                  onChange={setTfPortfolio}
+                />
+              </div>
+              <div style={{ padding: '4px 12px 14px' }}>
+                {snapshotsForPortfolio.length >= 2
+                  ? <HistoryChart data={snapshotsForPortfolio} displayCurrency={displayCurrency} fxRate={fxRates[displayCurrency] ?? 1} />
+                  : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
+                }
+              </div>
             </div>
-            <SegmentedControl
-              options={['1T', '1M', '3M', '6M', '1R', 'MAX']}
-              value={tfPortfolio}
-              onChange={setTfPortfolio}
-            />
           </div>
-          <div style={{ padding: '4px 12px 18px' }}>
-            {snapshotsForPortfolio.length >= 2
-              ? <HistoryChart data={snapshotsForPortfolio} />
-              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
-            }
-          </div>
-        </div>
 
-        <div className="hero-side">
-          <div className="card">
-            <div className="card-head">
-              <div className="card-title">{t('stats_section')}</div>
-            </div>
-            <div style={{ padding: '4px 20px 4px' }}>
-              <div className="rail-stats">
-                <div className="rail-stat">
-                  <span className="rs-lbl">{t('stats_cost')}</span>
-                  <span className="rs-val">{fmt(totalCostPLN, 2, locale)} zł</span>
-                </div>
-                <div className="rail-stat">
-                  <span className="rs-lbl">{t('stats_daily')}</span>
-                  <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                    {dailyChangePLN >= 0 ? '+' : ''}{fmt(dailyChangePLN, 2, locale)} zł
-                  </span>
-                </div>
-                <div className="rail-stat">
-                  <span className="rs-lbl">{t('stats_beta')}</span>
-                  <span className="rs-val" style={{ color: 'var(--text-faint)' }}>N/A</span>
-                </div>
-                <div className="rail-stat">
-                  <span className="rs-lbl">{t('stats_positions')}</span>
-                  <span className="rs-val">{portfolio.length}</span>
+          <div key="stats">
+            <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined }}>
+                <div className="card-title">{t('stats_section')}</div>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 20px 16px' }}>
+                <div className="rail-stats">
+                  <div className="rail-stat">
+                    <span className="rs-lbl">{t('stats_cost')}</span>
+                    <span className="rs-val">{fmt(portToDisp(totalCostPLN), 2, locale)} {portCurrLabel}</span>
+                  </div>
+                  <div className="rail-stat">
+                    <span className="rs-lbl">{t('stats_daily')}</span>
+                    <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                      {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel}
+                    </span>
+                  </div>
+                  <div className="rail-stat">
+                    <span className="rs-lbl">{t('stats_beta')}</span>
+                    <span className="rs-val" style={{ color: 'var(--text-faint)', fontSize: 11, fontWeight: 400 }}>
+                      {snapshotsSorted.length}/60 sesji
+                    </span>
+                  </div>
+                  <div className="rail-stat">
+                    <span className="rs-lbl">{t('stats_positions')}</span>
+                    <span className="rs-val">{portfolio.length}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          {enriched.length > 0 && (
-            <div className="card" style={{ flex: 1 }}>
-              <div className="card-head">
+
+          <div key="pie">
+            <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined }}>
+                <div className="card-title">Skład portfela</div>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '8px 20px 16px', overflow: 'hidden' }}>
+                {enriched.length > 0
+                  ? <PortfolioPieChart positions={enriched} totalValue={totalValuePLN} currency={displayCurrency} fxRate={portFx} />
+                  : <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Brak danych</div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div key="alloc">
+            <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined }}>
                 <div className="card-title">{t('alloc_section')}</div>
               </div>
-              <div style={{ padding: '16px 20px' }}>
-                <StackedAllocation positions={enriched} totalValue={totalValuePLN} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 20px 16px', overflow: 'auto' }}>
+                {enriched.length > 0
+                  ? <StackedAllocation positions={enriched} totalValue={totalValuePLN} currency={displayCurrency} fxRate={portFx} />
+                  : <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Brak danych</div>
+                }
               </div>
             </div>
-          )}
-        </div>
+          </div>
+
+          <div key="realytd">
+            <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div className="card-title">Zysk zrealizowany YTD</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                    Skumulowany P&L ze sprzedaży w {new Date().getFullYear()} r.
+                  </div>
+                </div>
+                {ytdChartData.length > 0 && (
+                  <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', color: ytdChartData[ytdChartData.length - 1].pl >= 0 ? 'var(--up)' : 'var(--down)', whiteSpace: 'nowrap' }}>
+                    {ytdChartData[ytdChartData.length - 1].pl >= 0 ? '+' : ''}
+                    {fmt(ytdChartData[ytdChartData.length - 1].pl, 2, locale)} {portCurrLabel}
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1, padding: '4px 8px 12px', minHeight: 0 }}>
+                {ytdChartData.length >= 1 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={ytdChartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                      <defs>
+                        <linearGradient id="ytdGradUp" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--up)" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="var(--up)" stopOpacity={0.02} />
+                        </linearGradient>
+                        <linearGradient id="ytdGradDown" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--down)" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="var(--down)" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false}
+                        tickFormatter={d => { if (!d) return ''; const [,m,day] = d.split('-'); return `${day}.${m}`; }} />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} width={60}
+                        tickFormatter={v => `${v >= 0 ? '' : ''}${Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })}`} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                        labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                        formatter={(v) => [`${v >= 0 ? '+' : ''}${fmt(v, 2, locale)} ${portCurrLabel}`, 'P&L (kum.)']}
+                        labelFormatter={d => { if (!d) return ''; const [y,m,day] = d.split('-'); return `${day}.${m}.${y}`; }}
+                      />
+                      <Area
+                        type="monotone" dataKey="pl" strokeWidth={2}
+                        stroke={ytdChartData[ytdChartData.length - 1]?.pl >= 0 ? 'var(--up)' : 'var(--down)'}
+                        fill={ytdChartData[ytdChartData.length - 1]?.pl >= 0 ? 'url(#ytdGradUp)' : 'url(#ytdGradDown)'}
+                        dot={ytdChartData.length <= 20 ? { r: 3, fill: 'var(--up)', strokeWidth: 0 } : false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
+                    Brak zamkniętych pozycji w {new Date().getFullYear()} r.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </GridLayout>}
       </div>
 
       {/* Table */}
@@ -964,32 +1135,6 @@ export default function Portfolio() {
             );
           })()}
 
-          {/* ── Sortuj ── */}
-          {(() => {
-            const DD_STYLE = { position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', minWidth: 180, padding: '6px 0' };
-            const rowStyle = (active) => ({ width: '100%', textAlign: 'left', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 9, background: active ? 'var(--panel-2)' : 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: 13 });
-            return (
-              <div style={{ position: 'relative', flexShrink: 0 }} ref={sortMenuRef}>
-                <button className="btn" onClick={() => setShowSortMenu(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
-                  {SORT_LABELS[sortBy]}
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                {showSortMenu && (
-                  <div style={DD_STYLE}>
-                    {Object.entries(SORT_LABELS).map(([key, lbl]) => (
-                      <button key={key} style={rowStyle(sortBy===key)}
-                        onClick={() => { setSortBy(key); setShowSortMenu(false); }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--panel-2)'} onMouseLeave={e => e.currentTarget.style.background=sortBy===key?'var(--panel-2)':'transparent'}>
-                        <span style={{ width: 14, textAlign: 'center', fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{sortBy===key?'✓':''}</span>
-                        {lbl}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
 
           <div style={{ flex: 1 }} />
           {metricsLoading && <Spinner size="sm" />}
@@ -1057,10 +1202,34 @@ export default function Portfolio() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 2, background: 'var(--panel)' }}>Symbol</th>
+                <th
+                  style={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 2, background: 'var(--panel)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('symbol')}
+                >
+                  Symbol{sortCol === 'symbol' && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
                 {cols.map(key => (
-                  <th key={key} className="right">
+                  <th
+                    key={key}
+                    className="right"
+                    draggable
+                    style={{
+                      cursor: dragCol ? 'grabbing' : 'pointer',
+                      userSelect: 'none',
+                      background: dragOverCol === key ? 'var(--panel-2)' : undefined,
+                      opacity: dragCol === key ? 0.4 : 1,
+                      outline: dragOverCol === key ? '1px solid var(--accent)' : undefined,
+                      transition: 'background 0.1s, opacity 0.1s',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onClick={() => handleSort(key)}
+                    onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragCol(key); }}
+                    onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverCol !== key) setDragOverCol(key); }}
+                    onDrop={e => { e.preventDefault(); handleColDrop(key); setDragOverCol(null); }}
+                    onDragEnd={() => { setDragCol(null); setDragOverCol(null); }}
+                  >
                     {getColLabel(key, t)}
+                    {sortCol === key && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--accent)' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
                   </th>
                 ))}
                 <th className="right">{t('col_share_pct')}</th>
@@ -1107,9 +1276,9 @@ export default function Portfolio() {
                       {t('totals')} · {filteredSorted.length}
                     </td>
                     {cols.map(key => {
-                      if (key === 'valuePLN') return <td key={key} className="right">{fmt(tot.value, 2, locale)} zł</td>;
-                      if (key === 'plPLN')    return <td key={key} className="right" style={{ color: tot.pl >= 0 ? 'var(--up)' : 'var(--down)' }}>{tot.pl >= 0 ? '+' : ''}{fmt(tot.pl, 2, locale)} zł</td>;
-                      if (key === 'costPLN')  return <td key={key} className="right">{fmt(tot.cost, 2, locale)} zł</td>;
+                      if (key === 'valuePLN') return <td key={key} className="right">{fmt(portToDisp(tot.value), 2, locale)} {portCurrLabel}</td>;
+                      if (key === 'plPLN')    return <td key={key} className="right" style={{ color: tot.pl >= 0 ? 'var(--up)' : 'var(--down)' }}>{tot.pl >= 0 ? '+' : ''}{fmt(portToDisp(tot.pl), 2, locale)} {portCurrLabel}</td>;
+                      if (key === 'costPLN')  return <td key={key} className="right">{fmt(portToDisp(tot.cost), 2, locale)} {portCurrLabel}</td>;
                       return <td key={key} />;
                     })}
                     <td className="right">{totRetPct != null ? ((totRetPct >= 0 ? '+' : '') + totRetPct.toFixed(1) + '%') : '—'}</td>
@@ -1176,7 +1345,23 @@ export default function Portfolio() {
         <AddDividendModal
           isOpen={!!divTarget}
           initialData={{ symbol: divTarget, exDate: '', payDate: '', amount: '' }}
-          onSave={(data) => { addDividend(data); setDivTarget(null); setToast(`Dywidenda ${divTarget} zapisana`); }}
+          onSave={async (data) => {
+            addDividend(data);
+            const heldQty = portfolio.find(p => p.symbol === divTarget)?.qty;
+            const newTx = {
+              id: Math.random().toString(36).slice(2, 10),
+              type: 'DIV',
+              symbol: data.symbol,
+              date: data.exDate,
+              price: data.amount,
+              qty: heldQty != null && heldQty > 0 ? heldQty : 1,
+              currency: data.currency,
+              note: data.note || '',
+            };
+            await saveTransactions([...(rawData?.transactions ?? []), newTx]);
+            setDivTarget(null);
+            setToast(`Dywidenda ${divTarget} zapisana`);
+          }}
           onClose={() => setDivTarget(null)}
         />
       )}
@@ -1200,7 +1385,7 @@ export default function Portfolio() {
                 {t('cancel')}
               </button>
               <button
-                onClick={async () => { await removePosition(confirmDel); setConfirmDel(null); refresh(); }}
+                onClick={() => { const sym = confirmDel; setConfirmDel(null); removePosition(sym).then(() => refresh()); }}
                 className="btn btn-danger"
                 style={{ flex: 1, padding: '8px 0' }}
               >
@@ -1219,6 +1404,60 @@ export default function Portfolio() {
           onClose={() => setSelectedItem(null)}
         />
       )}
+      {menuSym && (() => {
+        const MENU_H = 372;
+        const fitsBelow = menuPos.bottom + MENU_H < window.innerHeight;
+        const topVal = fitsBelow ? menuPos.bottom + 4 : menuPos.top - MENU_H - 4;
+        return (
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed', right: 'auto', left: menuPos.x - 176, top: topVal, zIndex: 200,
+            background: 'var(--panel)', border: '1px solid var(--border)',
+            borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            width: 176, padding: '4px 0', fontSize: 14,
+          }}
+        >
+          {(() => {
+            const pos = sorted.find(p => p.symbol === menuSym);
+            if (!pos) return null;
+            return [
+              { icon: '+', label: t('buy_more'), action: () => { setAddSymbol(pos.symbol); setShowAdd(true); setMenuSym(null); } },
+              { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
+              { icon: '✏', label: t('edit_position'), action: () => { setEditTarget(pos); setMenuSym(null); } },
+              { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
+              { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`); setMenuSym(null); } },
+              { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
+              { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
+              null,
+              { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
+              { icon: '✕', label: t('delete_position'), action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
+            ].map((item, i) =>
+              item === null ? (
+                <div key={i} style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+              ) : (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '8px 16px',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: item.danger ? 'var(--down)' : 'var(--text)',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
+                  {item.label}
+                </button>
+              )
+            );
+          })()}
+        </div>
+        );
+      })()}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -1333,9 +1572,12 @@ function OtherAssetModal({ initial, onSave, onClose }) {
 }
 
 function OtherAssetsSection() {
-  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates } = useApp();
+  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates, displayCurrency } = useApp();
+  const oaFx = fxRates[displayCurrency] ?? 1;
+  const oaCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const t = useT();
   const { locale } = useLanguage();
+  const ASSET_CATEGORIES = getAssetCategories(t);
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
@@ -1364,7 +1606,7 @@ function OtherAssetsSection() {
         <div>
           <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{t('other_assets')}</span>
           {totalPLN > 0 && (
-            <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmtLocal(totalPLN)} zł {t('total_approx')}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmtLocal(totalPLN / oaFx)} {oaCurrLabel} {t('total_approx')}</span>
           )}
         </div>
         <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ {t('add')}</button>
@@ -1376,7 +1618,7 @@ function OtherAssetsSection() {
               <th>{t('col_name')}</th>
               <th>{t('col_category')}</th>
               <th className="right">{t('col_value')}</th>
-              <th className="right">≈ PLN</th>
+              <th className="right">≈ {displayCurrency}</th>
               <th>{t('col_note')}</th>
               <th>{t('col_last_updated')}</th>
               <th />
@@ -1391,7 +1633,7 @@ function OtherAssetsSection() {
                   <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cat.icon} {a.name}</td>
                   <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{cat.label}</td>
                   <td className="right mono" style={{ color: 'var(--text)' }}>{fmtLocal(a.value)} {a.currency}</td>
-                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmtLocal(plnVal)} zł</td>
+                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmtLocal(plnVal / oaFx)} {oaCurrLabel}</td>
                   <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.note || '—'}</td>
                   <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.updatedAt || '—'}</td>
                   <td className="right" style={{ whiteSpace: 'nowrap' }}>
@@ -1426,7 +1668,7 @@ function OtherAssetsSection() {
             <p style={{ fontWeight: 600, marginBottom: 8 }}>Usuń "{confirmDel.name}"?</p>
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
               <button onClick={() => setConfirmDel(null)} className="btn" style={{ flex: 1 }}>{t('cancel')}</button>
-              <button onClick={async () => { await deleteOtherAsset(confirmDel.id); setConfirmDel(null); }} className="btn btn-danger" style={{ flex: 1 }}>{t('delete_btn')}</button>
+              <button onClick={() => { const a = confirmDel; setConfirmDel(null); deleteOtherAsset(a.id); }} className="btn btn-danger" style={{ flex: 1 }}>{t('delete_btn')}</button>
             </div>
           </div>
         </div>

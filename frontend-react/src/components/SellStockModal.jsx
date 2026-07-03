@@ -21,7 +21,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   const t = useT();
   const { locale } = useLanguage();
   const [qty, setQty]           = useState('');
-  const [price, setPrice]       = useState(holding?.avgPrice ?? '');
+  const [price, setPrice]       = useState(holding?.price ?? holding?.avgPrice ?? '');
   const [currency, setCurrency] = useState(holding?.currency ?? 'PLN');
   const [date, setDate]         = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote]         = useState('');

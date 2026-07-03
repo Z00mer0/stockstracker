@@ -25,7 +25,7 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 }
 
 export default function Dividends() {
-  const { transactions, loading, fxRates, portfolio } = useApp();
+  const { transactions, loading, fxRates, portfolio, saveTransactions } = useApp();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -166,8 +166,24 @@ export default function Dividends() {
   }, [dividends, fxRates, isNet]);
 
   function openEdit(div) { setEditTarget(div); setModalOpen(true); }
-  function handleSave(formData) {
-    if (editTarget) editDividend(editTarget.id, formData); else addDividend(formData);
+  async function handleSave(formData) {
+    if (editTarget) {
+      editDividend(editTarget.id, formData);
+    } else {
+      addDividend(formData);
+      const heldQty = portfolio.find(p => p.symbol === formData.symbol)?.qty;
+      const newTx = {
+        id: Date.now().toString(),
+        type: 'DIV',
+        symbol: formData.symbol,
+        date: formData.exDate,
+        price: formData.amount,
+        qty: heldQty != null && heldQty > 0 ? heldQty : 1,
+        currency: formData.currency,
+        note: formData.note || '',
+      };
+      await saveTransactions([...transactions, newTx]);
+    }
     setEditTarget(null);
   }
   function handleCloseModal() { setModalOpen(false); setEditTarget(null); }

@@ -57,7 +57,7 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-            {initialData ? t('edit_dividend_title') : t('add_dividend_title')}
+            {initialData?.id ? t('edit_dividend_title') : t('add_dividend_title')}
           </h3>
           <button
             onClick={onClose}
