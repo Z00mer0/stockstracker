@@ -21,7 +21,7 @@ const SECTOR_COLORS = {
   Gaming: '#a78bfa',
   Energy: '#ffb020',
   'Consumer Cyclical': '#34d399', Retail: '#34d399',
-  'Consumer Defensive': '#34d399',
+  'Consumer Defensive': '#c4b5fd',
   Auto: '#ff4d6d', Automotive: '#ff4d6d',
   Finance: '#22d3ee', Financials: '#22d3ee', 'Financial Services': '#22d3ee',
   Healthcare: '#f472b6', Health: '#f472b6',
@@ -30,7 +30,7 @@ const SECTOR_COLORS = {
   Communication: '#60a5fa', 'Communication Services': '#60a5fa',
   Utilities: '#a3e635',
   'Real Estate': '#f87171',
-  Industrials: '#fbbf24',
+  Industrials: '#94a3b8',
   Inne: '#8a929d',
 };
 
@@ -38,7 +38,7 @@ function getColor(sector) {
   return SECTOR_COLORS[sector] || '#8a929d';
 }
 
-export default function StackedAllocation({ positions = [], totalValue, currency = 'PLN' }) {
+export default function StackedAllocation({ positions = [], totalValue, currency = 'PLN', fxRate = 1 }) {
   const t = useT();
   const { locale } = useLanguage();
 
@@ -46,7 +46,7 @@ export default function StackedAllocation({ positions = [], totalValue, currency
 
   function fmtK(n) {
     if (n == null) return '—';
-    return (n / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k' + currencySymbol;
+    return ((n / fxRate) / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k' + currencySymbol;
   }
 
   const bySector = {};

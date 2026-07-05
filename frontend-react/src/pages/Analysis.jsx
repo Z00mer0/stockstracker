@@ -157,7 +157,13 @@ function RiskSection({ snapshots }) {
               <div className="kpi-label">{m.label}</div>
               <div className="kpi-value" style={{ fontSize: 22, color: m.needsSessions && !hasEnoughSessions ? 'var(--text-faint)' : m.value != null ? m.color : 'var(--text-faint)' }}>
                 {m.needsSessions && !hasEnoughSessions
-                  ? <span style={{ fontSize: 10, lineHeight: 1.3 }}>{t('waiting_for_data')}<br/>({values.length}/{MIN_SESSIONS})</span>
+                  ? <div style={{ fontSize: 10, lineHeight: 1.3 }}>
+                      {t('waiting_for_data')}
+                      <div style={{ marginTop: 6, width: '100%', height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.round(values.length / MIN_SESSIONS * 100)}%`, background: '#34d399', borderRadius: 3 }} />
+                      </div>
+                      <div style={{ marginTop: 3, color: 'var(--text-faint)', fontSize: 9 }}>{values.length}/{MIN_SESSIONS}</div>
+                    </div>
                   : betaLoading && m.label === t('beta_label') ? <span style={{ fontSize: 12 }}>{t('loading')}</span>
                   : m.value != null ? m.fmt(m.value) : '—'}
               </div>
@@ -188,6 +194,10 @@ function saveTargets(t) {
 function RebalanceSection({ enriched, totalValue }) {
   const t = useT();
   const { locale } = useLanguage();
+  const { displayCurrency, fxRates } = useApp();
+  const rebalFx = fxRates[displayCurrency] ?? 1;
+  const rebalCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
+  const rebalToDisp = v => v == null ? null : v / rebalFx;
   const [targets, setTargets] = useState(loadTargets);
   const [editMode, setEditMode] = useState(false);
   const [draftTargets, setDraftTargets] = useState({});
@@ -343,9 +353,9 @@ function RebalanceSection({ enriched, totalValue }) {
                     <tr key={o.symbol} style={{ color: o.action === t('action_buy') ? 'var(--up)' : 'var(--down)' }}>
                       <td style={{ fontWeight: 700 }}>{o.symbol}</td>
                       <td>{o.action === t('action_buy') ? `🟢 ${t('action_buy')}` : `🔻 ${t('action_sell')}`}</td>
-                      <td className="right mono">{fmtLocal(o.amt)} zł</td>
+                      <td className="right mono">{fmtLocal(rebalToDisp(o.amt))} {rebalCurrLabel}</td>
                       <td className="right mono">{o.shares ?? '—'}</td>
-                      <td className="right mono">{o.price != null ? `${fmtLocal(o.price, 2)} zł` : '—'}</td>
+                      <td className="right mono">{o.price != null ? `${fmtLocal(rebalToDisp(o.price), 2)} ${rebalCurrLabel}` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -383,6 +393,10 @@ function loadFireSettings() {
 function FireSection({ totalValue }) {
   const t = useT();
   const { locale } = useLanguage();
+  const { displayCurrency, fxRates } = useApp();
+  const fireFx = fxRates[displayCurrency] ?? 1;
+  const fireCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
+  const fireToDisp = v => v == null ? null : v / fireFx;
   const saved = loadFireSettings();
   const [expenses, setExpenses] = useState(saved.expenses ?? '');
   const [savings,  setSavings]  = useState(saved.savings  ?? '');
@@ -475,7 +489,7 @@ function FireSection({ totalValue }) {
                 { label: t('fire_progress'),      value: `${fmt(progress, 1, locale)}%`,      color: progress >= 100 ? 'var(--up)' : 'var(--accent)' },
                 { label: t('fire_year'),          value: fireYear ?? t('fire_over_100'),      color: fireYear ? 'var(--up)' : 'var(--text-faint)' },
                 { label: t('fire_years_to'),      value: yearsToFire == null ? '—' : yearsToFire === 0 ? t('fire_already_now') : `${fmt(yearsToFire, 1, locale)}`, color: yearsToFire === 0 ? 'var(--up)' : 'var(--text)' },
-                { label: t('fire_passive_income'), value: `${fmt(monthlyPassive, 0, locale)} zł`, color: monthlyPassive >= monthlyExp ? 'var(--up)' : 'var(--text-dim)' },
+                { label: t('fire_passive_income'), value: `${fmt(fireToDisp(monthlyPassive), 0, locale)} ${fireCurrLabel}`, color: monthlyPassive >= monthlyExp ? 'var(--up)' : 'var(--text-dim)' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="kpi-card">
                   <div className="kpi-label">{label}</div>
@@ -489,7 +503,7 @@ function FireSection({ totalValue }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-faint)', marginBottom: 6 }}>
                 <span>0</span>
                 <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{fmt(progress, 1, locale)}% {t('fire_goal_pct')}</span>
-                <span>{fmt(target, 0, locale)} zł</span>
+                <span>{fmt(fireToDisp(target), 0, locale)} {fireCurrLabel}</span>
               </div>
               <div style={{ height: 8, borderRadius: 4, background: 'var(--panel-2)', overflow: 'hidden' }}>
                 <div style={{
@@ -735,6 +749,10 @@ const SECTOR_COLORS = [
 function SectorAnalysisSection({ enriched, totalValue }) {
   const t = useT();
   const { locale } = useLanguage();
+  const { displayCurrency, fxRates } = useApp();
+  const secFx = fxRates[displayCurrency] ?? 1;
+  const secCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
+  const secToDisp = v => v == null ? null : v / secFx;
   const [view, setView] = useState('sector'); // 'sector' | 'industry'
 
   const positions = enriched.filter(p => p.valuePLN != null && p.valuePLN > 0);
@@ -822,10 +840,10 @@ function SectorAnalysisSection({ enriched, totalValue }) {
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
                       </div>
                     </td>
-                    <td className="right mono" style={{ fontWeight: 600 }}>{fmtSec(g.valuePLN)} zł</td>
+                    <td className="right mono" style={{ fontWeight: 600 }}>{fmtSec(secToDisp(g.valuePLN))} {secCurrLabel}</td>
                     <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmtSec(pct, 1)}%</td>
                     <td className="right mono" style={{ color: g.plPLN >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                      {g.plPLN >= 0 ? '+' : ''}{fmtSec(g.plPLN)} zł
+                      {g.plPLN >= 0 ? '+' : ''}{fmtSec(secToDisp(g.plPLN))} {secCurrLabel}
                     </td>
                     <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{g.positions.join(', ')}</td>
                   </tr>
@@ -840,10 +858,13 @@ function SectorAnalysisSection({ enriched, totalValue }) {
 }
 
 export default function Analysis() {
-  const { portfolio, transactions, fxRates, loading, snapshots } = useApp();
+  const { portfolio, transactions, fxRates, loading, snapshots, displayCurrency } = useApp();
   const { isPrivate } = usePrivacy();
   const t = useT();
   const { locale } = useLanguage();
+  const analysisFx = fxRates[displayCurrency] ?? 1;
+  const analysisCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
+  const analysisToDisp = v => v == null ? null : v / analysisFx;
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const enriched = useMemo(
@@ -935,7 +956,7 @@ export default function Analysis() {
               {Object.entries(byCurrency).sort((a, b) => b[1] - a[1]).map(([cur, val]) => (
                 <tr key={cur}>
                   <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cur}</td>
-                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(val, 0, locale)} zł</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(analysisToDisp(val), 0, locale)} {analysisCurrLabel}</td>
                   <td className="right mono" style={{ color: 'var(--text-dim)' }}>
                     {totalValue > 0 ? `${fmt((val / totalValue) * 100, 1, locale)}%` : '—'}
                   </td>
@@ -943,7 +964,7 @@ export default function Analysis() {
               ))}
               <tr style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
                 <td style={{ fontWeight: 700, color: 'var(--text)' }}>{t('total_row')}</td>
-                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontWeight: 700 }}>{fmt(totalValue, 0, locale)} zł</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontWeight: 700 }}>{fmt(analysisToDisp(totalValue), 0, locale)} {analysisCurrLabel}</td>
                 <td className="right mono" style={{ color: 'var(--text-dim)' }}>100%</td>
               </tr>
             </tbody>
@@ -966,7 +987,7 @@ export default function Analysis() {
               {sortedByValue.map((pos) => (
                 <tr key={pos.id ?? pos.symbol}>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
-                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(pos.valuePLN, 0, locale)} zł</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{fmt(analysisToDisp(pos.valuePLN), 0, locale)} {analysisCurrLabel}</td>
                   <td className="right mono" style={{ color: 'var(--text-dim)' }}>
                     {totalValue > 0 ? `${fmt((pos.valuePLN / totalValue) * 100, 1, locale)}%` : '—'}
                   </td>
@@ -1083,9 +1104,12 @@ function PerformanceTable({ title, positions }) {
   const { isPrivate } = usePrivacy();
   const t = useT();
   const { locale } = useLanguage();
+  const { displayCurrency, fxRates } = useApp();
+  const perfFx = fxRates[displayCurrency] ?? 1;
+  const perfCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   function fmtPerf(n, decimals = 0) {
     if (n == null || isNaN(n)) return '—';
-    return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return (n / perfFx).toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
   return (
@@ -1106,7 +1130,7 @@ function PerformanceTable({ title, positions }) {
                 <tr key={pos.id ?? pos.symbol}>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{pos.symbol}</td>
                   <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
-                    {up ? '+' : ''}{fmtPerf(pos.plPLN)} zł
+                    {up ? '+' : ''}{fmtPerf(pos.plPLN)} {perfCurrLabel}
                   </td>
                   <td className="right mono" style={{ color: up ? 'var(--up)' : 'var(--down)' }}>
                     {up ? '+' : ''}{fmtPerf(pos.returnPct, 1)}%

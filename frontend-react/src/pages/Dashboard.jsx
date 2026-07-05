@@ -55,7 +55,7 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 const CUR_FLAG_DASH = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
 const COL_LABEL_DASH = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
-function renderCellDash(key, pos, isPrivate, locale = 'pl-PL') {
+function renderCellDash(key, pos, isPrivate, locale = 'pl-PL', currLabel = 'zł', toDisp = v => v) {
   const flag = CUR_FLAG_DASH[pos.currency] ?? pos.currency;
   switch (key) {
     case 'qty':
@@ -72,15 +72,15 @@ function renderCellDash(key, pos, isPrivate, locale = 'pl-PL') {
       return <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>{up ? '+' : ''}{fmt(pos.dailyChg, 2)}%</span>;
     }
     case 'costPLN':
-      return <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(pos.costPLN)} zł</span>;
+      return <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(toDisp(pos.costPLN))} {currLabel}</span>;
     case 'valuePLN':
       return pos.valuePLN != null
-        ? <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(pos.valuePLN)} zł</span>
+        ? <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(toDisp(pos.valuePLN))} {currLabel}</span>
         : <span style={{ color: 'var(--text-faint)' }}>—</span>;
     case 'plPLN': {
       if (pos.plPLN == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
       const up = pos.plPLN >= 0;
-      return <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{up ? '+' : ''}{fmt(pos.plPLN)} zł</span>;
+      return <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{up ? '+' : ''}{fmt(toDisp(pos.plPLN))} {currLabel}</span>;
     }
     case 'period':
       return <span style={{ color: 'var(--text-dim)' }}>{fmtPeriod(pos.periodDays)}</span>;
@@ -170,6 +170,17 @@ export default function Dashboard() {
       .filter(t => t.type === 'DIV' && t.date >= yearCutStr)
       .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
 
+    const jan1 = `${new Date().getFullYear()}-01-01`;
+    const ytdRealizedPLN = transactions
+      .filter(t => t.type === 'SELL' && t.date >= jan1)
+      .reduce((sum, tx) => {
+        const rate = toPlnRate(tx.currency, fxRates);
+        const pl   = tx.overridePL != null
+          ? tx.overridePL
+          : (tx.price - (tx.costBasis ?? tx.avgPrice ?? tx.price)) * tx.qty;
+        return sum + pl * rate;
+      }, 0);
+
     const sorted      = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
@@ -206,6 +217,7 @@ export default function Dashboard() {
       totalValue, positionsValue, cashValue, costBasis,
       unrealPLN, unrealPct, totalROI,
       realizedPLN, dividendsPLN, annualDivPLN,
+      ytdRealizedPLN,
       sparkValues, pricesLoaded,
     };
   }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
@@ -316,6 +328,8 @@ export default function Dashboard() {
   const fmtVal = (n, d = 0) => n == null || isNaN(n)
     ? '—'
     : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const dispFx = fxRates[displayCurrency] ?? 1;
+  const fmtDisp = (n, d = 0) => fmtVal(n == null ? null : n / dispFx, d);
 
   const isWeekend = [0, 6].includes(new Date().getDay());
 
@@ -345,7 +359,7 @@ export default function Dashboard() {
 
       {/* InsightStrip */}
       {allPositions.length > 0 && (
-        <InsightStrip positions={allPositions} dailyChangePLN={dailyChange.pln} onSymbolClick={setSelectedStock} />
+        <InsightStrip positions={allPositions} dailyChangePLN={dailyChange.pln} dailyChangePct={dailyChange.pct} onSymbolClick={setSelectedStock} />
       )}
 
       {/* KPI grid */}
@@ -353,7 +367,7 @@ export default function Dashboard() {
         <KpiPro
           hero
           label={t('portfolio_value')}
-          value={`${fmtVal(kpi.totalValue)} ${currLabel}`}
+          value={`${fmtDisp(kpi.totalValue)} ${currLabel}`}
           chip={dayChipVal}
           chipUp={dailyChange.pln >= 0}
           sub={t('today')}
@@ -363,20 +377,18 @@ export default function Dashboard() {
           onClick={() => navigate('/portfolio')}
         />
         <KpiPro
-          label={t('gain_loss')}
-          tone={kpi.unrealPLN >= 0 ? 'up' : 'down'}
-          value={`${kpi.unrealPLN >= 0 ? '+' : ''}${fmtVal(kpi.unrealPLN)} ${currLabel}`}
-          chip={unrealChipVal}
-          chipUp={kpi.unrealPLN >= 0}
-          sub={t('unrealized')}
+          label={t('gain_ytd')}
+          tone={kpi.ytdRealizedPLN >= 0 ? 'up' : 'down'}
+          value={`${kpi.ytdRealizedPLN >= 0 ? '+' : ''}${fmtDisp(kpi.ytdRealizedPLN)} ${currLabel}`}
+          sub={t('ytd_realized')}
           spark={kpi.sparkValues.slice(-24)}
-          sparkUp={kpi.unrealPLN >= 0}
-          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>}
-          onClick={() => navigate('/portfolio')}
+          sparkUp={kpi.ytdRealizedPLN >= 0}
+          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
+          onClick={() => navigate('/closed')}
         />
         <KpiPro
           label={t('dividends_ytd')}
-          value={`${fmtVal(kpi.annualDivPLN)} ${currLabel}`}
+          value={`${fmtDisp(kpi.annualDivPLN)} ${currLabel}`}
           sub={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
           spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>}
@@ -384,7 +396,7 @@ export default function Dashboard() {
         />
         <KpiPro
           label={t('free_cash')}
-          value={`${fmtVal(kpi.cashValue)} ${currLabel}`}
+          value={`${fmtDisp(kpi.cashValue)} ${currLabel}`}
           chip={irrChipVal}
           chipUp={portfolioIrr != null && portfolioIrr >= 0}
           sub={t('account_pln')}
@@ -414,7 +426,7 @@ export default function Dashboard() {
           </div>
           <div style={{ padding: '4px 12px 18px' }}>
             {snapshotsFiltered.length >= 2
-              ? <HistoryChart data={snapshotsFiltered} />
+              ? <HistoryChart data={snapshotsFiltered} displayCurrency={displayCurrency} fxRate={fxRates[displayCurrency] ?? 1} />
               : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
             }
           </div>
@@ -429,25 +441,52 @@ export default function Dashboard() {
             </span>
           </div>
           <div>
-            {[...topMovers.gainers, ...topMovers.losers].length === 0
+            {topMovers.gainers.length === 0 && topMovers.losers.length === 0
               ? <p style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-faint)' }}>{isWeekend ? t('market_closed') : t('no_data')}</p>
-              : [...topMovers.gainers, ...topMovers.losers].map(pos => (
-                <div key={pos.symbol} className="mover-row clickable" onClick={() => setSelectedStock(pos)} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
-                  <TickerLogo symbol={pos.symbol} size={28} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
-                    {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
-                  </div>
-                  <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', minWidth: 58 }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                      {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
-                    </div>
-                    {pos.price != null && (
-                      <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
-                    )}
-                  </div>
-                </div>
-              ))
+              : <>
+                  <div style={{ padding: '8px 16px 2px', fontSize: 10, fontWeight: 700, color: 'var(--up)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>▲ Najlepsze</div>
+                  {topMovers.gainers.length === 0
+                    ? <div style={{ padding: '4px 16px 8px', fontSize: 12, color: 'var(--text-faint)' }}>—</div>
+                    : topMovers.gainers.map(pos => (
+                      <div key={pos.symbol} className="mover-row clickable" onClick={() => setSelectedStock(pos)} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
+                        <TickerLogo symbol={pos.symbol} size={28} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
+                          {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
+                        </div>
+                        <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', minWidth: 58 }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                            {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
+                          </div>
+                          {pos.price != null && (
+                            <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  }
+                  <div style={{ padding: '8px 16px 2px', fontSize: 10, fontWeight: 700, color: 'var(--down)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>▼ Najgorsze</div>
+                  {topMovers.losers.length === 0
+                    ? <div style={{ padding: '4px 16px 8px', fontSize: 12, color: 'var(--text-faint)' }}>—</div>
+                    : topMovers.losers.map(pos => (
+                      <div key={pos.symbol} className="mover-row clickable" onClick={() => setSelectedStock(pos)} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
+                        <TickerLogo symbol={pos.symbol} size={28} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
+                          {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
+                        </div>
+                        <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', minWidth: 58 }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                            {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
+                          </div>
+                          {pos.price != null && (
+                            <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  }
+                </>
             }
           </div>
         </div>
