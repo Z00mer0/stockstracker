@@ -45,7 +45,7 @@ function parseDate(val) {
 }
 
 function normalizeSymbol(sym) {
-  return String(sym).replace(/\.PL$/i, '.WA');
+  return String(sym).replace(/\.PL$/i, '.WA').replace(/\.US$/i, '');
 }
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
@@ -135,16 +135,23 @@ function parseBrokerRows(rows) {
         price = parseFloat(commentMatch[2]);
       }
 
+      const normalizedCashSym = normalizeSymbol(symbol.toUpperCase());
+      const cashCurrency = /\.(WA|PL)$/i.test(normalizedCashSym) ? 'PLN'
+        : /\.UK$/i.test(normalizedCashSym) ? 'GBP'
+        : /\.(DE|FR|NL|IT|ES|BE|AT|FI|SE|DK|NO)$/i.test(normalizedCashSym) ? 'EUR'
+        : 'USD';
+
       transactions.push({
         id: genId(),
         type: txType,
-        symbol: normalizeSymbol(symbol.toUpperCase()),
+        symbol: normalizedCashSym,
         qty: txType === 'CASH' ? null : (qty ?? Math.abs(amount)),
         price,
-        currency: 'PLN',
+        currency: cashCurrency,
         date: parseDate(timeStr) || new Date().toISOString().slice(0, 10),
         note: comment || opType,
         brokerPositionId: positionId || undefined,
+        skipCashAdjust: true,
       });
     }
   }
@@ -203,7 +210,9 @@ function computePortfolioPreview(txs, holdings, cash) {
         const qty = h[idx].qty - tx.qty;
         if (qty <= 0) h.splice(idx, 1); else h[idx] = { ...h[idx], qty };
       }
-      c[cur] = (c[cur] ?? 0) + tx.qty * tx.price;
+      if (!tx.fromClosedPosition && !tx.skipCashAdjust) {
+        c[cur] = (c[cur] ?? 0) + tx.qty * tx.price;
+      }
     }
   }
   const oldMap = Object.fromEntries(holdings.map(x => [x.symbol, x]));
@@ -274,7 +283,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
   const allNewTxsRaw = results.flatMap(r => r.transactions);
   const batchKeys = new Set();
   const allNewTxs = allNewTxsRaw.filter(tx => {
-    const k = `${tx.symbol}_${tx.date}_${tx.type}_${tx.price}`;
+    const k = `${tx.symbol}_${tx.date}_${tx.type}_${Number(tx.price).toFixed(4)}`;
     if (batchKeys.has(k)) return false;
     batchKeys.add(k);
     return true;

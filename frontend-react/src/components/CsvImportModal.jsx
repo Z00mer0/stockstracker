@@ -86,7 +86,7 @@ function parseXtbExcel(buffer) {
       if (type && type !== 'BUY') continue; // skip shorts / non-stock rows
 
       const currency = /\.(WA|PL)$/i.test(symbol) ? 'PLN' : 'USD';
-      const normalizedSymbol = symbol.toUpperCase().replace(/\.PL$/i, '.WA');
+      const normalizedSymbol = symbol.toUpperCase().replace(/\.PL$/i, '.WA').replace(/\.US$/i, '');
 
       results.push({
         id: Math.random().toString(36).slice(2, 10),

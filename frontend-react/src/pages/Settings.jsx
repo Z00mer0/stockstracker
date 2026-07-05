@@ -5,6 +5,7 @@ import { api } from '../hooks/useApi';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
 import { US_TAX_KEY } from '../services/dividendService';
 import BrokerImportModal from '../components/BrokerImportModal';
+import SnapshotImportModal from '../components/SnapshotImportModal';
 import Card from '../components/shared/Card';
 import { useLanguage, useT } from '../context/LanguageContext';
 
@@ -129,7 +130,8 @@ function fmtDate(iso) {
 function SnapshotManagerSection() {
   const t = useT();
   const { locale } = useLanguage();
-  const { snapshots, setSnapshot, deleteSnapshot } = useApp();
+  const { snapshots, setSnapshot, deleteSnapshot, displayCurrency } = useApp();
+  const currSymbol = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' }[displayCurrency] || displayCurrency;
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ date: today, total: '', invested: '' });
   const [saving, setSaving] = useState(false);
@@ -190,7 +192,7 @@ function SnapshotManagerSection() {
               />
             </div>
             <div>
-              <label className="field-label">{t('portfolio_val_zl')}</label>
+              <label className="field-label">{t('portfolio_val_zl').replace('zł', currSymbol)}</label>
               <input
                 type="number" min="0" step="any"
                 className="field-input mono"
@@ -201,7 +203,7 @@ function SnapshotManagerSection() {
               />
             </div>
             <div>
-              <label className="field-label">{t('invested_zl')}</label>
+              <label className="field-label">{t('invested_zl').replace('zł', currSymbol)}</label>
               <input
                 type="number" min="0" step="any"
                 className="field-input mono"
@@ -246,11 +248,11 @@ function SnapshotManagerSection() {
                 >
                   <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 72, flexShrink: 0 }}>{fmtDate(s.date)}</span>
                   <span className="mono" style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>
-                    {s.total != null ? s.total.toLocaleString(locale, { maximumFractionDigits: 0 }) + ' zł' : '—'}
+                    {s.total != null ? s.total.toLocaleString(locale, { maximumFractionDigits: 0 }) + ' ' + currSymbol : '—'}
                   </span>
                   {s.invested != null && (
                     <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                      inw. {s.invested.toLocaleString(locale, { maximumFractionDigits: 0 })} zł
+                      inw. {s.invested.toLocaleString(locale, { maximumFractionDigits: 0 })} {currSymbol}
                     </span>
                   )}
                   <button
@@ -283,24 +285,28 @@ export default function Settings() {
   const t = useT();
   const apiUrl = import.meta.env.VITE_API_URL ?? '(proxy lokalny)';
   const [showBrokerImport, setShowBrokerImport] = useState(false);
+  const [showSnapshotImport, setShowSnapshotImport] = useState(false);
   const [clearingId, setClearingId] = useState(null);
 
-  // Group imported transactions by importId (or legacy "no importId" group)
+  // Group all imported transactions by importId
   const importBatches = (() => {
     const byId = {};
     for (const tx of transactions) {
-      if (!String(tx.note ?? '').startsWith('Import brokera')) continue;
-      const key = tx.importId || 'legacy';
-      if (!byId[key]) byId[key] = { importId: tx.importId || null, count: 0, dates: [] };
+      if (!tx.importId) continue; // only tagged imports
+      const key = tx.importId;
+      if (!byId[key]) byId[key] = { importId: tx.importId, count: 0, note: tx.note || '' };
       byId[key].count++;
-      if (tx.date) byId[key].dates.push(tx.date);
     }
-    return Object.values(byId).map(b => ({
-      ...b,
-      label: b.importId
-        ? new Date(parseInt(b.importId.replace('imp_', ''))).toLocaleString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-        : 'Poprzedni import (bez daty)',
-    }));
+    return Object.values(byId)
+      .sort((a, b) => b.importId.localeCompare(a.importId))
+      .map(b => {
+        const ts = parseInt(b.importId.replace('imp_', ''));
+        const dateStr = isNaN(ts) ? '' : new Date(ts).toLocaleString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const isSnapshot = String(b.note).startsWith('Snapshot');
+        const type = isSnapshot ? '📄 Zestawienie' : '📥 CSV';
+        const snapshotDate = isSnapshot ? b.note.replace('Snapshot ', '') : '';
+        return { ...b, label: `${type} ${isSnapshot ? snapshotDate : dateStr}`, dateStr };
+      });
   })();
 
   async function handleClearImport(importId, count) {
@@ -352,9 +358,14 @@ export default function Settings() {
           <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             {t('import_csv')}
           </p>
-          <button onClick={() => setShowBrokerImport(true)} className="btn btn-primary" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
-            {t('import_csv_btn')}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => setShowBrokerImport(true)} className="btn btn-primary" style={{ fontSize: 12 }}>
+              {t('import_csv_btn')}
+            </button>
+            <button onClick={() => setShowSnapshotImport(true)} className="btn" style={{ fontSize: 12 }}>
+              📄 Zestawienie kwartalne (PDF)
+            </button>
+          </div>
           {importBatches.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{t('import_history')}</p>
@@ -405,6 +416,12 @@ export default function Settings() {
           existingCash={cash}
           onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
           onClose={() => setShowBrokerImport(false)}
+        />
+      )}
+      {showSnapshotImport && (
+        <SnapshotImportModal
+          onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
+          onClose={() => setShowSnapshotImport(false)}
         />
       )}
     </div>
