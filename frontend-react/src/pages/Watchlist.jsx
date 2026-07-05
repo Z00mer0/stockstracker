@@ -47,21 +47,25 @@ function loadWatchlist() { try { return JSON.parse(localStorage.getItem(WATCH_KE
 function saveWatchlist(items) { localStorage.setItem(WATCH_KEY, JSON.stringify(items)); }
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
-function AlertModal({ item, onClose, onSave }) {
+function AlertModal({ item, onClose, onSave, livePrice }) {
   const t = useT();
   const [type, setType] = useState('above');
-  const [price, setPrice] = useState('');
+  const [price, setPrice] = useState(livePrice?.price != null ? String(livePrice.price.toFixed(2)) : '');
   function handleAdd() {
     if (!price || isNaN(parseFloat(price))) return;
     const target = parseFloat(price);
-    const triggered = (type === 'above' && (item.addedPrice ?? 0) >= target) || (type === 'below' && (item.addedPrice ?? 0) <= target);
+    const currentPrice = livePrice?.price ?? item.addedPrice ?? 0;
+    const triggered = (type === 'above' && currentPrice >= target) || (type === 'below' && currentPrice <= target);
     onSave({ id: genId(), type, targetPrice: target, triggered });
   }
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div className="card" style={{ width: 340, padding: 24 }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Alert — {item.symbol}</h2>
-        {item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>{item.addedPrice.toFixed(2)} {item.currency}</p>}
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🔔 Alert cenowy — {item.symbol}</h2>
+        {livePrice?.price != null
+          ? <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>Aktualna cena: {livePrice.price.toFixed(2)} {item.currency}</p>
+          : item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>{item.addedPrice.toFixed(2)} {item.currency}</p>
+        }
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {['above', 'below'].map(tp => (
             <button key={tp} onClick={() => setType(tp)} className={`btn ${type === tp ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center' }}>
@@ -91,6 +95,8 @@ export default function Watchlist() {
   const [livePrices, setLivePrices] = useState({});
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [inputTicker, setInputTicker] = useState('');
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('myfund_auth_token');
@@ -123,6 +129,19 @@ export default function Watchlist() {
     }).finally(() => setLoading(false));
   }, [watchItems.length]);
 
+  async function addWatchItem() {
+    const sym = inputTicker.trim().toUpperCase();
+    if (!sym) return;
+    if (watchItems.some(w => w.symbol === sym)) { setInputTicker(''); return; }
+    setAdding(true);
+    const newItem = { id: genId(), symbol: sym, name: sym, alerts: [] };
+    setWatchItems(prev => [...prev, newItem]);
+    setInputTicker('');
+    const liveData = await fetchLivePrice(sym);
+    if (liveData) setLivePrices(prev => ({ ...prev, [sym]: liveData }));
+    setAdding(false);
+  }
+
   function addAlert(itemId, alert) {
     setWatchItems(prev => prev.map(w => w.id === itemId ? { ...w, alerts: [...(w.alerts ?? []), alert] } : w));
     setAlertTarget(null);
@@ -137,6 +156,24 @@ export default function Watchlist() {
         title={`${t('watched_companies')}${watchItems.length ? ` · ${watchItems.length}` : ''}`}
         actions={loading && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('loading_quotes')}</span>}
       >
+        <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0' }}>
+          <input
+            className="field-input"
+            style={{ flex: 1, maxWidth: 220 }}
+            placeholder="np. AAPL, PKN.WA"
+            value={inputTicker}
+            onChange={e => setInputTicker(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addWatchItem()}
+            autoComplete="off"
+          />
+          <button
+            className="btn btn-primary"
+            onClick={addWatchItem}
+            disabled={adding || !inputTicker.trim()}
+          >
+            {adding ? '…' : t('add_btn') || 'Dodaj'}
+          </button>
+        </div>
         {!watchItems.length ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
             <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>{t('watched_synced')}</p>
@@ -189,7 +226,16 @@ export default function Watchlist() {
                               {a.type === 'above' ? '↑' : '↓'} {a.targetPrice?.toFixed(2)}
                             </button>
                           ))}
-                          <button onClick={() => setAlertTarget(w)} className="chip chip-info" style={{ cursor: 'pointer', border: 'none' }}>+ Alert</button>
+                          <button onClick={() => setAlertTarget(w)} title="Ustaw alert cenowy"
+                            style={{ cursor: 'pointer', border: 'none', background: 'transparent', padding: '2px 4px', fontSize: 16, lineHeight: 1, opacity: (w.alerts ?? []).length > 0 ? 1 : 0.5, color: (w.alerts ?? []).length > 0 ? '#f59e0b' : 'inherit', transition: 'opacity 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                            onMouseLeave={e => e.currentTarget.style.opacity = (w.alerts ?? []).length > 0 ? 1 : 0.5}>🔔</button>
+                          <button
+                            onClick={() => setWatchItems(prev => prev.filter(x => x.id !== w.id))}
+                            className="chip"
+                            style={{ cursor: 'pointer', border: 'none', color: 'var(--text-faint)' }}
+                            title="Usuń z watchlisty"
+                          >✕</button>
                         </div>
                       </td>
                     </tr>
@@ -235,7 +281,7 @@ export default function Watchlist() {
       )}
 
       {alertTarget && (
-        <AlertModal item={alertTarget} onClose={() => setAlertTarget(null)} onSave={alert => addAlert(alertTarget.id, alert)} />
+        <AlertModal item={alertTarget} onClose={() => setAlertTarget(null)} onSave={alert => addAlert(alertTarget.id, alert)} livePrice={livePrices[alertTarget?.symbol]} />
       )}
       {selectedItem && (
         <StockDetailModal

@@ -310,7 +310,17 @@ export default function Calendar() {
         </div>
 
         {loading && listEvents.length === 0 ? (
-          <div className="flex justify-center py-10"><Spinner size="md" /></div>
+          <div style={{ padding: '0.75rem 1.25rem' }}>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border)', padding: '0.75rem 0', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <div style={{ width: 4, height: 20, borderRadius: 4, background: '#2a2d3a', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ height: 12, borderRadius: 4, background: '#2a2d3a', width: `${45 + (i % 3) * 20}%`, marginBottom: 6 }} />
+                  <div style={{ height: 10, borderRadius: 4, background: '#2a2d3a', width: `${25 + (i % 4) * 10}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : groupedList.length === 0 ? (
           <div className="px-5 py-8 text-center" style={{ color: 'var(--text-faint)' }}>
             <p>{t('no_events')}</p>

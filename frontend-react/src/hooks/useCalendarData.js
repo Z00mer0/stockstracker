@@ -158,20 +158,15 @@ export default function useCalendarData(symbols) {
 
     async function fetchAll() {
       setLoading(true);
-      const results = [];
 
-      // 1. Makro (Finnhub live + fallback hardcoded)
-      const macroEvents = await fetchMacroEvents();
-      results.push(...macroEvents);
-
-      // 2. Earnings per spółka
-      if (symbols.length) {
-        const earnEvents = await fetchEarningsEvents(symbols);
-        results.push(...earnEvents);
-      }
+      // Fetch macro and earnings in parallel
+      const [macroEvents, earnEvents] = await Promise.all([
+        fetchMacroEvents(),
+        symbols.length ? fetchEarningsEvents(symbols) : Promise.resolve([]),
+      ]);
 
       if (!cancelled) {
-        setEvents(results.sort((a, b) => a.date.localeCompare(b.date)));
+        setEvents([...macroEvents, ...earnEvents].sort((a, b) => a.date.localeCompare(b.date)));
         setLoading(false);
       }
     }

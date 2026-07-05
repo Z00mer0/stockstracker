@@ -151,6 +151,53 @@ const WA_SECTOR_MAP = {
   'AMR.WA':  'Healthcare',
 };
 
+// ── Hardcoded sectors for popular US stocks — fallback when Yahoo doesn't return sector ──
+const US_SECTOR_MAP = {
+  // Technology
+  'AAPL': 'Technology', 'MSFT': 'Technology', 'NVDA': 'Technology', 'AMD': 'Technology',
+  'INTC': 'Technology', 'ADBE': 'Technology', 'ORCL': 'Technology', 'CRM': 'Technology',
+  'AVGO': 'Technology', 'SNOW': 'Technology', 'PANW': 'Technology', 'CRWD': 'Technology',
+  'NET': 'Technology', 'ZS': 'Technology', 'DDOG': 'Technology', 'OKTA': 'Technology',
+  'NOW': 'Technology', 'WDAY': 'Technology', 'TEAM': 'Technology', 'MDB': 'Technology',
+  'ARM': 'Technology', 'PLTR': 'Technology', 'PATH': 'Technology', 'DT': 'Technology',
+  'GTLB': 'Technology', 'S': 'Technology', 'SPLK': 'Technology', 'VEEV': 'Technology',
+  'DOCU': 'Technology', 'TWLO': 'Technology',
+  // Communication Services
+  'META': 'Communication Services', 'GOOGL': 'Communication Services', 'GOOG': 'Communication Services',
+  'NFLX': 'Communication Services', 'SPOT': 'Communication Services', 'SNAP': 'Communication Services',
+  'T': 'Communication Services', 'VZ': 'Communication Services', 'DIS': 'Communication Services',
+  'CMCSA': 'Communication Services', 'RBLX': 'Communication Services',
+  // Consumer Cyclical
+  'AMZN': 'Consumer Cyclical', 'TSLA': 'Consumer Cyclical', 'BABA': 'Consumer Cyclical',
+  'MELI': 'Consumer Cyclical', 'SHOP': 'Consumer Cyclical', 'ABNB': 'Consumer Cyclical',
+  'UBER': 'Consumer Cyclical', 'LYFT': 'Consumer Cyclical', 'NKE': 'Consumer Cyclical',
+  'MCD': 'Consumer Cyclical', 'SBUX': 'Consumer Cyclical', 'HD': 'Consumer Cyclical',
+  'LOW': 'Consumer Cyclical', 'TGT': 'Consumer Cyclical',
+  // Consumer Defensive
+  'PG': 'Consumer Defensive', 'KO': 'Consumer Defensive', 'PEP': 'Consumer Defensive',
+  'WMT': 'Consumer Defensive', 'COST': 'Consumer Defensive',
+  // Financial Services
+  'HOOD': 'Financial Services', 'SOFI': 'Financial Services', 'IBKR': 'Financial Services',
+  'COIN': 'Financial Services', 'SQ': 'Financial Services', 'PYPL': 'Financial Services',
+  'JPM': 'Financial Services', 'GS': 'Financial Services', 'MS': 'Financial Services',
+  'BAC': 'Financial Services', 'WFC': 'Financial Services', 'C': 'Financial Services',
+  'V': 'Financial Services', 'MA': 'Financial Services',
+  // Healthcare
+  'HIMS': 'Healthcare', 'OSCR': 'Healthcare', 'UNH': 'Healthcare', 'NVO': 'Healthcare',
+  'JNJ': 'Healthcare', 'ABBV': 'Healthcare', 'PFE': 'Healthcare', 'MRK': 'Healthcare',
+  'LLY': 'Healthcare', 'AMGN': 'Healthcare', 'GILD': 'Healthcare', 'BIIB': 'Healthcare',
+  'REGN': 'Healthcare', 'CVS': 'Healthcare',
+  // Real Estate
+  'ARE': 'Real Estate',
+  // Energy
+  'XOM': 'Energy', 'CVX': 'Energy', 'COP': 'Energy',
+  // Industrials
+  'BA': 'Industrials', 'GE': 'Industrials', 'LMT': 'Industrials', 'RTX': 'Industrials',
+  // Auto
+  'RIVN': 'Consumer Cyclical', 'LCID': 'Consumer Cyclical', 'NIO': 'Consumer Cyclical',
+  'F': 'Consumer Cyclical', 'GM': 'Consumer Cyclical',
+};
+
 async function fetchFinnhubEarningsTs(sym) {
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -208,6 +255,7 @@ async function fetchAllMetrics(symbols) {
           }
         }
 
+        sector = sector ?? US_SECTOR_MAP[sym] ?? WA_SECTOR_MAP[sym] ?? null;
         results[sym] = { price, dailyChg, pe, peFwd, pb, sector, earningsTs };
       } catch {
         results[sym] = { price: null, dailyChg: null, pe: null, peFwd: null, pb: null, sector: null, earningsTs: null };

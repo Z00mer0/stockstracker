@@ -40,3 +40,21 @@ export function loadColumnConfig() {
 export function saveColumnConfig(cols) {
   localStorage.setItem(LS_KEY, JSON.stringify(cols));
 }
+
+// Maps column key → function extracting a numeric sort value from an enriched position
+export const SORT_GETTERS = {
+  qty:      p => p.qty ?? 0,
+  avgPrice: p => p.avgPrice ?? 0,
+  price:    p => p.price ?? 0,
+  dailyChg: p => p.dailyChg ?? -Infinity,
+  costPLN:  p => p.costPLN ?? 0,
+  valuePLN: p => p.valuePLN ?? 0,
+  plPLN:    p => p.plPLN ?? -Infinity,
+  period:   p => p.periodDays ?? 0,
+  moic:     p => p.moic ?? 0,
+  irr:      p => p.irr ?? -Infinity,
+  pe:       p => p.pe ?? Infinity,
+  peFwd:    p => p.peFwd ?? Infinity,
+  pb:       p => p.pb ?? Infinity,
+  divYoc:   p => p.divYield ?? 0,
+};

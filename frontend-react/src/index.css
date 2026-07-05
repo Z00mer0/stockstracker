@@ -427,3 +427,31 @@ body.privacy-mode td.right {
   input, select, textarea { font-size: 16px !important; }
 }
 .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+/* ── Portfolio grid edit mode ── */
+.rgl-edit .react-grid-item > .card {
+  box-shadow: 0 0 0 2px var(--accent) !important;
+  transition: box-shadow 0.15s;
+}
+.rgl-edit .card-head {
+  cursor: grab !important;
+}
+.rgl-edit .card-head:active {
+  cursor: grabbing !important;
+}
+/* Override react-resizable handles to be visible */
+.rgl-edit .react-resizable-handle {
+  background-image: none !important;
+  background-color: var(--accent) !important;
+  opacity: 0.7;
+  width: 14px !important;
+  height: 14px !important;
+  z-index: 10;
+  border-radius: 3px;
+}
+.rgl-edit .react-resizable-handle:hover { opacity: 1; }
+
+.rgl-edit .react-resizable-handle-se { bottom: 3px !important; right: 3px !important; cursor: se-resize !important; border-radius: 2px 0 6px 0; }
+.rgl-edit .react-resizable-handle-sw { bottom: 3px !important; left: 3px !important; cursor: sw-resize !important; border-radius: 0 2px 0 6px; }
+.rgl-edit .react-resizable-handle-ne { top: 3px !important; right: 3px !important; cursor: ne-resize !important; border-radius: 0 6px 0 2px; }
+.rgl-edit .react-resizable-handle-nw { top: 3px !important; left: 3px !important; cursor: nw-resize !important; border-radius: 6px 0 2px 0; }

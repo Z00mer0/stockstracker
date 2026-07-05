@@ -35,6 +35,13 @@ const STRATEGIES = [
   { value: 'iron-condor',      label: 'Iron Condor' },
 ];
 
+const PRESETS = [
+  { label: 'CDR (CD Projekt)', strategy: 'long-call', entry: 230, strike: 250, premium: 8.50, dte: 45, iv: 35 },
+  { label: 'AAPL (Apple)',     strategy: 'long-call', entry: 200, strike: 210, premium: 4.20, dte: 30, iv: 25 },
+  { label: 'Spekulacja',       strategy: 'long-call', entry: 100, strike: 120, premium: 2.50, dte: 60, iv: 45 },
+  { label: 'Hedging',          strategy: 'long-put',  entry: 150, strike: 145, premium: 5.00, dte: 30, iv: 20 },
+];
+
 const SPREAD_STRATEGIES = new Set(['bull-call-spread','bear-put-spread','iron-condor']);
 const WING_STRATEGIES   = new Set(['iron-condor']);
 const HEDGED_STRATEGIES = new Set(['covered-call','protective-put']);
@@ -224,6 +231,16 @@ export default function ScenarioLab() {
     }
   }
 
+  function applyPreset(preset) {
+    setStrategy(preset.strategy);
+    setEntry(preset.entry);
+    setStrike(preset.strike);
+    setPremium(preset.premium);
+    setDte(preset.dte);
+    setExpiryDate(dteToDateStr(preset.dte));
+    setIv(preset.iv);
+  }
+
   function resetParams() {
     const base = livePrice ?? entry;
     setIv(30);
@@ -362,6 +379,31 @@ export default function ScenarioLab() {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>{t('scenario_title')}</h2>
+
+      {/* Quick-start presets */}
+      <div>
+        <div className="text-xs mb-2" style={{ color: 'var(--text-faint)' }}>Wypróbuj gotowy przykład:</div>
+        <div className="flex flex-wrap gap-2">
+          {PRESETS.map(preset => (
+            <button
+              key={preset.label}
+              onClick={() => applyPreset(preset)}
+              style={{
+                background: 'rgba(52,211,153,0.1)',
+                border: '1px solid rgba(52,211,153,0.3)',
+                color: 'var(--text)',
+                borderRadius: 6,
+                padding: '4px 12px',
+                fontSize: 13,
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Stock picker + chain fetch */}
       <Card title={t('scenario_stock_chain')}>

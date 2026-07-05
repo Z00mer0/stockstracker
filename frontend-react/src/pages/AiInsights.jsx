@@ -126,18 +126,38 @@ export default function AiInsights() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!waSymbols.length) return;
+    if (!allSymbols.length) return;
     setLoading(true); setError(null);
     try {
       const base = import.meta.env.VITE_API_URL ?? '';
-      const url  = `${base}/api/espi-digest?symbols=${encodeURIComponent(waSymbols.join(','))}`;
-      const res  = await fetch(url, { headers: authHeader(), signal: AbortSignal.timeout(90000) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const usSymbols = allSymbols.filter(s => !s.endsWith('.WA'));
+
+      const [espiResult, ...usSummaries] = await Promise.all([
+        waSymbols.length
+          ? fetch(`${base}/api/espi-digest?symbols=${encodeURIComponent(waSymbols.join(','))}`, {
+              headers: authHeader(), signal: AbortSignal.timeout(90000),
+            }).then(r => r.ok ? r.json() : null).catch(() => null)
+          : Promise.resolve(null),
+        ...usSymbols.map(sym =>
+          fetch(`${base}/api/financials/summary?symbol=${encodeURIComponent(sym)}`, {
+            headers: authHeader(), signal: AbortSignal.timeout(30000),
+          }).then(r => r.ok ? r.json() : null).catch(() => null).then(j => ({
+            symbol: sym,
+            summary: j?.summary || null,
+            headlines: [],
+          }))
+        ),
+      ]);
+
+      const waItems = espiResult?.items || waSymbols.map(s => ({ symbol: s, summary: null, headlines: [] }));
+      setData({
+        generatedAt: new Date().toISOString(),
+        items: [...waItems, ...usSummaries],
+      });
     } catch (e) {
       setError(e.message || t('error'));
     } finally { setLoading(false); }
-  }, [waSymbols.join(',')]);
+  }, [allSymbols.join(',')]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -179,7 +199,7 @@ export default function AiInsights() {
           <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
             {activeTab === 'manual'
               ? t('ai_filled_count').replace('{n}', filledSymbols.length).replace('{total}', allSymbols.length)
-              : `${t('ai_gpw_count').replace('{n}', waSymbols.length)}${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt)}` : ''}`}
+              : `${allSymbols.length} spółek${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt)}` : ''}`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -288,25 +308,14 @@ export default function AiInsights() {
 
       {activeTab === 'ai' && (
         <>
-          {waSymbols.length === 0 && (
-            <div style={{ padding: '14px 18px', borderRadius: 10, background: 'var(--panel)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-dim)' }}>
-              {t('ai_no_gpw_note')}
-              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-faint)' }}>
-                {t('ai_no_gpw_hint')} <strong>{t('ai_tab_manual')}</strong>.
-              </div>
-            </div>
-          )}
-          {waSymbols.length > 0 && error && (
+          {error && (
             <div style={{ padding: '14px 18px', borderRadius: 10, background: 'var(--down-soft)', border: '1px solid var(--down)', color: 'var(--down)', fontSize: 13 }}>
               {t('ai_error_prefix')} {error}
-              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-faint)' }}>
-                {t('ai_no_gpw_hint')} <strong>{t('ai_tab_manual')}</strong>.
-              </div>
             </div>
           )}
-          {waSymbols.length > 0 && loading && !data && (
+          {loading && !data && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {waSymbols.map(sym => (
+              {allSymbols.map(sym => (
                 <div key={sym} style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '20px 24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--panel-2)' }} />

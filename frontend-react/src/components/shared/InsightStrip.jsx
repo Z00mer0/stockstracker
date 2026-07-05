@@ -6,7 +6,7 @@ function fmtPct(n) {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
 
-export default function InsightStrip({ positions = [], dailyChangePLN = 0, onSymbolClick }) {
+export default function InsightStrip({ positions = [], dailyChangePLN = 0, dailyChangePct = null, onSymbolClick }) {
   const { locale } = useLanguage();
   const t = useT();
 
@@ -76,6 +76,11 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0, onSym
             <div className="ins-label">{t('daily_result')}</div>
             <div className="ins-text">
               <span className={'num ' + (dayUp ? 'up' : 'down')}>{fmtPLN(dailyChangePLN)}</span>
+              {dailyChangePct != null && (
+                <span style={{ fontSize: 11, color: dayUp ? 'var(--up)' : 'var(--down)', marginLeft: 4 }}>
+                  {fmtPct(dailyChangePct)}
+                </span>
+              )}
             </div>
           </div>
         </div>
