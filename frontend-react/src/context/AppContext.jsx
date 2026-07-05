@@ -45,6 +45,12 @@ export function AppProvider({ children }) {
   const [logoMap, setLogoMap]       = useState({});
   const writeInProgressRef          = useRef(false);
   const fetchIdRef                  = useRef(0);
+  // Mirrors rawData, always current regardless of which render a callback's closure
+  // came from — write functions read this instead of the `rawData` variable directly,
+  // so a callback bound to a stale render (e.g. an async handler that resolves after
+  // rawData has since updated) can never spread an outdated snapshot into a write.
+  const rawDataRef                  = useRef(null);
+  rawDataRef.current = rawData;
 
   const ACTIVE_PORTFOLIO_KEY = 'myfund_active_portfolio';
 
@@ -174,7 +180,20 @@ export function AppProvider({ children }) {
   // wiping the portfolio record instead of throwing. Every write function must call
   // this before touching rawData.
   function assertLoaded() {
-    if (!rawData) throw new Error('Dane portfela jeszcze się nie załadowały — spróbuj ponownie za chwilę.');
+    if (!rawDataRef.current) throw new Error('Dane portfela jeszcze się nie załadowały — spróbuj ponownie za chwilę.');
+  }
+
+  // Single choke point for all writes: blocks fetchData() from running (and clobbering
+  // rawData with a fetch that started before this write finished) for the entire
+  // optimistic-update + POST round trip, not just around the network call.
+  async function postUpdate(updated) {
+    writeInProgressRef.current = true;
+    try {
+      setRawData(updated);
+      await api.post(dataUrl, updated);
+    } finally {
+      writeInProgressRef.current = false;
+    }
   }
 
   const snapshotsInv = rawData?.snapshotsInvested ?? {};
@@ -193,30 +212,39 @@ export function AppProvider({ children }) {
   async function saveCash(newCash) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     assertLoaded();
-    setRawData(prev => ({ ...prev, cash: newCash }));
-    await api.post(dataUrl, { ...rawData, cash: newCash });
+    await postUpdate({ ...rawDataRef.current, cash: newCash });
   }
 
   async function saveHoldings(newHoldings) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     assertLoaded();
-    const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings } };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    const rd = rawDataRef.current;
+    const updated = { ...rd, portfolio: { ...rd.portfolio, holdings: newHoldings } };
+    await postUpdate(updated);
   }
 
-  async function saveTransactions(newTransactions) {
+  // Accepts either a full array or an updater `(prevTransactions) => nextTransactions`
+  // (mirrors setState's functional-update form). Callers that spread an array they
+  // read earlier (e.g. `[...transactions, newTx]` from a component's own render
+  // closure) can end up posting a stale snapshot if that closure is older than the
+  // latest rawData — passing an updater instead always derives from rawDataRef.current
+  // at the moment this actually runs, closing that gap regardless of caller staleness.
+  async function saveTransactions(newTransactionsOrFn) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać transakcję');
     assertLoaded();
-    const updated = { ...rawData, transactions: newTransactions };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    const rd = rawDataRef.current;
+    const newTransactions = typeof newTransactionsOrFn === 'function'
+      ? newTransactionsOrFn(rd.transactions ?? [])
+      : newTransactionsOrFn;
+    const updated = { ...rd, transactions: newTransactions };
+    await postUpdate(updated);
   }
 
   async function renameSymbol(oldSymbol, newSymbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zmienić symbol');
     assertLoaded();
-    const holdings = rawData?.portfolio?.holdings ?? [];
+    const rd = rawDataRef.current;
+    const holdings = rd?.portfolio?.holdings ?? [];
     const src = holdings.find(h => h.symbol === oldSymbol);
     const dst = holdings.find(h => h.symbol === newSymbol);
 
@@ -234,46 +262,46 @@ export function AppProvider({ children }) {
       );
     }
 
-    const newTxs = (rawData?.transactions ?? []).map(t =>
+    const newTxs = (rd?.transactions ?? []).map(t =>
       t.symbol === oldSymbol ? { ...t, symbol: newSymbol } : t
     );
-    const updated = { ...rawData, portfolio: { ...rawData.portfolio, holdings: newHoldings }, transactions: newTxs };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    const updated = { ...rd, portfolio: { ...rd.portfolio, holdings: newHoldings }, transactions: newTxs };
+    await postUpdate(updated);
   }
 
   async function editPosition({ symbol, qty, avgPrice }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby edytować pozycję');
     assertLoaded();
-    const holdings = rawData?.portfolio?.holdings ?? [];
+    const rd = rawDataRef.current;
+    const holdings = rd?.portfolio?.holdings ?? [];
     const updated = {
-      ...rawData,
+      ...rd,
       portfolio: {
-        ...rawData.portfolio,
+        ...rd.portfolio,
         holdings: holdings.map(h => h.symbol === symbol ? { ...h, qty, avgPrice } : h),
       },
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function removePosition(symbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć pozycję');
     assertLoaded();
-    const holdings = rawData?.portfolio?.holdings ?? [];
+    const rd = rawDataRef.current;
+    const holdings = rd?.portfolio?.holdings ?? [];
     const updated = {
-      ...rawData,
-      portfolio: { ...rawData.portfolio, holdings: holdings.filter(h => h.symbol !== symbol) },
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: holdings.filter(h => h.symbol !== symbol) },
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function sellPosition({ symbol, qty, price, currency, date, note, overridePL }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby sprzedać pozycję');
     assertLoaded();
-    const holdings = rawData?.portfolio?.holdings ?? [];
-    const transactions = rawData?.transactions ?? [];
+    const rd = rawDataRef.current;
+    const holdings = rd?.portfolio?.holdings ?? [];
+    const transactions = rd?.transactions ?? [];
     const existing = holdings.find(h => h.symbol === symbol);
     if (!existing) throw new Error('Nie znaleziono pozycji');
     const newQty = existing.qty - qty;
@@ -281,8 +309,8 @@ export function AppProvider({ children }) {
       ? holdings.filter(h => h.symbol !== symbol)
       : holdings.map(h => h.symbol === symbol ? { ...h, qty: newQty } : h);
     const updated = {
-      ...rawData,
-      portfolio: { ...rawData.portfolio, holdings: newHoldings },
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: newHoldings },
       transactions: [...transactions, {
         id: Math.random().toString(36).slice(2, 10),
         type: 'SELL', symbol, qty, price, currency, date, note,
@@ -290,16 +318,16 @@ export function AppProvider({ children }) {
         ...(overridePL != null ? { overridePL } : {}),
       }],
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać pozycję');
     assertLoaded();
-    const holdings = rawData?.portfolio?.holdings ?? [];
-    const transactions = rawData?.transactions ?? [];
-    const cash = rawData?.cash ?? {};
+    const rd = rawDataRef.current;
+    const holdings = rd?.portfolio?.holdings ?? [];
+    const transactions = rd?.transactions ?? [];
+    const cash = rd?.cash ?? {};
 
     // Update holding (weighted average if exists)
     let newHoldings;
@@ -344,17 +372,17 @@ export function AppProvider({ children }) {
     }
 
     const updated = {
-      ...rawData,
-      portfolio: { ...rawData.portfolio, holdings: newHoldings },
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: newHoldings },
       transactions: [...transactions, newTransaction],
       cash: newCash,
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function importBrokerTransactions(newTxs) {
     assertLoaded();
+    const rd = rawDataRef.current;
     const importId = `imp_${Date.now()}`;
     const tagged = newTxs.map(t => ({ ...t, importId }));
 
@@ -372,10 +400,10 @@ export function AppProvider({ children }) {
     const isSnapshot = newTxs.length > 0 && newTxs.every(t => t.fromSnapshot);
     const snapshotDate = isSnapshot ? newTxs[0]?.date : null;
 
-    let baseTransactions = rawData?.transactions ?? [];
-    let baseHoldings = rawData?.portfolio?.holdings ?? [];
-    let baseCash = rawData?.cash ?? {};
-    let baseSnapshots = { ...(rawData?.importSnapshots ?? {}) };
+    let baseTransactions = rd?.transactions ?? [];
+    let baseHoldings = rd?.portfolio?.holdings ?? [];
+    let baseCash = rd?.cash ?? {};
+    let baseSnapshots = { ...(rd?.importSnapshots ?? {}) };
 
     if (isSnapshot && snapshotDate) {
       const oldIds = [...new Set(
@@ -448,8 +476,8 @@ export function AppProvider({ children }) {
     };
 
     const updated = {
-      ...rawData,
-      portfolio: { ...rawData.portfolio, holdings: newHoldings },
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: newHoldings },
       transactions: allTransactions,
       cash: newCash,
       importSnapshots: { ...baseSnapshots, [importId]: preSnapshot },
@@ -466,14 +494,15 @@ export function AppProvider({ children }) {
 
   async function clearBrokerImport(importId) {
     assertLoaded();
-    const filtered = (rawData?.transactions ?? []).filter(t =>
+    const rd = rawDataRef.current;
+    const filtered = (rd?.transactions ?? []).filter(t =>
       importId ? t.importId !== importId : !String(t.note ?? '').startsWith('Import brokera')
     );
 
     // Restore pre-import snapshot if available (fully reverts portfolio + cash)
-    const snapshots = { ...(rawData.importSnapshots ?? {}) };
-    let restoredHoldings = rawData?.portfolio?.holdings;
-    let restoredCash = rawData?.cash;
+    const snapshots = { ...(rd.importSnapshots ?? {}) };
+    let restoredHoldings = rd?.portfolio?.holdings;
+    let restoredCash = rd?.cash;
     if (importId && snapshots[importId]) {
       restoredHoldings = snapshots[importId].holdings;
       restoredCash = snapshots[importId].cash;
@@ -481,8 +510,8 @@ export function AppProvider({ children }) {
     }
 
     const updated = {
-      ...rawData,
-      portfolio: { ...rawData.portfolio, holdings: restoredHoldings },
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: restoredHoldings },
       transactions: filtered,
       cash: restoredCash,
       importSnapshots: snapshots,
@@ -499,37 +528,37 @@ export function AppProvider({ children }) {
 
   async function deleteSnapshot(date) {
     assertLoaded();
-    const newSnapshots = { ...(rawData?.snapshots ?? {}) };
-    const newSnapshotsInv = { ...(rawData?.snapshotsInvested ?? {}) };
+    const rd = rawDataRef.current;
+    const newSnapshots = { ...(rd?.snapshots ?? {}) };
+    const newSnapshotsInv = { ...(rd?.snapshotsInvested ?? {}) };
     delete newSnapshots[date];
     delete newSnapshotsInv[date];
-    const updated = { ...rawData, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    const updated = { ...rd, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv };
+    await postUpdate(updated);
   }
 
   async function setSnapshot(date, totalValue, investedValue) {
     assertLoaded();
+    const rd = rawDataRef.current;
     const updated = {
-      ...rawData,
-      snapshots: { ...(rawData.snapshots ?? {}), [date]: totalValue },
-      snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [date]: investedValue },
+      ...rd,
+      snapshots: { ...(rd.snapshots ?? {}), [date]: totalValue },
+      snapshotsInvested: { ...(rd.snapshotsInvested ?? {}), [date]: investedValue },
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function saveSnapshot(totalValue, investedValue) {
     if (!canWrite) return; // "all" view cannot save directly — use saveBatchSnapshots instead
     assertLoaded();
+    const rd = rawDataRef.current;
     const today = new Date().toISOString().slice(0, 10);
     const updated = {
-      ...rawData,
-      snapshots: { ...(rawData.snapshots ?? {}), [today]: totalValue },
-      snapshotsInvested: { ...(rawData.snapshotsInvested ?? {}), [today]: investedValue },
+      ...rd,
+      snapshots: { ...(rd.snapshots ?? {}), [today]: totalValue },
+      snapshotsInvested: { ...(rd.snapshotsInvested ?? {}), [today]: investedValue },
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function saveBatchSnapshots(snapshotsMap) {
@@ -539,35 +568,35 @@ export function AppProvider({ children }) {
 
   async function addOtherAsset({ name, category, value: val, currency, note }) {
     assertLoaded();
-    const assets = rawData?.otherAssets ?? [];
+    const rd = rawDataRef.current;
+    const assets = rd?.otherAssets ?? [];
     const newAsset = {
       id: Math.random().toString(36).slice(2, 10),
       name, category, value: parseFloat(val), currency,
       note: note || '',
       updatedAt: new Date().toISOString().slice(0, 10),
     };
-    const updated = { ...rawData, otherAssets: [...assets, newAsset] };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    const updated = { ...rd, otherAssets: [...assets, newAsset] };
+    await postUpdate(updated);
   }
 
   async function editOtherAsset(id, changes) {
     assertLoaded();
-    const assets = rawData?.otherAssets ?? [];
+    const rd = rawDataRef.current;
+    const assets = rd?.otherAssets ?? [];
     const updated = {
-      ...rawData,
+      ...rd,
       otherAssets: assets.map(a => a.id === id ? { ...a, ...changes, updatedAt: new Date().toISOString().slice(0, 10) } : a),
     };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    await postUpdate(updated);
   }
 
   async function deleteOtherAsset(id) {
     assertLoaded();
-    const assets = rawData?.otherAssets ?? [];
-    const updated = { ...rawData, otherAssets: assets.filter(a => a.id !== id) };
-    setRawData(updated);
-    await api.post(dataUrl, updated);
+    const rd = rawDataRef.current;
+    const assets = rd?.otherAssets ?? [];
+    const updated = { ...rd, otherAssets: assets.filter(a => a.id !== id) };
+    await postUpdate(updated);
   }
 
   const value = {

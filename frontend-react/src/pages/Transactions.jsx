@@ -170,8 +170,192 @@ function AddTransactionModal({ onSave, onClose }) {
   );
 }
 
+function ImportCSVModal({ existingTransactions, onSave, onClose }) {
+  const [rows, setRows] = useState(null);
+  const [skipped, setSkipped] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = React.useRef(null);
+
+  const COL_MAP = {
+    'data': 'date', 'date': 'date',
+    'typ': 'type', 'type': 'type',
+    'symbol': 'symbol',
+    'ilość': 'qty', 'ilosc': 'qty', 'qty': 'qty',
+    'cena': 'price', 'price': 'price',
+    'waluta': 'currency', 'currency': 'currency',
+    'uwaga': 'note', 'note': 'note',
+  };
+
+  function parseCSV(text) {
+    // Strip BOM
+    const clean = text.replace(/^﻿/, '');
+    const lines = clean.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (lines.length < 2) return { valid: [], skippedCount: 0 };
+
+    // Detect delimiter: if first line has more semicolons than commas, use semicolon
+    const firstLine = lines[0];
+    const delimiter = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+    function splitLine(line) {
+      const result = [];
+      let inQuote = false;
+      let cur = '';
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
+          else { inQuote = !inQuote; }
+        } else if (ch === delimiter && !inQuote) {
+          result.push(cur);
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      result.push(cur);
+      return result;
+    }
+
+    const headerCols = splitLine(lines[0]).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const fieldMap = headerCols.map(h => COL_MAP[h] ?? null);
+
+    const valid = [];
+    let skippedCount = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = splitLine(lines[i]);
+      const obj = {};
+      fieldMap.forEach((field, idx) => {
+        if (field) obj[field] = (cols[idx] ?? '').trim().replace(/^"|"$/g, '');
+      });
+
+      const price = parseFloat(obj.price);
+      if (!obj.symbol || isNaN(price)) { skippedCount++; continue; }
+
+      valid.push({
+        id: Math.random().toString(36).slice(2, 10),
+        date: obj.date ?? '',
+        type: (obj.type ?? 'BUY').toUpperCase(),
+        symbol: obj.symbol.toUpperCase(),
+        qty: obj.qty !== '' && obj.qty != null ? parseFloat(obj.qty) || null : null,
+        price,
+        currency: obj.currency ?? 'PLN',
+        note: obj.note ?? '',
+      });
+    }
+
+    return { valid, skippedCount };
+  }
+
+  function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setError('');
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const { valid, skippedCount } = parseCSV(evt.target.result);
+        setRows(valid);
+        setSkipped(skippedCount);
+      } catch (err) {
+        setError('Błąd parsowania pliku CSV.');
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  async function handleConfirm() {
+    if (!rows || rows.length === 0) return;
+    setSaving(true);
+    try {
+      await onSave([...existingTransactions, ...rows]);
+      onClose();
+    } catch (e) {
+      setError(e.message || 'Błąd zapisu.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+         onClick={onClose}>
+      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}
+           onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 16, flexShrink: 0 }}>Import CSV</h2>
+
+        <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFile} />
+
+        {!rows && (
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <button onClick={() => fileInputRef.current?.click()}
+              style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--info)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+              Wybierz plik CSV
+            </button>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 12 }}>
+              Obsługiwane kolumny: Data, Typ, Symbol, Ilość, Cena, Waluta, Uwaga
+            </p>
+          </div>
+        )}
+
+        {rows && (
+          <>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12, flexShrink: 0 }}>
+              <span style={{ color: 'var(--up)', fontWeight: 600 }}>{rows.length} wierszy poprawnych</span>
+              {skipped > 0 && <span style={{ color: 'var(--down)', marginLeft: 12 }}>{skipped} pominięto (brak symbolu lub ceny)</span>}
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <table className="data-table" style={{ fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Data</th><th>Typ</th><th>Symbol</th>
+                    <th className="right">Ilość</th><th className="right">Cena</th>
+                    <th>Waluta</th><th>Uwaga</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 && (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-faint)', padding: '16px 14px' }}>Brak poprawnych wierszy</td></tr>
+                  )}
+                  {rows.map((r, i) => (
+                    <tr key={i}>
+                      <td className="mono" style={{ color: 'var(--text-dim)' }}>{r.date}</td>
+                      <td><span className={`tag ${TAG_CLASS[r.type] ?? ''}`}>{r.type}</span></td>
+                      <td className="mono" style={{ fontWeight: 600 }}>{r.symbol}</td>
+                      <td className="right mono">{r.qty ?? '—'}</td>
+                      <td className="right mono">{r.price}</td>
+                      <td>{r.currency}</td>
+                      <td style={{ color: 'var(--text-faint)' }}>{r.note || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {error && <p style={{ fontSize: 11, color: 'var(--down)', marginTop: 12, flexShrink: 0 }}>{error}</p>}
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 20, flexShrink: 0 }}>
+          <button onClick={onClose}
+            style={{ flex: 1, padding: '8px 16px', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>
+            Anuluj
+          </button>
+          {rows && rows.length > 0 && (
+            <button onClick={handleConfirm} disabled={saving}
+              style={{ flex: 1, padding: '8px 16px', borderRadius: 8, background: 'var(--info)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
+              {saving ? 'Zapisywanie…' : `Importuj ${rows.length} transakcji`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Transactions() {
-  const { transactions = [], loading, saveTransactions, activePortfolioId } = useApp();
+  const { transactions = [], loading, saveTransactions, activePortfolioId, displayCurrency } = useApp();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -192,6 +376,26 @@ export default function Transactions() {
 
   const [filter, setFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+
+  function handleExportCSV() {
+    const headers = [t('col_date'), t('col_type'), 'Symbol', t('qty_short'), t('price_label'), t('col_currency'), t('col_note')];
+    const rows = sorted.map(tx => [
+      tx.date ?? '',
+      tx.type ?? '',
+      tx.symbol ?? '',
+      tx.qty != null ? tx.qty : '',
+      tx.price != null ? tx.price : '',
+      tx.currency ?? '',
+      tx.note ?? '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `transakcje_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const now = new Date();
   const d30ago = new Date(now - 30 * 24 * 3600 * 1000);
@@ -227,7 +431,7 @@ export default function Transactions() {
         ].map(({ labelKey, value }) => (
           <div key={labelKey} className="kpi-card">
             <div className="kpi-label">{t(labelKey)}</div>
-            <div className="kpi-value" style={{ fontSize: 20 }}>{fmtMoney(value, 'PLN', locale)}</div>
+            <div className="kpi-value" style={{ fontSize: 20 }}>{fmtMoney(value, displayCurrency, locale)}</div>
           </div>
         ))}
       </div>
@@ -236,11 +440,23 @@ export default function Transactions() {
       <Card
         title={`${t('transactions_label')} · ${sorted.length}`}
         actions={
-          <button
-            onClick={() => setShowAdd(true)}
-            style={{ padding: '5px 12px', borderRadius: 6, background: 'var(--info)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {t('add_btn')}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleExportCSV}
+              style={{ padding: '5px 12px', borderRadius: 6, background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              CSV
+            </button>
+            <button
+              onClick={() => setShowImport(true)}
+              style={{ padding: '5px 12px', borderRadius: 6, background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              ⬆ Import CSV
+            </button>
+            <button
+              onClick={() => setShowAdd(true)}
+              style={{ padding: '5px 12px', borderRadius: 6, background: 'var(--info)', color: '#fff', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {t('add_btn')}
+            </button>
+          </div>
         }
       >
         <div style={{ overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 0 }}>
@@ -305,8 +521,16 @@ export default function Transactions() {
 
       {showAdd && (
         <AddTransactionModal
-          onSave={async (tx) => { await saveTransactions([...transactions, tx]); }}
+          onSave={async (tx) => { await saveTransactions(prev => [...prev, tx]); }}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+
+      {showImport && (
+        <ImportCSVModal
+          existingTransactions={transactions}
+          onSave={saveTransactions}
+          onClose={() => setShowImport(false)}
         />
       )}
     </div>

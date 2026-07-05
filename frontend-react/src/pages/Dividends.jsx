@@ -182,7 +182,7 @@ export default function Dividends() {
         currency: formData.currency,
         note: formData.note || '',
       };
-      await saveTransactions([...transactions, newTx]);
+      await saveTransactions(prev => [...prev, newTx]);
     }
     setEditTarget(null);
   }

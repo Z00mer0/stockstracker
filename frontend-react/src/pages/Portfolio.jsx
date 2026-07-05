@@ -1306,7 +1306,7 @@ export default function Portfolio() {
                 date: r.date,
                 note: 'Import CSV',
               }));
-              await saveTransactions([...(rawData?.transactions ?? []), ...newTxs]);
+              await saveTransactions(prev => [...prev, ...newTxs]);
             }
             refresh();
           }}
@@ -1358,7 +1358,7 @@ export default function Portfolio() {
               currency: data.currency,
               note: data.note || '',
             };
-            await saveTransactions([...(rawData?.transactions ?? []), newTx]);
+            await saveTransactions(prev => [...prev, newTx]);
             setDivTarget(null);
             setToast(`Dywidenda ${divTarget} zapisana`);
           }}
