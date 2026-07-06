@@ -70,6 +70,7 @@ export default {
   col_avg_price:        'Avg buy',
   col_currency:         'Currency',
   col_price:            'Price',
+  col_added_price:      'Added price',
   col_cost_pln:         'Cost (PLN)',
   col_value_pln:        'Value (PLN)',
   col_pl_pln:           'P&L (PLN)',

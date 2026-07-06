@@ -184,7 +184,7 @@ export default function Watchlist() {
               <thead>
                 <tr>
                   <th>{t('col_symbol')}</th>
-                  <th className="right">{t('col_price')}</th>
+                  <th className="right">{t('col_added_price')}</th>
                   <th className="right">{t('col_price')}</th>
                   <th className="right">{t('col_day')}</th>
                   <th>{t('col_note')}</th>

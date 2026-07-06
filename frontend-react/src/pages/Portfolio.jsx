@@ -1346,7 +1346,6 @@ export default function Portfolio() {
           isOpen={!!divTarget}
           initialData={{ symbol: divTarget, exDate: '', payDate: '', amount: '' }}
           onSave={async (data) => {
-            addDividend(data);
             const heldQty = portfolio.find(p => p.symbol === divTarget)?.qty;
             const newTx = {
               id: Math.random().toString(36).slice(2, 10),
@@ -1359,6 +1358,7 @@ export default function Portfolio() {
               note: data.note || '',
             };
             await saveTransactions(prev => [...prev, newTx]);
+            addDividend(data);
             setDivTarget(null);
             setToast(`Dywidenda ${divTarget} zapisana`);
           }}

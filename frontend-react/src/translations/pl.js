@@ -70,6 +70,7 @@ export default {
   col_avg_price:        'Śr. zakup',
   col_currency:         'Waluta',
   col_price:            'Cena',
+  col_added_price:      'Cena dodania',
   col_cost_pln:         'Wart. zakupu (PLN)',
   col_value_pln:        'Wart. teraz (PLN)',
   col_pl_pln:           'Zysk/Strata (PLN)',

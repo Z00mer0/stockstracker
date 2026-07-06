@@ -170,7 +170,6 @@ export default function Dividends() {
     if (editTarget) {
       editDividend(editTarget.id, formData);
     } else {
-      addDividend(formData);
       const heldQty = portfolio.find(p => p.symbol === formData.symbol)?.qty;
       const newTx = {
         id: Date.now().toString(),
@@ -183,6 +182,7 @@ export default function Dividends() {
         note: formData.note || '',
       };
       await saveTransactions(prev => [...prev, newTx]);
+      addDividend(formData);
     }
     setEditTarget(null);
   }
