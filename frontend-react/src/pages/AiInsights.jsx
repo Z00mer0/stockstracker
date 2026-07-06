@@ -92,7 +92,7 @@ function wordCount(text) {
 }
 
 export default function AiInsights() {
-  const { portfolio } = useApp();
+  const { portfolio, activePortfolio } = useApp();
   const t = useT();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(false);
@@ -194,7 +194,7 @@ export default function AiInsights() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
-            {t('ai_title')}
+            {activePortfolio ? `${t('ai_title_prefix')} ${activePortfolio.name}` : t('ai_title_all')}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
             {activeTab === 'manual'

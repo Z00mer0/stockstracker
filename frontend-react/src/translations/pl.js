@@ -399,7 +399,8 @@ export default {
   runway_status_col:    'Status',
 
   // ── AI Insights page ─────────────────────────────────────────
-  ai_title:             'AI Insights — portfel GPW',
+  ai_title_prefix:      'AI Insights — portfel',
+  ai_title_all:         'AI Insights — wszystkie portfele',
   ai_filled_count:      '{n} z {total} spółek uzupełnionych',
   ai_gpw_count:         '{n} spółek GPW',
   ai_tab_manual:        '📋 Własne',

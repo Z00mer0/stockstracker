@@ -399,7 +399,8 @@ export default {
   runway_status_col:    'Status',
 
   // ── AI Insights page ─────────────────────────────────────────
-  ai_title:             'AI Insights — GPW portfolio',
+  ai_title_prefix:      'AI Insights — portfolio',
+  ai_title_all:         'AI Insights — all portfolios',
   ai_filled_count:      '{n} of {total} stocks completed',
   ai_gpw_count:         '{n} GPW stocks',
   ai_tab_manual:        '📋 Custom',
