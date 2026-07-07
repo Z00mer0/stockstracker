@@ -1109,6 +1109,7 @@ if DATABASE_URL:
                     display_name  TEXT NOT NULL,
                     password_hash TEXT NOT NULL
                 )""")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_codes TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolios (
                     username TEXT PRIMARY KEY,
@@ -1222,9 +1223,10 @@ if DATABASE_URL:
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT username, display_name, password_hash FROM users")
+            cur.execute("SELECT username, display_name, password_hash, recovery_codes FROM users")
             return {r['username']: {'display_name': r['display_name'],
-                                     'password_hash': r['password_hash']}
+                                     'password_hash': r['password_hash'],
+                                     'recovery_codes': json.loads(r['recovery_codes']) if r['recovery_codes'] else []}
                     for r in cur.fetchall()}
 
     def save_user(username, display_name, password_hash):
@@ -1235,6 +1237,11 @@ if DATABASE_URL:
                   SET display_name  = EXCLUDED.display_name,
                       password_hash = EXCLUDED.password_hash
             """, (username, display_name, password_hash))
+
+    def save_recovery_codes(username, code_hashes):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("UPDATE users SET recovery_codes = %s WHERE username = %s",
+                        (json.dumps(code_hashes), username))
 
     def load_data(username):
         with _conn() as c, c.cursor() as cur:
@@ -1416,8 +1423,17 @@ else:
 
     def save_user(username, display_name, password_hash):
         users = load_users()
-        users[username] = {'display_name': display_name, 'password_hash': password_hash}
+        entry = users.get(username, {})
+        entry['display_name']  = display_name
+        entry['password_hash'] = password_hash
+        users[username] = entry
         USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding='utf-8')
+
+    def save_recovery_codes(username, code_hashes):
+        users = load_users()
+        if username in users:
+            users[username]['recovery_codes'] = code_hashes
+            USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding='utf-8')
 
     def load_data(username):
         f = BASE / f'portfolio_{username}.json'
@@ -1570,6 +1586,20 @@ def load_aggregate_data(username):
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+# Recovery codes: 8 chars from an unambiguous alphabet (~40 bits), shown as XXXX-XXXX.
+# High entropy → a fast SHA-256 hash is sufficient (unlike user passwords).
+_RC_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+def new_recovery_codes(n=8):
+    codes = []
+    for _ in range(n):
+        raw = ''.join(secrets.choice(_RC_ALPHABET) for _ in range(8))
+        codes.append(raw[:4] + '-' + raw[4:])
+    return codes
+
+def recovery_code_hash(code: str) -> str:
+    return hashlib.sha256(code.replace('-', '').replace(' ', '').upper().encode()).hexdigest()
 
 def check_password(password: str, stored_hash: str) -> bool:
     try:
@@ -3142,7 +3172,7 @@ async function doRecover() {
     def do_POST(self):
         path = self.path.split('?')[0]
 
-        if path in ('/api/login', '/api/register'):
+        if path in ('/api/login', '/api/register', '/api/reset-password'):
             ip = self.headers.get('X-Forwarded-For', self.client_address[0]).split(',')[0].strip()
             if _rate_limited(ip):
                 self.send_json(429, {'ok': False, 'error': 'Za dużo prób. Spróbuj ponownie za 15 minut.'}); return
@@ -3238,6 +3268,47 @@ async function doRecover() {
                     self.send_json(401, {'ok': False, 'error': 'Aktualne hasło jest nieprawidłowe'}); return
                 save_user(username, users[username]['display_name'], hash_password(new_pw))
                 self.send_json(200, {'ok': True})
+            except ValueError as e:
+                self.send_json(400, {'ok': False, 'error': str(e)})
+            except Exception as e:
+                self.send_json(400, {'ok': False, 'error': 'Bad request'})
+
+        elif path == '/api/recovery-codes':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'ok': False, 'error': 'unauthorized'}); return
+            codes = new_recovery_codes()
+            save_recovery_codes(username, [recovery_code_hash(c) for c in codes])
+            self.send_json(200, {'ok': True, 'codes': codes})
+
+        elif path == '/api/reset-password':
+            try:
+                body     = self.read_json(_MAX_BODY_AUTH)
+                username = _str(body.get('username', ''), 64, 'username').lower()
+                code     = _str(body.get('recovery_code', ''), 32, 'recovery_code')
+                new_pw   = _str(body.get('new_password', ''), 1024, 'new_password')
+                if len(new_pw) < 6:
+                    self.send_json(400, {'ok': False, 'error': 'Nowe hasło musi mieć co najmniej 6 znaków'}); return
+                users  = load_users()
+                entry  = users.get(username)
+                hashes = list((entry or {}).get('recovery_codes') or [])
+                ch     = recovery_code_hash(code)
+                if not entry or ch not in hashes:
+                    self.send_json(401, {'ok': False, 'error': 'Nieprawidłowa nazwa użytkownika lub kod odzyskiwania'}); return
+                hashes.remove(ch)  # single-use
+                save_recovery_codes(username, hashes)
+                save_user(username, entry['display_name'], hash_password(new_pw))
+                # Invalidate every session for this user — the password may have leaked.
+                for tok, u in list(SESSIONS.items()):
+                    if u == username:
+                        SESSIONS.pop(tok, None)
+                if DATABASE_URL:
+                    try:
+                        with _conn() as c, c.cursor() as cur:
+                            cur.execute("DELETE FROM sessions WHERE username=%s", (username,))
+                    except Exception as e:
+                        print(f'[sessions] purge failed: {e}')
+                self.send_json(200, {'ok': True, 'remaining_codes': len(hashes)})
             except ValueError as e:
                 self.send_json(400, {'ok': False, 'error': str(e)})
             except Exception as e:

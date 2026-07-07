@@ -45,7 +45,7 @@ export default function AuthScreen({
   defaultMode = "login",
   onLogin,
   onRegister,
-  onForgotPassword,
+  onResetPassword,
 }) {
   const t = useT();
   const PW_META = [
@@ -61,9 +61,11 @@ export default function AuthScreen({
   const [email, setEmail]         = useState("");
   const [pw, setPw]               = useState("");
   const [pw2, setPw2]             = useState("");
+  const [code, setCode]           = useState("");
   const [remember, setRemember]   = useState(true);
   const [loading, setLoading]     = useState(false);
   const [serverError, setServerError] = useState(null);
+  const [info, setInfo]               = useState(null);
   const [wig20, setWig20]             = useState(null);
   const uid = useId();
 
@@ -76,33 +78,48 @@ export default function AuthScreen({
   }, []);
 
   const isReg     = mode === "register";
+  const isReset   = mode === "reset";
   const strength  = useMemo(() => scorePassword(pw), [pw]);
   const meta      = PW_META[strength];
-  const mismatch  = isReg && pw2.length > 0 && pw2 !== pw;
+  const mismatch  = (isReg || isReset) && pw2.length > 0 && pw2 !== pw;
 
   async function handleSubmit(e) {
     e.preventDefault();
     setServerError(null);
+    setInfo(null);
     setLoading(true);
     try {
       if (isReg) {
         if (mismatch || pw.length < 8) return;
         await onRegister?.({ username, email, password: pw });
+      } else if (isReset) {
+        if (mismatch || pw.length < 8) return;
+        await onResetPassword?.({ username, code, newPassword: pw });
+        setMode("login");
+        setInfo(t('auth_reset_success'));
+        setPw(""); setPw2(""); setCode("");
       } else {
         await onLogin?.({ username, password: pw, remember });
       }
     } catch (err) {
-      setServerError(err.message || (isReg ? t('auth_err_register') : t('auth_err_login')));
+      setServerError(err.message ||
+        (isReg ? t('auth_err_register') : isReset ? t('auth_err_reset') : t('auth_err_login')));
     } finally {
       setLoading(false);
     }
   }
 
-  function toggleMode() {
-    setMode(isReg ? "login" : "register");
+  function switchTo(next) {
+    setMode(next);
     setPw("");
     setPw2("");
+    setCode("");
     setServerError(null);
+    setInfo(null);
+  }
+
+  function toggleMode() {
+    switchTo(isReg ? "login" : "register");
   }
 
   const isTerm     = variant === "terminal";
@@ -142,9 +159,11 @@ export default function AuthScreen({
 
         {/* heading */}
         <div className="auth-head">
-          <h1 className="auth-title">{isReg ? t('auth_register_title') : t('auth_login_title')}</h1>
+          <h1 className="auth-title">
+            {isReg ? t('auth_register_title') : isReset ? t('auth_reset_title') : t('auth_login_title')}
+          </h1>
           <p className="auth-sub">
-            {isReg ? t('auth_register_sub') : t('auth_login_sub')}
+            {isReg ? t('auth_register_sub') : isReset ? t('auth_reset_sub') : t('auth_login_sub')}
           </p>
         </div>
 
@@ -168,10 +187,20 @@ export default function AuthScreen({
             </Field>
           )}
 
+          {isReset && (
+            <Field label={t('auth_code_label')} lead={<KeyIcon />}>
+              <input
+                className="auth-input" type="text" placeholder={t('auth_code_placeholder')}
+                autoComplete="one-time-code" value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())} required
+              />
+            </Field>
+          )}
+
           <Field
-            label={t('auth_password_label')} lead={<LockIcon />} hasTrail
-            link={!isReg ? t('auth_forgot_password') : undefined}
-            onLink={onForgotPassword}
+            label={isReset ? t('auth_new_pw_label') : t('auth_password_label')} lead={<LockIcon />} hasTrail
+            link={mode === "login" ? t('auth_forgot_password') : undefined}
+            onLink={() => switchTo("reset")}
             trail={
               <button type="button" className="input-trail" tabIndex={-1}
                 onClick={() => setShowPw((v) => !v)} aria-label={t('auth_show_pw')}>
@@ -182,13 +211,13 @@ export default function AuthScreen({
             <input
               className="auth-input"
               type={showPw ? "text" : "password"}
-              placeholder={isReg ? t('auth_pw_min') : "••••••••••"}
-              autoComplete={isReg ? "new-password" : "current-password"}
+              placeholder={isReg || isReset ? t('auth_pw_min') : "••••••••••"}
+              autoComplete={isReg || isReset ? "new-password" : "current-password"}
               value={pw} onChange={(e) => setPw(e.target.value)} required
             />
           </Field>
 
-          {isReg && pw.length > 0 && (
+          {(isReg || isReset) && pw.length > 0 && (
             <div className="pw-strength">
               <div className="pw-bars">
                 {[0, 1, 2, 3].map((i) => (
@@ -203,7 +232,7 @@ export default function AuthScreen({
             </div>
           )}
 
-          {isReg && (
+          {(isReg || isReset) && (
             <Field label={t('auth_repeat_pw')} lead={<LockIcon />}>
               <input
                 className="auth-input"
@@ -217,7 +246,7 @@ export default function AuthScreen({
             </Field>
           )}
 
-          {!isReg && (
+          {mode === "login" && (
             <div className="check-row">
               <label className="checkbox" htmlFor={`${uid}-rm`}>
                 <input id={`${uid}-rm`} type="checkbox" checked={remember}
@@ -227,26 +256,37 @@ export default function AuthScreen({
               </label>
             </div>
           )}
-          {isReg && <div style={{ height: 4 }} />}
+          {(isReg || isReset) && <div style={{ height: 4 }} />}
 
           {serverError && (
             <div className="auth-server-error">{serverError}</div>
           )}
+          {info && (
+            <div className="auth-server-info">{info}</div>
+          )}
 
           <button type="submit" className="auth-btn" disabled={loading}>
             {loading
-              ? (isReg ? t('auth_creating') : t('auth_logging_in'))
-              : (isReg ? t('auth_create_account') : t('auth_login_btn'))}
+              ? (isReg ? t('auth_creating') : isReset ? t('auth_resetting') : t('auth_logging_in'))
+              : (isReg ? t('auth_create_account') : isReset ? t('auth_reset_btn') : t('auth_login_btn'))}
             {!loading && <ArrowRightIcon />}
           </button>
         </form>
 
         {/* footer switch */}
         <div className="auth-foot">
-          {isReg ? t('auth_have_account') : t('auth_no_account')}
-          <span className="switch" onClick={toggleMode}>
-            {isReg ? t('auth_switch_login') : t('auth_switch_register')}
-          </span>
+          {isReset ? (
+            <span className="switch" onClick={() => switchTo("login")}>
+              {t('auth_back_to_login')}
+            </span>
+          ) : (
+            <>
+              {isReg ? t('auth_have_account') : t('auth_no_account')}
+              <span className="switch" onClick={toggleMode}>
+                {isReg ? t('auth_switch_login') : t('auth_switch_register')}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -315,6 +355,14 @@ function MailIcon() {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 6 10 7 10-7" />
+    </svg>
+  );
+}
+function KeyIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7.5" cy="15.5" r="4.5" /><path d="m10.7 12.3 8.8-8.8M15 5l3 3M18 2l3 3" />
     </svg>
   );
 }

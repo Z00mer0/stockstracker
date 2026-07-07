@@ -89,6 +89,72 @@ function ChangePasswordSection() {
   );
 }
 
+function RecoveryCodesSection() {
+  const t = useT();
+  const [codes, setCodes] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function generate() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await api.post('/api/recovery-codes');
+      setCodes(res.data.codes);
+    } catch {
+      setError(t('rc_error'));
+    } finally { setLoading(false); }
+  }
+
+  function download() {
+    const blob = new Blob([`stockstracker — ${t('rc_title')}\n\n${codes.join('\n')}\n`], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'stockstracker-recovery-codes.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(codes.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  }
+
+  return (
+    <Card title={t('rc_title')}>
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('rc_sub')}</p>
+        <p style={{ fontSize: 11, color: 'var(--warn)', margin: 0 }}>{t('rc_regen_warn')}</p>
+        {codes && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+              {codes.map(c => (
+                <span key={c} className="mono" style={{
+                  fontSize: 13, textAlign: 'center', padding: '8px 6px', userSelect: 'all',
+                  background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 8,
+                }}>{c}</span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={download} className="btn" style={{ fontSize: 12 }}>{t('rc_download')}</button>
+              <button onClick={copy} className="btn" style={{ fontSize: 12 }}>{copied ? t('rc_copied') : t('rc_copy')}</button>
+            </div>
+          </>
+        )}
+        {error && <p style={{ color: 'var(--down)', fontSize: 12, margin: 0 }}>{error}</p>}
+        <button onClick={generate} className="btn btn-primary" disabled={loading}
+          style={{ alignSelf: 'flex-start', opacity: loading ? 0.4 : 1 }}>
+          {loading ? t('saving_btn') : t('rc_generate')}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 function DividendTaxSection() {
   const t = useT();
   const [usTax, setUsTax] = useState(() => localStorage.getItem(US_TAX_KEY) || '15');
@@ -350,6 +416,7 @@ export default function Settings() {
       </Card>
 
       <ChangePasswordSection />
+      <RecoveryCodesSection />
       <ApiKeySection />
       <DividendTaxSection />
 
