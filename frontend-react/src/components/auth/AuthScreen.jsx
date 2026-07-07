@@ -55,7 +55,7 @@ export default function AuthScreen({
     { label: t('pw_strength_good'),   color: 'var(--info)' },
     { label: t('pw_strength_strong'), color: 'var(--up)'   },
   ];
-  const [mode, setMode]           = useState(defaultMode);
+  const [mode, setMode]           = useState(window.location.hash === "#register" ? "register" : defaultMode);
   const [showPw, setShowPw]       = useState(false);
   const [username, setUsername]   = useState("");
   const [email, setEmail]         = useState("");
