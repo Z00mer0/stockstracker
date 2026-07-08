@@ -4,6 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ChartProvider } from './context/ChartContext';
 import Layout from './components/layout/Layout';
 import AuthGate from './components/auth/AuthGate';
+import UpdatePrompt from './components/UpdatePrompt';
 import SetupWizard, { shouldShowWizard } from './components/SetupWizard';
 
 import Dashboard    from './pages/Dashboard';
@@ -61,6 +62,7 @@ export default function App() {
       <AppProvider>
         <ChartProvider>
           <AppRoutes />
+          <UpdatePrompt />
         </ChartProvider>
       </AppProvider>
     </BrowserRouter>
