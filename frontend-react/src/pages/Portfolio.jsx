@@ -14,6 +14,7 @@ import StockDetailModal from '../components/StockDetailModal';
 import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
+import { fetchCpiSeries, valueBond, BOND_TYPES } from '../services/bondService';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import {
@@ -837,23 +838,27 @@ export default function Portfolio() {
 
   if (!portfolio.length) {
     return (
-      <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
-        <div className="text-5xl mb-3">💼</div>
-        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak pozycji w portfelu</p>
-        <p className="text-sm mt-1 mb-5">{t('add_first_stock_hint')}</p>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="btn btn-primary"
-        >
-          {t('add_stock_btn')}
-        </button>
-        {showAdd && (
-          <AddStockModal
-            existingPortfolio={portfolio}
-            onSave={async (data) => { await addPosition(data); refresh(); }}
-            onClose={() => setShowAdd(false)}
-          />
-        )}
+      <div className="space-y-4">
+        <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
+          <div className="text-5xl mb-3">💼</div>
+          <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak pozycji w portfelu</p>
+          <p className="text-sm mt-1 mb-5">{t('add_first_stock_hint')}</p>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="btn btn-primary"
+          >
+            {t('add_stock_btn')}
+          </button>
+          {showAdd && (
+            <AddStockModal
+              existingPortfolio={portfolio}
+              onSave={async (data) => { await addPosition(data); refresh(); }}
+              onClose={() => setShowAdd(false)}
+            />
+          )}
+        </div>
+        <OtherAssetsSection />
+        <BondsSection />
       </div>
     );
   }
@@ -1485,6 +1490,7 @@ export default function Portfolio() {
         />
       )}
       <OtherAssetsSection />
+      <BondsSection />
     </div>
   );
 }
@@ -1673,6 +1679,202 @@ function OtherAssetsSection() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function BondsSection() {
+  const { bonds, addBond, editBond, deleteBond, canWrite } = useApp();
+  const t = useT();
+  const { locale } = useLanguage();
+  const [cpiMap, setCpiMap] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  useEffect(() => {
+    if (bonds.length) fetchCpiSeries().then(setCpiMap);
+  }, [bonds.length]);
+
+  const valued = useMemo(
+    () => bonds.map(b => ({ ...b, v: valueBond(b, cpiMap ?? new Map()) })),
+    [bonds, cpiMap],
+  );
+  const totalValue = valued.reduce((s, b) => s + b.v.totalValue, 0);
+
+  const fmt = n => n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtPct = r => (r * 100).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+
+  if (!bonds.length && !showModal) {
+    return (
+      <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{t('bonds_title')}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>{t('bonds_hint')}</p>
+        </div>
+        {canWrite && <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 12 }}>+ {t('add')}</button>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{t('bonds_title')}</span>
+          {totalValue > 0 && (
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmt(totalValue)} zł</span>
+          )}
+        </div>
+        {canWrite && <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ {t('add')}</button>}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>{t('bond_series')}</th>
+              <th>{t('bond_type')}</th>
+              <th>{t('bond_purchase_date')}</th>
+              <th className="right">{t('bond_count')}</th>
+              <th className="right">{t('col_nominal')}</th>
+              <th className="right">{t('col_bond_rate')}</th>
+              <th className="right">{t('col_bond_value')}</th>
+              <th className="right">{t('col_bond_redeem')}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {valued.map(b => (
+              <tr key={b.id}>
+                <td style={{ fontWeight: 600, color: 'var(--text)' }}>
+                  🏦 {b.name}
+                  {b.v.matured && <span style={{ fontSize: 10, color: 'var(--warn)', marginLeft: 6 }}>{t('bond_matured')}</span>}
+                </td>
+                <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.type} · {BOND_TYPES[b.type]?.years ?? '—'}L</td>
+                <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.purchaseDate}</td>
+                <td className="right mono">{b.count}</td>
+                <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(b.v.totalNominal)} zł</td>
+                <td className="right mono" style={{ color: 'var(--up)' }}>{fmtPct(b.v.currentRate)}</td>
+                <td className="right mono" style={{ color: 'var(--text)' }}>{fmt(b.v.totalValue)} zł</td>
+                <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(b.v.redeemTodayTotal)} zł</td>
+                <td className="right" style={{ whiteSpace: 'nowrap' }}>
+                  {canWrite && <>
+                  <button
+                    onClick={() => { setEditTarget(b); setShowModal(true); }}
+                    style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer', marginRight: 8 }}
+                  >{t('edit')}</button>
+                  <button
+                    onClick={() => setConfirmDel(b)}
+                    style={{ fontSize: 11, color: 'var(--down)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >{t('delete_btn')}</button>
+                  </>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--text-faint)', padding: '10px 16px 14px' }}>{t('bonds_estimate_note')}</p>
+      {showModal && (
+        <BondModal
+          initial={editTarget}
+          onSave={async (data) => {
+            if (editTarget) await editBond(editTarget.id, data);
+            else await addBond(data);
+          }}
+          onClose={() => { setShowModal(false); setEditTarget(null); }}
+        />
+      )}
+      {confirmDel && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, maxWidth: 320, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <p style={{ fontWeight: 600, marginBottom: 8 }}>Usuń "{confirmDel.name}"?</p>
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <button onClick={() => setConfirmDel(null)} className="btn" style={{ flex: 1 }}>{t('cancel')}</button>
+              <button onClick={() => { const b = confirmDel; setConfirmDel(null); deleteBond(b.id); }} className="btn btn-danger" style={{ flex: 1 }}>{t('delete_btn')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BondModal({ initial, onSave, onClose }) {
+  const t = useT();
+  const [type, setType]     = useState(initial?.type ?? 'EDO');
+  const [name, setName]     = useState(initial?.name ?? '');
+  const [date, setDate]     = useState(initial?.purchaseDate ?? new Date().toISOString().slice(0, 10));
+  const [count, setCount]   = useState(initial?.count ?? '');
+  const [rate1, setRate1]   = useState(initial?.firstYearRate ?? '');
+  const [margin, setMargin] = useState(initial?.margin ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState('');
+
+  async function handleSave() {
+    if (!name.trim()) { setError(t('enter_name')); return; }
+    const c = parseInt(count, 10);
+    if (!c || c < 1) { setError(t('bond_count_err')); return; }
+    setSaving(true);
+    try {
+      await onSave({
+        type, name: name.trim(), purchaseDate: date,
+        count: c, firstYearRate: parseFloat(rate1) || 0, margin: parseFloat(margin) || 0,
+      });
+      onClose();
+    } catch (e) {
+      setError(e.message || t('save_error'));
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 380, boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+          {initial ? t('bond_edit_title') : t('bond_add_title')}
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label className="field-label">{t('bond_type')}</label>
+            <select className="field-input" value={type} onChange={e => setType(e.target.value)}>
+              <option value="EDO">EDO (10L)</option>
+              <option value="COI">COI (4L)</option>
+            </select>
+          </div>
+          <div>
+            <label className="field-label">{t('bond_series')}</label>
+            <input className="field-input" placeholder={t('bond_series_ph')} value={name} onChange={e => setName(e.target.value)} autoFocus />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label className="field-label">{t('bond_purchase_date')}</label>
+            <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">{t('bond_count')}</label>
+            <input type="number" min="1" step="1" className="field-input" value={count} onChange={e => setCount(e.target.value)} placeholder="np. 50" />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+          <div>
+            <label className="field-label">{t('bond_first_rate')}</label>
+            <input type="number" min="0" step="0.01" className="field-input" value={rate1} onChange={e => setRate1(e.target.value)} placeholder="np. 6.55" />
+          </div>
+          <div>
+            <label className="field-label">{t('bond_margin')}</label>
+            <input type="number" min="0" step="0.01" className="field-input" value={margin} onChange={e => setMargin(e.target.value)} placeholder="np. 2.00" />
+          </div>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>{t('bond_modal_hint')}</p>
+        {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
+            {saving ? t('saving') : t('save_btn')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1220,6 +1220,11 @@ if DATABASE_URL:
                     username   TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_bonds (
+                    portfolio_id TEXT PRIMARY KEY,
+                    bonds_json   TEXT NOT NULL DEFAULT '[]'
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1317,9 +1322,16 @@ if DATABASE_URL:
                     import_snapshots[r['import_id']] = json.loads(r['snapshot_json'])
                 except Exception:
                     pass
+            cur.execute("SELECT bonds_json FROM portfolio_bonds WHERE portfolio_id=%s", (portfolio_id,))
+            row = cur.fetchone()
+            try:
+                bonds = json.loads(row['bonds_json']) if row else []
+            except Exception:
+                bonds = []
         return {'portfolio': {'holdings': holdings}, 'transactions': transactions,
                 'snapshots': snapshots, 'snapshotsInvested': snapshots_inv, 'cash': cash,
-                'otherAssets': other_assets, 'importSnapshots': import_snapshots}
+                'otherAssets': other_assets, 'importSnapshots': import_snapshots,
+                'bonds': bonds}
 
     def save_portfolio_data(portfolio_id, data):
         holdings = data.get('portfolio', {}).get('holdings', [])
@@ -1371,6 +1383,10 @@ if DATABASE_URL:
             for imp_id, snap in import_snapshots.items():
                 cur.execute("INSERT INTO portfolio_import_snapshots (portfolio_id, import_id, snapshot_json) VALUES (%s,%s,%s)",
                             (portfolio_id, imp_id, json.dumps(snap, ensure_ascii=False)))
+            bonds = data.get('bonds', [])
+            cur.execute("""INSERT INTO portfolio_bonds (portfolio_id, bonds_json) VALUES (%s, %s)
+                           ON CONFLICT (portfolio_id) DO UPDATE SET bonds_json = EXCLUDED.bonds_json""",
+                        (portfolio_id, json.dumps(bonds, ensure_ascii=False)))
 
     def load_layout(portfolio_id):
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1545,6 +1561,7 @@ def load_aggregate_data(username):
     merged_snaps = {}
     merged_snaps_inv = {}
     merged_cash = {}
+    merged_bonds = []
     symbol_set = {}
 
     for p in portfolios:
@@ -1573,6 +1590,8 @@ def load_aggregate_data(username):
             merged_snaps_inv[date] = merged_snaps_inv.get(date, 0) + val
         for cur, amt in data.get('cash', {}).items():
             merged_cash[cur] = merged_cash.get(cur, 0) + amt
+        for b in data.get('bonds', []):
+            merged_bonds.append({**b, '_portfolioId': p['id'], '_portfolioName': p['name']})
 
     merged_txs.sort(key=lambda t: t.get('date', ''))
     return {
@@ -1581,6 +1600,7 @@ def load_aggregate_data(username):
         'snapshots': merged_snaps,
         'snapshotsInvested': merged_snaps_inv,
         'cash': merged_cash,
+        'bonds': merged_bonds,
     }
 
 

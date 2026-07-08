@@ -599,6 +599,40 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
+  async function addBond({ type, name, purchaseDate, count, firstYearRate, margin }) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const bonds = rd?.bonds ?? [];
+    const newBond = {
+      id: Math.random().toString(36).slice(2, 10),
+      type, name, purchaseDate,
+      count: parseInt(count, 10) || 0,
+      firstYearRate: parseFloat(firstYearRate) || 0,
+      margin: parseFloat(margin) || 0,
+    };
+    const updated = { ...rd, bonds: [...bonds, newBond] };
+    await postUpdate(updated);
+  }
+
+  async function editBond(id, changes) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const bonds = rd?.bonds ?? [];
+    const updated = { ...rd, bonds: bonds.map(b => b.id === id ? { ...b, ...changes } : b) };
+    await postUpdate(updated);
+  }
+
+  async function deleteBond(id) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const bonds = rd?.bonds ?? [];
+    const updated = { ...rd, bonds: bonds.filter(b => b.id !== id) };
+    await postUpdate(updated);
+  }
+
   const value = {
     isAuthenticated: !!token,
     displayName,
@@ -609,6 +643,7 @@ export function AppProvider({ children }) {
     snapshots,
     cash:         rawData?.cash ?? {},
     otherAssets:  rawData?.otherAssets ?? [],
+    bonds:        rawData?.bonds ?? [],
     loading,
     error,
     refresh: fetchData,
@@ -641,6 +676,9 @@ export function AppProvider({ children }) {
     addOtherAsset,
     editOtherAsset,
     deleteOtherAsset,
+    addBond,
+    editBond,
+    deleteBond,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
