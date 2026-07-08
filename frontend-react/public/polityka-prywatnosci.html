@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polityka prywatności — MyFund / StocksTracker</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --border:rgba(255,255,255,.1);
+    --text:#e6edf3; --dim:#8b949e; --accent:#00c882;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;line-height:1.7;font-size:15.5px}
+  main{max-width:760px;margin:0 auto;padding:56px 20px 80px}
+  h1{font-size:1.9rem;letter-spacing:-.02em;margin-bottom:6px}
+  .updated{color:var(--dim);font-size:.82rem;margin-bottom:36px}
+  h2{font-size:1.15rem;margin:34px 0 10px;color:var(--accent)}
+  p,li{color:var(--dim)}
+  strong{color:var(--text);font-weight:600}
+  ul{padding-left:22px;display:grid;gap:6px;margin:8px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .back{display:inline-block;margin-bottom:28px;font-size:.85rem;color:var(--dim)}
+  .back:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Wróć do aplikacji</a>
+  <h1>Polityka prywatności</h1>
+  <p class="updated">Ostatnia aktualizacja: 8 lipca 2026</p>
+
+  <h2>1. Administrator danych</h2>
+  <p>Administratorem danych osobowych przetwarzanych w aplikacji MyFund / StocksTracker (dalej: „Aplikacja") jest operator Aplikacji — niezależny, prywatny projekt niekomercyjny. Kontakt we wszystkich sprawach dotyczących danych osobowych: <a href="mailto:gorski.a.r@gmail.com">gorski.a.r@gmail.com</a>.</p>
+
+  <h2>2. Jakie dane przetwarzamy</h2>
+  <ul>
+    <li><strong>Dane konta:</strong> nazwa użytkownika, nazwa wyświetlana oraz hasło — hasło przechowujemy wyłącznie w postaci silnego skrótu kryptograficznego (bcrypt); nigdy nie znamy jego treści. Nie zbieramy adresu e-mail ani numeru telefonu.</li>
+    <li><strong>Dane portfela:</strong> transakcje, pozycje, dywidendy i inne dane inwestycyjne, które samodzielnie wprowadzasz lub importujesz z plików CSV/PDF. Aplikacja nigdy nie ma dostępu do Twojego rachunku brokerskiego ani środków.</li>
+    <li><strong>Dane techniczne sesji:</strong> losowy token sesji umożliwiający zalogowanie.</li>
+    <li><strong>Dane przechowywane wyłącznie w Twojej przeglądarce (localStorage):</strong> preferencje interfejsu (język, motyw, tryb prywatności), Twój własny klucz API danych rynkowych (jeśli go podasz) oraz podręczny cache kursów walut. Te dane nie są wysyłane na nasz serwer.</li>
+  </ul>
+
+  <h2>3. Cel i podstawa prawna</h2>
+  <p>Dane przetwarzamy wyłącznie w celu świadczenia usługi — prowadzenia Twojego konta i prezentowania analityki Twojego portfela (art. 6 ust. 1 lit. b RODO — wykonanie umowy). Nie wykorzystujemy danych do reklam, profilowania marketingowego ani ich nie sprzedajemy.</p>
+
+  <h2>4. Gdzie przechowujemy dane</h2>
+  <ul>
+    <li><strong>Backend i baza danych:</strong> Render (region Frankfurt, Unia Europejska) — konta, sesje i dane portfeli w bazie PostgreSQL.</li>
+    <li><strong>Frontend (statyczne pliki aplikacji):</strong> Vercel (CDN).</li>
+  </ul>
+  <p>Cała komunikacja z Aplikacją jest szyfrowana (HTTPS).</p>
+
+  <h2>5. Odbiorcy danych i usługi zewnętrzne</h2>
+  <ul>
+    <li><strong>Render i Vercel</strong> — dostawcy infrastruktury (podmioty przetwarzające).</li>
+    <li><strong>Dostawcy danych rynkowych</strong> (np. Finnhub, NBP, Stooq) — zapytania o notowania przechodzą przez nasz serwer i dotyczą symboli spółek; nie przekazujemy im Twojej tożsamości.</li>
+    <li><strong>Dostawca modeli AI (Groq)</strong> — przy generowaniu analiz fundamentalnych wysyłane są wyłącznie publiczne dane rynkowe spółki (symbol, dane finansowe). Nie wysyłamy Twoich danych osobowych ani składu portfela.</li>
+  </ul>
+
+  <h2>6. Jak długo przechowujemy dane</h2>
+  <p>Dane konta i portfela przechowujemy do momentu usunięcia konta. Aby usunąć konto wraz ze wszystkimi danymi, napisz na adres kontaktowy podany wyżej — usuniemy je niezwłocznie, najpóźniej w ciągu 14 dni.</p>
+
+  <h2>7. Twoje prawa</h2>
+  <p>Zgodnie z RODO masz prawo do: dostępu do swoich danych, ich sprostowania, usunięcia, ograniczenia przetwarzania oraz przenoszenia (eksport danych portfela znajdziesz w Ustawieniach aplikacji). Masz też prawo wnieść skargę do Prezesa Urzędu Ochrony Danych Osobowych (uodo.gov.pl).</p>
+
+  <h2>8. Pliki cookie</h2>
+  <p>Aplikacja nie używa plików cookie do śledzenia ani analityki. Korzystamy wyłącznie z technicznego magazynu przeglądarki (localStorage) opisanego w punkcie 2.</p>
+
+  <h2>9. Zastrzeżenie</h2>
+  <p>Aplikacja ma charakter informacyjno-analityczny i nie świadczy doradztwa inwestycyjnego ani podatkowego. Wszystkie prezentowane wyliczenia mają charakter poglądowy.</p>
+
+  <h2>10. Zmiany polityki</h2>
+  <p>O istotnych zmianach niniejszej polityki poinformujemy w aplikacji. Aktualna wersja jest zawsze dostępna pod tym adresem.</p>
+</main>
+</body>
+</html>

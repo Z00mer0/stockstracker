@@ -22,7 +22,7 @@ export default function AuthGate({ onLogin }) {
     }
   }
 
-  async function handleRegister({ username, email, password }) {
+  async function handleRegister({ username, password }) {
     let res;
     try {
       res = await api.post('/api/register', {

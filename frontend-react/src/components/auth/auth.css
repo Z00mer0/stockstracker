@@ -255,6 +255,19 @@
   margin-bottom: 12px;
 }
 
+/* ---- Legal footer link ---- */
+.auth-legal {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 11px;
+}
+.auth-legal a {
+  color: var(--text-faint);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.auth-legal a:hover { color: var(--accent); }
+
 /* ---- Recovery codes ---- */
 .rc-grid {
   display: grid;

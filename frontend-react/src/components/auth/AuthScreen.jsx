@@ -58,7 +58,6 @@ export default function AuthScreen({
   const [mode, setMode]           = useState(window.location.hash === "#register" ? "register" : defaultMode);
   const [showPw, setShowPw]       = useState(false);
   const [username, setUsername]   = useState("");
-  const [email, setEmail]         = useState("");
   const [pw, setPw]               = useState("");
   const [pw2, setPw2]             = useState("");
   const [code, setCode]           = useState("");
@@ -91,7 +90,7 @@ export default function AuthScreen({
     try {
       if (isReg) {
         if (mismatch || pw.length < 8) return;
-        await onRegister?.({ username, email, password: pw });
+        await onRegister?.({ username, password: pw });
       } else if (isReset) {
         if (mismatch || pw.length < 8) return;
         await onResetPassword?.({ username, code, newPassword: pw });
@@ -176,16 +175,6 @@ export default function AuthScreen({
               onChange={(e) => setUsername(e.target.value)} required
             />
           </Field>
-
-          {isReg && (
-            <Field label={t('auth_email_label')} lead={<MailIcon />}>
-              <input
-                className="auth-input" type="email" placeholder="adam@example.com"
-                autoComplete="email" value={email}
-                onChange={(e) => setEmail(e.target.value)} required
-              />
-            </Field>
-          )}
 
           {isReset && (
             <Field label={t('auth_code_label')} lead={<KeyIcon />}>
@@ -288,6 +277,10 @@ export default function AuthScreen({
             </>
           )}
         </div>
+
+        <div className="auth-legal">
+          <a href="/polityka-prywatnosci.html" target="_blank" rel="noopener">{t('auth_privacy')}</a>
+        </div>
       </div>
     </div>
   );
@@ -347,14 +340,6 @@ function UserIcon() {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-function MailIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 6 10 7 10-7" />
     </svg>
   );
 }

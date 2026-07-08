@@ -155,6 +155,50 @@ function RecoveryCodesSection() {
   );
 }
 
+function ExportDataSection() {
+  const t = useT();
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function exportAll() {
+    setError(null);
+    setLoading(true);
+    try {
+      const [list, data] = await Promise.all([
+        api.get('/api/portfolios'),
+        api.get('/api/portfolios/all/data'),
+      ]);
+      const payload = {
+        exported_at: new Date().toISOString(),
+        app: 'MyFund / StocksTracker',
+        portfolios: list.data,
+        data: data.data,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `myfund-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      setError(t('export_error'));
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Card title={t('export_title')}>
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('export_desc')}</p>
+        {error && <p style={{ color: 'var(--down)', fontSize: 12, margin: 0 }}>{error}</p>}
+        <button onClick={exportAll} className="btn btn-primary" disabled={loading}
+          style={{ alignSelf: 'flex-start', opacity: loading ? 0.4 : 1 }}>
+          {loading ? t('saving_btn') : t('export_btn')}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 function DividendTaxSection() {
   const t = useT();
   const [usTax, setUsTax] = useState(() => localStorage.getItem(US_TAX_KEY) || '15');
@@ -417,6 +461,7 @@ export default function Settings() {
 
       <ChangePasswordSection />
       <RecoveryCodesSection />
+      <ExportDataSection />
       <ApiKeySection />
       <DividendTaxSection />
 
