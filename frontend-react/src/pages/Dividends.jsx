@@ -25,7 +25,8 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 }
 
 export default function Dividends() {
-  const { transactions, loading, fxRates, portfolio, saveTransactions } = useApp();
+  const { transactions, loading, fxRates, portfolio, saveTransactions, activePortfolio } = useApp();
+  const accountType = activePortfolio?.accountType;
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -104,7 +105,7 @@ export default function Dividends() {
   );
 
   const grossPLN = (d) => (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1);
-  const netPLN   = (d) => grossPLN(d) * (1 - getTaxRate(d.symbol, d.currency));
+  const netPLN   = (d) => grossPLN(d) * (1 - getTaxRate(d.symbol, d.currency, accountType));
   const dispPLN  = (d) => isNet ? netPLN(d) : grossPLN(d);
 
   const annualDivPLN = useMemo(() =>
@@ -382,7 +383,7 @@ export default function Dividends() {
               <tbody>
                 {upcoming.map((ev, i) => {
                   const cur = CUR_SYMBOLS[ev.currency] ?? ev.currency ?? '';
-                  const taxRate = getTaxRate(ev.symbol, ev.currency);
+                  const taxRate = getTaxRate(ev.symbol, ev.currency, accountType);
                   const dispAmount = ev.amount != null
                     ? (isNet ? ev.amount * (1 - taxRate) : ev.amount)
                     : null;
@@ -542,7 +543,7 @@ export default function Dividends() {
               </thead>
               <tbody>
                 {dividends.map(d => {
-                  const taxRate  = getTaxRate(d.symbol, d.currency);
+                  const taxRate  = getTaxRate(d.symbol, d.currency, accountType);
                   const dispPricePerShare = isNet ? d.price * (1 - taxRate) : d.price;
                   const approxPLN = dispPLN(d);
                   return (

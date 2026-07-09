@@ -149,15 +149,15 @@ export function AppProvider({ children }) {
     setActivePortfolioId(id);
   }
 
-  async function createPortfolio(name, currency) {
-    const res = await api.post('/api/portfolios', { name, currency });
+  async function createPortfolio(name, currency, accountType = '') {
+    const res = await api.post('/api/portfolios', { name, currency, account_type: accountType });
     const newP = res.data;
     setPortfolios(prev => [...prev, newP]);
     switchPortfolio(newP.id);
   }
 
-  async function updatePortfolio(id, name, currency) {
-    const res = await api.post(`/api/portfolios/${id}`, { name, currency, _method: 'PUT' });
+  async function updatePortfolio(id, name, currency, accountType = '') {
+    const res = await api.post(`/api/portfolios/${id}`, { name, currency, account_type: accountType, _method: 'PUT' });
     setPortfolios(prev => prev.map(p => p.id === id ? res.data : p));
   }
 

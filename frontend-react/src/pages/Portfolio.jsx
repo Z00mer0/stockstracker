@@ -15,6 +15,7 @@ import Spinner from '../components/shared/Spinner';
 import ColumnPicker from '../components/shared/ColumnPicker';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import { fetchCpiSeries, valueBond, BOND_TYPES } from '../services/bondService';
+import IkeLimitCard from '../components/IkeLimitCard';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import {
@@ -839,6 +840,7 @@ export default function Portfolio() {
   if (!portfolio.length) {
     return (
       <div className="space-y-4">
+        <IkeLimitCard />
         <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
           <div className="text-5xl mb-3">💼</div>
           <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Brak pozycji w portfelu</p>
@@ -865,6 +867,7 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-4" style={{ overflowX: 'hidden' }}>
+      <IkeLimitCard />
       {/* Split alerts */}
       {splitAlerts.map(alert => (
         <div key={alert.key} style={{

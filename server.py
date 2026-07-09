@@ -1225,6 +1225,7 @@ if DATABASE_URL:
                     portfolio_id TEXT PRIMARY KEY,
                     bonds_json   TEXT NOT NULL DEFAULT '[]'
                 )""")
+            cur.execute("ALTER TABLE portfolio_list ADD COLUMN IF NOT EXISTS account_type TEXT NOT NULL DEFAULT ''")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1263,21 +1264,22 @@ if DATABASE_URL:
 
     def list_portfolios(username):
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT id, name, currency FROM portfolio_list WHERE user_id=%s ORDER BY created_at", (username,))
-            return [dict(r) for r in cur.fetchall()]
+            cur.execute("SELECT id, name, currency, account_type FROM portfolio_list WHERE user_id=%s ORDER BY created_at", (username,))
+            return [{'id': r['id'], 'name': r['name'], 'currency': r['currency'],
+                     'accountType': r['account_type'] or ''} for r in cur.fetchall()]
 
-    def create_portfolio(username, portfolio_id, name, currency):
+    def create_portfolio(username, portfolio_id, name, currency, account_type=''):
         with _conn() as c, c.cursor() as cur:
             cur.execute(
-                "INSERT INTO portfolio_list (id, user_id, name, currency) VALUES (%s, %s, %s, %s)",
-                (portfolio_id, username, name, currency)
+                "INSERT INTO portfolio_list (id, user_id, name, currency, account_type) VALUES (%s, %s, %s, %s, %s)",
+                (portfolio_id, username, name, currency, account_type)
             )
 
-    def update_portfolio(portfolio_id, username, name, currency):
+    def update_portfolio(portfolio_id, username, name, currency, account_type=''):
         with _conn() as c, c.cursor() as cur:
             cur.execute(
-                "UPDATE portfolio_list SET name=%s, currency=%s WHERE id=%s AND user_id=%s",
-                (name, currency, portfolio_id, username)
+                "UPDATE portfolio_list SET name=%s, currency=%s, account_type=%s WHERE id=%s AND user_id=%s",
+                (name, currency, account_type, portfolio_id, username)
             )
 
     def delete_portfolio(portfolio_id, username):
@@ -1474,17 +1476,19 @@ else:
     def list_portfolios(username):
         return _read_pfile(username)['portfolio_list']
 
-    def create_portfolio(username, portfolio_id, name, currency):
+    def create_portfolio(username, portfolio_id, name, currency, account_type=''):
         pdata = _read_pfile(username)
-        pdata['portfolio_list'].append({'id': portfolio_id, 'name': name, 'currency': currency})
+        pdata['portfolio_list'].append({'id': portfolio_id, 'name': name, 'currency': currency,
+                                        'accountType': account_type})
         _write_pfile(username, pdata)
 
-    def update_portfolio(portfolio_id, username, name, currency):
+    def update_portfolio(portfolio_id, username, name, currency, account_type=''):
         pdata = _read_pfile(username)
         for p in pdata['portfolio_list']:
             if p['id'] == portfolio_id:
                 p['name'] = name
                 p['currency'] = currency
+                p['accountType'] = account_type
         _write_pfile(username, pdata)
 
     def delete_portfolio(portfolio_id, username):
@@ -3381,14 +3385,17 @@ async function doRecover() {
                 self.send_json(400, {'error': str(e)}); return
             name = str(body.get('name', '')).strip()[:64]
             currency = str(body.get('currency', 'PLN')).upper()[:4]
+            account_type = str(body.get('account_type', '')).upper()[:8]
             if not name:
                 self.send_json(400, {'error': 'name required'}); return
             if currency not in ('PLN', 'USD', 'EUR', 'GBP'):
                 self.send_json(400, {'error': 'unsupported currency'}); return
+            if account_type not in ('', 'IKE', 'IKZE'):
+                self.send_json(400, {'error': 'unsupported account type'}); return
             pid = secrets.token_hex(12)
             try:
-                create_portfolio(username, pid, name, currency)
-                self.send_json(201, {'id': pid, 'name': name, 'currency': currency})
+                create_portfolio(username, pid, name, currency, account_type)
+                self.send_json(201, {'id': pid, 'name': name, 'currency': currency, 'accountType': account_type})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
@@ -3499,12 +3506,15 @@ async function doRecover() {
                 else:
                     name = str(body.get('name', '')).strip()[:64]
                     currency = str(body.get('currency', 'PLN')).upper()[:4]
+                    account_type = str(body.get('account_type', '')).upper()[:8]
                     if not name:
                         self.send_json(400, {'error': 'name required'}); return
                     if currency not in ('PLN', 'USD', 'EUR', 'GBP'):
                         self.send_json(400, {'error': 'unsupported currency'}); return
-                    update_portfolio(pid, username, name, currency)
-                    self.send_json(200, {'id': pid, 'name': name, 'currency': currency})
+                    if account_type not in ('', 'IKE', 'IKZE'):
+                        self.send_json(400, {'error': 'unsupported account type'}); return
+                    update_portfolio(pid, username, name, currency, account_type)
+                    self.send_json(200, {'id': pid, 'name': name, 'currency': currency, 'accountType': account_type})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 

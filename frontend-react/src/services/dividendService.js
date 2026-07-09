@@ -8,8 +8,11 @@ export function getUsTaxRate() {
   return localStorage.getItem(US_TAX_KEY) === '30' ? 0.30 : 0.15;
 }
 
-export function getTaxRate(symbol, currency) {
-  if (symbol?.includes('.WA') || currency === 'PLN') return 0.19;
+export function getTaxRate(symbol, currency, accountType) {
+  if (symbol?.includes('.WA') || currency === 'PLN') {
+    // IKE/IKZE: dywidendy z GPW bez podatku Belki; zagraniczny WHT u źródła obowiązuje nadal
+    return accountType === 'IKE' || accountType === 'IKZE' ? 0 : 0.19;
+  }
   return getUsTaxRate();
 }
 
