@@ -48,6 +48,15 @@ export default function AuthGate({ onLogin }) {
     }
   }
 
+  async function handleDemo() {
+    try {
+      const res = await api.post('/api/demo', {});
+      onLogin(res.data.token, res.data.display_name);
+    } catch (err) {
+      throw new Error(err.response?.data?.error ?? 'Nie udało się uruchomić demo — spróbuj ponownie');
+    }
+  }
+
   async function handleResetPassword({ username, code, newPassword }) {
     try {
       await api.post('/api/reset-password', {
@@ -75,6 +84,7 @@ export default function AuthGate({ onLogin }) {
       onLogin={handleLogin}
       onRegister={handleRegister}
       onResetPassword={handleResetPassword}
+      onDemo={handleDemo}
     />
   );
 }

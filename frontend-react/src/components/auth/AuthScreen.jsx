@@ -46,6 +46,7 @@ export default function AuthScreen({
   onLogin,
   onRegister,
   onResetPassword,
+  onDemo,
 }) {
   const t = useT();
   const PW_META = [
@@ -63,6 +64,7 @@ export default function AuthScreen({
   const [code, setCode]           = useState("");
   const [remember, setRemember]   = useState(true);
   const [loading, setLoading]     = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [serverError, setServerError] = useState(null);
   const [info, setInfo]               = useState(null);
   const [wig20, setWig20]             = useState(null);
@@ -107,6 +109,28 @@ export default function AuthScreen({
       setLoading(false);
     }
   }
+
+  async function handleDemo() {
+    setServerError(null);
+    setInfo(null);
+    setDemoLoading(true);
+    try {
+      await onDemo?.();
+    } catch (err) {
+      setServerError(err.message || t('auth_demo_err'));
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  // #demo deep link (e.g. from the landing page) — start the demo automatically
+  useEffect(() => {
+    if (window.location.hash !== "#demo" || !onDemo) return;
+    // clear the hash so logout doesn't re-trigger the demo
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    handleDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function switchTo(next) {
     setMode(next);
@@ -254,12 +278,20 @@ export default function AuthScreen({
             <div className="auth-server-info">{info}</div>
           )}
 
-          <button type="submit" className="auth-btn" disabled={loading}>
+          <button type="submit" className="auth-btn" disabled={loading || demoLoading}>
             {loading
               ? (isReg ? t('auth_creating') : isReset ? t('auth_resetting') : t('auth_logging_in'))
               : (isReg ? t('auth_create_account') : isReset ? t('auth_reset_btn') : t('auth_login_btn'))}
             {!loading && <ArrowRightIcon />}
           </button>
+
+          {!isReset && onDemo && (
+            <button type="button" className="auth-btn demo" disabled={loading || demoLoading}
+              onClick={handleDemo}>
+              {demoLoading ? t('auth_demo_loading') : t('auth_demo_btn')}
+              {!demoLoading && <PlayIcon />}
+            </button>
+          )}
         </form>
 
         {/* footer switch */}
@@ -356,6 +388,14 @@ function LockIcon() {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+function PlayIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="6 3 20 12 6 21 6 3" />
     </svg>
   );
 }

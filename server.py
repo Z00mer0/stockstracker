@@ -1632,6 +1632,108 @@ def check_password(password: str, stored_hash: str) -> bool:
         return False
 
 
+# ── DEMO MODE ──────────────────────────────────────────────────────────────────
+# Each visitor gets a throwaway account (username: demo-<epoch>-<hex>) seeded
+# with a sample portfolio they can freely edit. Accounts older than _DEMO_TTL
+# are purged on the next demo signup.
+_DEMO_TTL = 24 * 3600
+
+def _purge_old_demo_users():
+    if not DATABASE_URL:
+        return
+    cutoff = int(time.time()) - _DEMO_TTL
+    try:
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT username FROM users WHERE username LIKE 'demo-%'")
+            stale = []
+            for (uname,) in cur.fetchall():
+                try:
+                    if int(uname.split('-')[1]) < cutoff:
+                        stale.append(uname)
+                except (IndexError, ValueError):
+                    continue
+            for uname in stale:
+                cur.execute("SELECT id FROM portfolio_list WHERE user_id=%s", (uname,))
+                for (pid,) in cur.fetchall():
+                    # these tables have no FK cascade from portfolio_list
+                    cur.execute("DELETE FROM portfolio_layouts WHERE portfolio_id=%s", (pid,))
+                    cur.execute("DELETE FROM portfolio_bonds WHERE portfolio_id=%s", (pid,))
+                    cur.execute("DELETE FROM portfolio_import_snapshots WHERE portfolio_id=%s", (pid,))
+                    cur.execute("DELETE FROM portfolio_other_assets WHERE portfolio_id=%s", (pid,))
+                cur.execute("DELETE FROM portfolio_list WHERE user_id=%s", (uname,))
+                cur.execute("DELETE FROM portfolios WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM user_watchlist WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM user_insights WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM sessions WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM users WHERE username=%s", (uname,))
+        stale_set = set(stale)
+        for tok, u in list(SESSIONS.items()):
+            if u in stale_set:
+                SESSIONS.pop(tok, None)
+        if stale:
+            print(f'[demo] purged {len(stale)} stale demo account(s)')
+    except Exception as e:
+        print(f'[demo] purge failed: {e}')
+
+
+def _demo_seed_data():
+    """Sample portfolio: GPW blue chips + one US stock, ~10 months of history."""
+    today = datetime.date.today()
+
+    def d(days_ago):
+        return (today - datetime.timedelta(days=days_ago)).isoformat()
+
+    transactions = [
+        {'id': 'demo-cash-1', 'type': 'CASH', 'symbol': None, 'qty': 1, 'price': 30000.0,
+         'currency': 'PLN', 'date': d(300), 'note': 'Wpłata początkowa'},
+        {'id': 'demo-buy-1', 'type': 'BUY', 'symbol': 'PKO.WA', 'qty': 100, 'price': 52.30,
+         'currency': 'PLN', 'date': d(290), 'note': ''},
+        {'id': 'demo-buy-2', 'type': 'BUY', 'symbol': 'PKN.WA', 'qty': 80, 'price': 61.20,
+         'currency': 'PLN', 'date': d(260), 'note': ''},
+        {'id': 'demo-buy-3', 'type': 'BUY', 'symbol': 'CDR.WA', 'qty': 50, 'price': 132.00,
+         'currency': 'PLN', 'date': d(230), 'note': ''},
+        {'id': 'demo-buy-4', 'type': 'BUY', 'symbol': 'ALE.WA', 'qty': 120, 'price': 33.40,
+         'currency': 'PLN', 'date': d(180), 'note': ''},
+        {'id': 'demo-buy-5', 'type': 'BUY', 'symbol': 'AAPL', 'qty': 6, 'price': 185.00,
+         'currency': 'USD', 'date': d(150), 'note': ''},
+        {'id': 'demo-div-1', 'type': 'DIV', 'symbol': 'PKO.WA', 'qty': 100, 'price': 2.59,
+         'currency': 'PLN', 'date': d(120), 'note': 'Dywidenda PKO BP'},
+        {'id': 'demo-sell-1', 'type': 'SELL', 'symbol': 'CDR.WA', 'qty': 20, 'price': 155.00,
+         'currency': 'PLN', 'date': d(90), 'note': 'Częściowa realizacja zysku', 'costBasis': 132.00},
+        {'id': 'demo-div-2', 'type': 'DIV', 'symbol': 'AAPL', 'qty': 6, 'price': 0.25,
+         'currency': 'USD', 'date': d(60), 'note': ''},
+    ]
+    holdings = [
+        {'id': 'demo-h-1', 'symbol': 'PKO.WA', 'qty': 100, 'avgPrice': 52.30, 'currency': 'PLN', 'name': ''},
+        {'id': 'demo-h-2', 'symbol': 'PKN.WA', 'qty': 80,  'avgPrice': 61.20, 'currency': 'PLN', 'name': ''},
+        {'id': 'demo-h-3', 'symbol': 'CDR.WA', 'qty': 30,  'avgPrice': 132.00, 'currency': 'PLN', 'name': ''},
+        {'id': 'demo-h-4', 'symbol': 'ALE.WA', 'qty': 120, 'avgPrice': 33.40, 'currency': 'PLN', 'name': ''},
+        {'id': 'demo-h-5', 'symbol': 'AAPL',   'qty': 6,   'avgPrice': 185.00, 'currency': 'USD', 'name': ''},
+    ]
+    # daily value history: invested capital steps up with each buy (USD ≈ 4 PLN),
+    # market value drifts up ~14% with mild deterministic noise
+    buy_steps = [(290, 5230.0), (260, 4896.0), (230, 6600.0), (180, 4008.0), (150, 4440.0)]
+    snapshots, snapshots_inv = {}, {}
+    for days_ago in range(300, -1, -1):
+        invested = sum(cost for step_day, cost in buy_steps if days_ago <= step_day)
+        if days_ago <= 90:
+            invested -= 2640.0  # sold 20 × CDR.WA @ cost 132
+        if invested <= 0:
+            continue
+        progress = (300 - days_ago) / 300.0
+        noise = ((days_ago * 7919) % 200 - 100) / 100.0 * 0.015
+        date = d(days_ago)
+        snapshots[date] = round(invested * (1 + 0.14 * progress + noise), 2)
+        snapshots_inv[date] = round(invested, 2)
+    return {
+        'portfolio': {'holdings': holdings},
+        'transactions': transactions,
+        'snapshots': snapshots,
+        'snapshotsInvested': snapshots_inv,
+        'cash': {'PLN': 12625.0, 'USD': 1.50},
+    }
+
+
 def get_username(handler):
     token = handler.headers.get('X-Auth-Token', '')
     if not isinstance(token, str) or len(token) > 100:
@@ -3196,7 +3298,7 @@ async function doRecover() {
     def do_POST(self):
         path = self.path.split('?')[0]
 
-        if path in ('/api/login', '/api/register', '/api/reset-password'):
+        if path in ('/api/login', '/api/register', '/api/reset-password', '/api/demo'):
             ip = self.headers.get('X-Forwarded-For', self.client_address[0]).split(',')[0].strip()
             if _rate_limited(ip):
                 self.send_json(429, {'ok': False, 'error': 'Za dużo prób. Spróbuj ponownie za 15 minut.'}); return
@@ -3265,6 +3367,29 @@ async function doRecover() {
                 self.send_json(400, {'ok': False, 'error': str(e)})
             except Exception as e:
                 self.send_json(400, {'ok': False, 'error': 'Bad request'})
+
+        elif path == '/api/demo':
+            try:
+                _purge_old_demo_users()
+                username     = f'demo-{int(time.time())}-{secrets.token_hex(3)}'
+                display_name = 'Demo'
+                save_user(username, display_name, hash_password(secrets.token_hex(16)))
+                pid = secrets.token_hex(12)
+                create_portfolio(username, pid, 'Portfel Demo', 'PLN')
+                save_portfolio_data(pid, _demo_seed_data())
+                token = secrets.token_hex(24)
+                SESSIONS[token] = username
+                if DATABASE_URL:
+                    try:
+                        with _conn() as c, c.cursor() as cur:
+                            cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
+                    except Exception as e:
+                        print(f'[sessions] persist failed: {e}')
+                self.send_json(200, {'ok': True, 'token': token,
+                                     'display_name': display_name, 'demo': True})
+            except Exception as e:
+                print(f'[demo] create failed: {e}')
+                self.send_json(500, {'ok': False, 'error': 'Nie udało się utworzyć konta demo'})
 
         elif path == '/api/logout':
             token = self.headers.get('X-Auth-Token', '')
