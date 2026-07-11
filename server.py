@@ -1725,6 +1725,13 @@ def _demo_seed_data():
         date = d(days_ago)
         snapshots[date] = round(invested * (1 + 0.14 * progress + noise), 2)
         snapshots_inv[date] = round(invested, 2)
+    # Ids must be unique per signup: portfolio_holdings/transactions PKs are the
+    # bare id, so a second concurrent demo account would collide (or hijack rows).
+    uid = secrets.token_hex(4)
+    for tx in transactions:
+        tx['id'] = f"{tx['id']}-{uid}"
+    for h in holdings:
+        h['id'] = f"{h['id']}-{uid}"
     return {
         'portfolio': {'holdings': holdings},
         'transactions': transactions,
