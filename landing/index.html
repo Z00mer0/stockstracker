@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyFund · StocksTracker — Twój portfel pod pełną kontrolą AI i analityki</title>
+<meta name="description" content="MyFund / StocksTracker — zaawansowany tracker portfela inwestycyjnego: analityka w czasie rzeczywistym, Scenario Lab dla opcji, AI Insights, moduł dywidendowy i pełna prywatność danych.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2300e676'/%3E%3Cpath d='M6 22l7-7 4 4 9-10' stroke='%2306130c' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#0d0e12;
+  --bg-soft:#121318;
+  --bg-card:#15171d;
+  --bg-elev:#1a1d24;
+  --border:rgba(255,255,255,.08);
+  --border-strong:rgba(255,255,255,.14);
+  --text:#eef0f4;
+  --text-dim:#9aa1ad;
+  --text-faint:#5f6672;
+  --green:#00e676;
+  --green-soft:#03c988;
+  --green-dim:rgba(0,230,118,.12);
+  --red:#ff5370;
+  --amber:#ffb547;
+  --blue:#5b9dff;
+  --radius:16px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  overflow-x:clip;
+}
+::selection{background:var(--green);color:#06130c}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+.container{width:100%;max-width:1180px;margin:0 auto;padding:0 20px}
+.mono{font-family:var(--mono)}
+.pos{color:var(--green)}
+.neg{color:var(--red)}
+
+/* ============ NAV ============ */
+.nav{
+  position:fixed;inset:0 0 auto 0;z-index:100;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:rgba(13,14,18,.72);
+  border-bottom:1px solid var(--border);
+}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem;letter-spacing:-.02em}
+.logo-mark{
+  width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--green),var(--green-soft));
+  box-shadow:0 0 18px rgba(0,230,118,.35);
+}
+.logo-mark svg{width:16px;height:16px}
+.logo span em{font-style:normal;color:var(--green)}
+.nav-links{display:none;gap:28px;font-size:.9rem;color:var(--text-dim)}
+.nav-links a{transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{display:flex;gap:10px}
+
+/* ============ BUTTONS ============ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--font);font-weight:600;font-size:.92rem;
+  padding:12px 22px;border-radius:12px;border:1px solid transparent;
+  cursor:pointer;transition:all .2s ease;white-space:nowrap;
+}
+.btn-primary{
+  background:var(--green);color:#06130c;
+  box-shadow:0 0 0 0 rgba(0,230,118,.4);
+}
+.btn-primary:hover{
+  background:#2bff92;transform:translateY(-2px);
+  box-shadow:0 8px 30px rgba(0,230,118,.35);
+}
+.btn-ghost{
+  background:rgba(255,255,255,.04);color:var(--text);
+  border-color:var(--border-strong);
+}
+.btn-ghost:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.25)}
+.btn-sm{padding:9px 16px;font-size:.85rem;border-radius:10px}
+
+/* ============ HERO ============ */
+.hero{
+  position:relative;
+  padding:150px 0 60px;
+  text-align:center;
+  overflow:hidden;
+}
+.hero::before{
+  content:"";position:absolute;top:-260px;left:50%;transform:translateX(-50%);
+  width:900px;height:600px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(0,230,118,.14),transparent 70%);
+  pointer-events:none;
+}
+.hero-grid-bg{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 70% 55% at 50% 0%,#000 30%,transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 70% 55% at 50% 0%,#000 30%,transparent 75%);
+}
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:99px;font-size:.8rem;font-weight:500;
+  background:var(--green-dim);color:var(--green);
+  border:1px solid rgba(0,230,118,.25);
+  margin-bottom:24px;position:relative;
+}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.5)}50%{box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+.hero h1{
+  font-size:clamp(2.1rem,5.6vw,3.9rem);
+  font-weight:800;letter-spacing:-.035em;line-height:1.08;
+  max-width:900px;margin:0 auto 22px;position:relative;
+}
+.hero h1 .glow{
+  background:linear-gradient(100deg,var(--green) 0%,#7dffc0 50%,var(--green-soft) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p.sub{
+  color:var(--text-dim);font-size:clamp(1rem,2vw,1.18rem);
+  max-width:640px;margin:0 auto 36px;position:relative;
+}
+.hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;position:relative}
+.hero-note{font-size:.8rem;color:var(--text-faint);position:relative}
+
+/* ---- Mockup ---- */
+.mockup-wrap{position:relative;margin:64px auto 0;max-width:980px;padding:0 8px}
+.mockup-glow{
+  position:absolute;inset:8% 6% -6%;border-radius:32px;
+  background:radial-gradient(60% 60% at 50% 40%,rgba(0,230,118,.22),rgba(3,201,136,.06) 60%,transparent 80%);
+  filter:blur(42px);pointer-events:none;
+}
+.mockup{
+  position:relative;border-radius:18px;overflow:hidden;text-align:left;
+  background:linear-gradient(180deg,var(--bg-elev),var(--bg-soft));
+  border:1px solid var(--border-strong);
+  box-shadow:0 40px 120px rgba(0,0,0,.6),0 0 0 1px rgba(0,230,118,.06),0 0 60px rgba(0,230,118,.08);
+}
+.mockup-bar{
+  display:flex;align-items:center;gap:8px;padding:12px 16px;
+  border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);
+}
+.mockup-bar .m-dot{width:11px;height:11px;border-radius:50%}
+.mockup-url{
+  flex:1;max-width:320px;margin:0 auto;text-align:center;
+  font-size:.72rem;color:var(--text-faint);font-family:var(--mono);
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:8px;padding:4px 12px;
+}
+.mockup-body{display:grid;grid-template-columns:1fr;gap:14px;padding:18px}
+.m-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.m-kpi{
+  background:rgba(255,255,255,.025);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;
+}
+.m-kpi .k-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);margin-bottom:4px}
+.m-kpi .k-val{font-family:var(--mono);font-weight:600;font-size:1.15rem;letter-spacing:-.02em}
+.m-kpi .k-delta{font-size:.72rem;font-family:var(--mono);margin-top:2px}
+.m-main{display:grid;grid-template-columns:1fr;gap:14px}
+.m-chart{
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:12px;padding:16px;min-height:200px;
+}
+.m-chart h4,.m-side h4{font-size:.8rem;font-weight:600;color:var(--text-dim);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.m-chart h4 .tag,.m-side h4 .tag{font-size:.65rem;font-family:var(--mono);color:var(--green);background:var(--green-dim);padding:2px 8px;border-radius:6px}
+.m-side{
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:12px;padding:16px;
+}
+.m-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem}
+.m-row:last-child{border-bottom:none}
+.m-ticker{display:flex;align-items:center;gap:8px;font-weight:600}
+.t-ico{
+  width:24px;height:24px;border-radius:6px;display:grid;place-items:center;
+  font-size:.55rem;font-weight:700;font-family:var(--mono);color:#0d0e12;
+}
+.m-row .mono{font-size:.75rem}
+
+/* ============ TICKER STRIP ============ */
+.strip{
+  border-block:1px solid var(--border);
+  background:var(--bg-soft);
+  padding:14px 0;margin-top:70px;
+  overflow:hidden;position:relative;
+}
+.strip::before,.strip::after{
+  content:"";position:absolute;top:0;bottom:0;width:90px;z-index:2;pointer-events:none;
+}
+.strip::before{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
+.strip::after{right:0;background:linear-gradient(-90deg,var(--bg),transparent)}
+.strip-track{display:flex;gap:48px;width:max-content;animation:scroll 30s linear infinite}
+.strip-item{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:.82rem;color:var(--text-dim);white-space:nowrap}
+.strip-item b{color:var(--text);font-weight:600}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+/* ============ SECTIONS ============ */
+section{padding:90px 0}
+.sec-head{max-width:680px;margin:0 auto 56px;text-align:center}
+.sec-eyebrow{
+  display:inline-block;font-size:.75rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--green);margin-bottom:14px;
+}
+.sec-head h2{font-size:clamp(1.7rem,3.6vw,2.5rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px}
+.sec-head p{color:var(--text-dim);font-size:1.02rem}
+
+/* ============ BENTO ============ */
+.bento{display:grid;gap:16px;grid-template-columns:1fr}
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:28px;position:relative;overflow:hidden;
+  transition:border-color .25s,transform .25s,box-shadow .25s;
+}
+.card:hover{
+  border-color:rgba(0,230,118,.3);
+  transform:translateY(-3px);
+  box-shadow:0 18px 50px rgba(0,0,0,.45),0 0 30px rgba(0,230,118,.06);
+}
+.card .card-ico{
+  width:42px;height:42px;border-radius:11px;display:grid;place-items:center;
+  background:var(--green-dim);border:1px solid rgba(0,230,118,.22);margin-bottom:18px;
+}
+.card .card-ico svg{width:20px;height:20px;stroke:var(--green)}
+.card h3{font-size:1.15rem;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.card p{color:var(--text-dim);font-size:.92rem}
+.card .visual{margin-top:22px}
+
+/* donut */
+.donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.donut{position:relative;width:150px;height:150px;flex-shrink:0}
+.donut .donut-center{
+  position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+}
+.donut-center .dc-val{font-weight:700;font-size:.95rem;letter-spacing:-.02em}
+.donut-center .dc-lab{font-size:.62rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em}
+.legend{display:grid;gap:8px;font-size:.8rem;color:var(--text-dim)}
+.legend li{display:flex;align-items:center;gap:8px;list-style:none}
+.legend .sw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.legend b{color:var(--text);font-family:var(--mono);font-weight:600;margin-left:auto;padding-left:14px}
+
+/* metrics minigrid */
+.mini-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.mini-metrics > div{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;
+}
+.mini-metrics .mm-l{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint)}
+.mini-metrics .mm-v{font-family:var(--mono);font-weight:600;font-size:1rem;margin-top:2px}
+
+/* payoff chart */
+.payoff{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:12px;padding:14px}
+.chart-box{position:relative}
+.svg-label{
+  position:absolute;transform:translate(-50%,-100%);
+  font-family:var(--mono);font-size:.62rem;font-weight:600;color:var(--text-dim);
+  background:rgba(13,14,18,.85);border:1px solid var(--border);
+  padding:2px 7px;border-radius:6px;white-space:nowrap;pointer-events:none;
+}
+.svg-label.below{transform:translate(-50%,0)}
+.svg-label.plain{background:none;border:none;padding:0}
+.payoff-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.72rem;color:var(--text-dim)}
+.payoff-meta span b{font-family:var(--mono);color:var(--text)}
+
+/* sentiment feed */
+.feed{display:grid;gap:10px}
+.feed-item{
+  display:flex;gap:12px;align-items:flex-start;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;font-size:.82rem;
+}
+.feed-item .f-tick{font-family:var(--mono);font-weight:600;font-size:.72rem;color:var(--blue);flex-shrink:0;padding-top:2px}
+.feed-item .f-body{color:var(--text-dim);line-height:1.45}
+.senti{
+  margin-left:auto;flex-shrink:0;font-size:.62rem;font-weight:600;
+  padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em;
+}
+.senti.pos{background:var(--green-dim);color:var(--green)}
+.senti.neu{background:rgba(255,255,255,.07);color:var(--text-dim)}
+.senti.neg{background:rgba(255,83,112,.12);color:var(--red)}
+
+/* progress */
+.goal{margin-top:18px}
+.goal .g-head{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:8px}
+.goal .g-head b{font-family:var(--mono)}
+.pbar{height:9px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden}
+.pbar span{
+  display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--green-soft),var(--green));
+  box-shadow:0 0 12px rgba(0,230,118,.5);
+  transition:width 1.4s cubic-bezier(.22,1,.36,1);
+}
+.months{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;align-items:end;height:70px;margin-top:20px}
+.months .bar{
+  border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--green),rgba(0,230,118,.25));
+  min-height:8px;opacity:.9;transform:scaleY(0);transform-origin:bottom;
+  transition:transform .8s cubic-bezier(.22,1,.36,1);
+}
+.months.animate .bar{transform:scaleY(1)}
+.month-labels{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;font-size:.6rem;color:var(--text-faint);text-align:center;margin-top:6px;font-family:var(--mono)}
+
+/* import badges */
+.import-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.import-badges span{
+  font-size:.75rem;font-family:var(--mono);color:var(--text-dim);
+  border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;
+  background:rgba(255,255,255,.03);
+}
+.lock-list{margin-top:16px;display:grid;gap:10px;font-size:.85rem;color:var(--text-dim)}
+.lock-list li{list-style:none;display:flex;gap:10px;align-items:flex-start}
+.lock-list svg{width:16px;height:16px;stroke:var(--green);flex-shrink:0;margin-top:3px}
+
+/* runway */
+.runway-calc{margin-top:18px;display:grid;gap:12px}
+.runway-calc label{font-size:.72rem;color:var(--text-faint);display:block;margin-bottom:6px}
+.runway-calc input[type=range]{width:100%;accent-color:var(--green)}
+.runway-out{
+  text-align:center;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);
+  border-radius:12px;padding:14px;
+}
+.runway-out .r-val{font-family:var(--mono);font-weight:700;font-size:1.5rem;color:var(--green)}
+.runway-out .r-lab{font-size:.7rem;color:var(--text-dim)}
+
+/* ============ TABS ============ */
+.tabs-sec{background:var(--bg-soft);border-block:1px solid var(--border)}
+.tabs-nav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:36px}
+.tab-btn{
+  font-family:var(--font);font-size:.88rem;font-weight:600;cursor:pointer;
+  padding:10px 20px;border-radius:11px;border:1px solid var(--border);
+  background:transparent;color:var(--text-dim);transition:all .2s;
+}
+.tab-btn:hover{color:var(--text);border-color:var(--border-strong)}
+.tab-btn.active{
+  background:var(--green-dim);color:var(--green);
+  border-color:rgba(0,230,118,.35);
+}
+.t-emoji{margin-right:8px}
+.tab-panel{display:none;animation:fadeUp .45s ease}
+.tab-panel.active{display:grid}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.tab-panel{grid-template-columns:1fr;gap:32px;align-items:center}
+.tab-copy h3{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+.tab-copy p{color:var(--text-dim);margin-bottom:18px}
+.tab-copy ul{display:grid;gap:10px}
+.tab-copy li{list-style:none;display:flex;gap:10px;font-size:.9rem;color:var(--text-dim)}
+.tab-copy li svg{width:17px;height:17px;stroke:var(--green);flex-shrink:0;margin-top:3px}
+.tab-visual{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+
+/* table in tab */
+.data-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.data-table th{
+  text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--text-faint);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);
+}
+.data-table td{padding:10px;border-bottom:1px solid rgba(255,255,255,.045);font-family:var(--mono)}
+.data-table td:first-child{font-family:var(--font);font-weight:600}
+.data-table tr:last-child td{border-bottom:none}
+.data-table .num{text-align:right}
+.data-table th.num{text-align:right}
+
+/* greeks */
+.greeks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.greeks > div{
+  text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:10px;padding:10px 6px;
+}
+.greeks .g-sym{font-size:1.05rem;color:var(--green)}
+.greeks .g-val{font-family:var(--mono);font-size:.82rem;font-weight:600;margin-top:2px}
+.greeks .g-name{font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}
+
+/* ============ TAX / PIT-38 ============ */
+.tax-grid{display:grid;gap:36px;align-items:center;grid-template-columns:1fr}
+.tax-copy h2{font-size:clamp(1.6rem,3.2vw,2.3rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px}
+.tax-copy p.lead{color:var(--text-dim);margin-bottom:22px}
+.tax-copy ul{display:grid;gap:12px}
+.tax-copy li{list-style:none;display:flex;gap:10px;font-size:.92rem;color:var(--text-dim)}
+.tax-copy li svg{width:17px;height:17px;stroke:var(--green);flex-shrink:0;margin-top:3px}
+.wht-compare{display:flex;align-items:center;gap:14px;margin-top:26px;flex-wrap:wrap}
+.wht-box{border-radius:12px;padding:12px 18px;text-align:center;border:1px solid var(--border)}
+.wht-box .w-val{font-family:var(--mono);font-weight:700;font-size:1.3rem}
+.wht-box .w-lab{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint)}
+.wht-box.bad .w-val{color:var(--red);text-decoration:line-through;opacity:.8}
+.wht-box.good{border-color:rgba(0,230,118,.35);background:var(--green-dim)}
+.wht-box.good .w-val{color:var(--green)}
+.wht-arrow{color:var(--green);font-size:1.2rem}
+.pit-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:26px;box-shadow:0 24px 70px rgba(0,0,0,.45),0 0 40px rgba(0,230,118,.05);
+}
+.pit-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.pit-head h4{font-size:.95rem;font-weight:700}
+.pit-head .tag{font-size:.65rem;font-family:var(--mono);color:var(--green);background:var(--green-dim);padding:3px 10px;border-radius:6px}
+.pit-row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px dashed rgba(255,255,255,.08);font-size:.86rem;color:var(--text-dim)}
+.pit-row b{font-family:var(--mono);color:var(--text);font-weight:600}
+.pit-row.total{border-bottom:none;margin-top:6px;background:var(--green-dim);border-radius:10px;padding:13px 14px}
+.pit-row.total span{color:var(--text);font-weight:600}
+.pit-row.total b{color:var(--green)}
+.pit-dl{
+  margin-top:18px;width:100%;justify-content:center;display:flex;align-items:center;gap:8px;
+  font-family:var(--font);font-weight:600;font-size:.88rem;cursor:pointer;
+  padding:13px;border-radius:11px;border:1px solid rgba(0,230,118,.35);
+  background:transparent;color:var(--green);transition:all .2s;
+}
+.pit-dl:hover{background:var(--green-dim)}
+.pit-note{margin-top:12px;text-align:center;font-size:.7rem;color:var(--text-faint)}
+
+/* ============ STEPS ============ */
+.steps-sec{background:var(--bg-soft);border-block:1px solid var(--border)}
+.steps{display:grid;gap:16px;grid-template-columns:1fr;counter-reset:step}
+.step{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:30px 26px;position:relative;transition:border-color .25s,transform .25s;
+}
+.step:hover{border-color:rgba(0,230,118,.3);transform:translateY(-3px)}
+.step-num{
+  font-family:var(--mono);font-weight:700;font-size:.8rem;color:var(--green);
+  background:var(--green-dim);border:1px solid rgba(0,230,118,.25);
+  width:40px;height:40px;border-radius:11px;display:grid;place-items:center;margin-bottom:18px;
+}
+.step h3{font-size:1.1rem;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.step p{color:var(--text-dim);font-size:.9rem}
+
+/* ============ PRICING ============ */
+.price-wrap{position:relative;max-width:460px;margin:0 auto}
+.price-glow{
+  position:absolute;inset:-8% -12%;border-radius:40px;pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 45%,rgba(0,230,118,.16),transparent 75%);
+  filter:blur(38px);
+}
+.price-card{
+  position:relative;background:linear-gradient(180deg,var(--bg-elev),var(--bg-card));
+  border:1px solid rgba(0,230,118,.35);border-radius:22px;padding:38px 34px;text-align:center;
+  box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 0 1px rgba(0,230,118,.08);
+}
+.price-badge{
+  display:inline-block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--green);background:var(--green-dim);border:1px solid rgba(0,230,118,.3);
+  padding:6px 16px;border-radius:99px;margin-bottom:20px;
+}
+.price-val{font-family:var(--mono);font-weight:700;font-size:clamp(2.6rem,6vw,3.4rem);letter-spacing:-.04em;line-height:1}
+.price-per{color:var(--text-dim);font-size:.95rem;margin:8px 0 26px}
+.price-list{display:grid;gap:12px;text-align:left;margin-bottom:30px}
+.price-list li{list-style:none;display:flex;gap:11px;font-size:.92rem;color:var(--text-dim);align-items:flex-start}
+.price-list li svg{width:17px;height:17px;stroke:var(--green);flex-shrink:0;margin-top:3px}
+.price-note{margin-top:14px;font-size:.75rem;color:var(--text-faint)}
+
+/* ============ FAQ ============ */
+.faq{max-width:760px;margin:0 auto;display:grid;gap:12px}
+.faq details{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:0 22px;transition:border-color .25s;
+}
+.faq details[open]{border-color:rgba(0,230,118,.3)}
+.faq summary{
+  cursor:pointer;padding:19px 0;font-weight:600;font-size:.95rem;
+  list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{
+  content:"+";color:var(--green);font-size:1.35rem;font-weight:400;line-height:1;
+  flex-shrink:0;transition:transform .25s ease;
+}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{color:var(--text-dim);font-size:.9rem;padding-bottom:20px}
+
+/* ============ STATS ============ */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.stat{
+  text-align:center;padding:34px 16px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+}
+.stat .s-val{
+  font-family:var(--mono);font-size:clamp(1.7rem,3.5vw,2.4rem);
+  font-weight:700;letter-spacing:-.03em;color:var(--green);
+}
+.stat .s-lab{font-size:.82rem;color:var(--text-dim);margin-top:6px}
+
+/* ============ FINAL CTA ============ */
+.final{
+  position:relative;text-align:center;overflow:hidden;
+  background:var(--bg-soft);border-block:1px solid var(--border);
+}
+.final::before{
+  content:"";position:absolute;bottom:-320px;left:50%;transform:translateX(-50%);
+  width:820px;height:520px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(0,230,118,.16),transparent 70%);
+  pointer-events:none;
+}
+.final h2{font-size:clamp(1.8rem,4vw,2.7rem);font-weight:800;letter-spacing:-.03em;max-width:700px;margin:0 auto 18px;position:relative}
+.final p{color:var(--text-dim);max-width:520px;margin:0 auto 34px;position:relative}
+
+/* ============ FOOTER ============ */
+footer{padding:44px 0;border-top:1px solid var(--border)}
+.foot{display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center}
+.foot small{color:var(--text-faint);font-size:.78rem}
+.foot-links{display:flex;gap:22px;font-size:.82rem;color:var(--text-dim);flex-wrap:wrap;justify-content:center}
+.foot-links a:hover{color:var(--green)}
+
+/* ============ ANCHORS ============ */
+#funkcje,#modul,#dywidendy,#bezpieczenstwo,#podatki,#proces,#cennik,#faq{scroll-margin-top:84px}
+
+/* ============ REVEAL ============ */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:819px){
+  .tab-panel > *{min-width:0}
+  .tab-visual{overflow-x:auto}
+  .data-table{font-size:.7rem}
+  .data-table td{padding:8px 6px}
+  .data-table th{padding:6px}
+}
+@media(max-width:599px){
+  .nav-inner{gap:12px}
+  .nav-cta .btn-ghost{display:none}
+  .logo{font-size:.8rem;gap:7px}
+  .logo-mark{width:24px;height:24px}
+  .nav-cta .btn-sm{padding:8px 12px;font-size:.78rem}
+}
+@media(min-width:640px){
+  .m-kpis{grid-template-columns:repeat(4,1fr)}
+  .stats{grid-template-columns:repeat(4,1fr)}
+}
+@media(min-width:820px){
+  .nav-links{display:flex}
+  .m-main{grid-template-columns:1.6fr 1fr}
+  .bento{grid-template-columns:repeat(6,1fr)}
+  .span-4{grid-column:span 4}
+  .span-3{grid-column:span 3}
+  .span-2{grid-column:span 2}
+  .span-6{grid-column:span 6}
+  .tab-panel{grid-template-columns:1fr 1.15fr}
+  #bezpieczenstwo .lock-list{grid-template-columns:repeat(3,1fr);align-items:start}
+  .tax-grid{grid-template-columns:1.05fr 1fr}
+  .steps{grid-template-columns:repeat(3,1fr)}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="logo" aria-label="MyFund StocksTracker — strona główna">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#06130c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>
+      </span>
+      <span>MyFund<em>/</em>StocksTracker</span>
+    </a>
+    <nav class="nav-links" aria-label="Nawigacja główna">
+      <a href="#funkcje">Funkcje</a>
+      <a href="#dywidendy">Dywidendy</a>
+      <a href="#bezpieczenstwo">Prywatność</a>
+      <a href="#modul">Moduły</a>
+      <a href="#podatki">Podatki</a>
+      <a href="#cennik">Cennik</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="https://myfund-app.vercel.app/">Zaloguj się</a>
+      <a class="btn btn-primary btn-sm" href="https://myfund-app.vercel.app/#register">Wypróbuj bezpłatnie</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-grid-bg" aria-hidden="true"></div>
+  <div class="container">
+    <span class="badge"><span class="dot" aria-hidden="true"></span> Live: NYSE · NASDAQ · GPW · LSE</span>
+    <h1>Twój portfel inwestycyjny pod pełną kontrolą <span class="glow">sztucznej inteligencji</span> i zaawansowanej analityki</h1>
+    <p class="sub">MyFund łączy globalne giełdy, analitykę na poziomie funduszu i AI Insights w jednym eleganckim kokpicie. Bez arkuszy kalkulacyjnych. Bez haseł do Twojego rachunku brokerskiego.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="https://myfund-app.vercel.app/#register">Wypróbuj bezpłatnie
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a class="btn btn-ghost" href="https://myfund-app.vercel.app/#demo">Zobacz Demo</a>
+    </div>
+    <p class="hero-note">Bez karty kredytowej · Import portfela w 60 sekund</p>
+
+    <!-- Mockup -->
+    <div class="mockup-wrap">
+      <div class="mockup-glow" aria-hidden="true"></div>
+      <div class="mockup" role="img" aria-label="Podgląd interfejsu aplikacji MyFund — kokpit portfela">
+        <div class="mockup-bar">
+          <span class="m-dot" style="background:#ff5f57"></span>
+          <span class="m-dot" style="background:#febc2e"></span>
+          <span class="m-dot" style="background:#28c840"></span>
+          <span class="mockup-url">myfund-app.vercel.app/dashboard</span>
+        </div>
+        <div class="mockup-body">
+          <div class="m-kpis">
+            <div class="m-kpi">
+              <div class="k-label">Wartość portfela</div>
+              <div class="k-val" data-count="847230" data-prefix="" data-suffix=" zł">0 zł</div>
+              <div class="k-delta pos">▲ +2,41% dziś</div>
+            </div>
+            <div class="m-kpi">
+              <div class="k-label">P&amp;L YTD</div>
+              <div class="k-val pos" data-count="128540" data-prefix="+" data-suffix=" zł">0 zł</div>
+              <div class="k-delta pos">▲ +17,9%</div>
+            </div>
+            <div class="m-kpi">
+              <div class="k-label">CAGR (5Y)</div>
+              <div class="k-val pos">14,2%</div>
+              <div class="k-delta" style="color:var(--text-faint)">vs S&amp;P 500: 11,1%</div>
+            </div>
+            <div class="m-kpi">
+              <div class="k-label">Max Drawdown</div>
+              <div class="k-val" style="color:var(--amber)">−12,8%</div>
+              <div class="k-delta" style="color:var(--text-faint)">ATH: 03.06.2026</div>
+            </div>
+          </div>
+          <div class="m-main">
+            <div class="m-chart">
+              <h4>Krzywa kapitału <span class="tag">1Y · PLN</span></h4>
+              <svg viewBox="0 0 520 170" preserveAspectRatio="none" aria-hidden="true" style="width:100%;height:150px">
+                <defs>
+                  <linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#00e676" stop-opacity=".28"/>
+                    <stop offset="100%" stop-color="#00e676" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <g stroke="rgba(255,255,255,.05)" stroke-width="1">
+                  <line x1="0" y1="42" x2="520" y2="42"/><line x1="0" y1="84" x2="520" y2="84"/><line x1="0" y1="126" x2="520" y2="126"/>
+                </g>
+                <path d="M0,140 C40,132 60,120 90,122 C120,124 140,100 175,96 C210,92 230,108 260,98 C290,88 310,60 345,58 C380,56 400,72 430,52 C460,32 490,26 520,18 L520,170 L0,170 Z" fill="url(#eqFill)"/>
+                <path d="M0,140 C40,132 60,120 90,122 C120,124 140,100 175,96 C210,92 230,108 260,98 C290,88 310,60 345,58 C380,56 400,72 430,52 C460,32 490,26 520,18" fill="none" stroke="#00e676" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="520" cy="18" r="4" fill="#00e676"><animate attributeName="opacity" values="1;.3;1" dur="2s" repeatCount="indefinite"/></circle>
+              </svg>
+            </div>
+            <div class="m-side">
+              <h4>Top pozycje <span class="tag">MOIC</span></h4>
+              <div class="m-row">
+                <span class="m-ticker"><span class="t-ico" style="background:#76b900">NV</span>NVDA</span>
+                <span class="mono pos">3,42×</span>
+              </div>
+              <div class="m-row">
+                <span class="m-ticker"><span class="t-ico" style="background:#5b9dff">MS</span>MSFT</span>
+                <span class="mono pos">2,18×</span>
+              </div>
+              <div class="m-row">
+                <span class="m-ticker"><span class="t-ico" style="background:#8b7cf6">ME</span>META</span>
+                <span class="mono pos">1,87×</span>
+              </div>
+              <div class="m-row">
+                <span class="m-ticker"><span class="t-ico" style="background:#ffb547">PK</span>PKO</span>
+                <span class="mono pos">1,34×</span>
+              </div>
+              <div class="m-row">
+                <span class="m-ticker"><span class="t-ico" style="background:#ff5370">CD</span>CDR</span>
+                <span class="mono neg">0,91×</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ticker strip -->
+  <div class="strip" aria-hidden="true">
+    <div class="strip-track">
+      <span class="strip-item"><b>NVDA</b> 1 187,42 <span class="pos">+2,3%</span></span>
+      <span class="strip-item"><b>MSFT</b> 512,08 <span class="pos">+0,8%</span></span>
+      <span class="strip-item"><b>META</b> 731,55 <span class="pos">+1,4%</span></span>
+      <span class="strip-item"><b>WIG20</b> 2 641,10 <span class="pos">+0,6%</span></span>
+      <span class="strip-item"><b>PKO</b> 68,44 <span class="neg">−0,3%</span></span>
+      <span class="strip-item"><b>LSE:SHEL</b> 2 890,00 <span class="pos">+0,5%</span></span>
+      <span class="strip-item"><b>EUR/PLN</b> 4,2610 <span class="neg">−0,1%</span></span>
+      <span class="strip-item"><b>USD/PLN</b> 3,9420 <span class="pos">+0,2%</span></span>
+      <span class="strip-item"><b>NVDA</b> 1 187,42 <span class="pos">+2,3%</span></span>
+      <span class="strip-item"><b>MSFT</b> 512,08 <span class="pos">+0,8%</span></span>
+      <span class="strip-item"><b>META</b> 731,55 <span class="pos">+1,4%</span></span>
+      <span class="strip-item"><b>WIG20</b> 2 641,10 <span class="pos">+0,6%</span></span>
+      <span class="strip-item"><b>PKO</b> 68,44 <span class="neg">−0,3%</span></span>
+      <span class="strip-item"><b>LSE:SHEL</b> 2 890,00 <span class="pos">+0,5%</span></span>
+      <span class="strip-item"><b>EUR/PLN</b> 4,2610 <span class="neg">−0,1%</span></span>
+      <span class="strip-item"><b>USD/PLN</b> 3,9420 <span class="pos">+0,2%</span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BENTO FEATURES ================= -->
+<section id="funkcje">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="sec-eyebrow">Wszystko w jednym miejscu</span>
+      <h2>Analityka, jakiej pozazdrości Ci fundusz hedgingowy</h2>
+      <p>Koniec z żonglowaniem arkuszami i pięcioma aplikacjami brokerskimi. MyFund agreguje cały Twój majątek — od NASDAQ po GPW — i przelicza go w czasie rzeczywistym.</p>
+    </div>
+
+    <div class="bento">
+      <!-- Dashboard / donut -->
+      <article class="card span-4 reveal">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        </div>
+        <h3>Kompleksowy Dashboard portfela</h3>
+        <p>Wartość całego majątku w USD, PLN i EUR odświeżana na żywo. Otwarte pozycje, zysk zrealizowany vs niezrealizowany, średnia cena zakupu, MOIC — każda metryka, którą liczyłeś ręcznie, tu liczy się sama.</p>
+        <div class="visual donut-wrap">
+          <div class="donut">
+            <svg viewBox="0 0 42 42" aria-hidden="true">
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="5"/>
+              <circle class="seg" cx="21" cy="21" r="15.9" fill="none" stroke="#00e676" stroke-width="5" stroke-dasharray="42 58" stroke-dashoffset="25" stroke-linecap="butt"/>
+              <circle class="seg" cx="21" cy="21" r="15.9" fill="none" stroke="#5b9dff" stroke-width="5" stroke-dasharray="26 74" stroke-dashoffset="-17" stroke-linecap="butt"/>
+              <circle class="seg" cx="21" cy="21" r="15.9" fill="none" stroke="#ffb547" stroke-width="5" stroke-dasharray="18 82" stroke-dashoffset="-43" stroke-linecap="butt"/>
+              <circle class="seg" cx="21" cy="21" r="15.9" fill="none" stroke="#8b7cf6" stroke-width="5" stroke-dasharray="14 86" stroke-dashoffset="-61" stroke-linecap="butt"/>
+            </svg>
+            <div class="donut-center">
+              <div>
+                <div class="dc-val">847 tys. zł</div>
+                <div class="dc-lab">Alokacja</div>
+              </div>
+            </div>
+          </div>
+          <ul class="legend">
+            <li><span class="sw" style="background:#00e676"></span>Technologia<b>42%</b></li>
+            <li><span class="sw" style="background:#5b9dff"></span>Finanse<b>26%</b></li>
+            <li><span class="sw" style="background:#ffb547"></span>Konsumpcja cykliczna<b>18%</b></li>
+            <li><span class="sw" style="background:#8b7cf6"></span>Pozostałe + gotówka<b>14%</b></li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- KPI metrics -->
+      <article class="card span-2 reveal">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        </div>
+        <h3>Metryki efektywności</h3>
+        <p>CAGR, Max Drawdown, dystans od ATH — mierz się z rynkiem jak profesjonalista.</p>
+        <div class="visual mini-metrics">
+          <div><div class="mm-l">CAGR</div><div class="mm-v pos">+14,2%</div></div>
+          <div><div class="mm-l">Max DD</div><div class="mm-v" style="color:var(--amber)">−12,8%</div></div>
+          <div><div class="mm-l">Od ATH</div><div class="mm-v">−1,4%</div></div>
+          <div><div class="mm-l">P&amp;L YTD</div><div class="mm-v pos">+17,9%</div></div>
+        </div>
+      </article>
+
+      <!-- Scenario Lab -->
+      <article class="card span-3 reveal">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6.3L4.6 19a1.5 1.5 0 0 0 1.3 2.2h12.2a1.5 1.5 0 0 0 1.3-2.2L14 9.3V3"/><path d="M7 15h10"/></svg>
+        </div>
+        <h3>Scenario Lab: Akcje vs Opcje</h3>
+        <p>Zanim zaryzykujesz choćby złotówkę — przetestuj strategię. Long Call, Short Put, hedging czy czysta spekulacja: MyFund rysuje wykres wypłaty, liczy Break-Even, maksymalny zysk i stratę oraz POP — prawdopodobieństwo zysku.</p>
+        <div class="visual payoff">
+          <div class="chart-box">
+            <svg viewBox="0 0 400 150" preserveAspectRatio="none" aria-hidden="true" style="width:100%;height:130px">
+              <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(255,255,255,.14)" stroke-width="1" stroke-dasharray="4 4"/>
+              <path d="M0,120 L185,120 L400,10 L400,90 L241,90 L185,120 Z" fill="rgba(0,230,118,.14)"/>
+              <path d="M0,120 L185,120 L400,10" fill="none" stroke="#00e676" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M0,120 L185,120" fill="none" stroke="#ff5370" stroke-width="2.5" stroke-linecap="round" opacity=".85"/>
+              <circle cx="241" cy="90" r="4.5" fill="#0d0e12" stroke="#00e676" stroke-width="2"/>
+            </svg>
+            <span class="svg-label" style="left:60.3%;top:calc(60% - 9px)">BE: 108,40 $</span>
+          </div>
+          <div class="payoff-meta">
+            <span>Strategia <b>Long Call</b></span>
+            <span>Max strata <b class="neg">−340 $</b></span>
+            <span>Max zysk <b class="pos">∞</b></span>
+            <span>POP <b>38,2%</b></span>
+          </div>
+        </div>
+      </article>
+
+      <!-- AI Sentiment -->
+      <article class="card span-3 reveal">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c2.2.6 4 2.5 4 5a5 5 0 0 1-2 4v2a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3v-2a5 5 0 0 1-2-4c0-2.5 1.8-4.4 4-5a4 4 0 0 1 4-4Z"/><path d="M9 13h.01M15 13h.01"/></svg>
+        </div>
+        <h3>AI Sentiment &amp; Newsfeed</h3>
+        <p>Twój osobisty analityk czyta rynek za Ciebie. Newsfeed filtruje szum i pokazuje tylko wiadomości o spółkach, które faktycznie posiadasz — z automatyczną oceną wydźwięku.</p>
+        <div class="visual feed">
+          <div class="feed-item">
+            <span class="f-tick">NVDA</span>
+            <span class="f-body">Nvidia podnosi prognozę przychodów data center na Q3 o 12% r/r</span>
+            <span class="senti pos">Pozytywny</span>
+          </div>
+          <div class="feed-item">
+            <span class="f-tick">META</span>
+            <span class="f-body">Meta finalizuje przegląd wydatków CAPEX na infrastrukturę AI</span>
+            <span class="senti neu">Neutralny</span>
+          </div>
+          <div class="feed-item">
+            <span class="f-tick">MSFT</span>
+            <span class="f-body">Regulator UE otwiera postępowanie ws. praktyk licencyjnych chmury</span>
+            <span class="senti neg">Negatywny</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Dividends -->
+      <article class="card span-3 reveal" id="dywidendy">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M15.5 9.5c-.7-1-1.9-1.5-3.5-1.5-1.8 0-3 .9-3 2.2 0 2.9 7 1.6 7 4.5 0 1.4-1.3 2.3-3.5 2.3-1.7 0-3-.6-3.7-1.6"/></svg>
+        </div>
+        <h3>Moduł dywidendowy</h3>
+        <p>Pasywny dochód brutto/netto miesiąc po miesiącu, z podatkiem u źródła policzonym poprawnie (PL-US: 15%, nie 30%).</p>
+        <div class="visual">
+          <div class="goal">
+            <div class="g-head"><span>Cel: 1 000 zł/mies.</span><b class="pos">742 zł</b></div>
+            <div class="pbar"><span data-width="74"></span></div>
+          </div>
+          <div class="months" aria-hidden="true">
+            <span class="bar" style="height:38%"></span>
+            <span class="bar" style="height:52%"></span>
+            <span class="bar" style="height:44%"></span>
+            <span class="bar" style="height:68%"></span>
+            <span class="bar" style="height:80%"></span>
+            <span class="bar" style="height:96%"></span>
+          </div>
+          <div class="month-labels"><span>Sty</span><span>Lut</span><span>Mar</span><span>Kwi</span><span>Maj</span><span>Cze</span></div>
+        </div>
+      </article>
+
+      <!-- Runway -->
+      <article class="card span-3 reveal">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <h3>Runway Majątkowy</h3>
+        <p>Ile miesięcy wolności finansowej już kupiłeś? Przesuń suwak i sprawdź.</p>
+        <div class="visual runway-calc">
+          <div>
+            <label for="spend">Miesięczne wydatki: <b class="mono" id="spendVal">8 000 zł</b></label>
+            <input type="range" id="spend" min="3000" max="25000" step="500" value="8000">
+          </div>
+          <div class="runway-out">
+            <div class="r-val" id="runwayVal">8,8 lat</div>
+            <div class="r-lab">runway przy kapitale 847 230 zł</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Import / Security -->
+      <article class="card span-6 reveal" id="bezpieczenstwo">
+        <div class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>Prywatność i błyskawiczny start</h3>
+        <p>MyFund nigdy nie prosi o hasła do brokera ani dostęp do Twoich środków. Historię transakcji wgrywasz jednym plikiem, a klucz API danych rynkowych podpinasz sam.</p>
+        <ul class="lock-list">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Masowy import CSV (m.in. eToro) i zestawień PDF</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Własne klucze API (MarketData.app) zapisywane lokalnie</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Import bez podawania danych logowania do brokera</li>
+        </ul>
+        <div class="import-badges" aria-label="Obsługiwane formaty importu">
+          <span>eToro CSV</span><span>PDF Q-Report</span><span>XTB</span><span>IBKR Flex</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TABS ================= -->
+<section class="tabs-sec" id="modul">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="sec-eyebrow">Zajrzyj do środka</span>
+      <h2>Trzy silniki. Jeden kokpit.</h2>
+      <p>Przełącz widok i zobacz, jak MyFund pracuje na Twój wynik — od twardej analityki, przez inżynierię opcji, po fundamentalne AI.</p>
+    </div>
+
+    <div class="tabs-nav reveal" role="tablist" aria-label="Moduły aplikacji">
+      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-analityka" id="tab-analityka"><span class="t-emoji" aria-hidden="true">📊</span>Analityka</button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-opcje" id="tab-opcje"><span class="t-emoji" aria-hidden="true">⚡</span>Opcje</button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-ai" id="tab-ai"><span class="t-emoji" aria-hidden="true">🤖</span>AI Insights</button>
+    </div>
+
+    <!-- Panel: Analityka -->
+    <div class="tab-panel active" role="tabpanel" id="panel-analityka" aria-labelledby="tab-analityka">
+      <div class="tab-copy">
+        <h3>Tabele analityczne bez litości dla przeciętności</h3>
+        <p>Każda pozycja rozłożona na czynniki pierwsze: średnia cena zakupu, MOIC, zysk zrealizowany i niezrealizowany, udział w portfelu. Jednym rzutem oka wiesz, co pracuje, a co tylko zajmuje kapitał.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Agregacja wielowalutowa USD / PLN / EUR z kursami na żywo</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Zysk zrealizowany vs niezrealizowany rozdzielony co do grosza</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Alokacja sektorowa i wykresy pierścieniowe składu portfela</li>
+        </ul>
+      </div>
+      <div class="tab-visual">
+        <table class="data-table">
+          <thead>
+            <tr><th>Spółka</th><th class="num">Śr. cena</th><th class="num">MOIC</th><th class="num">P&amp;L niezreal.</th><th class="num">Udział</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>NVDA</td><td class="num">347,10 $</td><td class="num pos">3,42×</td><td class="num pos">+284 320 zł</td><td class="num">24,1%</td></tr>
+            <tr><td>MSFT</td><td class="num">234,88 $</td><td class="num pos">2,18×</td><td class="num pos">+96 410 zł</td><td class="num">15,6%</td></tr>
+            <tr><td>META</td><td class="num">391,20 $</td><td class="num pos">1,87×</td><td class="num pos">+61 205 zł</td><td class="num">11,8%</td></tr>
+            <tr><td>PKO</td><td class="num">51,10 zł</td><td class="num pos">1,34×</td><td class="num pos">+14 890 zł</td><td class="num">8,3%</td></tr>
+            <tr><td>CDR</td><td class="num">182,40 zł</td><td class="num neg">0,91×</td><td class="num neg">−4 120 zł</td><td class="num">4,2%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Panel: Opcje -->
+    <div class="tab-panel" role="tabpanel" id="panel-opcje" aria-labelledby="tab-opcje" hidden>
+      <div class="tab-copy">
+        <h3>Scenario Lab — poligon dla Twoich strategii</h3>
+        <p>Symuluj Long Call na NVDA albo Short Put na META, zanim złożysz zlecenie. MyFund pokaże Ci pełny obraz ryzyka — łącznie z grekami odświeżanymi w czasie rzeczywistym.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Payoff Charts z punktem Break-Even i strefami zysku/straty</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>POP — prawdopodobieństwo zysku liczone dla każdej strategii</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Porównanie scenariusza akcyjnego z opcyjnym na jednym wykresie</li>
+        </ul>
+      </div>
+      <div class="tab-visual">
+        <h4 style="font-size:.8rem;color:var(--text-dim);margin-bottom:10px;display:flex;justify-content:space-between">
+          NVDA · Long Call 1200 · 19.09.2026
+          <span class="mono" style="color:var(--green);font-size:.72rem">POP 41,6%</span>
+        </h4>
+        <div class="chart-box">
+          <svg viewBox="0 0 400 160" preserveAspectRatio="none" aria-hidden="true" style="width:100%;height:150px">
+            <line x1="0" y1="95" x2="400" y2="95" stroke="rgba(255,255,255,.14)" stroke-width="1" stroke-dasharray="4 4"/>
+            <path d="M0,128 L200,128 L400,8 L400,95 L254,95 L200,128 Z" fill="rgba(0,230,118,.14)"/>
+            <path d="M0,128 L200,128" stroke="#ff5370" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M200,128 L400,8" stroke="#00e676" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M0,150 L400,40" stroke="#5b9dff" stroke-width="1.5" fill="none" stroke-dasharray="5 5" opacity=".6"/>
+            <circle cx="254" cy="95" r="4.5" fill="#0d0e12" stroke="#00e676" stroke-width="2"/>
+          </svg>
+          <span class="svg-label below" style="left:63.5%;top:calc(59.4% + 9px)">BE 1 254 $</span>
+          <span class="svg-label below plain" style="left:82%;top:78%;color:var(--blue)">100 akcji</span>
+        </div>
+        <div class="greeks" aria-label="Współczynniki greckie">
+          <div><div class="g-sym">Δ</div><div class="g-val">0,54</div><div class="g-name">Delta</div></div>
+          <div><div class="g-sym">Θ</div><div class="g-val neg">−1,82</div><div class="g-name">Theta</div></div>
+          <div><div class="g-sym">Γ</div><div class="g-val">0,003</div><div class="g-name">Gamma</div></div>
+          <div><div class="g-sym">ν</div><div class="g-val">2,41</div><div class="g-name">Vega</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel: AI -->
+    <div class="tab-panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai" hidden>
+      <div class="tab-copy">
+        <h3>AI Insights — analiza fundamentalna na żądanie</h3>
+        <p>Jedno kliknięcie i AI rozkłada spółkę z Twojego portfela na czynniki: marże EBITDA, przychody TTM, wolne przepływy pieniężne i wycenę DCF. To, co analityk robi w dwa dni, tu dostajesz w kilkanaście sekund.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Automatyczna wycena DCF z marginesem bezpieczeństwa</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Newsfeed zawężony wyłącznie do Twoich tickerów</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Sentyment Pozytywny / Neutralny / Negatywny w czasie rzeczywistym</li>
+        </ul>
+      </div>
+      <div class="tab-visual">
+        <h4 style="font-size:.8rem;color:var(--text-dim);margin-bottom:14px;display:flex;justify-content:space-between">
+          MSFT · Analiza fundamentalna AI
+          <span class="mono" style="color:var(--green);font-size:.72rem">wygenerowano 12 s temu</span>
+        </h4>
+        <div class="mini-metrics" style="grid-template-columns:repeat(2,1fr)">
+          <div><div class="mm-l">Przychody TTM</div><div class="mm-v">261,8 mld $</div></div>
+          <div><div class="mm-l">Marża EBITDA</div><div class="mm-v pos">53,4%</div></div>
+          <div><div class="mm-l">FCF TTM</div><div class="mm-v">74,1 mld $</div></div>
+          <div><div class="mm-l">Wycena DCF</div><div class="mm-v pos">548 $ <span style="font-size:.65rem;color:var(--text-faint)">(+7% vs cena)</span></div></div>
+        </div>
+        <div class="feed" style="margin-top:14px">
+          <div class="feed-item">
+            <span class="f-tick">AI</span>
+            <span class="f-body">Silny wzrost segmentu Azure (+29% r/r) wspiera tezę o niedowartościowaniu względem modelu DCF. Ryzyko: postępowanie regulacyjne w UE.</span>
+            <span class="senti pos">Pozytywny</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAX / PIT-38 ================= -->
+<section id="podatki">
+  <div class="container">
+    <div class="tax-grid">
+      <div class="tax-copy reveal">
+        <span class="sec-eyebrow">Podatkowy as w rękawie</span>
+        <h2>Koniec z podatkowym horrorem. Twój PIT-38 gotowy w kilka sekund.</h2>
+        <p class="lead">Ręczne przeliczanie każdej zagranicznej transakcji po kursie NBP z dnia poprzedzającego? Szukanie kursów dla trzydziestu dywidend z USA w arkuszu kalkulacyjnym? MyFund robi to za Ciebie — automatycznie, poprawnie i na czas.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Eksport PIT-38 (CSV) z zamkniętych pozycji — liczby gotowe do przepisania do zeznania</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Automatyczne przeliczenia po właściwych kursach NBP (D-1) dla każdej transakcji i dywidendy</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Podatek u źródła policzony poprawnie — MyFund pilnuje, żebyś nie oddał fiskusowi USA ani grosza za dużo</li>
+        </ul>
+        <div class="wht-compare" aria-label="Porównanie stawek podatku u źródła">
+          <div class="wht-box bad">
+            <div class="w-val">30%</div>
+            <div class="w-lab">bez umowy W-8BEN</div>
+          </div>
+          <span class="wht-arrow" aria-hidden="true">→</span>
+          <div class="wht-box good">
+            <div class="w-val">15%</div>
+            <div class="w-lab">umowa PL-US w MyFund</div>
+          </div>
+        </div>
+      </div>
+      <div class="pit-card reveal" role="img" aria-label="Podgląd eksportu PIT-38 w aplikacji">
+        <div class="pit-head">
+          <h4>PIT-38 · Eksport 2025</h4>
+          <span class="tag">kursy NBP D-1 ✓</span>
+        </div>
+        <div class="pit-row"><span>Przychód (zamknięte pozycje)</span><b>184 320,45 zł</b></div>
+        <div class="pit-row"><span>Koszty uzyskania przychodu</span><b>141 850,12 zł</b></div>
+        <div class="pit-row"><span>Dochód</span><b>42 470,33 zł</b></div>
+        <div class="pit-row"><span>Podatek 19%</span><b>8 069,00 zł</b></div>
+        <div class="pit-row"><span>WHT odliczony u źródła (15%)</span><b class="pos">−3 210,00 zł</b></div>
+        <div class="pit-row total"><span>Do zapłaty w Polsce</span><b>4 859,00 zł</b></div>
+        <button class="pit-dl" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+          Pobierz PIT-38.csv
+        </button>
+        <p class="pit-note">Wartości poglądowe. MyFund nie świadczy doradztwa podatkowego.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEPS ================= -->
+<section class="steps-sec" id="proces">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="sec-eyebrow">Prosty proces</span>
+      <h2>Trzy kroki od chaosu do kontroli</h2>
+      <p>Bez integracji bankowych, bez haseł do brokera, bez czekania na maila aktywacyjnego. Od pliku CSV do pełnej analityki w mniej niż minutę.</p>
+    </div>
+    <div class="steps">
+      <article class="step reveal">
+        <div class="step-num">01</div>
+        <h3>Eksport</h3>
+        <p>Pobierz historię transakcji ze swojego brokera — np. eToro — jako plik CSV. To dwie minuty w panelu, który już znasz.</p>
+      </article>
+      <article class="step reveal">
+        <div class="step-num">02</div>
+        <h3>Import</h3>
+        <p>Załóż konto w kilka sekund i przeciągnij plik prosto do przeglądarki. Bez podawania haseł ani dostępu do rachunku brokerskiego.</p>
+      </article>
+      <article class="step reveal">
+        <div class="step-num">03</div>
+        <h3>Wynik</h3>
+        <p>Krzywa kapitału, greki opcyjne i analizy AI czekają gotowe. Od teraz Twój portfel analizuje się sam.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STATS ================= -->
+<section>
+  <div class="container">
+    <div class="stats reveal">
+      <div class="stat"><div class="s-val" data-count="4" data-suffix="">4</div><div class="s-lab">giełdy globalne: NYSE, NASDAQ, GPW, LSE</div></div>
+      <div class="stat"><div class="s-val">3</div><div class="s-lab">waluty rozliczeniowe: USD, PLN, EUR</div></div>
+      <div class="stat"><div class="s-val">60 s</div><div class="s-lab">tyle trwa import pełnej historii z CSV</div></div>
+      <div class="stat"><div class="s-val">100%</div><div class="s-lab">danych pod Twoją kontrolą — lokalne klucze API</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section id="cennik">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="sec-eyebrow">Transparentny cennik</span>
+      <h2>Jedna cena. Zero gwiazdek i haczyków.</h2>
+      <p>Żadnych planów „Pro", które odblokowują to, co powinno być standardem. Wszystko, co widzisz na tej stronie, dostajesz od pierwszego dnia.</p>
+    </div>
+    <div class="price-wrap reveal">
+      <div class="price-glow" aria-hidden="true"></div>
+      <div class="price-card">
+        <span class="price-badge">Plan Inwestora</span>
+        <div class="price-val">0 zł</div>
+        <p class="price-per">na zawsze — nie „przez 14 dni"</p>
+        <ul class="price-list">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Nielimitowane transakcje i portfele</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Pełny dostęp do Scenario Lab i AI Insights</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Zero ukrytych opłat i „odblokuj za dopłatą"</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Zero reklam i sprzedawania Twoich danych</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>Bez dostępu do Twojego rachunku — importujesz tylko pliki</li>
+        </ul>
+        <a class="btn btn-primary" style="width:100%" href="https://myfund-app.vercel.app/#register">Zacznij teraz — za darmo
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <p class="price-note">Bez karty. Bez okresu próbnego, który się kończy. Po prostu za darmo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="sec-eyebrow">FAQ</span>
+      <h2>Pytania, które zadałby każdy rozsądny inwestor</h2>
+      <p>Krótko i bez marketingowej mgły — bo przy pieniądzach liczą się konkrety.</p>
+    </div>
+    <div class="faq reveal">
+      <details>
+        <summary>Czy moje dane finansowe są bezpieczne?</summary>
+        <p>Tak. Twoje konto jest chronione hasłem, a cała komunikacja z aplikacją jest szyfrowana (HTTPS). MyFund przechowuje wyłącznie to, co sam zaimportujesz — historię transakcji — i nigdy nie ma dostępu do Twojego rachunku brokerskiego ani środków. Ustawienia i sesja pozostają lokalnie w Twojej przeglądarce.</p>
+      </details>
+      <details>
+        <summary>Czy muszę podawać hasła do moich kont brokerskich?</summary>
+        <p>Absolutnie nie. Importujesz jedynie pliki tekstowe CSV z historią transakcji lub podpinasz własny, bezpieczny klucz API danych rynkowych (np. MarketData.app). MyFund nigdy nie prosi o dostęp do Twojego rachunku ani środków.</p>
+      </details>
+      <details>
+        <summary>Jakich brokerów obsługuje aplikacja?</summary>
+        <p>System wspiera masowy import m.in. z eToro (CSV), raporty kwartalne PDF oraz ręczne wprowadzanie transakcji dla GPW, NYSE i NASDAQ. Jeśli Twój broker potrafi wyeksportować historię do pliku — MyFund sobie z nią poradzi.</p>
+      </details>
+      <details>
+        <summary>Dlaczego narzędzie jest darmowe?</summary>
+        <p>MyFund powstało jako niezależny projekt „zbudowany przez inwestora dla inwestorów" — z frustracji ograniczeniami tradycyjnych arkuszy kalkulacyjnych. Lekka architektura pozwala rozwijać narzędzie bez przerzucania kosztów na użytkowników — bez reklam i bez planów „premium".</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <div class="container">
+    <h2 class="reveal">Przestań <em style="font-style:normal;color:var(--red)">zgadywać</em>. Zacznij <em style="font-style:normal;color:var(--green)">zarządzać</em>.</h2>
+    <p class="reveal">Import historii transakcji zajmie Ci mniej czasu niż zaparzenie kawy. Za 60 sekund zobaczysz swój portfel tak, jak widzą go profesjonaliści.</p>
+    <div class="hero-ctas reveal">
+      <a class="btn btn-primary" href="https://myfund-app.vercel.app/#register">Wypróbuj bezpłatnie
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a class="btn btn-ghost" href="https://myfund-app.vercel.app/#demo">Zobacz Demo</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="container foot">
+    <a href="#" class="logo">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#06130c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>
+      </span>
+      <span>MyFund<em>/</em>StocksTracker</span>
+    </a>
+    <nav class="foot-links" aria-label="Stopka">
+      <a href="#funkcje">Funkcje</a>
+      <a href="#dywidendy">Dywidendy</a>
+      <a href="#bezpieczenstwo">Prywatność</a>
+      <a href="#modul">Moduły</a>
+      <a href="#podatki">Podatki</a>
+      <a href="#cennik">Cennik</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://myfund-app.vercel.app/">Aplikacja</a>
+      <a href="https://myfund-app.vercel.app/polityka-prywatnosci.html">Polityka prywatności</a>
+    </nav>
+    <small>© 2026 MyFund / StocksTracker. Dane rynkowe mają charakter poglądowy. Inwestowanie wiąże się z ryzykiem — MyFund nie świadczy doradztwa inwestycyjnego.</small>
+  </div>
+</footer>
+
+<script>
+(() => {
+  /* ---- Reveal on scroll ---- */
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); revealObs.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+  /* ---- Animated counters ---- */
+  const fmt = new Intl.NumberFormat('pl-PL');
+  const countObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      countObs.unobserve(e.target);
+      const el = e.target;
+      const target = +el.dataset.count;
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const dur = 1400, t0 = performance.now();
+      const step = now => {
+        const p = Math.min((now - t0) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = prefix + fmt.format(Math.round(target * eased)) + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }, { threshold: 0.4 });
+  document.querySelectorAll('[data-count]').forEach(el => countObs.observe(el));
+
+  /* ---- Progress bars & month bars ---- */
+  const barObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      barObs.unobserve(e.target);
+      e.target.querySelectorAll('.pbar span').forEach(s => s.style.width = s.dataset.width + '%');
+      e.target.querySelectorAll('.months').forEach(m => m.classList.add('animate'));
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('#dywidendy').forEach(el => barObs.observe(el));
+
+  /* ---- Anchor scroll: cards center in viewport, sections offset below nav ---- */
+  document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+    const id = a.getAttribute('href').slice(1);
+    const el = id && document.getElementById(id);
+    if (!el) return;
+    e.preventDefault();
+    el.scrollIntoView({ behavior: 'smooth', block: el.classList.contains('card') ? 'center' : 'start' });
+    history.pushState(null, '', '#' + id);
+  }));
+
+  /* ---- Tabs ---- */
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+  tabs.forEach(btn => btn.addEventListener('click', () => {
+    tabs.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+    panels.forEach(p => { p.classList.remove('active'); p.hidden = true; });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    const panel = document.getElementById(btn.getAttribute('aria-controls'));
+    panel.classList.add('active');
+    panel.hidden = false;
+  }));
+
+  /* ---- Runway calculator ---- */
+  const CAPITAL = 847230;
+  const spend = document.getElementById('spend');
+  const spendVal = document.getElementById('spendVal');
+  const runwayVal = document.getElementById('runwayVal');
+  const updateRunway = () => {
+    const monthly = +spend.value;
+    spendVal.textContent = fmt.format(monthly) + ' zł';
+    const months = CAPITAL / monthly;
+    runwayVal.textContent = months >= 12
+      ? (months / 12).toFixed(1).replace('.', ',') + ' lat'
+      : Math.round(months) + ' mies.';
+  };
+  spend.addEventListener('input', updateRunway);
+  updateRunway();
+})();
+</script>
+</body>
+</html>
