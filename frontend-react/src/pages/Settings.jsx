@@ -240,8 +240,10 @@ function fmtDate(iso) {
 function SnapshotManagerSection() {
   const t = useT();
   const { locale } = useLanguage();
-  const { snapshots, setSnapshot, deleteSnapshot, displayCurrency } = useApp();
+  const { snapshots, setSnapshot, deleteSnapshot, displayCurrency, fxRates } = useApp();
   const currSymbol = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' }[displayCurrency] || displayCurrency;
+  // Snapshots are stored in PLN; the form and the list operate in the portfolio currency.
+  const dispFx = fxRates[displayCurrency] ?? 1;
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ date: today, total: '', invested: '' });
   const [saving, setSaving] = useState(false);
@@ -255,7 +257,8 @@ function SnapshotManagerSection() {
 
   function startEdit(s) {
     setEditingDate(s.date);
-    setForm({ date: s.date, total: String(s.total ?? ''), invested: String(s.invested ?? '') });
+    const toDisp = v => v == null ? '' : String(Math.round((v / dispFx) * 100) / 100);
+    setForm({ date: s.date, total: toDisp(s.total), invested: toDisp(s.invested) });
   }
 
   function cancelEdit() {
@@ -269,7 +272,7 @@ function SnapshotManagerSection() {
     if (!form.date || isNaN(total) || total < 0) return;
     setSaving(true);
     try {
-      await setSnapshot(form.date, total, isNaN(inv) ? undefined : inv);
+      await setSnapshot(form.date, total * dispFx, isNaN(inv) ? undefined : inv * dispFx);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       setEditingDate(null);
@@ -358,11 +361,11 @@ function SnapshotManagerSection() {
                 >
                   <span className="mono" style={{ fontSize: 12, color: 'var(--text-dim)', width: 72, flexShrink: 0 }}>{fmtDate(s.date)}</span>
                   <span className="mono" style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>
-                    {s.total != null ? s.total.toLocaleString(locale, { maximumFractionDigits: 0 }) + ' ' + currSymbol : '—'}
+                    {s.total != null ? (s.total / dispFx).toLocaleString(locale, { maximumFractionDigits: 0 }) + ' ' + currSymbol : '—'}
                   </span>
                   {s.invested != null && (
                     <span className="mono" style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                      inw. {s.invested.toLocaleString(locale, { maximumFractionDigits: 0 })} {currSymbol}
+                      inw. {(s.invested / dispFx).toLocaleString(locale, { maximumFractionDigits: 0 })} {currSymbol}
                     </span>
                   )}
                   <button
