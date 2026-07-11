@@ -415,7 +415,7 @@ export default function Dashboard() {
                 {t('portfolio_value_tf')} · {tf}
               </div>
               <div className={isPrivate ? 'privacy-blur' : ''} style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                {fmtVal(kpi.totalValue)} {currLabel}
+                {fmtDisp(kpi.totalValue)} {currLabel}
               </div>
             </div>
             <SegmentedControl
