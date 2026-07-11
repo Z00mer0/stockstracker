@@ -392,6 +392,16 @@
   text-transform: uppercase;
   font-size: 13px;
 }
+.auth-btn.demo {
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.auth-btn.demo:hover:not(:disabled) {
+  filter: none;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
 
 /* ---- Footer switch ---- */
 .auth-foot {
