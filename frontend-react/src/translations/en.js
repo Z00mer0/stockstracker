@@ -47,7 +47,7 @@ export default {
   add_positions_hint:   'Add positions in the Portfolio tab',
   portfolio_value_tf:   'Portfolio value',
   unrealized:           'unrealized',
-  account_pln:          'account · PLN',
+  account_label:        'account',
   top_movers_today:     'Top movers today',
   sector_alloc:         'Sector allocation',
   winners_losers:       'Winners & Losers',

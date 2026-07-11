@@ -2454,21 +2454,31 @@ class Handler(SimpleHTTPRequestHandler):
                 lines.append(f'- Wycena DCF (szacowana): {dcf_val:.2f}')
 
             if len(lines) == 1 and not ctx_lines:
-                self.send_json(422, {'error': 'no financial data — load financials first'}); return
-
-            ctx_block = ('\n'.join(ctx_lines) + '\n\n') if ctx_lines else ''
-            fin_block = '\n'.join(lines)
-            prompt = (
-                f'{ctx_block}{fin_block}\n\n'
-                'Napisz po polsku konkretną analizę fundamentalną tej spółki (8-10 zdań), '
-                'strukturyzując ją w 3 akapity:\n'
-                '1. Kim jest spółka, czym konkretnie się zajmuje, jaka jest jej pozycja rynkowa i przewagi konkurencyjne.\n'
-                '2. Kluczowe wyniki finansowe: przychody, marże, FCF, zadłużenie — podaj konkretne liczby z danych powyżej.\n'
-                '3. Wycena vs rynek, rekomendacje analityków, główne katalizatory wzrostu lub ryzyka.\n\n'
-                'ZASADY: Używaj wyłącznie faktów z dostarczonych danych. '
-                'Całkowicie zakazane słowa: prawdopodobnie, może, być może, wydaje się, sugeruje, potencjalnie, możliwe że. '
-                'Pisz w trybie oznajmującym. Nie używaj wypunktowań ani nagłówków.'
-            )
+                # No stored financials or Yahoo profile — fall back to a knowledge-based
+                # brief so every portfolio company still gets an AI summary.
+                prompt = (
+                    f'Spółka giełdowa o tickerze {symbol}.\n\n'
+                    'Napisz po polsku zwięzłe omówienie tej spółki (4-6 zdań): czym się zajmuje, '
+                    'w jakim sektorze działa, jaki ma model biznesowy i pozycję rynkową. '
+                    'Korzystaj wyłącznie z ogólnej wiedzy o tej spółce i nie podawaj żadnych liczb '
+                    'ani danych finansowych. Jeśli nie rozpoznajesz tego tickera, napisz dokładnie jedno zdanie: '
+                    f'"Brak wystarczających danych o spółce {symbol} — wczytaj dane finansowe w zakładce Analiza." '
+                    'Pisz w trybie oznajmującym, bez wypunktowań i nagłówków.'
+                )
+            else:
+                ctx_block = ('\n'.join(ctx_lines) + '\n\n') if ctx_lines else ''
+                fin_block = '\n'.join(lines)
+                prompt = (
+                    f'{ctx_block}{fin_block}\n\n'
+                    'Napisz po polsku konkretną analizę fundamentalną tej spółki (8-10 zdań), '
+                    'strukturyzując ją w 3 akapity:\n'
+                    '1. Kim jest spółka, czym konkretnie się zajmuje, jaka jest jej pozycja rynkowa i przewagi konkurencyjne.\n'
+                    '2. Kluczowe wyniki finansowe: przychody, marże, FCF, zadłużenie — podaj konkretne liczby z danych powyżej.\n'
+                    '3. Wycena vs rynek, rekomendacje analityków, główne katalizatory wzrostu lub ryzyka.\n\n'
+                    'ZASADY: Używaj wyłącznie faktów z dostarczonych danych. '
+                    'Całkowicie zakazane słowa: prawdopodobnie, może, być może, wydaje się, sugeruje, potencjalnie, możliwe że. '
+                    'Pisz w trybie oznajmującym. Nie używaj wypunktowań ani nagłówków.'
+                )
 
             api_key = os.environ.get('GROQ_API_KEY', '').strip()
             if not api_key:

@@ -834,8 +834,9 @@ footer{padding:44px 0;border-top:1px solid var(--border)}
         <p>Pasywny dochód brutto/netto miesiąc po miesiącu, z podatkiem u źródła policzonym poprawnie (PL-US: 15%, nie 30%).</p>
         <div class="visual">
           <div class="goal">
-            <div class="g-head"><span>Cel: 1 000 zł/mies.</span><b class="pos">742 zł</b></div>
-            <div class="pbar"><span data-width="74"></span></div>
+            <div class="g-head"><span>Cel: <b class="mono" id="divGoalVal">1 000 zł</b>/mies.</span><b class="pos">742 zł</b></div>
+            <div class="pbar"><span id="divGoalBar" data-width="74"></span></div>
+            <input type="range" id="divGoal" min="500" max="3000" step="100" value="1000" aria-label="Cel dywidendowy" style="width:100%;accent-color:var(--green);margin-top:10px">
           </div>
           <div class="months" aria-hidden="true">
             <span class="bar" style="height:38%"></span>
@@ -863,7 +864,7 @@ footer{padding:44px 0;border-top:1px solid var(--border)}
           </div>
           <div class="runway-out">
             <div class="r-val" id="runwayVal">8,8 lat</div>
-            <div class="r-lab">runway przy kapitale 847 230 zł</div>
+            <div class="r-lab">runway przy kapitale 100 000 zł</div>
           </div>
         </div>
       </article>
@@ -1252,7 +1253,7 @@ footer{padding:44px 0;border-top:1px solid var(--border)}
   }));
 
   /* ---- Runway calculator ---- */
-  const CAPITAL = 847230;
+  const CAPITAL = 100000;
   const spend = document.getElementById('spend');
   const spendVal = document.getElementById('spendVal');
   const runwayVal = document.getElementById('runwayVal');
@@ -1266,6 +1267,19 @@ footer{padding:44px 0;border-top:1px solid var(--border)}
   };
   spend.addEventListener('input', updateRunway);
   updateRunway();
+
+  /* ---- Dividend goal slider ---- */
+  const DIV_ACHIEVED = 742;
+  const divGoal = document.getElementById('divGoal');
+  const divGoalVal = document.getElementById('divGoalVal');
+  const divGoalBar = document.getElementById('divGoalBar');
+  divGoal.addEventListener('input', () => {
+    const goal = +divGoal.value;
+    divGoalVal.textContent = fmt.format(goal) + ' zł';
+    const pct = Math.min(100, (DIV_ACHIEVED / goal) * 100);
+    divGoalBar.dataset.width = pct.toFixed(0);
+    divGoalBar.style.width = pct + '%';
+  });
 })();
 </script>
 <script defer src="/_vercel/insights/script.js"></script>

@@ -47,7 +47,7 @@ export default {
   add_positions_hint:   'Dodaj pozycje w zakładce Portfel',
   portfolio_value_tf:   'Wartość portfela',
   unrealized:           'niezrealizowany',
-  account_pln:          'konto · PLN',
+  account_label:        'konto',
   top_movers_today:     'Top ruchy dzisiaj',
   sector_alloc:         'Alokacja sektorowa',
   winners_losers:       'Wygrani i przegrani',

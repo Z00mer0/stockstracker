@@ -98,7 +98,7 @@ export default function AiInsights() {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
   const [manual, setManual]       = useState(loadManual);
-  const [activeTab, setActiveTab] = useState('manual');
+  const [activeTab, setActiveTab] = useState('ai');
   const [editingNew, setEditingNew] = useState(null);
 
   const allSymbols = [...new Set(portfolio.map(p => p.symbol).filter(Boolean))];
@@ -204,7 +204,7 @@ export default function AiInsights() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-            {[['manual', t('ai_tab_manual')], ['ai', t('ai_tab_ai')]].map(([key, label]) => (
+            {[['ai', t('ai_tab_ai')], ['manual', t('ai_tab_manual')]].map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key)} style={{
                 padding: '6px 14px', fontSize: 12, fontWeight: 600,
                 background: activeTab === key ? 'var(--accent)' : 'var(--panel)',
