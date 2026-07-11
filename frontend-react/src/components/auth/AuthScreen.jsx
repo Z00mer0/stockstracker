@@ -123,6 +123,15 @@ export default function AuthScreen({
     }
   }
 
+  // #demo deep link (e.g. from the landing page) — start the demo automatically
+  useEffect(() => {
+    if (window.location.hash !== "#demo" || !onDemo) return;
+    // clear the hash so logout doesn't re-trigger the demo
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    handleDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function switchTo(next) {
     setMode(next);
     setPw("");
