@@ -25,8 +25,11 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 }
 
 export default function Dividends() {
-  const { transactions, loading, fxRates, portfolio, saveTransactions, activePortfolio } = useApp();
+  const { transactions, loading, fxRates, portfolio, saveTransactions, activePortfolio, displayCurrency } = useApp();
   const accountType = activePortfolio?.accountType;
+  // Kwoty liczone są wewnętrznie w PLN — wyświetlamy w walucie portfela
+  const dispFx = fxRates[displayCurrency] ?? 1;
+  const dCurr = CUR_SYMBOLS[displayCurrency] || displayCurrency;
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -60,8 +63,9 @@ export default function Dividends() {
   function saveGoal() {
     const v = parseFloat(goalInput);
     if (!isNaN(v) && v > 0) {
-      setFireGoal(v);
-      localStorage.setItem('myfund_fire_goal_monthly', String(v));
+      const pln = v * dispFx;
+      setFireGoal(pln);
+      localStorage.setItem('myfund_fire_goal_monthly', String(pln));
     }
     setEditingGoal(false);
   }
@@ -205,7 +209,7 @@ export default function Dividends() {
             {t('nav_dividends')} (12 mies.) · {modeLabel}
           </p>
           <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
-            {fmt(annualDivPLN, 2, locale)} zł
+            {fmt(annualDivPLN / dispFx, 2, locale)} {dCurr}
           </p>
           <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{t('last_12m_sub')}</p>
         </div>
@@ -288,17 +292,17 @@ export default function Dividends() {
                 {t('next_dividend')}
               </p>
               <button
-                onClick={() => { setGoalInput(String(fireGoal)); setEditingGoal(true); }}
+                onClick={() => { setGoalInput(String(Math.round(fireGoal / dispFx))); setEditingGoal(true); }}
                 style={{ fontSize: 11, color: 'var(--info)', background: 'none', border: 'none', cursor: 'pointer' }}
               >{t('change_goal')}</button>
             </div>
             <div className="flex items-center gap-2" style={{ marginBottom: 10, fontSize: 13, color: 'var(--text-dim)', flexWrap: 'wrap' }}>
               <span>
-                <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)', fontSize: 15 }}>{fmt(monthlyPLN, 2, locale)} zł/mies.</span>
+                <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)', fontSize: 15 }}>{fmt(monthlyPLN / dispFx, 2, locale)} {dCurr}/mies.</span>
               </span>
               <span style={{ color: 'var(--text-faint)' }}>→</span>
               <span>
-                cel: <span style={{ fontWeight: 600, color: 'var(--text)' }}><span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0, locale)}</span> zł/mies.</span>
+                cel: <span style={{ fontWeight: 600, color: 'var(--text)' }}><span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal / dispFx, 0, locale)}</span> {dCurr}/mies.</span>
               </span>
             </div>
             <div style={{ height: 10, borderRadius: 6, background: 'var(--border)', overflow: 'hidden', marginBottom: 10 }}>
@@ -309,7 +313,7 @@ export default function Dividends() {
                 {fmt(pct, 1, locale)}%
               </span>
               {' '}{t('of_monthly_goal')}{' '}
-              (<span className={isPrivate ? 'privacy-blur' : ''}>{fmt(monthlyPLN, 2, locale)} zł</span> / <span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal, 0, locale)} zł</span>)
+              (<span className={isPrivate ? 'privacy-blur' : ''}>{fmt(monthlyPLN / dispFx, 2, locale)} {dCurr}</span> / <span className={isPrivate ? 'privacy-blur' : ''}>{fmt(fireGoal / dispFx, 0, locale)} {dCurr}</span>)
             </p>
             {pct >= 100 && (
               <p style={{ marginTop: 8, fontSize: 13, color: 'var(--up)', fontWeight: 600 }}>
@@ -432,7 +436,7 @@ export default function Dividends() {
                     {fmtMonthYear(ym)}
                   </span>
                   <span className={`mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--warn)' }}>
-                    {fmt(monthTotal, 2, locale)} zł {modeLabel}
+                    {fmt(monthTotal / dispFx, 2, locale)} {dCurr} {modeLabel}
                   </span>
                 </div>
                 {items.map(d => (
@@ -445,7 +449,7 @@ export default function Dividends() {
                       <span className="shrink-0" style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.date}</span>
                     </div>
                     <span className={`mono shrink-0 ml-4${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--warn)' }}>
-                      {fmt(d.dispPLN, 2, locale)} zł
+                      {fmt(d.dispPLN / dispFx, 2, locale)} {dCurr}
                     </span>
                   </div>
                 ))}
@@ -459,7 +463,7 @@ export default function Dividends() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
           <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{t('total_dividends')} ({modeLabel})</p>
-          <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>{fmt(totalPLN, 2, locale)} zł</p>
+          <p className={`text-2xl font-bold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>{fmt(totalPLN / dispFx, 2, locale)} {dCurr}</p>
         </div>
         <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
           <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{t('num_payments')}</p>
@@ -506,7 +510,7 @@ export default function Dividends() {
                       </td>
                       <td className="right" style={{ color: 'var(--text-dim)' }}>{row.count}×</td>
                       <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--warn)' }}>
-                        {fmt(row.totalPLN, 2, locale)} zł
+                        {fmt(row.totalPLN / dispFx, 2, locale)} {dCurr}
                       </td>
                       <td className="right">
                         {yoc != null
@@ -560,7 +564,7 @@ export default function Dividends() {
                       </td>
                       <td className="right mono" style={{ color: 'var(--text-dim)' }}>{d.qty ?? '—'}</td>
                       <td className={`right mono font-semibold${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text)' }}>
-                        {fmt(approxPLN, 2, locale)} zł
+                        {fmt(approxPLN / dispFx, 2, locale)} {dCurr}
                       </td>
                       <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{d.note || '—'}</td>
                     </tr>
