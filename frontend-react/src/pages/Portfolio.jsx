@@ -31,7 +31,7 @@ import HistoryChart from '../components/HistoryChart';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import { useLanguage, useT } from '../context/LanguageContext';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v5';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
@@ -450,6 +450,7 @@ export default function Portfolio() {
   const [dragCol, setDragCol] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
   const [tfPortfolio, setTfPortfolio] = useState('MAX');
+  const [plView, setPlView] = useState('realized');
   const [filterChip, setFilterChip] = useState('all');
   const [filterGpw, setFilterGpw] = useState(false);
   const [grouped, setGrouped] = useState(false);
@@ -507,6 +508,27 @@ export default function Portfolio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [portfolio, fxRates, enrichPosition]
   );
+
+  // Unrealized (paper) P&L on open positions, in display currency
+  const unrealizedData = useMemo(() => {
+    const dispFx = fxRates[displayCurrency] ?? 1;
+    const rows = [];
+    let totalPl = 0, totalCost = 0;
+    for (const p of enriched) {
+      if (p.plPLN == null) continue;
+      rows.push({ symbol: p.symbol, pl: parseFloat((p.plPLN / dispFx).toFixed(2)) });
+      totalPl += p.plPLN / dispFx;
+      totalCost += (p.costPLN ?? 0) / dispFx;
+    }
+    rows.sort((a, b) => b.pl - a.pl);
+    // keep the chart readable: best 5 + worst 5 when there are many positions
+    const chartRows = rows.length > 10 ? [...rows.slice(0, 5), ...rows.slice(-5)] : rows;
+    return {
+      chartRows,
+      total: totalPl,
+      pct: totalCost > 0 ? (totalPl / totalCost) * 100 : null,
+    };
+  }, [enriched, fxRates, displayCurrency]);
 
   useEffect(() => {
     if (!alerts.length || !enriched.length) return;
@@ -1031,22 +1053,74 @@ export default function Portfolio() {
 
           <div key="realytd">
             <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                 <div>
-                  <div className="card-title">Zysk zrealizowany YTD</div>
+                  <div className="card-title">
+                    {plView === 'realized' ? 'Zysk zrealizowany YTD' : 'Zysk niezrealizowany'}
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
-                    Skumulowany P&L ze sprzedaży w {new Date().getFullYear()} r.
+                    {plView === 'realized'
+                      ? <>Skumulowany P&L ze sprzedaży w {new Date().getFullYear()} r.</>
+                      : <>Papierowy wynik na otwartych pozycjach</>}
                   </div>
                 </div>
-                {ytdChartData.length > 0 && (
-                  <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', color: ytdChartData[ytdChartData.length - 1].pl >= 0 ? 'var(--up)' : 'var(--down)', whiteSpace: 'nowrap' }}>
-                    {ytdChartData[ytdChartData.length - 1].pl >= 0 ? '+' : ''}
-                    {fmt(ytdChartData[ytdChartData.length - 1].pl, 2, locale)} {portCurrLabel}
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
+                  {plView === 'realized' && ytdChartData.length > 0 && (
+                    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', color: ytdChartData[ytdChartData.length - 1].pl >= 0 ? 'var(--up)' : 'var(--down)', whiteSpace: 'nowrap' }}>
+                      {ytdChartData[ytdChartData.length - 1].pl >= 0 ? '+' : ''}
+                      {fmt(ytdChartData[ytdChartData.length - 1].pl, 2, locale)} {portCurrLabel}
+                    </div>
+                  )}
+                  {plView === 'unrealized' && unrealizedData.chartRows.length > 0 && (
+                    <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', color: unrealizedData.total >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                        {unrealizedData.total >= 0 ? '+' : ''}{fmt(unrealizedData.total, 2, locale)} {portCurrLabel}
+                      </div>
+                      {unrealizedData.pct != null && (
+                        <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: unrealizedData.total >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                          {unrealizedData.pct >= 0 ? '+' : ''}{fmt(unrealizedData.pct, 1, locale)}%
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <SegmentedControl
+                    options={[
+                      { value: 'realized', label: 'Zrealizowany' },
+                      { value: 'unrealized', label: 'Niezrealizowany' },
+                    ]}
+                    value={plView}
+                    onChange={setPlView}
+                  />
+                </div>
               </div>
               <div style={{ flex: 1, padding: '4px 8px 12px', minHeight: 0 }}>
-                {ytdChartData.length >= 1 ? (
+                {plView === 'unrealized' ? (
+                  unrealizedData.chartRows.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={unrealizedData.chartRows} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
+                        <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false}
+                          tickFormatter={v => Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })} />
+                        <YAxis type="category" dataKey="symbol" width={72} tick={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                          contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                          labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                          formatter={(v) => [`${v >= 0 ? '+' : ''}${fmt(v, 2, locale)} ${portCurrLabel}`, 'P&L']}
+                        />
+                        <ReferenceLine x={0} stroke="var(--border)" />
+                        <Bar dataKey="pl" radius={[0, 3, 3, 0]} maxBarSize={16}>
+                          {unrealizedData.chartRows.map(r => (
+                            <Cell key={r.symbol} fill={r.pl >= 0 ? 'var(--up)' : 'var(--down)'} fillOpacity={0.8} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
+                      {metricsLoading ? 'Ładowanie cen…' : 'Brak otwartych pozycji z wyceną'}
+                    </div>
+                  )
+                ) : ytdChartData.length >= 1 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={ytdChartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                       <defs>
