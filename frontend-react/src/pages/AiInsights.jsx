@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useT } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
+import PortfolioReview from '../components/PortfolioReview';
 
 const MANUAL_KEY = 'myfund_manual_insights';
 
@@ -199,12 +200,14 @@ export default function AiInsights() {
           <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
             {activeTab === 'manual'
               ? t('ai_filled_count').replace('{n}', filledSymbols.length).replace('{total}', allSymbols.length)
-              : `${allSymbols.length} spółek${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt)}` : ''}`}
+              : activeTab === 'review'
+                ? t('review_subtitle')
+                : `${allSymbols.length} spółek${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt)}` : ''}`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-            {[['ai', t('ai_tab_ai')], ['manual', t('ai_tab_manual')]].map(([key, label]) => (
+            {[['review', t('ai_tab_review')], ['ai', t('ai_tab_ai')], ['manual', t('ai_tab_manual')]].map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key)} style={{
                 padding: '6px 14px', fontSize: 12, fontWeight: 600,
                 background: activeTab === key ? 'var(--accent)' : 'var(--panel)',
@@ -305,6 +308,8 @@ export default function AiInsights() {
           )}
         </>
       )}
+
+      {activeTab === 'review' && <PortfolioReview />}
 
       {activeTab === 'ai' && (
         <>

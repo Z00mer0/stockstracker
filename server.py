@@ -1226,6 +1226,14 @@ if DATABASE_URL:
                     bonds_json   TEXT NOT NULL DEFAULT '[]'
                 )""")
             cur.execute("ALTER TABLE portfolio_list ADD COLUMN IF NOT EXISTS account_type TEXT NOT NULL DEFAULT ''")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_reviews (
+                    username      TEXT NOT NULL,
+                    portfolio_key TEXT NOT NULL,
+                    review        TEXT NOT NULL,
+                    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (username, portfolio_key)
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -3952,6 +3960,129 @@ async function doRecover() {
                         )
                 except Exception as e:
                     print(f'[analyze] db cache write error: {e}')
+
+        elif path == '/api/portfolio-review':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=32768)
+            except ValueError:
+                self.send_json(400, {'error': 'invalid_json'}); return
+            if not body:
+                self.send_json(400, {'error': 'invalid_json'}); return
+            ctx = body.get('context')
+            portfolio_key = str(body.get('portfolioKey', 'all'))[:64]
+            force = body.get('force', False)
+            if not isinstance(ctx, dict) or not ctx.get('positions'):
+                self.send_json(400, {'error': 'err_empty_portfolio'}); return
+
+            # Cache: one review per user+portfolio, refreshed at most weekly unless forced
+            row = None
+            if not force and DATABASE_URL:
+                try:
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute(
+                            "SELECT review, created_at FROM portfolio_reviews WHERE username=%s AND portfolio_key=%s AND created_at > NOW() - INTERVAL '7 days'",
+                            (username, portfolio_key)
+                        )
+                        row = cur.fetchone()
+                except Exception as e:
+                    print(f'[portfolio-review] db error: {e}')
+
+            if row:
+                cached_text = row[0]
+                created_iso = row[1].isoformat() if row[1] else None
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/event-stream')
+                self.send_header('Cache-Control', 'no-cache')
+                self.send_header('X-Accel-Buffering', 'no')
+                self.send_header('Access-Control-Allow-Origin', self._cors_origin())
+                self.end_headers()
+                self.wfile.write(f'data: {json.dumps({"meta": {"cached": True, "createdAt": created_iso}})}\n\n'.encode('utf-8'))
+                for i in range(0, len(cached_text), 50):
+                    self.wfile.write(f'data: {json.dumps({"text": cached_text[i:i+50]})}\n\n'.encode('utf-8'))
+                    self.wfile.flush()
+                self.wfile.write(b'data: [DONE]\n\n')
+                self.wfile.flush()
+                return
+
+            api_key = os.environ.get('GROQ_API_KEY', '').strip()
+            if not api_key:
+                self.send_json(503, {'error': 'err_no_groq_key'}); return
+
+            system_prompt = (
+                'Jesteś doświadczonym zarządzającym portfelem (Portfolio Manager) w polskim domu maklerskim. '
+                'Piszesz okresowy przegląd portfela klienta indywidualnego. '
+                'Bądź konkretny i krytyczny: oceniaj koncentrację, dywersyfikację, ryzyko walutowe i strukturę aktywów na podstawie liczb. '
+                'Nie wymyślaj danych, których nie ma w kontekście. Nie rekomenduj konkretnych transakcji kupna/sprzedaży — '
+                'zamiast tego wskazuj obszary do przemyślenia. '
+                'Odpowiadaj wyłącznie po polsku, w Markdownie. Zwięźle: maksymalnie ~400 słów.'
+            )
+            user_prompt = (
+                f'Dane portfela (wartości w PLN):\n\n{json.dumps(ctx, ensure_ascii=False)}\n\n'
+                'Napisz przegląd portfela według struktury:\n\n'
+                '### 1. STRUKTURA I KONCENTRACJA\n'
+                '(ocena alokacji między klasy aktywów, wskazanie zbyt dużych pozycji)\n'
+                '### 2. RYZYKO WALUTOWE I GEOGRAFICZNE\n'
+                '### 3. DOCHÓD PASYWNY I PODATKI\n'
+                '(dywidendy, wykorzystanie kont IKE/IKZE jeśli dotyczy)\n'
+                '### 4. CO WARTO PRZEMYŚLEĆ\n'
+                '(2-4 konkretne punkty do rozważenia)'
+            )
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.send_header('Access-Control-Allow-Origin', self._cors_origin())
+            self.end_headers()
+
+            full_text = []
+            try:
+                from groq import Groq as _GroqClient, RateLimitError as _RateLimitError
+                client = _GroqClient(api_key=api_key)
+                stream = client.chat.completions.create(
+                    messages=[
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': user_prompt},
+                    ],
+                    model='llama-3.3-70b-versatile',
+                    max_tokens=1500,
+                    stream=True,
+                )
+                for chunk in stream:
+                    text = chunk.choices[0].delta.content or ''
+                    if text:
+                        full_text.append(text)
+                        self.wfile.write(f'data: {json.dumps({"text": text})}\n\n'.encode('utf-8'))
+                        self.wfile.flush()
+            except Exception as e:
+                from groq import RateLimitError as _RateLimitError
+                err_key = 'err_rate_limit' if isinstance(e, _RateLimitError) else 'err_groq_failed'
+                print(f'[portfolio-review] groq error: {type(e).__name__}: {str(e)[:150]}')
+                self.wfile.write(f'data: {json.dumps({"error": err_key})}\n\n'.encode('utf-8'))
+                self.wfile.flush()
+                self.wfile.write(b'data: [DONE]\n\n')
+                self.wfile.flush()
+                return
+
+            self.wfile.write(b'data: [DONE]\n\n')
+            self.wfile.flush()
+
+            if full_text and DATABASE_URL:
+                review_text = ''.join(full_text)
+                try:
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute(
+                            """INSERT INTO portfolio_reviews (username, portfolio_key, review, created_at)
+                               VALUES (%s, %s, %s, NOW())
+                               ON CONFLICT (username, portfolio_key) DO UPDATE
+                               SET review = EXCLUDED.review, created_at = NOW()""",
+                            (username, portfolio_key, review_text)
+                        )
+                except Exception as e:
+                    print(f'[portfolio-review] db cache write error: {e}')
 
         else:
             self.send_response(405); self.end_headers()
