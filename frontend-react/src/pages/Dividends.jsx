@@ -3,7 +3,6 @@ import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
-import Card from '../components/shared/Card';
 import Chip from '../components/shared/Chip';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import AddDividendModal from '../components/AddDividendModal';
@@ -18,6 +17,24 @@ import {
 } from '../services/dividendService';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
+
+function SectionToggle({ label, isOpen, onToggle, children, actions }) {
+  return (
+    <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', overflow: 'hidden' }}>
+      <button
+        onClick={onToggle}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
+        <div className="flex items-center gap-3">
+          {actions}
+          <span style={{ fontSize: 12, color: 'var(--text-faint)', transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+      </button>
+      {isOpen && children}
+    </div>
+  );
+}
 
 function fmt(n, decimals = 2, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
@@ -52,6 +69,15 @@ export default function Dividends() {
   const [isNet, setIsNet]           = useState(() => localStorage.getItem(DIV_MODE_KEY) === 'net');
   const [yocMap, setYocMap]         = useState({});
   const [yocLoading, setYocLoading] = useState(false);
+
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('myfund_div_collapsed') || '{}'); } catch { return {}; }
+  });
+  const toggle = (key) => setCollapsed(prev => {
+    const next = { ...prev, [key]: !prev[key] };
+    localStorage.setItem('myfund_div_collapsed', JSON.stringify(next));
+    return next;
+  });
 
   const [fireGoal, setFireGoal] = useState(() => {
     const v = localStorage.getItem('myfund_fire_goal_monthly');
@@ -337,30 +363,26 @@ export default function Dividends() {
       </div>
 
       {/* ── Banner + dodaj GPW ── */}
-      <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <p style={{ fontSize: 13, color: 'var(--info)', lineHeight: 1.5, maxWidth: 520 }}>
-          <span className="font-semibold">ℹ️</span> {t('gpw_dividends_note')}
-        </p>
-        <button
-          onClick={() => { setEditTarget(null); setModalOpen(true); }}
-          className="btn btn-primary" style={{ fontSize: 13 }}
-        >
-          {t('add_dividend_gpw')}
-        </button>
-      </div>
+      <SectionToggle label={t('add_dividend_gpw')} isOpen={!collapsed.gpw} onToggle={() => toggle('gpw')}>
+        <div style={{ padding: '0 20px 16px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--info)', lineHeight: 1.5, maxWidth: 520 }}>
+            <span className="font-semibold">ℹ️</span> {t('gpw_dividends_note')}
+          </p>
+          <button
+            onClick={() => { setEditTarget(null); setModalOpen(true); }}
+            className="btn btn-primary" style={{ fontSize: 13 }}
+          >
+            {t('add_dividend_gpw')}
+          </button>
+        </div>
+      </SectionToggle>
 
       {/* ── Nadchodzące dywidendy ── */}
-      <Card
-        title={t('upcoming_dividends')}
-        actions={
-          <>
-            {divLoading && <Spinner size="sm" />}
-            <button
-              onClick={() => { setEditTarget(null); setModalOpen(true); }}
-              className="btn btn-primary" style={{ fontSize: 12 }}
-            >{t('add_manually')}</button>
-          </>
-        }
+      <SectionToggle
+        label={t('upcoming_dividends')}
+        isOpen={!collapsed.upcoming}
+        onToggle={() => toggle('upcoming')}
+        actions={<>{divLoading && <Spinner size="sm" />}</>}
       >
         {divLoading && !upcoming.length ? (
           <div className="flex justify-center py-8"><Spinner size="md" /></div>
@@ -423,11 +445,11 @@ export default function Dividends() {
             </table>
           </div>
         )}
-      </Card>
+      </SectionToggle>
 
       {/* ── Timeline wypłat ── */}
       {timeline.length > 0 && (
-        <Card title={t('payment_timeline')}>
+        <SectionToggle label={t('payment_timeline')} isOpen={!collapsed.timeline} onToggle={() => toggle('timeline')}>
           <div style={{ borderTop: '1px solid var(--border)' }}>
             {timeline.map(({ ym, items, totalPLN: monthTotal }) => (
               <div key={ym} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -456,7 +478,7 @@ export default function Dividends() {
               </div>
             ))}
           </div>
-        </Card>
+        </SectionToggle>
       )}
 
       {/* ── KPI summary ── */}
@@ -476,9 +498,11 @@ export default function Dividends() {
       </div>
 
       {/* ── Per spółka + YoC ── */}
-      <Card
-        title={t('div_per_company')}
-        actions={yocLoading && <Spinner size="sm" />}
+      <SectionToggle
+        label={t('div_per_company')}
+        isOpen={!collapsed.perCompany}
+        onToggle={() => toggle('perCompany')}
+        actions={yocLoading ? <Spinner size="sm" /> : null}
       >
         {bySymbol.length === 0 ? (
           <div className="card-body text-center">
@@ -525,12 +549,14 @@ export default function Dividends() {
             </table>
           </div>
         )}
-      </Card>
+      </SectionToggle>
 
       {/* ── Historia wypłat ── */}
       {dividends.length > 0 && (
-        <Card
-          title={t('payment_history')}
+        <SectionToggle
+          label={t('payment_history')}
+          isOpen={!collapsed.history}
+          onToggle={() => toggle('history')}
           actions={<span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{dividends.length} {t('entries')}</span>}
         >
           <div className="overflow-x-auto">
@@ -573,7 +599,7 @@ export default function Dividends() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </SectionToggle>
       )}
 
       <AddDividendModal
