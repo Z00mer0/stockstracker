@@ -128,7 +128,7 @@ function RiskSection({ snapshots }) {
   if (values.length < 10 || daySpan < 30) {
     if (daySpan > 0) {
       return (
-        <Card title={t('risk_section')}>
+        <Card title={t('risk_section')} collapsible collapseKey="an_risk">
           <div className="card-body">
             <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
               {t('not_enough_history')} (min. 30 {t('days_of_history')}: {daySpan})
@@ -142,7 +142,7 @@ function RiskSection({ snapshots }) {
   const hasEnoughSessions = values.length >= MIN_SESSIONS;
 
   return (
-    <Card title={t('risk_section')}>
+    <Card title={t('risk_section')} collapsible collapseKey="an_risk">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}></p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
@@ -269,7 +269,7 @@ function RebalanceSection({ enriched, totalValue }) {
   }
 
   return (
-    <Card title={t('rebalance_section')} actions={
+    <Card title={t('rebalance_section')} collapsible collapseKey="an_rebal" actions={
       <button onClick={editMode ? saveEdit : openEdit} className="btn" style={{ fontSize: 11 }}>
         {editMode ? t('save_goals') : t('set_goals')}
       </button>
@@ -445,7 +445,7 @@ function FireSection({ totalValue }) {
   const labelStyle = { fontSize: 11, color: 'var(--text-faint)', marginBottom: 4, display: 'block' };
 
   return (
-    <Card title={t('fire_title')}>
+    <Card title={t('fire_title')} collapsible collapseKey="an_fire">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>
           {t('fire_description')}
@@ -710,7 +710,7 @@ function SmartInsightsSection({ enrichedPositions }) {
   });
 
   return (
-    <Card title={t('smart_insights')}>
+    <Card title={t('smart_insights')} collapsible collapseKey="an_insights">
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>{t('smart_insights_sub')}</p>
         {insights.map((ins, i) => (
@@ -782,7 +782,7 @@ function SectorAnalysisSection({ enriched, totalValue }) {
   }
 
   return (
-    <Card title={t('sector_analysis')} actions={
+    <Card title={t('sector_analysis')} collapsible collapseKey="an_sector" actions={
       <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
         {[['sector', t('sector_label')], ['industry', t('industry_label')]].map(([k, label]) => (
           <button key={k} onClick={() => setView(k)} style={{
@@ -942,7 +942,7 @@ export default function Analysis() {
       </div>
 
       {/* Alokacja walutowa */}
-      <Card title={t('currency_alloc')}>
+      <Card title={t('currency_alloc')} collapsible collapseKey="an_curr">
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
@@ -973,7 +973,7 @@ export default function Analysis() {
       </Card>
 
       {/* Koncentracja pozycji */}
-      <Card title={t('position_concentration')}>
+      <Card title={t('position_concentration')} collapsible collapseKey="an_conc">
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
@@ -1041,7 +1041,7 @@ function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
   }
 
   return (
-    <Card title={t('fx_decomp')}>
+    <Card title={t('fx_decomp')} collapsible collapseKey="an_fx">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>
           {t('fx_description')}
@@ -1113,7 +1113,7 @@ function PerformanceTable({ title, positions }) {
   }
 
   return (
-    <Card title={title}>
+    <Card title={title} collapsible>
       <div style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
