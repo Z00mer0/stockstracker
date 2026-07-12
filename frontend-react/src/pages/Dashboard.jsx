@@ -18,6 +18,7 @@ import StackedAllocation from '../components/shared/StackedAllocation';
 import WinnersLosers from '../components/shared/WinnersLosers';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import HistoryChart from '../components/HistoryChart';
+import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 
 function xirr(cashflows) {
   if (cashflows.length < 2) return null;
@@ -333,6 +334,15 @@ export default function Dashboard() {
 
   const isWeekend = [0, 6].includes(new Date().getDay());
 
+  // Niezrealizowany P&L per pozycja (waluta wyświetlania) — top 5 + worst 5
+  const unrealRows = (() => {
+    const rows = allPositions
+      .filter(p => p.plPLN != null)
+      .map(p => ({ symbol: p.symbol, pl: parseFloat((p.plPLN / dispFx).toFixed(2)) }))
+      .sort((a, b) => b.pl - a.pl);
+    return rows.length > 10 ? [...rows.slice(0, 5), ...rows.slice(-5)] : rows;
+  })();
+
   const dayChipVal = dailyChange.pct != null
     ? (dailyChange.pct >= 0 ? '+' : '') + fmtVal(dailyChange.pct, 2) + '%'
     : null;
@@ -491,6 +501,31 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Unrealized P&L per position */}
+      {unrealRows.length > 0 && (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div className="card-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div>
+              <div className="card-title">{t('unreal_pl_title')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{t('unreal_pl_sub')}</div>
+            </div>
+            <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                {kpi.unrealPLN >= 0 ? '+' : ''}{fmtDisp(kpi.unrealPLN, 2)} {currLabel}
+              </div>
+              {unrealChipVal && (
+                <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                  {unrealChipVal}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ height: unrealRows.length * 30 + 40, padding: '4px 8px 12px' }}>
+            <UnrealizedPnlBar rows={unrealRows} currLabel={currLabel} locale={locale} fmt={(v, d) => fmtVal(v, d)} />
+          </div>
+        </div>
+      )}
 
       {/* Allocation + Winners/Losers */}
       {allPositions.length > 0 && (

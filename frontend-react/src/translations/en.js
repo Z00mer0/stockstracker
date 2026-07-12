@@ -51,6 +51,8 @@ export default {
   top_movers_today:     'Top movers today',
   sector_alloc:         'Sector allocation',
   winners_losers:       'Winners & Losers',
+  unreal_pl_title:      'Unrealized P&L',
+  unreal_pl_sub:        'Paper result on open positions',
   returns_pct:          'return %',
   no_portfolio_data:    'No portfolio data',
   greeting:             'Hello',

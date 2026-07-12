@@ -51,6 +51,8 @@ export default {
   top_movers_today:     'Top ruchy dzisiaj',
   sector_alloc:         'Alokacja sektorowa',
   winners_losers:       'Wygrani i przegrani',
+  unreal_pl_title:      'Zysk niezrealizowany',
+  unreal_pl_sub:        'Papierowy wynik na otwartych pozycjach',
   returns_pct:          'zwrot %',
   no_portfolio_data:    'Brak danych portfela',
   greeting:             'Witaj',
