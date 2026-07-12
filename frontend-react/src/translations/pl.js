@@ -237,7 +237,7 @@ export default {
   last_12m_sub:         'ostatnie 12 miesięcy',
   yield_sub:            'roczne dywidendy / wartość portfela',
   upcoming_30d:         'Nadchodzące (30 dni)',
-  set_monthly_goal:     'Ustaw miesięczny cel dywidendowy (PLN/mies.)',
+  set_monthly_goal:     'Ustaw miesięczny cel dywidendowy ({curr}/mies.)',
   change_goal:          'Zmień cel',
   of_monthly_goal:      'miesięcznego celu',
   goal_achieved:        '🎯 Cel osiągnięty! Twój portfel generuje pasywny dochód wystarczający na pokrycie celu.',

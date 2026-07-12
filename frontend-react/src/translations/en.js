@@ -237,7 +237,7 @@ export default {
   last_12m_sub:         'last 12 months',
   yield_sub:            'annual dividends / portfolio value',
   upcoming_30d:         'Upcoming (30 days)',
-  set_monthly_goal:     'Set monthly dividend goal (PLN/mo.)',
+  set_monthly_goal:     'Set monthly dividend goal ({curr}/mo.)',
   change_goal:          'Change goal',
   of_monthly_goal:      'of monthly goal',
   goal_achieved:        '🎯 Goal achieved! Your portfolio generates passive income sufficient to cover the goal.',

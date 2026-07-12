@@ -277,7 +277,7 @@ export default function Dividends() {
         if (editingGoal) {
           return (
             <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px' }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{t('set_monthly_goal')}</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>{t('set_monthly_goal').replace('{curr}', dCurr)}</p>
               <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
                 <input
                   type="number"
@@ -300,13 +300,13 @@ export default function Dividends() {
           return (
             <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-                {t('set_monthly_goal')}
+                {t('set_monthly_goal').replace('{curr}', dCurr)}
               </p>
               <button
                 onClick={() => { setGoalInput(''); setEditingGoal(true); }}
                 className="btn btn-primary"
                 style={{ fontSize: 13, whiteSpace: 'nowrap' }}
-              >{t('set_monthly_goal')}</button>
+              >{t('set_monthly_goal').replace('{curr}', dCurr)}</button>
             </div>
           );
         }
