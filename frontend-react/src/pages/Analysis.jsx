@@ -6,6 +6,7 @@ import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { useFxBreakdown } from '../hooks/useFxBreakdown';
 import Spinner from '../components/shared/Spinner';
 import Card from '../components/shared/Card';
+import { computeRealizedTrades } from '../utils/realizedPL';
 
 function calcDailyReturns(values) {
   const r = [];
@@ -857,8 +858,145 @@ function SectorAnalysisSection({ enriched, totalValue }) {
   );
 }
 
+// ── Optymalizator podatku Belki (tax-loss harvesting) ────────────────────────
+const BELKA_RATE = 0.19;
+
+function TaxOptimizerSection({ enriched, transactions, fxRates, accountType }) {
+  const t = useT();
+  const { locale } = useLanguage();
+  const { isPrivate } = usePrivacy();
+
+  const year = new Date().getFullYear();
+  const jan1 = `${year}-01-01`;
+
+  // Zrealizowany wynik YTD (PLN) — z transakcji SELL
+  const realizedYTD = useMemo(() =>
+    computeRealizedTrades(transactions, fxRates)
+      .filter(tr => tr.date >= jan1)
+      .reduce((s, tr) => s + tr.plPLN, 0),
+    [transactions, fxRates, jan1]
+  );
+
+  // Otwarte pozycje ze stratą, od największej straty
+  const losers = useMemo(() =>
+    enriched
+      .filter(p => (p.plPLN ?? 0) < -0.005)
+      .map(p => ({ symbol: p.symbol, lossPLN: -p.plPLN }))
+      .sort((a, b) => b.lossPLN - a.lossPLN),
+    [enriched]
+  );
+
+  const fmtPln = (n, d = 0) => n == null || isNaN(n)
+    ? '—'
+    : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  // Konta IKE/IKZE — zwolnione z Belki
+  if (accountType === 'IKE' || accountType === 'IKZE') {
+    return (
+      <Card title={`💰 ${t('tax_opt_title')}`} collapsible collapseKey="an_tax">
+        <div className="card-body" style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+          {t('tax_opt_ike_note').replace('{type}', accountType)}
+        </div>
+      </Card>
+    );
+  }
+
+  const taxDue = Math.max(0, realizedYTD) * BELKA_RATE;
+  const gainToOffset = Math.max(0, realizedYTD);
+
+  // Alokacja strat na zysk — per pozycja, do wyczerpania zysku
+  let remaining = gainToOffset;
+  const rows = losers.map(l => {
+    const offset = Math.min(l.lossPLN, remaining);
+    remaining -= offset;
+    return { ...l, offset, savingPLN: offset * BELKA_RATE };
+  });
+  const totalSaving = rows.reduce((s, r) => s + r.savingPLN, 0);
+  const taxAfter = taxDue - totalSaving;
+
+  return (
+    <Card title={`💰 ${t('tax_opt_title')}`} collapsible collapseKey="an_tax">
+      <div className="card-body">
+        {/* KPI */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+          {[
+            { label: t('tax_opt_realized_ytd').replace('{year}', year), value: `${realizedYTD >= 0 ? '+' : ''}${fmtPln(realizedYTD)} zł`, color: realizedYTD >= 0 ? 'var(--up)' : 'var(--down)' },
+            { label: t('tax_opt_tax_due'), value: `${fmtPln(taxDue)} zł`, color: taxDue > 0 ? 'var(--warn)' : 'var(--text)' },
+            { label: t('tax_opt_saving'), value: totalSaving > 0 ? `−${fmtPln(totalSaving)} zł` : '0 zł', color: totalSaving > 0 ? 'var(--up)' : 'var(--text-faint)' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="kpi-card">
+              <div className="kpi-label">{label}</div>
+              <div className={`kpi-value${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 22, color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+
+        {losers.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+            🌱 {t('tax_opt_no_losses')}
+          </p>
+        ) : (
+          <>
+            {gainToOffset <= 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)' }}>
+                ℹ️ {t('tax_opt_no_gains_note')}
+              </p>
+            )}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t('col_symbol')}</th>
+                    <th className="right">{t('tax_opt_col_loss')}</th>
+                    <th className="right">{t('tax_opt_col_saving')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(r => (
+                    <tr key={r.symbol}>
+                      <td className="mono" style={{ fontWeight: 700, color: 'var(--info)' }}>{r.symbol}</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--down)' }}>
+                        −{fmtPln(r.lossPLN)} zł
+                      </td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: r.savingPLN > 0 ? 'var(--up)' : 'var(--text-faint)', fontWeight: r.savingPLN > 0 ? 700 : 400 }}>
+                        {r.savingPLN > 0 ? `−${fmtPln(r.savingPLN)} zł` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  {totalSaving > 0 && (
+                    <tr style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+                      <td style={{ fontWeight: 700, color: 'var(--text)' }}>{t('tax_opt_after_row')}</td>
+                      <td />
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontWeight: 700, color: 'var(--text)' }}>
+                        {fmtPln(taxAfter)} zł
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {totalSaving > 0 && (
+              <p style={{ fontSize: 13, color: 'var(--up)', fontWeight: 600, margin: '14px 0 0' }}>
+                💡 {t('tax_opt_summary')
+                  .replace('{saving}', fmtPln(totalSaving))
+                  .replace('{n}', rows.filter(r => r.savingPLN > 0).length)}
+              </p>
+            )}
+          </>
+        )}
+
+        <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.7, margin: 0 }}>
+            {t('tax_opt_disclaimer')}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function Analysis() {
-  const { portfolio, transactions, fxRates, loading, snapshots, displayCurrency } = useApp();
+  const { portfolio, transactions, fxRates, loading, snapshots, displayCurrency, activePortfolio } = useApp();
   const { isPrivate } = usePrivacy();
   const t = useT();
   const { locale } = useLanguage();
@@ -919,6 +1057,12 @@ export default function Analysis() {
     <div className="space-y-6">
       <RiskSection snapshots={snapshots ?? []} />
       <RebalanceSection enriched={enriched} totalValue={totalValue} />
+      <TaxOptimizerSection
+        enriched={enriched}
+        transactions={transactions}
+        fxRates={fxRates}
+        accountType={activePortfolio?.accountType}
+      />
 
       {/* Statystyki */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
