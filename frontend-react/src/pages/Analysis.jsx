@@ -975,13 +975,18 @@ function TaxOptimizerSection({ enriched, transactions, fxRates, accountType }) {
                 </tbody>
               </table>
             </div>
-            {totalSaving > 0 && (
-              <p style={{ fontSize: 13, color: 'var(--up)', fontWeight: 600, margin: '14px 0 0' }}>
-                💡 {t('tax_opt_summary')
-                  .replace('{saving}', fmtPln(totalSaving))
-                  .replace('{n}', rows.filter(r => r.savingPLN > 0).length)}
-              </p>
-            )}
+            {totalSaving > 0 && (() => {
+              const n = rows.filter(r => r.savingPLN > 0).length;
+              const form = new Intl.PluralRules(locale).select(n);
+              const posKey = { one: 'tax_opt_pos_one', few: 'tax_opt_pos_few' }[form] ?? 'tax_opt_pos_many';
+              return (
+                <p style={{ fontSize: 13, color: 'var(--up)', fontWeight: 600, margin: '14px 0 0' }}>
+                  💡 {t('tax_opt_summary')
+                    .replace('{positions}', t(posKey).replace('{n}', n))
+                    .replace('{saving}', fmtPln(totalSaving))}
+                </p>
+              );
+            })()}
           </>
         )}
 
