@@ -1817,20 +1817,26 @@ def _send_push(username, title, body, url='/'):
     return sent
 
 
+QUOTES_BASE = os.environ.get('QUOTES_URL', 'https://myfund-app.vercel.app').rstrip('/')
+
+
 def _fetch_price_simple(symbol):
-    """Bieżąca cena z Yahoo Finance (obsługuje GPW .WA i US jednakowo).
-    Finnhub jako zapas dla spółek US. None gdy brak."""
+    """Bieżąca cena przez funkcję /api/quotes (Vercel) — to samo źródło co frontend,
+    obsługuje GPW (.WA) i US, omija blokady IP Yahoo. Finnhub jako zapas dla US."""
     try:
-        url = (f'https://query2.finance.yahoo.com/v8/finance/chart/'
-               f'{urllib.parse.quote(symbol)}?interval=1d&range=2d')
+        url = f'{QUOTES_BASE}/api/quotes?symbols={urllib.parse.quote(symbol)}'
         req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
         with urllib.request.urlopen(req, timeout=8) as r:
-            meta = json.loads(r.read())['chart']['result'][0]['meta']
-        price = meta.get('regularMarketPrice')
-        if price and price > 0:
-            return float(price)
+            data = json.loads(r.read())
+        if isinstance(data, dict):
+            if (data.get('price') or 0) > 0:          # ścieżka stooq: {"stooq":true,"price":N}
+                return float(data['price'])
+            res = data.get('quoteResponse', {}).get('result') or []
+            price = res[0].get('regularMarketPrice') if res else None
+            if (price or 0) > 0:
+                return float(price)
     except Exception as e:
-        print(f'[push] price yahoo {symbol}: {e}')
+        print(f'[push] price quotes {symbol}: {e}')
     # zapas dla US — finnhub
     if not symbol.endswith('.WA'):
         try:
