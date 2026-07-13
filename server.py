@@ -1818,28 +1818,31 @@ def _send_push(username, title, body, url='/'):
 
 
 def _fetch_price_simple(symbol):
-    """Bieżąca cena: stooq dla GPW (.WA), finnhub dla US. None gdy brak."""
+    """Bieżąca cena z Yahoo Finance (obsługuje GPW .WA i US jednakowo).
+    Finnhub jako zapas dla spółek US. None gdy brak."""
     try:
-        if symbol.endswith('.WA'):
-            s = symbol[:-3].lower()
-            url = f'https://stooq.com/q/l/?s={s}&f=sd2ohlcv&h&e=csv'
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=6) as r:
-                lines = r.read().decode().strip().split('\n')
-            if len(lines) >= 2:
-                close = float(lines[1].split(',')[5])
-                return close if close > 0 else None
-        else:
-            token = os.environ.get('FINNHUB_TOKEN', '')
-            if not token:
-                return None
-            url = f'https://finnhub.io/api/v1/quote?symbol={symbol}&token={token}'
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=6) as r:
-                q = json.loads(r.read())
-            return q.get('c') if (q.get('c') or 0) > 0 else None
+        url = (f'https://query2.finance.yahoo.com/v8/finance/chart/'
+               f'{urllib.parse.quote(symbol)}?interval=1d&range=2d')
+        req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            meta = json.loads(r.read())['chart']['result'][0]['meta']
+        price = meta.get('regularMarketPrice')
+        if price and price > 0:
+            return float(price)
     except Exception as e:
-        print(f'[push] price {symbol}: {e}')
+        print(f'[push] price yahoo {symbol}: {e}')
+    # zapas dla US — finnhub
+    if not symbol.endswith('.WA'):
+        try:
+            token = os.environ.get('FINNHUB_TOKEN', '')
+            if token:
+                url = f'https://finnhub.io/api/v1/quote?symbol={symbol}&token={token}'
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=6) as r:
+                    q = json.loads(r.read())
+                return q.get('c') if (q.get('c') or 0) > 0 else None
+        except Exception as e:
+            print(f'[push] price finnhub {symbol}: {e}')
     return None
 
 
