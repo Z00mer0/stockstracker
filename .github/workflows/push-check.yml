@@ -1,0 +1,15 @@
+name: push-check
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger push check
+        run: |
+          curl -fsS -X POST \
+            -H "X-Push-Secret: ${{ secrets.PUSH_CRON_SECRET }}" \
+            --max-time 120 --retry 2 -o /dev/null \
+            https://stockstracker.onrender.com/api/push/check
