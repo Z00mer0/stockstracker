@@ -808,6 +808,5 @@ export default {
   push_test:                  'Wyślij testowe',
   push_denied:                'Powiadomienia zablokowane w przeglądarce — zmień w ustawieniach witryny.',
   push_ios_hint:              'Na iPhonie: dodaj MyFund do ekranu głównego (Udostępnij → Do ekranu początkowego), aby włączyć powiadomienia.',
-  push_unsupported:           'Ta przeglądarka nie obsługuje powiadomień push.',
   push_test_sent:             'Wysłano ({n})',
 };

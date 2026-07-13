@@ -808,6 +808,5 @@ export default {
   push_test:                  'Send test',
   push_denied:                'Notifications blocked in the browser — change it in site settings.',
   push_ios_hint:              'On iPhone: add MyFund to your Home Screen (Share → Add to Home Screen) to enable notifications.',
-  push_unsupported:           'This browser does not support push notifications.',
   push_test_sent:             'Sent ({n})',
 };

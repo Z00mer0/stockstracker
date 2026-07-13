@@ -38,17 +38,20 @@ export default function PushToggle() {
     try {
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') { setMsg(t('push_denied')); return; }
-      const { key } = await fetch('/api/push/vapid-key', { headers: authHeader() }).then(r => r.json());
+      const vres = await fetch('/api/push/vapid-key', { headers: authHeader() });
+      if (!vres.ok) throw new Error(`HTTP ${vres.status}`);
+      const { key } = await vres.json();
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(key),
       });
-      await fetch('/api/push/subscribe', {
+      const sres = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: sub.toJSON() }),
       });
+      if (!sres.ok) throw new Error(`HTTP ${sres.status}`);
       setSubscribed(true);
     } catch (e) {
       setMsg(String(e?.message || e));
@@ -61,22 +64,29 @@ export default function PushToggle() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await fetch('/api/push/unsubscribe', {
+        const r = await fetch('/api/push/unsubscribe', {
           method: 'POST',
           headers: { ...authHeader(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         await sub.unsubscribe();
       }
       setSubscribed(false);
+    } catch (e) {
+      setMsg(String(e?.message || e));
     } finally { setBusy(false); }
   }
 
   async function sendTest() {
     setBusy(true); setMsg('');
     try {
-      const { sent } = await fetch('/api/push/test', { method: 'POST', headers: authHeader() }).then(r => r.json());
+      const r = await fetch('/api/push/test', { method: 'POST', headers: authHeader() });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { sent } = await r.json();
       setMsg(t('push_test_sent').replace('{n}', sent));
+    } catch (e) {
+      setMsg(String(e?.message || e));
     } finally { setBusy(false); }
   }
 
