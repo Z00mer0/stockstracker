@@ -1947,43 +1947,56 @@ def _run_push_checks():
     stats['users'] = len(users)
     today = datetime.date.today()
     price_cache = {}
+    div_cache = {}
 
     for username in users:
         # ── 1. Alerty cenowe (co wywołanie) ──────────────────────────────
+        items = None
+        dirty = False
         try:
             items = load_watchlist(username)
-            dirty = False
             for item in items:
                 sym = item.get('symbol', '')
                 for alert in item.get('alerts', []):
                     if alert.get('triggered'):
                         continue
-                    if sym not in price_cache:
-                        price_cache[sym] = _fetch_price_simple(sym)
-                    price = price_cache[sym]
-                    if price is None:
-                        continue
-                    target = alert.get('targetPrice')
-                    hit = ((alert.get('type') == 'above' and price >= target) or
-                           (alert.get('type') == 'below' and price <= target))
-                    if hit:
-                        arrow = '↑' if alert.get('type') == 'above' else '↓'
-                        cur_lbl = item.get('currency') or ''
-                        _send_push(username, f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip(),
-                                   f'Aktualna cena: {price:.2f} {cur_lbl}'.strip(), '/watchlist')
-                        alert['triggered'] = True
-                        dirty = True
-                        stats['priceAlerts'] += 1
-            if dirty:
-                save_watchlist(username, items)
+                    try:
+                        if sym not in price_cache:
+                            price_cache[sym] = _fetch_price_simple(sym)
+                        price = price_cache[sym]
+                        if price is None:
+                            continue
+                        target = alert.get('targetPrice')
+                        hit = ((alert.get('type') == 'above' and price >= target) or
+                               (alert.get('type') == 'below' and price <= target))
+                        if hit:
+                            arrow = '↑' if alert.get('type') == 'above' else '↓'
+                            cur_lbl = item.get('currency') or ''
+                            _send_push(username, f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip(),
+                                       f'Aktualna cena: {price:.2f} {cur_lbl}'.strip(), '/watchlist')
+                            alert['triggered'] = True
+                            dirty = True
+                            stats['priceAlerts'] += 1
+                    except Exception as e:
+                        print(f'[push] alert {username}/{sym}: {e}')
         except Exception as e:
             print(f'[push] alerts {username}: {e}')
+        finally:
+            if dirty and items is not None:
+                try:
+                    save_watchlist(username, items)
+                except Exception as e:
+                    print(f'[push] save_watchlist {username}: {e}')
 
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
-        if _already_sent(username, daily_key):
+        try:
+            if _already_sent(username, daily_key):
+                continue
+            _mark_sent(username, daily_key)
+        except Exception as e:
+            print(f'[push] daily {username}: {e}')
             continue
-        _mark_sent(username, daily_key)
 
         # 2. Dywidendy: ex-date jutro dla posiadanych spółek
         try:
@@ -1992,8 +2005,15 @@ def _run_push_checks():
                                JOIN portfolio_list p ON h.portfolio_id = p.id
                                WHERE p.user_id=%s AND h.qty > 0""", (username,))
                 held = [r[0] for r in cur.fetchall()]
+            missing = [s for s in held if s not in div_cache]
+            if missing:
+                for ev in _upcoming_dividends(missing):
+                    div_cache.setdefault(ev['symbol'], []).append(ev)
+                for s in missing:
+                    div_cache.setdefault(s, [])
             tomorrow = (today + datetime.timedelta(days=1)).isoformat()
-            for ev in _upcoming_dividends(held):
+            user_events = [ev for s in held for ev in div_cache.get(s, [])]
+            for ev in user_events:
                 if ev.get('exDate') == tomorrow:
                     key = f"div:{ev['symbol']}:{ev['exDate']}"
                     if _already_sent(username, key):
