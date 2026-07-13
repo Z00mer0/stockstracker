@@ -2057,7 +2057,7 @@ def _run_push_checks():
                                 body = f"Wpłaty {deposits:,.0f} zł — limit {limit:,.0f} zł wykorzystany w 100%."
                             else:
                                 body = f"Wpłaty {deposits:,.0f} zł z {limit:,.0f} zł ({pct:.0f}% limitu {year})."
-                            _send_push(username, f"📊 Limit {acc['account_type']} — {acc['name']}", body, '/')
+                            _send_push(username, f"📊 Limit {acc['account_type']} — {acc['name']}", body, '/analysis')
                             _mark_sent(username, key)
                             stats['ike'] += 1
                         break  # wyższy próg wysłany/odnotowany — niższego nie duplikujemy
