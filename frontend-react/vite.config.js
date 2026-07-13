@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.js',
         registerType: 'prompt',
         includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
@@ -27,15 +30,8 @@ export default defineConfig(({ mode }) => {
             { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
           ],
         },
-        workbox: {
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/api\.nbp\.pl\/.*/i,
-              handler: 'NetworkFirst',
-              options: { cacheName: 'nbp-cache', expiration: { maxAgeSeconds: 3600 } },
-            },
-          ],
         },
       }),
     ],
