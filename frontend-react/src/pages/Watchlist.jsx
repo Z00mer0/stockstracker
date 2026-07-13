@@ -7,6 +7,7 @@ import StockDetailModal from '../components/StockDetailModal';
 import Card from '../components/shared/Card';
 import Chip from '../components/shared/Chip';
 import TickerLogo from '../components/shared/TickerLogo';
+import PushToggle from '../components/PushToggle';
 
 const WATCH_KEY = 'myfund_watchlist';
 function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
@@ -154,7 +155,10 @@ export default function Watchlist() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card
         title={`${t('watched_companies')}${watchItems.length ? ` · ${watchItems.length}` : ''}`}
-        actions={loading && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('loading_quotes')}</span>}
+        actions={<>
+          {loading && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('loading_quotes')}</span>}
+          <PushToggle />
+        </>}
       >
         <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0' }}>
           <input

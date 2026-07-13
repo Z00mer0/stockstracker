@@ -801,4 +801,13 @@ export default {
   sentiment_positive:         'Positive',
   sentiment_negative:         'Negative',
   sentiment_neutral:          'Neutral',
+
+  // ── Push notifications ───────────────────────────────────────
+  push_enable:                'Enable notifications',
+  push_disable:               'Disable notifications',
+  push_test:                  'Send test',
+  push_denied:                'Notifications blocked in the browser — change it in site settings.',
+  push_ios_hint:              'On iPhone: add MyFund to your Home Screen (Share → Add to Home Screen) to enable notifications.',
+  push_unsupported:           'This browser does not support push notifications.',
+  push_test_sent:             'Sent ({n})',
 };

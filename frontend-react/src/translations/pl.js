@@ -801,4 +801,13 @@ export default {
   sentiment_positive:         'Pozytywny',
   sentiment_negative:         'Negatywny',
   sentiment_neutral:          'Neutralny',
+
+  // ── Push notifications ───────────────────────────────────────
+  push_enable:                'Włącz powiadomienia',
+  push_disable:               'Wyłącz powiadomienia',
+  push_test:                  'Wyślij testowe',
+  push_denied:                'Powiadomienia zablokowane w przeglądarce — zmień w ustawieniach witryny.',
+  push_ios_hint:              'Na iPhonie: dodaj MyFund do ekranu głównego (Udostępnij → Do ekranu początkowego), aby włączyć powiadomienia.',
+  push_unsupported:           'Ta przeglądarka nie obsługuje powiadomień push.',
+  push_test_sent:             'Wysłano ({n})',
 };
