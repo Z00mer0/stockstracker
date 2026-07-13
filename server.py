@@ -1801,7 +1801,8 @@ def _send_push(username, title, body, url='/'):
         try:
             webpush(subscription_info=json.loads(sub_json), data=payload,
                     vapid_private_key=VAPID_PRIVATE_KEY,
-                    vapid_claims={'sub': VAPID_CLAIM_EMAIL})
+                    vapid_claims={'sub': VAPID_CLAIM_EMAIL},
+                    timeout=10)
             sent += 1
         except WebPushException as e:
             code = getattr(getattr(e, 'response', None), 'status_code', None)
@@ -4176,8 +4177,12 @@ async function doRecover() {
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            sent = _send_push(username, 'MyFund 🔔', 'Powiadomienia działają!', '/watchlist')
-            self.send_json(200, {'sent': sent})
+            try:
+                sent = _send_push(username, 'MyFund 🔔', 'Powiadomienia działają!', '/watchlist')
+                self.send_json(200, {'sent': sent})
+            except Exception as e:
+                print(f'[push] test: {e}')
+                self.send_json(500, {'error': 'push failed'})
 
         else:
             self.send_response(405); self.end_headers()
