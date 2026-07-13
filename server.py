@@ -1087,6 +1087,10 @@ _NEWS_CACHE  = {}   # { cache_key: {'ts': float, 'data': dict} }
 _logo_cache  = {}  # symbol → domain (in-memory, populated by /api/logos)
 PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
+VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:gorski.a.r@gmail.com')
+PUSH_CRON_SECRET  = os.environ.get('PUSH_CRON_SECRET', '').strip()
 
 
 # ── STORAGE ────────────────────────────────────────────────────────────────────
@@ -1233,6 +1237,21 @@ if DATABASE_URL:
                     review        TEXT NOT NULL,
                     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     PRIMARY KEY (username, portfolio_key)
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    username          TEXT NOT NULL,
+                    endpoint          TEXT NOT NULL,
+                    subscription_json TEXT NOT NULL,
+                    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (username, endpoint)
+                )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS push_sent (
+                    username  TEXT NOT NULL,
+                    notif_key TEXT NOT NULL,
+                    sent_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (username, notif_key)
                 )""")
 
     def load_users():
@@ -1768,6 +1787,35 @@ def get_username(handler):
     return username
 
 
+def _send_push(username, title, body, url='/'):
+    """Wysyła push na wszystkie urządzenia użytkownika; usuwa wygasłe subskrypcje."""
+    if not VAPID_PRIVATE_KEY:
+        return 0
+    from pywebpush import webpush, WebPushException
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT endpoint, subscription_json FROM push_subscriptions WHERE username=%s", (username,))
+        subs = cur.fetchall()
+    payload = json.dumps({'title': title, 'body': body, 'url': url}, ensure_ascii=False)
+    sent = 0
+    for endpoint, sub_json in subs:
+        try:
+            webpush(subscription_info=json.loads(sub_json), data=payload,
+                    vapid_private_key=VAPID_PRIVATE_KEY,
+                    vapid_claims={'sub': VAPID_CLAIM_EMAIL})
+            sent += 1
+        except WebPushException as e:
+            code = getattr(getattr(e, 'response', None), 'status_code', None)
+            if code in (404, 410):
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("DELETE FROM push_subscriptions WHERE username=%s AND endpoint=%s", (username, endpoint))
+                print(f'[push] {username}: expired subscription removed')
+            else:
+                print(f'[push] {username}: {e}')
+        except Exception as e:
+            print(f'[push] {username}: {e}')
+    return sent
+
+
 # ── HTTP HANDLER ───────────────────────────────────────────────────────────────
 
 class Handler(SimpleHTTPRequestHandler):
@@ -1826,6 +1874,11 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path == '/api/health':
             self.send_json(200, {'status': 'ok'}); return
+
+        elif path == '/api/push/vapid-key':
+            if not VAPID_PUBLIC_KEY:
+                self.send_json(503, {'error': 'push not configured'}); return
+            self.send_json(200, {'key': VAPID_PUBLIC_KEY}); return
 
         elif path == '/api/calendar':
             qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
@@ -4083,6 +4136,48 @@ async function doRecover() {
                         )
                 except Exception as e:
                     print(f'[portfolio-review] db cache write error: {e}')
+
+        elif path == '/api/push/subscribe':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=4096)
+                sub = body.get('subscription')
+                endpoint = (sub or {}).get('endpoint', '')
+                if not endpoint or not isinstance(sub, dict):
+                    self.send_json(400, {'error': 'invalid subscription'}); return
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO push_subscriptions (username, endpoint, subscription_json)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (username, endpoint) DO UPDATE SET subscription_json=EXCLUDED.subscription_json
+                    """, (username, endpoint, json.dumps(sub)))
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                print(f'[push] subscribe: {e}')
+                self.send_json(400, {'error': 'bad request'})
+
+        elif path == '/api/push/unsubscribe':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=4096)
+                endpoint = body.get('endpoint', '')
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("DELETE FROM push_subscriptions WHERE username=%s AND endpoint=%s", (username, endpoint))
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                print(f'[push] unsubscribe: {e}')
+                self.send_json(400, {'error': 'bad request'})
+
+        elif path == '/api/push/test':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            sent = _send_push(username, 'MyFund 🔔', 'Powiadomienia działają!', '/watchlist')
+            self.send_json(200, {'sent': sent})
 
         else:
             self.send_response(405); self.end_headers()
