@@ -1817,6 +1817,236 @@ def _send_push(username, title, body, url='/'):
     return sent
 
 
+def _fetch_price_simple(symbol):
+    """Bieżąca cena: stooq dla GPW (.WA), finnhub dla US. None gdy brak."""
+    try:
+        if symbol.endswith('.WA'):
+            s = symbol[:-3].lower()
+            url = f'https://stooq.com/q/l/?s={s}&f=sd2ohlcv&h&e=csv'
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=6) as r:
+                lines = r.read().decode().strip().split('\n')
+            if len(lines) >= 2:
+                close = float(lines[1].split(',')[5])
+                return close if close > 0 else None
+        else:
+            token = os.environ.get('FINNHUB_TOKEN', '')
+            if not token:
+                return None
+            url = f'https://finnhub.io/api/v1/quote?symbol={symbol}&token={token}'
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=6) as r:
+                q = json.loads(r.read())
+            return q.get('c') if (q.get('c') or 0) > 0 else None
+    except Exception as e:
+        print(f'[push] price {symbol}: {e}')
+    return None
+
+
+def _nbp_rates():
+    """Kursy NBP tabela A: {'USD': 3.98, ...}; PLN=1. Pusty dict przy błędzie."""
+    try:
+        req = urllib.request.Request('https://api.nbp.pl/api/exchangerates/tables/a?format=json',
+                                     headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            table = json.loads(r.read())[0]['rates']
+        rates = {row['code']: float(row['mid']) for row in table}
+        rates['PLN'] = 1.0
+        return rates
+    except Exception as e:
+        print(f'[push] nbp: {e}')
+        return {'PLN': 1.0}
+
+
+def _already_sent(username, key):
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT 1 FROM push_sent WHERE username=%s AND notif_key=%s", (username, key))
+        return cur.fetchone() is not None
+
+
+def _mark_sent(username, key):
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("INSERT INTO push_sent (username, notif_key) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (username, key))
+
+
+def _upcoming_dividends(symbols):
+    """Nadchodzące dywidendy dla listy symboli — logika z /api/dividends/upcoming."""
+    token = os.environ.get('FINNHUB_TOKEN', '')
+    today = datetime.datetime.now().strftime('%Y-%m-%d')
+    results = []
+
+    for symbol in symbols:
+        if '.' in symbol:
+            # GPW / non-US — use Yahoo Finance calendarEvents
+            try:
+                yf_url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+                          f'{urllib.parse.quote(symbol)}'
+                          f'?modules=calendarEvents%2CdefaultKeyStatistics')
+                req = urllib.request.Request(yf_url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    yf_data = json.loads(r.read())
+                res0 = (yf_data.get('quoteSummary', {}).get('result') or [{}])[0]
+                cal   = res0.get('calendarEvents', {})
+                stats = res0.get('defaultKeyStatistics', {})
+                ex_ts = cal.get('exDividendDate', {}).get('raw')
+                if not ex_ts:
+                    continue
+                ex_date = datetime.date.fromtimestamp(ex_ts).isoformat()
+                if ex_date < today:
+                    continue
+                pay_ts = cal.get('dividendDate', {}).get('raw')
+                pay_date = datetime.date.fromtimestamp(pay_ts).isoformat() if pay_ts else None
+                amount = (stats.get('trailingAnnualDividendRate') or {}).get('raw') \
+                      or (stats.get('dividendRate') or {}).get('raw')
+                results.append({
+                    'symbol':   symbol,
+                    'exDate':   ex_date,
+                    'payDate':  pay_date,
+                    'amount':   amount,
+                    'currency': 'PLN',
+                    'isManual': False,
+                })
+            except Exception as e:
+                print(f'[dividends] {symbol}: {e}')
+        else:
+            # US stock — Finnhub
+            try:
+                url = f'https://finnhub.io/api/v1/stock/dividend2?symbol={symbol}&token={token}'
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=6) as resp:
+                    data = json.loads(resp.read())
+                upcoming = [d for d in data.get('data', []) if (d.get('payDate') or '') >= today]
+                if upcoming:
+                    nxt = upcoming[0]
+                    results.append({
+                        'symbol':   symbol,
+                        'exDate':   nxt.get('exDate'),
+                        'payDate':  nxt.get('payDate'),
+                        'amount':   nxt.get('amount'),
+                        'currency': 'USD',
+                        'isManual': False,
+                    })
+            except Exception as e:
+                print(f'[dividends] {symbol}: {e}')
+
+    return results
+
+
+IKE_LIMITS = {  # roczne limity wpłat w PLN (jak w IkeLimitCard.jsx)
+    'IKE':  {2024: 23472,   2025: 26019,   2026: 28260},
+    'IKZE': {2024: 9388.80, 2025: 10407.60, 2026: 11304},
+}
+
+
+def _run_push_checks():
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0}
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT DISTINCT username FROM push_subscriptions")
+        users = [r[0] for r in cur.fetchall()]
+    stats['users'] = len(users)
+    today = datetime.date.today()
+    price_cache = {}
+
+    for username in users:
+        # ── 1. Alerty cenowe (co wywołanie) ──────────────────────────────
+        try:
+            items = load_watchlist(username)
+            dirty = False
+            for item in items:
+                sym = item.get('symbol', '')
+                for alert in item.get('alerts', []):
+                    if alert.get('triggered'):
+                        continue
+                    if sym not in price_cache:
+                        price_cache[sym] = _fetch_price_simple(sym)
+                    price = price_cache[sym]
+                    if price is None:
+                        continue
+                    target = alert.get('targetPrice')
+                    hit = ((alert.get('type') == 'above' and price >= target) or
+                           (alert.get('type') == 'below' and price <= target))
+                    if hit:
+                        arrow = '↑' if alert.get('type') == 'above' else '↓'
+                        cur_lbl = item.get('currency') or ''
+                        _send_push(username, f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip(),
+                                   f'Aktualna cena: {price:.2f} {cur_lbl}'.strip(), '/watchlist')
+                        alert['triggered'] = True
+                        dirty = True
+                        stats['priceAlerts'] += 1
+            if dirty:
+                save_watchlist(username, items)
+        except Exception as e:
+            print(f'[push] alerts {username}: {e}')
+
+        # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
+        daily_key = f'daily:{today.isoformat()}'
+        if _already_sent(username, daily_key):
+            continue
+        _mark_sent(username, daily_key)
+
+        # 2. Dywidendy: ex-date jutro dla posiadanych spółek
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("""SELECT DISTINCT h.symbol FROM portfolio_holdings h
+                               JOIN portfolio_list p ON h.portfolio_id = p.id
+                               WHERE p.user_id=%s AND h.qty > 0""", (username,))
+                held = [r[0] for r in cur.fetchall()]
+            tomorrow = (today + datetime.timedelta(days=1)).isoformat()
+            for ev in _upcoming_dividends(held):
+                if ev.get('exDate') == tomorrow:
+                    key = f"div:{ev['symbol']}:{ev['exDate']}"
+                    if _already_sent(username, key):
+                        continue
+                    amt = ev.get('amount')
+                    amt_txt = f" ({amt:g} {ev.get('currency', '')}/akcję)" if amt else ''
+                    _send_push(username, f"💰 Dywidenda {ev['symbol']}",
+                               f'Jutro ostatni dzień z prawem do dywidendy{amt_txt}.', '/dividends')
+                    _mark_sent(username, key)
+                    stats['dividends'] += 1
+        except Exception as e:
+            print(f'[push] dividends {username}: {e}')
+
+        # 3. Limit IKE/IKZE: progi 80% i 100%, raz na rok
+        try:
+            year = today.year
+            fx = None
+            with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, name, account_type FROM portfolio_list WHERE user_id=%s AND account_type IN ('IKE','IKZE')",
+                            (username,))
+                accounts = cur.fetchall()
+            for acc in accounts:
+                limit = IKE_LIMITS.get(acc['account_type'], {}).get(year)
+                if not limit:
+                    continue
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("""SELECT price, currency FROM portfolio_transactions
+                                   WHERE portfolio_id=%s AND type='CASH' AND price > 0
+                                     AND date >= %s AND date <= %s""",
+                                (acc['id'], f'{year}-01-01', f'{year}-12-31'))
+                    rows = cur.fetchall()
+                if fx is None:
+                    fx = _nbp_rates()
+                deposits = sum(float(p) * fx.get(curr or 'PLN', 1.0) for p, curr in rows)
+                pct = deposits / limit * 100
+                for threshold in (100, 80):
+                    if pct >= threshold:
+                        key = f"ike:{acc['id']}:{year}:{threshold}"
+                        if not _already_sent(username, key):
+                            if threshold == 100:
+                                body = f"Wpłaty {deposits:,.0f} zł — limit {limit:,.0f} zł wykorzystany w 100%."
+                            else:
+                                body = f"Wpłaty {deposits:,.0f} zł z {limit:,.0f} zł ({pct:.0f}% limitu {year})."
+                            _send_push(username, f"📊 Limit {acc['account_type']} — {acc['name']}", body, '/')
+                            _mark_sent(username, key)
+                            stats['ike'] += 1
+                        break  # wyższy próg wysłany/odnotowany — niższego nie duplikujemy
+        except Exception as e:
+            print(f'[push] ike {username}: {e}')
+
+    return stats
+
+
 # ── HTTP HANDLER ───────────────────────────────────────────────────────────────
 
 class Handler(SimpleHTTPRequestHandler):
@@ -2666,65 +2896,7 @@ class Handler(SimpleHTTPRequestHandler):
             _sym_re = re.compile(r'^[A-Z0-9.]{1,12}$')
             symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()]
             symbols = [s for s in symbols if _sym_re.match(s)][:_MAX_SYMBOLS]
-            token   = os.environ.get('FINNHUB_TOKEN', '')
-            today   = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
-            results = []
-
-            for symbol in symbols:
-                if '.' in symbol:
-                    # GPW / non-US — use Yahoo Finance calendarEvents
-                    try:
-                        yf_url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-                                  f'{urllib.parse.quote(symbol)}'
-                                  f'?modules=calendarEvents%2CdefaultKeyStatistics')
-                        req = urllib.request.Request(yf_url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
-                        with urllib.request.urlopen(req, timeout=8) as r:
-                            yf_data = json.loads(r.read())
-                        res0 = (yf_data.get('quoteSummary', {}).get('result') or [{}])[0]
-                        cal   = res0.get('calendarEvents', {})
-                        stats = res0.get('defaultKeyStatistics', {})
-                        ex_ts = cal.get('exDividendDate', {}).get('raw')
-                        if not ex_ts:
-                            continue
-                        ex_date = datetime.date.fromtimestamp(ex_ts).isoformat()
-                        if ex_date < today:
-                            continue
-                        pay_ts = cal.get('dividendDate', {}).get('raw')
-                        pay_date = datetime.date.fromtimestamp(pay_ts).isoformat() if pay_ts else None
-                        amount = (stats.get('trailingAnnualDividendRate') or {}).get('raw') \
-                              or (stats.get('dividendRate') or {}).get('raw')
-                        results.append({
-                            'symbol':   symbol,
-                            'exDate':   ex_date,
-                            'payDate':  pay_date,
-                            'amount':   amount,
-                            'currency': 'PLN',
-                            'isManual': False,
-                        })
-                    except Exception as e:
-                        print(f'[dividends] {symbol}: {e}')
-                else:
-                    # US stock — Finnhub
-                    try:
-                        url = f'https://finnhub.io/api/v1/stock/dividend2?symbol={symbol}&token={token}'
-                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                        with urllib.request.urlopen(req, timeout=6) as resp:
-                            data = json.loads(resp.read())
-                        upcoming = [d for d in data.get('data', []) if (d.get('payDate') or '') >= today]
-                        if upcoming:
-                            nxt = upcoming[0]
-                            results.append({
-                                'symbol':   symbol,
-                                'exDate':   nxt.get('exDate'),
-                                'payDate':  nxt.get('payDate'),
-                                'amount':   nxt.get('amount'),
-                                'currency': 'USD',
-                                'isManual': False,
-                            })
-                    except Exception as e:
-                        print(f'[dividends] {symbol}: {e}')
-
-            self.send_json(200, results)
+            self.send_json(200, _upcoming_dividends(symbols))
 
         elif path == '/api/espi-digest':
             username = get_username(self)
@@ -4183,6 +4355,16 @@ async function doRecover() {
             except Exception as e:
                 print(f'[push] test: {e}')
                 self.send_json(500, {'error': 'push failed'})
+
+        elif path == '/api/push/check':
+            secret = self.headers.get('X-Push-Secret', '')
+            if not PUSH_CRON_SECRET or not secrets.compare_digest(secret, PUSH_CRON_SECRET):
+                self.send_json(403, {'error': 'forbidden'}); return
+            try:
+                self.send_json(200, _run_push_checks())
+            except Exception as e:
+                print(f'[push] check: {e}')
+                self.send_json(500, {'error': 'check failed'})
 
         else:
             self.send_response(405); self.end_headers()
