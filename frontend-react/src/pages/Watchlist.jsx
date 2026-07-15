@@ -1,5 +1,5 @@
 // src/pages/Watchlist.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useChart } from '../context/ChartContext';
@@ -98,6 +98,31 @@ export default function Watchlist() {
   const [initialized, setInitialized] = useState(false);
   const [inputTicker, setInputTicker] = useState('');
   const [adding, setAdding] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSug, setShowSug] = useState(false);
+  const sugRef = useRef(null);
+  const justPicked = useRef(false);
+
+  useEffect(() => {
+    if (justPicked.current) { justPicked.current = false; return; }
+    if (inputTicker.trim().length < 2) { setSuggestions([]); setShowSug(false); return; }
+    const id = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(inputTicker.trim())}`, { headers: authHeader() });
+        if (!res.ok) return;
+        const { results } = await res.json();
+        setSuggestions(results ?? []);
+        setShowSug((results ?? []).length > 0);
+      } catch {}
+    }, 300);
+    return () => clearTimeout(id);
+  }, [inputTicker]);
+
+  useEffect(() => {
+    function onDown(e) { if (sugRef.current && !sugRef.current.contains(e.target)) setShowSug(false); }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('myfund_auth_token');
@@ -133,7 +158,13 @@ export default function Watchlist() {
   async function addWatchItem() {
     const sym = inputTicker.trim().toUpperCase();
     if (!sym) return;
-    if (watchItems.some(w => w.symbol === sym)) { setInputTicker(''); return; }
+    setShowSug(false);
+    const existing = watchItems.find(w => w.symbol === sym);
+    if (existing) {
+      setInputTicker('');
+      setAlertTarget(existing);
+      return;
+    }
     setAdding(true);
     const newItem = { id: genId(), symbol: sym, name: sym, alerts: [] };
     setWatchItems(prev => [...prev, newItem]);
@@ -141,6 +172,13 @@ export default function Watchlist() {
     const liveData = await fetchLivePrice(sym);
     if (liveData) setLivePrices(prev => ({ ...prev, [sym]: liveData }));
     setAdding(false);
+  }
+
+  function pickSuggestion(s) {
+    justPicked.current = true;
+    setInputTicker(s.symbol);
+    setSuggestions([]);
+    setShowSug(false);
   }
 
   function addAlert(itemId, alert) {
@@ -161,15 +199,39 @@ export default function Watchlist() {
         </>}
       >
         <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0' }}>
-          <input
-            className="field-input"
-            style={{ flex: 1, maxWidth: 220 }}
-            placeholder="np. AAPL, PKN.WA"
-            value={inputTicker}
-            onChange={e => setInputTicker(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addWatchItem()}
-            autoComplete="off"
-          />
+          <div ref={sugRef} style={{ position: 'relative', flex: 1, maxWidth: 220 }}>
+            <input
+              className="field-input"
+              style={{ width: '100%' }}
+              placeholder="np. AAPL, PKN.WA"
+              value={inputTicker}
+              onChange={e => { setInputTicker(e.target.value); setShowSug(true); }}
+              onFocus={() => suggestions.length > 0 && setShowSug(true)}
+              onKeyDown={e => e.key === 'Enter' && addWatchItem()}
+              autoComplete="off"
+            />
+            {showSug && suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+                background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)', overflow: 'hidden', marginTop: 2, maxHeight: 260, overflowY: 'auto',
+              }}>
+                {suggestions.map(s => (
+                  <div
+                    key={s.symbol}
+                    onMouseDown={() => pickSuggestion(s)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', minWidth: 72, fontFamily: 'JetBrains Mono, monospace' }}>{s.symbol}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                    {s.exchange && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{s.exchange}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             className="btn btn-primary"
             onClick={addWatchItem}
