@@ -7,6 +7,7 @@ import { useFxBreakdown } from '../hooks/useFxBreakdown';
 import Spinner from '../components/shared/Spinner';
 import Card from '../components/shared/Card';
 import { computeRealizedTrades } from '../utils/realizedPL';
+import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip as ChartTooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 
 function calcDailyReturns(values) {
   const r = [];
@@ -391,6 +392,55 @@ function loadFireSettings() {
   try { return JSON.parse(localStorage.getItem(FIRE_KEY) || '{}'); } catch { return {}; }
 }
 
+// Deterministyczny PRNG — te same suwaki dają zawsze ten sam wachlarz
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Monte Carlo: miesięczne zwroty lognormalne (średnia = realny zwrot, odch. = vol),
+// wpłaty co miesiąc; zwraca percentyle wartości per rok i rozkład roku FIRE
+function runFireMonteCarlo({ start, monthlySav, realReturn, vol, target, maxYears, paths = 500 }) {
+  const rand = mulberry32(20260715);
+  const muM = Math.log(1 + realReturn) / 12 - (vol * vol) / 24;
+  const sigM = vol / Math.sqrt(12);
+  const months = maxYears * 12;
+  const yearly = Array.from({ length: maxYears + 1 }, () => []);
+  const hitYears = [];
+  for (let p = 0; p < paths; p++) {
+    let v = start; let hit = null;
+    yearly[0].push(v);
+    for (let m = 1; m <= months; m++) {
+      const u1 = rand() || 1e-12, u2 = rand();
+      const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      v = v * Math.exp(muM + sigM * z) + monthlySav;
+      if (hit == null && v >= target) hit = m / 12;
+      if (m % 12 === 0) yearly[m / 12].push(v);
+    }
+    hitYears.push(hit ?? Infinity);
+  }
+  const q = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+  const startYear = new Date().getFullYear();
+  const rows = yearly.map((vals, i) => ({
+    year: startYear + i,
+    band: [q(vals, 0.1), q(vals, 0.9)],
+    median: q(vals, 0.5),
+  }));
+  const fy = (p) => { const v = q(hitYears, p); return v === Infinity ? null : startYear + Math.ceil(v); };
+  return {
+    rows,
+    probHit: hitYears.filter(h => h !== Infinity).length / paths,
+    optimistic: fy(0.1),
+    median: fy(0.5),
+    pessimistic: fy(0.9),
+    horizon: maxYears,
+  };
+}
+
 function FireSection({ totalValue }) {
   const t = useT();
   const { locale } = useLanguage();
@@ -403,10 +453,11 @@ function FireSection({ totalValue }) {
   const [savings,  setSavings]  = useState(saved.savings  ?? '');
   const [annReturn, setAnnReturn] = useState(saved.annReturn ?? 7);
   const [infl,      setInfl]      = useState(saved.infl      ?? 3);
+  const [vol,       setVol]       = useState(saved.vol       ?? 15);
 
   useEffect(() => {
-    localStorage.setItem(FIRE_KEY, JSON.stringify({ expenses, savings, annReturn, infl }));
-  }, [expenses, savings, annReturn, infl]);
+    localStorage.setItem(FIRE_KEY, JSON.stringify({ expenses, savings, annReturn, infl, vol }));
+  }, [expenses, savings, annReturn, infl, vol]);
 
   const monthlyExp = parseFloat(expenses) || 0;
   const monthlySav = parseFloat(savings)  || 0;
@@ -437,6 +488,15 @@ function FireSection({ totalValue }) {
   const fireYear = yearsToFire != null
     ? new Date().getFullYear() + Math.ceil(yearsToFire)
     : null;
+
+  const mc = useMemo(() => {
+    if (!(target > 0) || totalValue >= target) return null;
+    const horizon = Math.min(50, Math.max(10, Math.ceil((yearsToFire ?? 30) * 1.6)));
+    return runFireMonteCarlo({
+      start: totalValue, monthlySav, realReturn, vol: vol / 100, target, maxYears: horizon,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalValue, monthlySav, realReturn, vol, target]);
 
   const inputStyle = {
     background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
@@ -514,6 +574,63 @@ function FireSection({ totalValue }) {
                 }} />
               </div>
             </div>
+
+            {/* Monte Carlo */}
+            {mc && (
+              <div style={{ marginTop: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 4 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t('fire_mc_title')}</p>
+                  <div style={{ minWidth: 200, flex: '0 1 260px' }}>
+                    <label style={labelStyle}>{t('fire_mc_vol')}: {vol}%</label>
+                    <input type="range" min="5" max="30" step="1" value={vol}
+                      onChange={e => setVol(parseFloat(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--accent)' }} />
+                  </div>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 14 }}>
+                  {t('fire_mc_desc')}
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+                  {[
+                    { label: t('fire_mc_optimistic'),  value: mc.optimistic ?? t('fire_mc_beyond').replace('{n}', mc.horizon), color: 'var(--up)' },
+                    { label: t('fire_mc_median'),      value: mc.median ?? t('fire_mc_beyond').replace('{n}', mc.horizon),     color: 'var(--text)' },
+                    { label: t('fire_mc_pessimistic'), value: mc.pessimistic ?? t('fire_mc_beyond').replace('{n}', mc.horizon), color: 'var(--warn)' },
+                    { label: t('fire_mc_prob').replace('{n}', mc.horizon), value: `${fmt(mc.probHit * 100, 0, locale)}%`, color: mc.probHit >= 0.8 ? 'var(--up)' : mc.probHit >= 0.5 ? 'var(--warn)' : 'var(--down)' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="kpi-card">
+                      <div className="kpi-label">{label}</div>
+                      <div className="kpi-value" style={{ fontSize: 18, color }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ width: '100%', height: 240 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={mc.rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+                      <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} minTickGap={24} />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} width={56}
+                        tickFormatter={v => Number(v).toLocaleString(locale, { notation: 'compact', maximumFractionDigits: 1 })} />
+                      <ChartTooltip
+                        contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                        labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                        formatter={(v, name) => name === 'median'
+                          ? [fmt(v, 0, locale), t('fire_mc_median')]
+                          : [`${fmt(v[0], 0, locale)} – ${fmt(v[1], 0, locale)}`, t('fire_mc_band')]}
+                      />
+                      <Area dataKey="band" stroke="none" fill="var(--accent)" fillOpacity={0.14} isAnimationActive={false} />
+                      <Line dataKey="median" stroke="var(--accent)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                      <ReferenceLine y={target} stroke="var(--warn)" strokeDasharray="5 4"
+                        label={{ value: t('fire_target'), position: 'insideTopRight', fontSize: 11, fill: 'var(--warn)' }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 8, lineHeight: 1.5 }}>
+                  {t('fire_mc_note').replace('{vol}', String(vol))}
+                </p>
+              </div>
+            )}
           </>
         ) : (
           <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic' }}>

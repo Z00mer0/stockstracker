@@ -370,6 +370,16 @@ export default {
   fire_already_now:     'Już teraz!',
   fire_over_100:        '> 100 lat',
   fire_enter_expenses:  'Wpisz miesięczne wydatki aby zobaczyć obliczenia FIRE.',
+  fire_mc_title:        'Symulacja Monte Carlo',
+  fire_mc_desc:         '500 losowych scenariuszy rynkowych przy Twoich parametrach — zamiast jednej średniej.',
+  fire_mc_vol:          'Zmienność portfela',
+  fire_mc_optimistic:   'Optymistycznie (10%)',
+  fire_mc_median:       'Mediana',
+  fire_mc_pessimistic:  'Pesymistycznie (90%)',
+  fire_mc_prob:         'Szansa na FIRE w {n} lat',
+  fire_mc_beyond:       '>{n} lat',
+  fire_mc_band:         'Przedział 10–90%',
+  fire_mc_note:         'Pasmo: 10.–90. percentyl wartości portfela w 500 symulacjach; linia — mediana. Zmienność {vol}% rocznie, zwroty realne (po inflacji). Projekcja poglądowa.',
 
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Akcje vs Opcje',

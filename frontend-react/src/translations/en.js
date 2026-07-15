@@ -370,6 +370,16 @@ export default {
   fire_already_now:     'Now!',
   fire_over_100:        '> 100 years',
   fire_enter_expenses:  'Enter monthly expenses to see FIRE calculations.',
+  fire_mc_title:        'Monte Carlo simulation',
+  fire_mc_desc:         '500 random market scenarios with your parameters — instead of a single average.',
+  fire_mc_vol:          'Portfolio volatility',
+  fire_mc_optimistic:   'Optimistic (10%)',
+  fire_mc_median:       'Median',
+  fire_mc_pessimistic:  'Pessimistic (90%)',
+  fire_mc_prob:         'Chance of FIRE in {n} yrs',
+  fire_mc_beyond:       '>{n} yrs',
+  fire_mc_band:         '10–90% range',
+  fire_mc_note:         'Band: 10th–90th percentile of portfolio value across 500 simulations; line — median. {vol}% annual volatility, real (after-inflation) returns. Illustrative projection.',
 
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Stocks vs Options',
