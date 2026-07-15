@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -86,6 +87,15 @@ export default function Dividends() {
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('');
 
+  const [dripYears, setDripYears] = useState(() => {
+    const v = parseInt(localStorage.getItem('myfund_drip_years'), 10);
+    return [10, 20, 30].includes(v) ? v : 10;
+  });
+  const [dripGrowth, setDripGrowth] = useState(() => {
+    const v = parseFloat(localStorage.getItem('myfund_drip_growth'));
+    return [0, 3, 5, 8].includes(v) ? v : 3;
+  });
+
   function saveGoal() {
     const v = parseFloat(goalInput);
     if (!isNaN(v) && v > 0) {
@@ -170,6 +180,27 @@ export default function Dividends() {
     });
     return totalValue > 0 ? (totalAnnualDiv / totalValue) * 100 : null;
   }, [portfolio, yocMap, fxRates]);
+
+  // ── Kula śnieżna (DRIP): dochód roczny rośnie o (1+wzrost)·(1+yield) przy
+  //    reinwestycji, o (1+wzrost) bez niej; yield efektywny = wypłaty 12m / wartość portfela
+  const drip = useMemo(() => {
+    const valuePLN = portfolio.reduce(
+      (s, p) => s + p.qty * (p.price ?? p.avgPrice) * (fxRates[p.currency] ?? 1), 0
+    );
+    if (annualDivPLN <= 0 || valuePLN <= 0) return null;
+    const y = annualDivPLN / valuePLN;
+    const g = dripGrowth / 100;
+    const startYear = new Date().getFullYear();
+    const rows = [];
+    let withDrip = annualDivPLN, without = annualDivPLN;
+    for (let i = 0; i <= dripYears; i++) {
+      rows.push({ year: startYear + i, drip: withDrip / 12 / dispFx, noDrip: without / 12 / dispFx });
+      withDrip *= (1 + g) * (1 + y);
+      without  *= (1 + g);
+    }
+    const goalYear = fireGoal ? rows.find(r => r.drip >= fireGoal / dispFx)?.year ?? null : null;
+    return { rows, yieldPct: y * 100, last: rows[rows.length - 1], goalYear };
+  }, [portfolio, fxRates, annualDivPLN, dripGrowth, dripYears, dispFx, fireGoal]);
 
   const bySymbol = useMemo(() => {
     const map = {};
@@ -349,6 +380,88 @@ export default function Dividends() {
           </div>
         );
       })()}
+
+      {/* ── Kula śnieżna dywidend (DRIP) ── */}
+      {drip && (
+        <SectionToggle label={t('drip_title')} isOpen={!collapsed.drip} onToggle={() => toggle('drip')}>
+          <div style={{ padding: '0 20px 16px' }}>
+            <div className="flex items-center gap-3" style={{ flexWrap: 'wrap', marginBottom: 14 }}>
+              <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('drip_horizon_label')}</span>
+                <SegmentedControl
+                  options={[10, 20, 30].map(v => ({ value: v, label: `${v} ${t('drip_years_unit')}` }))}
+                  value={dripYears}
+                  onChange={v => { setDripYears(v); localStorage.setItem('myfund_drip_years', String(v)); }}
+                />
+              </div>
+              <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('drip_growth_label')}</span>
+                <SegmentedControl
+                  options={[0, 3, 5, 8].map(v => ({ value: v, label: `${v}%` }))}
+                  value={dripGrowth}
+                  onChange={v => { setDripGrowth(v); localStorage.setItem('myfund_drip_growth', String(v)); }}
+                />
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 12 }}>
+              {t('drip_now')}:{' '}
+              <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)' }}>
+                {fmt(annualDivPLN / 12 / dispFx, 0, locale)} {dCurr}/mies.
+              </span>
+              {' '}→ {drip.last.year}:{' '}
+              <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontWeight: 700, color: 'var(--warn)' }}>
+                {fmt(drip.last.drip, 0, locale)} {dCurr}/mies.
+              </span>
+              {' '}{t('drip_with')}{' '}
+              (<span className={isPrivate ? 'privacy-blur' : ''}>{fmt(drip.last.noDrip, 0, locale)} {dCurr}</span> {t('drip_without')})
+            </p>
+
+            <div style={{ width: '100%', height: 220 }} className={isPrivate ? 'privacy-blur' : ''}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={drip.rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} minTickGap={24} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} width={60}
+                    tickFormatter={v => Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                    formatter={(v, name) => [
+                      `${fmt(v, 0, locale)} ${dCurr}/mies.`,
+                      name === 'drip' ? t('drip_with') : t('drip_without'),
+                    ]}
+                  />
+                  <Legend
+                    formatter={name => (
+                      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                        {name === 'drip' ? t('drip_with') : t('drip_without')}
+                      </span>
+                    )}
+                  />
+                  <Line type="monotone" dataKey="drip" stroke="var(--warn)" strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="noDrip" stroke="var(--info)" strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {fireGoal && (
+              <p style={{ fontSize: 13, marginTop: 10, color: drip.goalYear ? 'var(--up)' : 'var(--text-dim)', fontWeight: drip.goalYear ? 600 : 400 }}>
+                {(drip.goalYear ? t('drip_goal_hit') : t('drip_goal_miss'))
+                  .replace('{goal}', fmt(fireGoal / dispFx, 0, locale))
+                  .replace('{curr}', dCurr)
+                  .replace('{year}', String(drip.goalYear ?? ''))}
+              </p>
+            )}
+
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 10, lineHeight: 1.5 }}>
+              {t('drip_assumptions')
+                .replace('{yield}', fmt(drip.yieldPct, 1, locale))
+                .replace('{growth}', fmt(dripGrowth, 0, locale))
+                .replace('{mode}', modeLabel)}
+            </p>
+          </div>
+        </SectionToggle>
+      )}
 
       {/* ── Netto / Brutto toggle ── */}
       <div className="card flex items-center justify-between flex-wrap gap-3" style={{ padding: '12px 20px' }}>

@@ -261,6 +261,16 @@ export default {
   no_div_companies:     'No dividend stocks in portfolio',
   no_div_hint:          'Add a dividend payment in Transactions (type: DIV) or manually above.',
   total_pln_header:     'Total PLN',
+  drip_title:           'Dividend snowball (DRIP)',
+  drip_horizon_label:   'Horizon',
+  drip_years_unit:      'yrs',
+  drip_growth_label:    'Dividend growth/yr',
+  drip_now:             'Today',
+  drip_with:            'with reinvestment',
+  drip_without:         'without reinvestment',
+  drip_goal_hit:        '🎯 With reinvestment you reach the {goal} {curr}/mo goal around {year}.',
+  drip_goal_miss:       'With reinvestment the {goal} {curr}/mo goal stays beyond the projection horizon.',
+  drip_assumptions:     'Assumptions: payouts reinvested at the current {yield}% yield ({mode}), dividends growing {growth}% per year, flat share prices. Illustrative projection — not investment advice.',
   months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
 
   // ── Analysis page ────────────────────────────────────────────
