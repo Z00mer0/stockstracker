@@ -4,7 +4,7 @@ import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
 import TickerLogo from './shared/TickerLogo';
 import { useLanguage, useT } from '../context/LanguageContext';
-import { getPositionNote, setPositionNote } from '../utils/positionNotes';
+import { getThesis, setThesis } from '../services/journalService';
 
 const PERIODS_BASE = [
   { key: '1W', pl: '1T', en: '1W', days: 7 },
@@ -259,8 +259,17 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const [financialsMounted, setFinancialsMounted] = useState(false);
   const [wskaznikMounted, setWskaznikMounted] = useState(false);
   const [summaryMounted, setSummaryMounted] = useState(false);
-  const [note, setNote] = useState(() => getPositionNote(item.symbol));
+  const [note, setNote] = useState('');
+  const noteTimer = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Zapis tezy na serwer z opóźnieniem, żeby nie POST-ować przy każdej literze
+  function updateNote(text) {
+    setNote(text);
+    clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => { setThesis(item.symbol, text).catch(() => {}); }, 800);
+  }
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -276,7 +285,9 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
     setSummaryMounted(false);
     setBenchSymbol(null);
     setBenchData([]);
-    setNote(getPositionNote(item.symbol));
+    let cancelled = false;
+    getThesis(item.symbol).then(text => { if (!cancelled) setNote(text); }).catch(() => {});
+    return () => { cancelled = true; };
   }, [item.symbol]);
 
   useEffect(() => {
@@ -591,11 +602,11 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         {activeTab === 'notatki' && (
           <div style={{ padding: '16px 20px 20px' }}>
             <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>
-              Teza inwestycyjna, cel cenowy, powód zakupu — zapisywane lokalnie na tym urządzeniu.
+              Teza inwestycyjna, cel cenowy, powód zakupu — zapisywane na Twoim koncie i synchronizowane między urządzeniami. Przy sprzedaży zapytamy, czy teza się sprawdziła.
             </p>
             <textarea
               value={note}
-              onChange={e => { setNote(e.target.value); setPositionNote(item.symbol, e.target.value); }}
+              onChange={e => updateNote(e.target.value)}
               placeholder={`Notatki do ${item.symbol}…`}
               style={{
                 width: '100%', minHeight: 160, padding: '10px 12px',
@@ -608,7 +619,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             {note && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                 <button
-                  onClick={() => { setNote(''); setPositionNote(item.symbol, ''); }}
+                  onClick={() => updateNote('')}
                   style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Wyczyść notatkę

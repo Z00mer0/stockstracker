@@ -381,6 +381,23 @@ export default {
   fire_mc_band:         '10–90% range',
   fire_mc_note:         'Band: 10th–90th percentile of portfolio value across 500 simulations; line — median. {vol}% annual volatility, real (after-inflation) returns. Illustrative projection.',
 
+  // ── Investor journal ─────────────────────────────────────────
+  journal_thesis_label:     'Your thesis from the journal',
+  journal_verdict_q:        'Did the thesis play out?',
+  journal_hit:              'It played out',
+  journal_partial:          'Partially',
+  journal_miss:             'It did not',
+  journal_skip:             'skip rating',
+  journal_verdict_required: 'Rate your thesis before selling (or click "skip rating").',
+  journal_retro_note_ph:    'Lessons for the future (optional)',
+  journal_stats_title:      'Investor journal — thesis performance',
+  journal_year_col:         'Year',
+  journal_with_thesis:      'With thesis',
+  journal_without_thesis:   'No thesis (impulsive)',
+  journal_trades_unit:      'trades',
+  journal_stats_note:       'Average % result of closed trades. "With thesis" = a written investment thesis existed at the time of sale (Notes tab in stock details).',
+  journal_stats_empty:      'Write investment theses in stock details (Notes tab). When you sell, you\'ll rate whether the thesis played out — and here you\'ll see if planned decisions beat impulsive ones.',
+
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Stocks vs Options',
   scenario_stock_chain: 'Stock & option chain',

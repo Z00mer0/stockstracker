@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import Card from '../components/shared/Card';
 import TickerLogo from '../components/shared/TickerLogo';
 import Spinner from '../components/shared/Spinner';
 import { computeRealizedTrades, groupBySymbol, exportPIT38CSV } from '../utils/realizedPL';
+import { loadJournal } from '../services/journalService';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 
@@ -33,6 +34,28 @@ export default function ClosedPositions() {
 
   const trades = useMemo(() => computeRealizedTrades(transactions, fxRates), [transactions, fxRates]);
   const grouped = useMemo(() => groupBySymbol(trades), [trades]);
+
+  const [journal, setJournal] = useState(null);
+  useEffect(() => {
+    loadJournal().then(setJournal).catch(() => setJournal({ theses: {}, retros: {} }));
+  }, []);
+
+  // Skuteczność decyzji z tezą vs bez tezy (impulsywnych), per rok
+  const journalStats = useMemo(() => {
+    if (!journal || !trades.length) return null;
+    const retros = journal.retros || {};
+    const verdictCounts = { hit: 0, partial: 0, miss: 0 };
+    Object.values(retros).forEach(r => { if (r.verdict in verdictCounts) verdictCounts[r.verdict]++; });
+    const byYear = {};
+    for (const tr of trades) {
+      const y = tr.date?.slice(0, 4) || '—';
+      if (!byYear[y]) byYear[y] = { year: y, thesis: { n: 0, pctSum: 0 }, impulse: { n: 0, pctSum: 0 } };
+      const g = retros[tr.id]?.hadThesis ? byYear[y].thesis : byYear[y].impulse;
+      g.n++; g.pctSum += tr.pct;
+    }
+    const years = Object.values(byYear).sort((a, b) => b.year.localeCompare(a.year));
+    return { years, verdictCounts, hasThesisData: years.some(y => y.thesis.n > 0) };
+  }, [journal, trades]);
 
   const currSym = CUR_SYMBOLS[displayCurrency] ?? displayCurrency;
   const rate = fxRates[displayCurrency] ?? 1;
@@ -103,6 +126,61 @@ export default function ClosedPositions() {
         <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-faint)' }}>
           <p style={{ fontSize: 14 }}>{t('no_closed_positions')}</p>
         </div>
+      )}
+
+      {/* Dziennik inwestora — skuteczność tez */}
+      {journalStats && (
+        <Card title={`📓 ${t('journal_stats_title')}`} collapsible collapseKey="cp_journal">
+          <div className="card-body">
+            {journalStats.hasThesisData ? (
+              <>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14, fontSize: 12, color: 'var(--text-dim)' }}>
+                  <span>✅ {t('journal_hit')}: <b style={{ color: 'var(--up)' }}>{journalStats.verdictCounts.hit}</b></span>
+                  <span>➖ {t('journal_partial')}: <b style={{ color: 'var(--warn)' }}>{journalStats.verdictCounts.partial}</b></span>
+                  <span>❌ {t('journal_miss')}: <b style={{ color: 'var(--down)' }}>{journalStats.verdictCounts.miss}</b></span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        {[t('journal_year_col'), t('journal_with_thesis'), t('journal_without_thesis')].map((h, i) => (
+                          <th key={h} style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {journalStats.years.map(y => {
+                        const cell = (g) => g.n === 0
+                          ? <span style={{ color: 'var(--text-faint)' }}>—</span>
+                          : (() => {
+                              const avg = g.pctSum / g.n;
+                              return (
+                                <>
+                                  <span style={{ color: avg >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
+                                    {avg >= 0 ? '+' : ''}{fmt(avg, 1, locale)}%
+                                  </span>
+                                  <span style={{ color: 'var(--text-faint)', fontSize: 11 }}> ({g.n} {t('journal_trades_unit')})</span>
+                                </>
+                              );
+                            })();
+                        return (
+                          <tr key={y.year} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '8px 10px', color: 'var(--text)', fontWeight: 600 }}>{y.year}</td>
+                            <td className="mono" style={{ padding: '8px 10px', textAlign: 'right' }}>{cell(y.thesis)}</td>
+                            <td className="mono" style={{ padding: '8px 10px', textAlign: 'right' }}>{cell(y.impulse)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 10 }}>{t('journal_stats_note')}</p>
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>{t('journal_stats_empty')}</p>
+            )}
+          </div>
+        </Card>
       )}
 
       {trades.length > 0 && (

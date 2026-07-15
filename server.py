@@ -1192,6 +1192,11 @@ if DATABASE_URL:
                     insights_json TEXT NOT NULL DEFAULT '{}'
                 )""")
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_journal (
+                    username     TEXT PRIMARY KEY,
+                    journal_json TEXT NOT NULL DEFAULT '{}'
+                )""")
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS financial_analyses (
                     symbol     TEXT NOT NULL,
                     period     TEXT NOT NULL,
@@ -1456,6 +1461,19 @@ if DATABASE_URL:
                 ON CONFLICT (username) DO UPDATE SET insights_json = EXCLUDED.insights_json
             """, (username, json.dumps(data, ensure_ascii=False)))
 
+    def load_journal(username):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT journal_json FROM user_journal WHERE username=%s", (username,))
+            row = cur.fetchone()
+        return json.loads(row[0]) if row else {}
+
+    def save_journal(username, data):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("""
+                INSERT INTO user_journal (username, journal_json) VALUES (%s, %s)
+                ON CONFLICT (username) DO UPDATE SET journal_json = EXCLUDED.journal_json
+            """, (username, json.dumps(data, ensure_ascii=False)))
+
     _init_db()
 
 else:
@@ -1560,6 +1578,19 @@ else:
 
     def save_insights(username, data):
         f = BASE / f'insights_{username}.json'
+        f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    def load_journal(username):
+        f = BASE / f'journal_{username}.json'
+        if f.exists():
+            try:
+                return json.loads(f.read_text(encoding='utf-8'))
+            except Exception:
+                return {}
+        return {}
+
+    def save_journal(username, data):
+        f = BASE / f'journal_{username}.json'
         f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
 
 
@@ -1691,6 +1722,7 @@ def _purge_old_demo_users():
                 cur.execute("DELETE FROM portfolios WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_watchlist WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_insights WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM user_journal WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM sessions WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM users WHERE username=%s", (uname,))
         stale_set = set(stale)
@@ -2169,6 +2201,15 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             try:
                 self.send_json(200, load_insights(username))
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/journal':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                self.send_json(200, load_journal(username))
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
@@ -3775,6 +3816,22 @@ async function doRecover() {
                 self.send_json(400, {'error': 'expected object'}); return
             try:
                 save_insights(username, body)
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/journal':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=512 * 1024)
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            if not isinstance(body, dict):
+                self.send_json(400, {'error': 'expected object'}); return
+            try:
+                save_journal(username, body)
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
