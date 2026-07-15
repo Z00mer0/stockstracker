@@ -398,6 +398,14 @@ export default {
   journal_stats_note:       'Średni wynik % zamkniętych transakcji. „Z tezą" = przy sprzedaży istniała zapisana teza inwestycyjna (zakładka Notatki w szczegółach spółki).',
   journal_stats_empty:      'Zapisuj tezy inwestycyjne w szczegółach spółki (zakładka Notatki). Przy sprzedaży ocenisz, czy teza się sprawdziła — a tutaj zobaczysz, czy decyzje z planem biją te impulsywne.',
 
+  // ── Publiczny link do portfela ───────────────────────────────
+  share_title:    'Publiczny link do portfela',
+  share_desc:     'Udostępnij strukturę portfela znajomym — widoczne są tylko symbole, udziały procentowe i wynik %. Bez kwot, liczby akcji i historii.',
+  share_generate: 'Wygeneruj link',
+  share_revoke:   'Odwołaj link',
+  share_copy:     'Kopiuj',
+  share_note:     'Każdy z linkiem zobaczy aktualny skład portfela (procenty liczone z bieżących cen). Odwołanie linku natychmiast go dezaktywuje — nowy link będzie miał inny adres.',
+
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Akcje vs Opcje',
   scenario_stock_chain: 'Spółka i łańcuch opcji',

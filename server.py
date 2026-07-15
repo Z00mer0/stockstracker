@@ -1197,6 +1197,13 @@ if DATABASE_URL:
                     journal_json TEXT NOT NULL DEFAULT '{}'
                 )""")
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS share_links (
+                    token        TEXT PRIMARY KEY,
+                    username     TEXT NOT NULL,
+                    portfolio_id TEXT NOT NULL,
+                    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )""")
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS financial_analyses (
                     symbol     TEXT NOT NULL,
                     period     TEXT NOT NULL,
@@ -1474,6 +1481,29 @@ if DATABASE_URL:
                 ON CONFLICT (username) DO UPDATE SET journal_json = EXCLUDED.journal_json
             """, (username, json.dumps(data, ensure_ascii=False)))
 
+    def get_share_token(username, portfolio_id):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT token FROM share_links WHERE username=%s AND portfolio_id=%s",
+                        (username, portfolio_id))
+            row = cur.fetchone()
+        return row[0] if row else None
+
+    def create_share_token(username, portfolio_id, token):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("INSERT INTO share_links (token, username, portfolio_id) VALUES (%s, %s, %s)",
+                        (token, username, portfolio_id))
+
+    def revoke_share_token(username, portfolio_id):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("DELETE FROM share_links WHERE username=%s AND portfolio_id=%s",
+                        (username, portfolio_id))
+
+    def resolve_share_token(token):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT username, portfolio_id FROM share_links WHERE token=%s", (token,))
+            row = cur.fetchone()
+        return (row[0], row[1]) if row else None
+
     _init_db()
 
 else:
@@ -1592,6 +1622,39 @@ else:
     def save_journal(username, data):
         f = BASE / f'journal_{username}.json'
         f.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    def _load_shares():
+        f = BASE / 'share_links.json'
+        if f.exists():
+            try:
+                return json.loads(f.read_text(encoding='utf-8'))
+            except Exception:
+                return {}
+        return {}
+
+    def _save_shares(data):
+        (BASE / 'share_links.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    def get_share_token(username, portfolio_id):
+        for tok, v in _load_shares().items():
+            if v.get('username') == username and v.get('portfolio_id') == portfolio_id:
+                return tok
+        return None
+
+    def create_share_token(username, portfolio_id, token):
+        shares = _load_shares()
+        shares[token] = {'username': username, 'portfolio_id': portfolio_id}
+        _save_shares(shares)
+
+    def revoke_share_token(username, portfolio_id):
+        shares = _load_shares()
+        shares = {t: v for t, v in shares.items()
+                  if not (v.get('username') == username and v.get('portfolio_id') == portfolio_id)}
+        _save_shares(shares)
+
+    def resolve_share_token(token):
+        v = _load_shares().get(token)
+        return (v['username'], v['portfolio_id']) if v else None
 
 
 def migrate_user_to_portfolios(username):
@@ -1723,6 +1786,7 @@ def _purge_old_demo_users():
                 cur.execute("DELETE FROM user_watchlist WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_insights WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_journal WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM share_links WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM sessions WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM users WHERE username=%s", (uname,))
         stale_set = set(stale)
@@ -1897,6 +1961,68 @@ def _nbp_rates():
     except Exception as e:
         print(f'[push] nbp: {e}')
         return {'PLN': 1.0}
+
+
+# ── Publiczny link do portfela (tylko %) ─────────────────────────────────────
+_share_price_cache = {}   # {symbol: (ts, price)}
+_share_fx_cache = {'ts': 0, 'rates': {'PLN': 1.0}}
+_SHARE_PRICE_TTL = 600
+_SHARE_FX_TTL = 3600
+
+
+def _share_price(symbol):
+    now = time.time()
+    hit = _share_price_cache.get(symbol)
+    if hit and now - hit[0] < _SHARE_PRICE_TTL:
+        return hit[1]
+    price = _fetch_price_simple(symbol)
+    _share_price_cache[symbol] = (now, price)
+    return price
+
+
+def _share_fx():
+    now = time.time()
+    if now - _share_fx_cache['ts'] > _SHARE_FX_TTL:
+        rates = _nbp_rates()
+        if len(rates) > 1:
+            _share_fx_cache.update(ts=now, rates=rates)
+    return _share_fx_cache['rates']
+
+
+def _build_shared_payload(username, portfolio_id):
+    """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot."""
+    meta = next((p for p in list_portfolios(username) if p['id'] == portfolio_id), None)
+    if meta is None:
+        return None
+    data = load_portfolio_data(portfolio_id)
+    holdings = (data.get('portfolio') or {}).get('holdings') or []
+    fx = _share_fx()
+    rows, total = [], 0.0
+    for h in holdings:
+        qty = float(h.get('qty') or 0)
+        avg = float(h.get('avgPrice') or 0)
+        if qty <= 0:
+            continue
+        price = _share_price(h.get('symbol') or '')
+        live = (price or 0) > 0
+        eff_price = price if live else avg
+        value = qty * eff_price * fx.get(h.get('currency') or 'PLN', 1.0)
+        rows.append({
+            'symbol': h.get('symbol'),
+            'value': value,
+            'plPct': round((eff_price / avg - 1) * 100, 2) if live and avg > 0 else None,
+        })
+        total += value
+    positions = [{
+        'symbol': r['symbol'],
+        'pct': round(r['value'] / total * 100, 1) if total > 0 else 0,
+        'plPct': r['plPct'],
+    } for r in sorted(rows, key=lambda r: -r['value'])]
+    return {
+        'name': meta.get('name') or 'Portfel',
+        'positions': positions,
+        'updated': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+    }
 
 
 def _already_sent(username, key):
@@ -2210,6 +2336,37 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             try:
                 self.send_json(200, load_journal(username))
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/share':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            pid = qs.get('portfolio_id', '')
+            try:
+                if not any(p['id'] == pid for p in list_portfolios(username)):
+                    self.send_json(404, {'error': 'portfolio not found'}); return
+                self.send_json(200, {'token': get_share_token(username, pid)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/shared':
+            # publiczny — bez auth; nieudane próby zużywają limit anty-enumeracyjny
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            token = qs.get('token', '')
+            try:
+                resolved = resolve_share_token(token) if 8 <= len(token) <= 64 else None
+                if not resolved:
+                    ip = self.headers.get('X-Forwarded-For', self.client_address[0]).split(',')[0].strip()
+                    if _rate_limited(ip):
+                        self.send_json(429, {'error': 'too many requests'}); return
+                    self.send_json(404, {'error': 'not found'}); return
+                payload = _build_shared_payload(*resolved)
+                if payload is None:
+                    self.send_json(404, {'error': 'not found'}); return
+                self.send_json(200, payload)
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
@@ -3833,6 +3990,29 @@ async function doRecover() {
             try:
                 save_journal(username, body)
                 self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path in ('/api/share', '/api/share/revoke'):
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=1024)
+                pid = _str(body.get('portfolio_id', ''), 64, 'portfolio_id')
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            try:
+                if not any(p['id'] == pid for p in list_portfolios(username)):
+                    self.send_json(404, {'error': 'portfolio not found'}); return
+                if path == '/api/share/revoke':
+                    revoke_share_token(username, pid)
+                    self.send_json(200, {'ok': True}); return
+                token = get_share_token(username, pid)
+                if not token:
+                    token = secrets.token_urlsafe(16)
+                    create_share_token(username, pid, token)
+                self.send_json(200, {'ok': True, 'token': token})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 

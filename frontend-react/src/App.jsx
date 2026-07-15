@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { ChartProvider } from './context/ChartContext';
 import Layout from './components/layout/Layout';
@@ -20,10 +20,22 @@ import AiInsights      from './pages/AiInsights';
 import News            from './pages/News';
 import ClosedPositions from './pages/ClosedPositions';
 import Settings        from './pages/Settings';
+import SharedPortfolio from './pages/SharedPortfolio';
 
 function AppRoutes() {
   const { isAuthenticated, login, portfolio } = useApp();
   const [wizardDone, setWizardDone] = React.useState(false);
+  const location = useLocation();
+
+  // Publiczny widok udostępnionego portfela — bez logowania
+  if (location.pathname.startsWith('/s/')) {
+    return (
+      <Routes>
+        <Route path="/s/:token" element={<SharedPortfolio />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
 
   if (!isAuthenticated) {
     return <AuthGate onLogin={login} />;
