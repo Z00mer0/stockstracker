@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage, useT } from '../../context/LanguageContext';
+import { usePrivacy } from '../../context/PrivacyContext';
 
 function fmtPct(n) {
   if (n == null || isNaN(n)) return '—';
@@ -9,6 +10,8 @@ function fmtPct(n) {
 export default function InsightStrip({ positions = [], dailyChangePLN = 0, dailyChangePct = null, onSymbolClick }) {
   const { locale } = useLanguage();
   const t = useT();
+  const { isPrivate } = usePrivacy();
+  const blur = isPrivate ? ' privacy-blur' : '';
 
   function fmtPLN(n) {
     if (n == null || isNaN(n)) return '—';
@@ -38,7 +41,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0, daily
             <div className="ins-text">
               {best.symbol.replace('.WA', '')}
               {' · '}
-              <span className="num up">{fmtPct(bestPct)}</span>
+              <span className={'num up' + blur}>{fmtPct(bestPct)}</span>
             </div>
           </div>
         </div>
@@ -51,7 +54,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0, daily
             <div className="ins-text">
               {worst.symbol.replace('.WA', '')}
               {' · '}
-              <span className="num down">{fmtPct(worstPct)}</span>
+              <span className={'num down' + blur}>{fmtPct(worstPct)}</span>
             </div>
           </div>
         </div>
@@ -75,9 +78,9 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0, daily
           <div className="ins-body">
             <div className="ins-label">{t('daily_result')}</div>
             <div className="ins-text">
-              <span className={'num ' + (dayUp ? 'up' : 'down')}>{fmtPLN(dailyChangePLN)}</span>
+              <span className={'num ' + (dayUp ? 'up' : 'down') + blur}>{fmtPLN(dailyChangePLN)}</span>
               {dailyChangePct != null && (
-                <span style={{ fontSize: 11, color: dayUp ? 'var(--up)' : 'var(--down)', marginLeft: 4 }}>
+                <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontSize: 11, color: dayUp ? 'var(--up)' : 'var(--down)', marginLeft: 4 }}>
                   {fmtPct(dailyChangePct)}
                 </span>
               )}

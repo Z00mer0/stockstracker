@@ -20,9 +20,10 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import { addRetro } from '../services/journalService';
 import {
-  COLUMN_DEFS, getColLabel, loadColumnConfig, saveColumnConfig, SORT_GETTERS,
+  COLUMN_DEFS, getColLabel, loadColumnConfig, saveColumnConfig, SORT_GETTERS, PRIVATE_COLS,
 } from '../utils/portfolioColumns';
 import { loadJournal, setThesis } from '../services/journalService';
+import { usePrivacy } from '../context/PrivacyContext';
 import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import PortfolioPieChart from '../components/PortfolioPieChart';
@@ -331,6 +332,7 @@ export default function Portfolio() {
   const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId } = useApp();
   const { locale } = useLanguage();
   const t = useT();
+  const { isPrivate } = usePrivacy();
   const ASSET_CATEGORIES = getAssetCategories(t);
 
   const [showImport, setShowImport]   = useState(false);
@@ -712,11 +714,11 @@ export default function Portfolio() {
           </div>
         </td>
         {cols.map(key => (
-          <td key={key} className="right mono">
+          <td key={key} className={`right mono${isPrivate && PRIVATE_COLS.has(key) ? ' privacy-blur' : ''}`}>
             {renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency)}
           </td>
         ))}
-        <td className="right mono">
+        <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
             <div style={{ width: 64, height: 6, background: 'var(--panel-2)', borderRadius: 9999, overflow: 'hidden' }}>
               <div
@@ -1655,6 +1657,7 @@ function OtherAssetsSection() {
   const oaCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const t = useT();
   const { locale } = useLanguage();
+  const { isPrivate } = usePrivacy();
   const ASSET_CATEGORIES = getAssetCategories(t);
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -1710,8 +1713,8 @@ function OtherAssetsSection() {
                 <tr key={a.id}>
                   <td style={{ fontWeight: 600, color: 'var(--text)' }}>{cat.icon} {a.name}</td>
                   <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{cat.label}</td>
-                  <td className="right mono" style={{ color: 'var(--text)' }}>{fmtLocal(a.value)} {a.currency}</td>
-                  <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmtLocal(plnVal / oaFx)} {oaCurrLabel}</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text)' }}>{fmtLocal(a.value)} {a.currency}</td>
+                  <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmtLocal(plnVal / oaFx)} {oaCurrLabel}</td>
                   <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.note || '—'}</td>
                   <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{a.updatedAt || '—'}</td>
                   <td className="right" style={{ whiteSpace: 'nowrap' }}>
@@ -1759,6 +1762,7 @@ function BondsSection() {
   const { bonds, addBond, editBond, deleteBond, canWrite } = useApp();
   const t = useT();
   const { locale } = useLanguage();
+  const { isPrivate } = usePrivacy();
   const [cpiMap, setCpiMap] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
@@ -1824,11 +1828,11 @@ function BondsSection() {
                 </td>
                 <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.type} · {BOND_TYPES[b.type]?.years ?? '—'}L</td>
                 <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{b.purchaseDate}</td>
-                <td className="right mono">{b.count}</td>
-                <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(b.v.totalNominal)} zł</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`}>{b.count}</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(b.v.totalNominal)} zł</td>
                 <td className="right mono" style={{ color: 'var(--up)' }}>{fmtPct(b.v.currentRate)}</td>
-                <td className="right mono" style={{ color: 'var(--text)' }}>{fmt(b.v.totalValue)} zł</td>
-                <td className="right mono" style={{ color: 'var(--text-dim)' }}>{fmt(b.v.redeemTodayTotal)} zł</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text)' }}>{fmt(b.v.totalValue)} zł</td>
+                <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(b.v.redeemTodayTotal)} zł</td>
                 <td className="right" style={{ whiteSpace: 'nowrap' }}>
                   {canWrite && <>
                   <button
