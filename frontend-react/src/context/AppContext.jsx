@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../hooks/useApi';
+import { resetJournalCache } from '../services/journalService';
 
 export const AppContext = createContext(null);
 
@@ -67,6 +68,7 @@ export function AppProvider({ children }) {
   function login(newToken, name) {
     localStorage.setItem(TOKEN_KEY, newToken);
     localStorage.setItem(DISPLAY_NAME_KEY, name || '');
+    resetJournalCache();
     setLoading(true); // prevent premature empty-portfolio modal before fetchData fires
     setToken(newToken);
     setDisplayName(name || '');
@@ -75,6 +77,7 @@ export function AppProvider({ children }) {
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(DISPLAY_NAME_KEY);
+    resetJournalCache();
     setToken(null);
     setRawData(null);
     setDisplayName('');
@@ -308,17 +311,19 @@ export function AppProvider({ children }) {
     const newHoldings = newQty <= 0
       ? holdings.filter(h => h.symbol !== symbol)
       : holdings.map(h => h.symbol === symbol ? { ...h, qty: newQty } : h);
+    const txId = Math.random().toString(36).slice(2, 10);
     const updated = {
       ...rd,
       portfolio: { ...rd.portfolio, holdings: newHoldings },
       transactions: [...transactions, {
-        id: Math.random().toString(36).slice(2, 10),
+        id: txId,
         type: 'SELL', symbol, qty, price, currency, date, note,
         costBasis: existing.avgPrice,
         ...(overridePL != null ? { overridePL } : {}),
       }],
     };
     await postUpdate(updated);
+    return txId;
   }
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType }) {

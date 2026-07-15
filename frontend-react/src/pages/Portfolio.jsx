@@ -18,10 +18,11 @@ import { fetchCpiSeries, valueBond, BOND_TYPES } from '../services/bondService';
 import IkeLimitCard from '../components/IkeLimitCard';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
+import { addRetro } from '../services/journalService';
 import {
   COLUMN_DEFS, getColLabel, loadColumnConfig, saveColumnConfig, SORT_GETTERS,
 } from '../utils/portfolioColumns';
-import { loadPositionNotes, savePositionNotes, migrateLegacyNotes } from '../utils/positionNotes';
+import { loadJournal, setThesis } from '../services/journalService';
 import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import PortfolioPieChart from '../components/PortfolioPieChart';
@@ -345,7 +346,12 @@ export default function Portfolio() {
   const [toast, setToast]             = useState('');
   const [editTicker, setEditTicker]   = useState(null); // { oldSymbol, value }
   const [selectedItem, setSelectedItem] = useState(null);
-  const [notes, setNotes]             = useState(() => { migrateLegacyNotes(); return loadPositionNotes(); });
+  const [notes, setNotes]             = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    loadJournal().then(j => { if (!cancelled) setNotes(j.theses || {}); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const [noteEditing, setNoteEditing] = useState(null);
   const [alerts, setAlerts] = useState(loadAlerts);
   const [alertTarget, setAlertTarget] = useState(null); // { symbol, price }
@@ -747,7 +753,7 @@ export default function Portfolio() {
                   ? { ...notes, [pos.symbol]: { text: text.trim(), updatedAt: new Date().toISOString() } }
                   : (() => { const n = { ...notes }; delete n[pos.symbol]; return n; })();
                 setNotes(updated);
-                savePositionNotes(updated);
+                setThesis(pos.symbol, text).catch(() => {});
                 setNoteEditing(null);
               }}
               onCancel={() => setNoteEditing(null)}
@@ -1395,7 +1401,13 @@ export default function Portfolio() {
       {sellTarget && (
         <SellStockModal
           holding={sellTarget}
-          onSave={async (data) => { await sellPosition(data); refresh(); }}
+          onSave={async ({ retro, ...sale }) => {
+            const txId = await sellPosition(sale);
+            if (retro && txId) {
+              addRetro(txId, { symbol: sale.symbol, date: sale.date, ...retro }).catch(() => {});
+            }
+            refresh();
+          }}
           onClose={() => setSellTarget(null)}
         />
       )}

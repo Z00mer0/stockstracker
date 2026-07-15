@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { getThesis } from '../services/journalService';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
@@ -29,6 +30,15 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   const [error, setError]       = useState('');
   const [editingPL, setEditingPL] = useState(false);
   const [manualPL, setManualPL]   = useState('');
+  const [thesis, setThesis]       = useState('');
+  const [verdict, setVerdict]     = useState('');
+  const [retroNote, setRetroNote] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    getThesis(holding?.symbol).then(text => { if (!cancelled) setThesis(text); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [holding?.symbol]);
 
   const q   = parseFloat(qty);
   const p   = parseFloat(price);
@@ -53,12 +63,19 @@ export default function SellStockModal({ holding, onSave, onClose }) {
     if (isNaN(q) || q <= 0) { setError(t('err_enter_qty_short')); return; }
     if (q > (holding?.qty ?? 0)) { setError(`${t('err_too_many_shares')} ${holding.qty} szt.`); return; }
     if (isNaN(p) || p <= 0) { setError(t('err_enter_sell_price')); return; }
+    if (thesis && !verdict) { setError(t('journal_verdict_required')); return; }
     setSaving(true); setError('');
     try {
       const overridePL = (editingPL && manualPL !== '' && !isNaN(parseFloat(manualPL)))
         ? parseFloat(manualPL)
         : undefined;
-      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL });
+      const retro = {
+        hadThesis: !!thesis,
+        ...(thesis ? { thesis } : {}),
+        ...(verdict && verdict !== 'skip' ? { verdict } : {}),
+        ...(retroNote.trim() ? { note: retroNote.trim() } : {}),
+      };
+      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL, retro });
       onClose();
     } catch (e) {
       setError(e.message || t('save_error'));
@@ -162,6 +179,47 @@ export default function SellStockModal({ holding, onSave, onClose }) {
                   {t('edit_pl')}
                 </button>
               </div>
+            )}
+          </div>
+        )}
+
+        {thesis && (
+          <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>📓 {t('journal_thesis_label')}:</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: 10, maxHeight: 60, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+              {thesis}
+            </p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{t('journal_verdict_q')}</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {[
+                ['hit', `✅ ${t('journal_hit')}`],
+                ['partial', `➖ ${t('journal_partial')}`],
+                ['miss', `❌ ${t('journal_miss')}`],
+              ].map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => { setVerdict(verdict === v ? '' : v); setError(''); }}
+                  style={{
+                    fontSize: 11, padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
+                    border: `1px solid ${verdict === v ? 'var(--accent)' : 'var(--border)'}`,
+                    background: verdict === v ? 'var(--accent)' : 'transparent',
+                    color: verdict === v ? '#000' : 'var(--text-dim)',
+                    fontWeight: verdict === v ? 700 : 400,
+                  }}
+                >{label}</button>
+              ))}
+              <button
+                onClick={() => { setVerdict(verdict === 'skip' ? '' : 'skip'); setError(''); }}
+                style={{ fontSize: 11, padding: '5px 6px', background: 'none', border: 'none', cursor: 'pointer', color: verdict === 'skip' ? 'var(--text)' : 'var(--text-faint)', textDecoration: verdict === 'skip' ? 'underline' : 'none' }}
+              >{t('journal_skip')}</button>
+            </div>
+            {verdict && verdict !== 'skip' && (
+              <input
+                className="field-input"
+                placeholder={t('journal_retro_note_ph')}
+                value={retroNote}
+                onChange={e => setRetroNote(e.target.value)}
+              />
             )}
           </div>
         )}

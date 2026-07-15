@@ -381,6 +381,23 @@ export default {
   fire_mc_band:         'Przedział 10–90%',
   fire_mc_note:         'Pasmo: 10.–90. percentyl wartości portfela w 500 symulacjach; linia — mediana. Zmienność {vol}% rocznie, zwroty realne (po inflacji). Projekcja poglądowa.',
 
+  // ── Dziennik inwestora ───────────────────────────────────────
+  journal_thesis_label:     'Twoja teza z dziennika',
+  journal_verdict_q:        'Czy teza się sprawdziła?',
+  journal_hit:              'Sprawdziła się',
+  journal_partial:          'Częściowo',
+  journal_miss:             'Nie sprawdziła się',
+  journal_skip:             'pomiń ocenę',
+  journal_verdict_required: 'Oceń swoją tezę przed sprzedażą (albo kliknij „pomiń ocenę").',
+  journal_retro_note_ph:    'Wnioski na przyszłość (opcjonalnie)',
+  journal_stats_title:      'Dziennik inwestora — skuteczność tez',
+  journal_year_col:         'Rok',
+  journal_with_thesis:      'Z tezą',
+  journal_without_thesis:   'Bez tezy (impulsywne)',
+  journal_trades_unit:      'transakcji',
+  journal_stats_note:       'Średni wynik % zamkniętych transakcji. „Z tezą" = przy sprzedaży istniała zapisana teza inwestycyjna (zakładka Notatki w szczegółach spółki).',
+  journal_stats_empty:      'Zapisuj tezy inwestycyjne w szczegółach spółki (zakładka Notatki). Przy sprzedaży ocenisz, czy teza się sprawdziła — a tutaj zobaczysz, czy decyzje z planem biją te impulsywne.',
+
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Akcje vs Opcje',
   scenario_stock_chain: 'Spółka i łańcuch opcji',
