@@ -392,6 +392,91 @@ function SnapshotManagerSection() {
   );
 }
 
+function ShareLinkSection() {
+  const t = useT();
+  const { portfolios } = useApp();
+  const [pid, setPid] = useState('');
+  const [token, setToken] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const selected = pid || portfolios[0]?.id || '';
+  const shareUrl = token ? `${window.location.origin}/s/${token}` : null;
+
+  React.useEffect(() => {
+    if (!selected) return;
+    let cancelled = false;
+    setToken(null);
+    api.get(`/api/share?portfolio_id=${encodeURIComponent(selected)}`)
+      .then(res => { if (!cancelled) setToken(res.data.token); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selected]);
+
+  async function generate() {
+    setBusy(true);
+    try {
+      const res = await api.post('/api/share', { portfolio_id: selected });
+      setToken(res.data.token);
+    } catch {} finally { setBusy(false); }
+  }
+
+  async function revoke() {
+    setBusy(true);
+    try {
+      await api.post('/api/share/revoke', { portfolio_id: selected });
+      setToken(null);
+    } catch {} finally { setBusy(false); }
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  if (!portfolios.length) return null;
+
+  return (
+    <Card title={t('share_title')}>
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>{t('share_desc')}</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select
+            className="field-input"
+            style={{ width: 'auto', minWidth: 160, fontSize: 13 }}
+            value={selected}
+            onChange={e => setPid(e.target.value)}
+          >
+            {portfolios.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          {token ? (
+            <button onClick={revoke} disabled={busy} className="btn" style={{ fontSize: 12, color: 'var(--down)' }}>
+              {t('share_revoke')}
+            </button>
+          ) : (
+            <button onClick={generate} disabled={busy || !selected} className="btn btn-primary" style={{ fontSize: 12 }}>
+              {t('share_generate')}
+            </button>
+          )}
+        </div>
+        {shareUrl && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', background: 'var(--panel-2)', borderRadius: 8, padding: '10px 12px' }}>
+            <a href={shareUrl} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 12, color: 'var(--accent)', wordBreak: 'break-all', flex: 1, minWidth: 200 }}>
+              {shareUrl}
+            </a>
+            <button onClick={copy} className="btn" style={{ fontSize: 12 }}>
+              {copied ? `✓ ${t('rc_copied')}` : t('share_copy')}
+            </button>
+          </div>
+        )}
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.5 }}>{t('share_note')}</p>
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { displayName, logout, refresh, fxRates, transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport } = useApp();
   const { language, locale, setLanguage } = useLanguage();
@@ -506,6 +591,8 @@ export default function Settings() {
       </Card>
 
       <SnapshotManagerSection />
+
+      <ShareLinkSection />
 
       <Card title={t('currency_rates')}>
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

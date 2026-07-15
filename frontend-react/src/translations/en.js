@@ -398,6 +398,14 @@ export default {
   journal_stats_note:       'Average % result of closed trades. "With thesis" = a written investment thesis existed at the time of sale (Notes tab in stock details).',
   journal_stats_empty:      'Write investment theses in stock details (Notes tab). When you sell, you\'ll rate whether the thesis played out — and here you\'ll see if planned decisions beat impulsive ones.',
 
+  // ── Public portfolio link ────────────────────────────────────
+  share_title:    'Public portfolio link',
+  share_desc:     'Share your portfolio structure with friends — only symbols, percentage weights and % performance are visible. No amounts, share counts or history.',
+  share_generate: 'Generate link',
+  share_revoke:   'Revoke link',
+  share_copy:     'Copy',
+  share_note:     'Anyone with the link sees the current portfolio composition (percentages from live prices). Revoking deactivates it immediately — a new link will have a different address.',
+
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Stocks vs Options',
   scenario_stock_chain: 'Stock & option chain',
