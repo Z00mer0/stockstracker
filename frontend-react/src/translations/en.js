@@ -261,6 +261,16 @@ export default {
   no_div_companies:     'No dividend stocks in portfolio',
   no_div_hint:          'Add a dividend payment in Transactions (type: DIV) or manually above.',
   total_pln_header:     'Total PLN',
+  drip_title:           'Dividend snowball (DRIP)',
+  drip_horizon_label:   'Horizon',
+  drip_years_unit:      'yrs',
+  drip_growth_label:    'Dividend growth/yr',
+  drip_now:             'Today',
+  drip_with:            'with reinvestment',
+  drip_without:         'without reinvestment',
+  drip_goal_hit:        '🎯 With reinvestment you reach the {goal} {curr}/mo goal around {year}.',
+  drip_goal_miss:       'With reinvestment the {goal} {curr}/mo goal stays beyond the projection horizon.',
+  drip_assumptions:     'Assumptions: payouts reinvested at the current {yield}% yield ({mode}), dividends growing {growth}% per year, flat share prices. Illustrative projection — not investment advice.',
   months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
 
   // ── Analysis page ────────────────────────────────────────────
@@ -360,6 +370,16 @@ export default {
   fire_already_now:     'Now!',
   fire_over_100:        '> 100 years',
   fire_enter_expenses:  'Enter monthly expenses to see FIRE calculations.',
+  fire_mc_title:        'Monte Carlo simulation',
+  fire_mc_desc:         '500 random market scenarios with your parameters — instead of a single average.',
+  fire_mc_vol:          'Portfolio volatility',
+  fire_mc_optimistic:   'Optimistic (10%)',
+  fire_mc_median:       'Median',
+  fire_mc_pessimistic:  'Pessimistic (90%)',
+  fire_mc_prob:         'Chance of FIRE in {n} yrs',
+  fire_mc_beyond:       '>{n} yrs',
+  fire_mc_band:         '10–90% range',
+  fire_mc_note:         'Band: 10th–90th percentile of portfolio value across 500 simulations; line — median. {vol}% annual volatility, real (after-inflation) returns. Illustrative projection.',
 
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Stocks vs Options',

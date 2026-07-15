@@ -261,6 +261,16 @@ export default {
   no_div_companies:     'Brak spółek dywidendowych w portfelu',
   no_div_hint:          'Dodaj wypłatę dywidendy w sekcji Transakcje (typ: DIV) lub ręcznie powyżej.',
   total_pln_header:     'Łącznie PLN',
+  drip_title:           'Kula śnieżna dywidend (DRIP)',
+  drip_horizon_label:   'Horyzont',
+  drip_years_unit:      'lat',
+  drip_growth_label:    'Wzrost dywidend/rok',
+  drip_now:             'Dziś',
+  drip_with:            'z reinwestycją',
+  drip_without:         'bez reinwestycji',
+  drip_goal_hit:        '🎯 Przy reinwestycji cel {goal} {curr}/mies. osiągniesz ok. {year} r.',
+  drip_goal_miss:       'Przy reinwestycji cel {goal} {curr}/mies. pozostaje poza horyzontem projekcji.',
+  drip_assumptions:     'Założenia: reinwestycja wypłat przy obecnym yieldzie {yield}% ({mode}), wzrost dywidend {growth}% rocznie, stałe ceny akcji. Projekcja poglądowa — to nie jest porada inwestycyjna.',
   months: ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'],
 
   // ── Analysis page ────────────────────────────────────────────
@@ -360,6 +370,16 @@ export default {
   fire_already_now:     'Już teraz!',
   fire_over_100:        '> 100 lat',
   fire_enter_expenses:  'Wpisz miesięczne wydatki aby zobaczyć obliczenia FIRE.',
+  fire_mc_title:        'Symulacja Monte Carlo',
+  fire_mc_desc:         '500 losowych scenariuszy rynkowych przy Twoich parametrach — zamiast jednej średniej.',
+  fire_mc_vol:          'Zmienność portfela',
+  fire_mc_optimistic:   'Optymistycznie (10%)',
+  fire_mc_median:       'Mediana',
+  fire_mc_pessimistic:  'Pesymistycznie (90%)',
+  fire_mc_prob:         'Szansa na FIRE w {n} lat',
+  fire_mc_beyond:       '>{n} lat',
+  fire_mc_band:         'Przedział 10–90%',
+  fire_mc_note:         'Pasmo: 10.–90. percentyl wartości portfela w 500 symulacjach; linia — mediana. Zmienność {vol}% rocznie, zwroty realne (po inflacji). Projekcja poglądowa.',
 
   // ── Scenario Lab ─────────────────────────────────────────────
   scenario_title:       '🧪 Scenario Lab — Akcje vs Opcje',
