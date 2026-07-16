@@ -10,12 +10,5 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "experimentalServices": {
-    "stockstracker": {
-      "type": "web",
-      "routePrefix": "/",
-      "buildCommand": "pip install -r requirements.txt"
-    }
-  }
+  ]
 }
