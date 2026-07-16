@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePrivacy } from '../context/PrivacyContext';
 
 const COLORS = ['#60a5fa', '#34d399', '#f59e0b', '#f87171', '#a78bfa', '#64748b'];
 const CX = 110, CY = 110, R = 90, INNER_R = 58;
@@ -25,6 +26,8 @@ function fmtPLN(val) {
 
 export default function PortfolioPieChart({ positions, totalValue, currency = 'PLN', fxRate = 1 }) {
   const [tooltip, setTooltip] = useState(null);
+  const { isPrivate } = usePrivacy();
+  const blur = isPrivate ? ' privacy-blur' : '';
 
   const validPositions = (positions || []).filter(p => p.valuePLN > 0);
   validPositions.sort((a, b) => b.valuePLN - a.valuePLN);
@@ -80,6 +83,7 @@ export default function PortfolioPieChart({ positions, totalValue, currency = 'P
               dominantBaseline="middle"
               fontSize={10}
               fill="#fff"
+              className={blur.trim() || undefined}
               style={{ pointerEvents: 'none', fontWeight: 600 }}
             >
               {(arc.pct * 100).toFixed(0)}%
@@ -87,7 +91,7 @@ export default function PortfolioPieChart({ positions, totalValue, currency = 'P
           ) : null
         )}
         {/* Center text */}
-        <text x={CX} y={CY - 8} textAnchor="middle" fontSize={15} fontWeight="700" fill="var(--text, #e2e8f0)">
+        <text x={CX} y={CY - 8} textAnchor="middle" fontSize={15} fontWeight="700" fill="var(--text, #e2e8f0)" className={blur.trim() || undefined}>
           {fmtPLN((totalValue || total) / fxRate)} {currency === 'PLN' ? 'PLN' : currency}
         </text>
         <text x={CX} y={CY + 12} textAnchor="middle" fontSize={11} fill="var(--text-muted, #94a3b8)">
@@ -101,7 +105,7 @@ export default function PortfolioPieChart({ positions, totalValue, currency = 'P
           <div key={arc.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: arc.color, flexShrink: 0 }} />
             <span style={{ color: 'var(--text, #e2e8f0)', fontWeight: 500 }}>{arc.label}</span>
-            <span style={{ color: 'var(--text-muted, #94a3b8)', marginLeft: 'auto' }}>
+            <span className={blur.trim() || undefined} style={{ color: 'var(--text-muted, #94a3b8)', marginLeft: 'auto' }}>
               {(arc.pct * 100).toFixed(1)}%
             </span>
           </div>
@@ -117,8 +121,10 @@ export default function PortfolioPieChart({ positions, totalValue, currency = 'P
           zIndex: 9999, color: 'var(--text, #e2e8f0)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
         }}>
           <strong>{tooltip.label}</strong><br />
-          {(tooltip.value / fxRate).toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {currency === 'PLN' ? 'PLN' : currency}
-          &nbsp;·&nbsp;{(tooltip.pct * 100).toFixed(1)}%
+          <span className={blur.trim() || undefined}>
+            {(tooltip.value / fxRate).toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {currency === 'PLN' ? 'PLN' : currency}
+            &nbsp;·&nbsp;{(tooltip.pct * 100).toFixed(1)}%
+          </span>
         </div>
       )}
     </div>

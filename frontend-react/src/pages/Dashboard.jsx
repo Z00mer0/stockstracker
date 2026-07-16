@@ -464,7 +464,7 @@ export default function Dashboard() {
                           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
                           {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
                         </div>
-                        <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', minWidth: 58 }}>
+                        <div style={{ textAlign: 'right', minWidth: 58 }}>
                           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
                             {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
                           </div>
@@ -485,7 +485,7 @@ export default function Dashboard() {
                           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
                           {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
                         </div>
-                        <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', minWidth: 58 }}>
+                        <div style={{ textAlign: 'right', minWidth: 58 }}>
                           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
                             {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
                           </div>

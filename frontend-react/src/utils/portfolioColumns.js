@@ -1,21 +1,26 @@
 // frontend-react/src/utils/portfolioColumns.js
 
+// `private: true` marks columns whose value reveals holdings, cost basis
+// or P&L — hidden in privacy mode. Columns without the flag are public
+// market data (current price, daily % change, fundamentals).
 export const COLUMN_DEFS = [
-  { key: 'qty',      tKey: 'col_qty_lbl',       fixed: true },
-  { key: 'avgPrice', tKey: 'col_avg_price_lbl' },
+  { key: 'qty',      tKey: 'col_qty_lbl',       fixed: true, private: true },
+  { key: 'avgPrice', tKey: 'col_avg_price_lbl', private: true },
   { key: 'price',    tKey: 'col_price_lbl' },
   { key: 'dailyChg', tKey: 'col_daily_chg_lbl' },
-  { key: 'costPLN',  tKey: 'col_cost_pln_lbl' },
-  { key: 'valuePLN', tKey: 'col_value_pln_lbl' },
-  { key: 'plPLN',    tKey: 'col_pl_pln_lbl' },
+  { key: 'costPLN',  tKey: 'col_cost_pln_lbl', private: true },
+  { key: 'valuePLN', tKey: 'col_value_pln_lbl', private: true },
+  { key: 'plPLN',    tKey: 'col_pl_pln_lbl', private: true },
   { key: 'period',   tKey: 'col_period_lbl' },
-  { key: 'moic',     tKey: null, label: 'MOIC' },
-  { key: 'irr',      tKey: null, label: 'IRR r.' },
+  { key: 'moic',     tKey: null, label: 'MOIC', private: true },
+  { key: 'irr',      tKey: null, label: 'IRR r.', private: true },
   { key: 'pe',       tKey: null, label: 'P/E' },
   { key: 'peFwd',    tKey: null, label: 'P/E FWD' },
   { key: 'pb',       tKey: null, label: 'P/B' },
-  { key: 'divYoc',   tKey: 'col_dividends_lbl' },
+  { key: 'divYoc',   tKey: 'col_dividends_lbl', private: true },
 ];
+
+export const PRIVATE_COLS = new Set(COLUMN_DEFS.filter(c => c.private).map(c => c.key));
 
 export function getColLabel(key, t) {
   const def = COLUMN_DEFS.find(c => c.key === key);

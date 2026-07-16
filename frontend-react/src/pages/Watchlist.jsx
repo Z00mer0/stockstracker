@@ -8,6 +8,7 @@ import Card from '../components/shared/Card';
 import Chip from '../components/shared/Chip';
 import TickerLogo from '../components/shared/TickerLogo';
 import PushToggle from '../components/PushToggle';
+import { usePrivacy } from '../context/PrivacyContext';
 
 const WATCH_KEY = 'myfund_watchlist';
 function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
@@ -90,6 +91,7 @@ export default function Watchlist() {
   const { openChart } = useChart();
   const { locale } = useLanguage();
   const t = useT();
+  const { isPrivate } = usePrivacy();
   const [watchItems, setWatchItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [alertTarget, setAlertTarget] = useState(null);
@@ -336,8 +338,8 @@ export default function Watchlist() {
                         </div>
                       </div>
                     </td>
-                    <td className="right mono" style={{ fontSize: 13 }}>{pos.qty?.toLocaleString(locale) ?? '—'}</td>
-                    <td className="right mono" style={{ fontSize: 13, color: 'var(--text-dim)' }}>{pos.avgPrice?.toFixed(2)} {pos.currency}</td>
+                    <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13 }}>{pos.qty?.toLocaleString(locale) ?? '—'}</td>
+                    <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 13, color: 'var(--text-dim)' }}>{pos.avgPrice?.toFixed(2)} {pos.currency}</td>
                   </tr>
                 ))}
               </tbody>

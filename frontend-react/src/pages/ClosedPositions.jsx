@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { usePrivacy } from '../context/PrivacyContext';
 import Card from '../components/shared/Card';
 import TickerLogo from '../components/shared/TickerLogo';
 import Spinner from '../components/shared/Spinner';
@@ -28,6 +29,8 @@ export default function ClosedPositions() {
   const { transactions = [], loading, fxRates, displayCurrency } = useApp();
   const { locale } = useLanguage();
   const t = useT();
+  const { isPrivate } = usePrivacy();
+  const blur = isPrivate ? 'privacy-blur' : undefined;
 
   const [view, setView]   = useState('symbol'); // 'symbol' | 'trade'
   const [filter, setFilter] = useState('');
@@ -114,7 +117,7 @@ export default function ClosedPositions() {
             <p style={{ fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{k.label}</p>
             {k.count != null
               ? <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{k.count}</p>
-              : <p style={{ fontSize: 22, fontWeight: 700, color: k.color, margin: 0 }}>
+              : <p className={blur} style={{ fontSize: 22, fontWeight: 700, color: k.color, margin: 0 }}>
                   {k.value >= 0 && k.color !== 'var(--down)' ? '+' : ''}{fmt(k.value, 2, locale)} {currSym}
                 </p>
             }
@@ -245,11 +248,11 @@ export default function ClosedPositions() {
                             </div>
                           </td>
                           <td style={{ padding: '10px 12px', color: 'var(--text-dim)', textAlign: 'right' }}>{g.trades.length}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(g.totalQty, g.totalQty % 1 === 0 ? 0 : 4, locale)}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-dim)' }}>{fmt(avgCost, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[g.currency] ?? g.currency}</span></td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(avgSell, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[g.currency] ?? g.currency}</span></td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={plDisp} locale={locale} /></td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={avgPct} locale={locale} suffix="%" /></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(g.totalQty, g.totalQty % 1 === 0 ? 0 : 4, locale)}</td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-dim)' }}>{fmt(avgCost, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[g.currency] ?? g.currency}</span></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(avgSell, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[g.currency] ?? g.currency}</span></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={plDisp} locale={locale} /></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={avgPct} locale={locale} suffix="%" /></td>
                         </tr>
                       );
                     })
@@ -264,11 +267,11 @@ export default function ClosedPositions() {
                             </div>
                           </td>
                           <td style={{ padding: '10px 12px', color: 'var(--text-dim)', fontSize: 12 }}>{tr.date}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(tr.qty, tr.qty % 1 === 0 ? 0 : 4, locale)}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-dim)' }}>{fmt(tr.costBasis, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[tr.currency] ?? tr.currency}</span></td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(tr.sellPrice, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[tr.currency] ?? tr.currency}</span></td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={plDisp} locale={locale} /></td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={tr.pct} locale={locale} suffix="%" /></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(tr.qty, tr.qty % 1 === 0 ? 0 : 4, locale)}</td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-dim)' }}>{fmt(tr.costBasis, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[tr.currency] ?? tr.currency}</span></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(tr.sellPrice, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[tr.currency] ?? tr.currency}</span></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={plDisp} locale={locale} /></td>
+                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={tr.pct} locale={locale} suffix="%" /></td>
                         </tr>
                       );
                     })
