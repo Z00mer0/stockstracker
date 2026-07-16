@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { usePrivacy } from '../context/PrivacyContext';
 
 const M = { top: 10, right: 75, bottom: 28, left: 10 };
 const H = 220;
@@ -16,6 +17,8 @@ function priceAtDate(benchData, date) {
 
 export default function HistoryChart({ data, benchData = [], benchLabel = '', displayCurrency = 'PLN', fxRate = 1 }) {
   const { locale } = useLanguage();
+  const { isPrivate } = usePrivacy();
+  const blurCls = isPrivate ? 'privacy-blur' : undefined;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
 
   function fmtXDate(iso) {
@@ -153,7 +156,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
             <g key={i}>
               <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
                 stroke="#334155" strokeDasharray="3,3" strokeWidth={0.5} />
-              <text x={svgWidth - M.right + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start">
+              <text x={svgWidth - M.right + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start" className={blurCls}>
                 {fmtVal(v / fxRate)} {currLabel}
               </text>
             </g>
@@ -222,13 +225,13 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
           <p className="font-semibold text-slate-300 mb-1.5">{tooltip.date}</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
             <span>Wartość</span>
-            <span className="text-slate-100 text-right font-semibold">{fmtVal(tooltip.total / fxRate)} {currLabel}</span>
+            <span className={`text-slate-100 text-right font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.total / fxRate)} {currLabel}</span>
             {hasInvested && tooltip.invested != null && (
               <>
                 <span>Zainwest.</span>
-                <span className="text-slate-400 text-right">{fmtVal(tooltip.invested / fxRate)} {currLabel}</span>
+                <span className={`text-slate-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.invested / fxRate)} {currLabel}</span>
                 <span>P&L</span>
-                <span className={`text-right font-semibold ${tooltip.pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <span className={`text-right font-semibold ${tooltip.pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
                   {tooltip.pl >= 0 ? '+' : ''}{fmtVal(tooltip.pl / fxRate)} {currLabel}
                 </span>
               </>
@@ -236,7 +239,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
             {hasBenchNorm && tooltip.benchValue != null && (
               <>
                 <span>{benchLabel || 'Benchmark'}</span>
-                <span className="text-blue-400 text-right">{fmtVal(tooltip.benchValue / fxRate)} {currLabel}</span>
+                <span className={`text-blue-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.benchValue / fxRate)} {currLabel}</span>
               </>
             )}
           </div>
