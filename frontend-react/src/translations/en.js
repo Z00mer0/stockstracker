@@ -639,6 +639,13 @@ export default {
   alert_new_high:       '🚀 New high',
   alert_new_low:        '⚓ New low',
   alert_pct_placeholder: 'e.g. 5',
+  pa_title:        'Portfolio drawdown alert',
+  pa_desc:         'Push when the market value of your portfolio (stocks + cash, bonds excluded) falls from its peak by the threshold. Peak is measured from when the alert is enabled.',
+  pa_threshold:    'Drop threshold',
+  pa_enable:       'Enable alert',
+  pa_disable:      'Disable alert',
+  pa_saved:        'Saved',
+  pa_error:        'Save failed',
   click_to_remove:      'Click to remove',
 
   // ── Settings ────────────────────────────────────────────────

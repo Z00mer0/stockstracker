@@ -639,6 +639,13 @@ export default {
   alert_new_high:       '🚀 Nowe maksimum',
   alert_new_low:        '⚓ Nowe minimum',
   alert_pct_placeholder: 'np. 5',
+  pa_title:        'Alert spadku portfela',
+  pa_desc:         'Push, gdy wartość rynkowa portfela (akcje + gotówka, bez obligacji) spadnie od szczytu o próg. Szczyt mierzony od włączenia alertu.',
+  pa_threshold:    'Próg spadku',
+  pa_enable:       'Włącz alert',
+  pa_disable:      'Wyłącz alert',
+  pa_saved:        'Zapisano',
+  pa_error:        'Błąd zapisu',
   click_to_remove:      'Kliknij aby usunąć',
 
   // ── Settings ────────────────────────────────────────────────

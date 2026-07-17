@@ -1,5 +1,5 @@
 // src/pages/Settings.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../hooks/useApi';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
@@ -477,6 +477,62 @@ function ShareLinkSection() {
   );
 }
 
+function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
+
+function PortfolioAlertCard() {
+  const t = useT();
+  const [enabled, setEnabled] = useState(false);
+  const [threshold, setThreshold] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/portfolio-alert', { headers: authHeader() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); } })
+      .catch(() => {});
+  }, []);
+
+  async function save(nextEnabled, nextThreshold) {
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/portfolio-alert', {
+        method: 'POST',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: nextEnabled, thresholdPct: nextThreshold }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setEnabled(nextEnabled); setThreshold(nextThreshold);
+      setMsg(t('pa_saved'));
+    } catch {
+      setMsg(t('pa_error'));
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Card title={`📉 ${t('pa_title')}`}>
+      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 16 }}>{t('pa_desc')}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <label style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('pa_threshold')}</label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[5, 10, 15, 20].map(p => (
+            <button key={p} className={`btn ${threshold === p ? 'btn-primary' : ''}`} disabled={busy}
+              onClick={() => (enabled ? save(true, p) : setThreshold(p))}
+              style={{ fontSize: 11, padding: '6px 10px' }}>
+              −{p}%
+            </button>
+          ))}
+        </div>
+        <button className={`btn ${enabled ? '' : 'btn-primary'}`} disabled={busy}
+          onClick={() => save(!enabled, threshold)} style={{ fontSize: 11 }}>
+          {enabled ? t('pa_disable') : t('pa_enable')}
+        </button>
+        {msg && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{msg}</span>}
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { displayName, logout, refresh, fxRates, transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport } = useApp();
   const { language, locale, setLanguage } = useLanguage();
@@ -546,6 +602,8 @@ export default function Settings() {
           </div>
         </div>
       </Card>
+
+      <PortfolioAlertCard />
 
       <ChangePasswordSection />
       <RecoveryCodesSection />
