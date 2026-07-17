@@ -113,3 +113,26 @@ portfele użytkownika, spójnie z Dashboardem, który pokazuje sumę).
 - Wycena obligacji/innych aktywów na serwerze
 - Zmiana częstotliwości crona (GitHub dławi do ~1h — bez zmian)
 - E-mail jako drugi kanał
+
+## Addendum (2026-07-17 wieczorem): podsumowanie sesji USA
+
+Zamówione przez użytkownika po wdrożeniu: push z wartością portfela (wzrost LUB spadek)
+na otwarcie i zamknięcie sesji amerykańskiej.
+
+- Kolumna `us_summary BOOLEAN DEFAULT FALSE` w `portfolio_alerts` (ALTER ... IF NOT EXISTS);
+  niezależna od `enabled` (drawdown).
+- Okna czasowe w America/New_York (zoneinfo, odporne na DST), tylko dni robocze:
+  otwarcie 9:30–11:30 ET, zamknięcie 16:00–18:00 ET. Dedupe przez `push_sent`
+  z kluczami `ussum:open:{data_ET}` / `ussum:close:{data_ET}` — maks. 1 push na okno.
+- Wycena jak w drawdownie (akcje+gotówka, PLN po NBP); zmiana dzienna liczona z
+  `changePct` per pozycja (prev_price = price/(1+chg/100)); gdy chg brakuje dla
+  którejś pozycji → pct pomijane (sam poziom wartości), wartość None → cały skip.
+- Treść: `🇺🇸 Otwarcie — portfel 159 336 zł` / `🏁 Zamknięcie — portfel …`,
+  body `Zmiana dziś: +0.42%`.
+- API GET/POST `/api/portfolio-alert` przenosi dodatkowe pole `usSummary`.
+  POST przestaje bezwarunkowo resetować ath_value/triggered — reset TYLKO gdy
+  zmienił się `thresholdPct` lub `enabled` (naprawia uwagę Minor d z review).
+- Workflow: dodatkowe crony `40 13 * * 1-5` i `10 20 * * 1-5` UTC (punktualność
+  w lecie; okna ET gwarantują poprawność niezależnie od DST).
+- UI: drugi przełącznik w PortfolioAlertCard; POST zawsze wysyła komplet
+  {enabled, thresholdPct, usSummary}.
