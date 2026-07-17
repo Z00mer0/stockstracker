@@ -631,6 +631,14 @@ export default {
   alert_mode_once_hint:   'Powiadomi raz i wygaśnie na stałe.',
   alert_mode_rearm_hint:  'Powiadomi ponownie, gdy cena wróci za próg i znów go przekroczy.',
   alert_mode_repeat_hint: 'Powiadamia, dopóki warunek trwa — nie częściej niż raz na 24h.',
+  alert_kind_price:     'Cena',
+  alert_kind_daily:     'Zmiana dzienna',
+  alert_kind_week52:    '52 tygodnie',
+  alert_rise_min:       '↑ Wzrost o co najmniej',
+  alert_fall_min:       '↓ Spadek o co najmniej',
+  alert_new_high:       '🚀 Nowe maksimum',
+  alert_new_low:        '⚓ Nowe minimum',
+  alert_pct_placeholder: 'np. 5',
   click_to_remove:      'Kliknij aby usunąć',
 
   // ── Settings ────────────────────────────────────────────────

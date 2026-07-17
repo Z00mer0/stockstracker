@@ -631,6 +631,14 @@ export default {
   alert_mode_once_hint:   'Notifies once, then expires for good.',
   alert_mode_rearm_hint:  'Notifies again once the price returns past the threshold and crosses it anew.',
   alert_mode_repeat_hint: 'Keeps notifying while the condition holds — at most once per 24h.',
+  alert_kind_price:     'Price',
+  alert_kind_daily:     'Daily change',
+  alert_kind_week52:    '52 weeks',
+  alert_rise_min:       '↑ Rise of at least',
+  alert_fall_min:       '↓ Drop of at least',
+  alert_new_high:       '🚀 New high',
+  alert_new_low:        '⚓ New low',
+  alert_pct_placeholder: 'e.g. 5',
   click_to_remove:      'Click to remove',
 
   // ── Settings ────────────────────────────────────────────────

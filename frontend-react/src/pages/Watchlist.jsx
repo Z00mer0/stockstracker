@@ -51,33 +51,73 @@ function genId() { return Math.random().toString(36).slice(2, 10); }
 
 function AlertModal({ item, onClose, onSave, livePrice }) {
   const t = useT();
+  const [kind, setKind] = useState('price');
   const [type, setType] = useState('above');
   const [mode, setMode] = useState('rearm');
   const [price, setPrice] = useState(livePrice?.price != null ? String(livePrice.price.toFixed(2)) : '');
-  function handleAdd() {
-    if (!price || isNaN(parseFloat(price))) return;
-    const target = parseFloat(price);
-    const currentPrice = livePrice?.price ?? item.addedPrice ?? 0;
-    const alreadyMet = (type === 'above' && currentPrice >= target) || (type === 'below' && currentPrice <= target);
-    onSave({ id: genId(), type, targetPrice: target, mode, triggered: mode === 'repeat' ? false : alreadyMet });
+  const [pct, setPct] = useState('');
+
+  function switchKind(k) {
+    setKind(k);
+    setMode(k === 'price' ? 'rearm' : 'repeat'); // sensowne domyślne tryby
   }
+
+  function handleAdd() {
+    if (kind === 'price') {
+      if (!price || isNaN(parseFloat(price))) return;
+      const target = parseFloat(price);
+      const currentPrice = livePrice?.price ?? item.addedPrice ?? 0;
+      const alreadyMet = (type === 'above' && currentPrice >= target) || (type === 'below' && currentPrice <= target);
+      onSave({ id: genId(), kind, type, targetPrice: target, mode, triggered: mode === 'repeat' ? false : alreadyMet });
+    } else if (kind === 'dailyChange') {
+      const p = parseFloat(pct);
+      if (!p || p <= 0) return;
+      onSave({ id: genId(), kind, type, targetPercent: p, mode, triggered: false });
+    } else { // week52
+      onSave({ id: genId(), kind, type, mode, triggered: false });
+    }
+  }
+
+  const typeLabels = kind === 'price'
+    ? { above: t('above_alert'), below: t('below_alert') }
+    : kind === 'dailyChange'
+      ? { above: t('alert_rise_min'), below: t('alert_fall_min') }
+      : { above: t('alert_new_high'), below: t('alert_new_low') };
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div className="card" style={{ width: 340, padding: 24 }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🔔 Alert cenowy — {item.symbol}</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🔔 Alert — {item.symbol}</h2>
         {livePrice?.price != null
-          ? <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>Aktualna cena: {livePrice.price.toFixed(2)} {item.currency}</p>
-          : item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>{item.addedPrice.toFixed(2)} {item.currency}</p>
+          ? <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>Aktualna cena: {livePrice.price.toFixed(2)} {item.currency}</p>
+          : item.addedPrice != null && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>{item.addedPrice.toFixed(2)} {item.currency}</p>
         }
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {['above', 'below'].map(tp => (
-            <button key={tp} onClick={() => setType(tp)} className={`btn ${type === tp ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center' }}>
-              {tp === 'above' ? t('above_alert') : t('below_alert')}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          {[['price', 'alert_kind_price'], ['dailyChange', 'alert_kind_daily'], ['week52', 'alert_kind_week52']].map(([k, key]) => (
+            <button key={k} onClick={() => switchKind(k)} className={`btn ${kind === k ? 'btn-primary' : ''}`}
+              style={{ flex: 1, justifyContent: 'center', fontSize: 11, padding: '6px 4px' }}>
+              {t(key)}
             </button>
           ))}
         </div>
-        <input type="number" placeholder={t('col_price')} value={price} onChange={e => setPrice(e.target.value)}
-          className="field-input" style={{ marginBottom: 16 }} autoFocus />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {['above', 'below'].map(tp => (
+            <button key={tp} onClick={() => setType(tp)} className={`btn ${type === tp ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center', fontSize: 11 }}>
+              {typeLabels[tp]}
+            </button>
+          ))}
+        </div>
+        {kind === 'price' && (
+          <input type="number" placeholder={t('col_price')} value={price} onChange={e => setPrice(e.target.value)}
+            className="field-input" style={{ marginBottom: 16 }} autoFocus />
+        )}
+        {kind === 'dailyChange' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <input type="number" placeholder={t('alert_pct_placeholder')} value={pct} onChange={e => setPct(e.target.value)}
+              className="field-input" style={{ flex: 1 }} autoFocus />
+            <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>%</span>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
           {['once', 'rearm', 'repeat'].map(m => (
             <button key={m} onClick={() => setMode(m)} className={`btn ${mode === m ? 'btn-primary' : ''}`}
@@ -301,7 +341,11 @@ export default function Watchlist() {
                               className={`chip ${a.triggered ? 'chip-warn' : a.type === 'above' ? 'chip-up' : 'chip-down'}`}
                               style={{ cursor: 'pointer', textDecoration: a.triggered ? 'line-through' : 'none', border: 'none' }}
                               title={`${t(`alert_mode_${a.mode || 'once'}_hint`)} — ${t('click_to_remove')}`}>
-                              {a.type === 'above' ? '↑' : '↓'} {a.targetPrice?.toFixed(2)}
+                              {(a.kind === 'dailyChange')
+                                ? `${a.type === 'above' ? '↑' : '↓'}${a.targetPercent}% dziś`
+                                : (a.kind === 'week52')
+                                  ? `52W ${a.type === 'above' ? '↑' : '↓'}`
+                                  : `${a.type === 'above' ? '↑' : '↓'} ${a.targetPrice?.toFixed(2)}`}
                               {a.mode === 'rearm' ? ' ↻' : a.mode === 'repeat' ? ' 🔁' : ''}
                             </button>
                           ))}
