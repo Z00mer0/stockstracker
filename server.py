@@ -1983,7 +1983,8 @@ def _share_price(symbol):
     hit = _share_price_cache.get(symbol)
     if hit and now - hit[0] < _SHARE_PRICE_TTL:
         return hit[1]
-    price = _fetch_price_simple(symbol)
+    q = _fetch_quote(symbol)
+    price = q['price'] if q else None
     _share_price_cache[symbol] = (now, price)
     return price
 
