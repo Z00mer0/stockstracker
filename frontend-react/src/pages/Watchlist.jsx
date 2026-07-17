@@ -52,13 +52,14 @@ function genId() { return Math.random().toString(36).slice(2, 10); }
 function AlertModal({ item, onClose, onSave, livePrice }) {
   const t = useT();
   const [type, setType] = useState('above');
+  const [mode, setMode] = useState('rearm');
   const [price, setPrice] = useState(livePrice?.price != null ? String(livePrice.price.toFixed(2)) : '');
   function handleAdd() {
     if (!price || isNaN(parseFloat(price))) return;
     const target = parseFloat(price);
     const currentPrice = livePrice?.price ?? item.addedPrice ?? 0;
-    const triggered = (type === 'above' && currentPrice >= target) || (type === 'below' && currentPrice <= target);
-    onSave({ id: genId(), type, targetPrice: target, triggered });
+    const alreadyMet = (type === 'above' && currentPrice >= target) || (type === 'below' && currentPrice <= target);
+    onSave({ id: genId(), type, targetPrice: target, mode, triggered: mode === 'repeat' ? false : alreadyMet });
   }
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
@@ -76,7 +77,16 @@ function AlertModal({ item, onClose, onSave, livePrice }) {
           ))}
         </div>
         <input type="number" placeholder={t('col_price')} value={price} onChange={e => setPrice(e.target.value)}
-          className="field-input" style={{ marginBottom: 20 }} autoFocus />
+          className="field-input" style={{ marginBottom: 16 }} autoFocus />
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          {['once', 'rearm', 'repeat'].map(m => (
+            <button key={m} onClick={() => setMode(m)} className={`btn ${mode === m ? 'btn-primary' : ''}`}
+              style={{ flex: 1, justifyContent: 'center', fontSize: 11, padding: '6px 4px' }}>
+              {t(`alert_mode_${m}`)}
+            </button>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 20, minHeight: 28 }}>{t(`alert_mode_${mode}_hint`)}</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>{t('cancel')}</button>
           <button onClick={handleAdd} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{t('add_btn')}</button>
@@ -290,8 +300,9 @@ export default function Watchlist() {
                             <button key={a.id} onClick={() => removeAlert(w.id, a.id)}
                               className={`chip ${a.triggered ? 'chip-warn' : a.type === 'above' ? 'chip-up' : 'chip-down'}`}
                               style={{ cursor: 'pointer', textDecoration: a.triggered ? 'line-through' : 'none', border: 'none' }}
-                              title={t('click_to_remove')}>
+                              title={`${t(`alert_mode_${a.mode || 'once'}_hint`)} — ${t('click_to_remove')}`}>
                               {a.type === 'above' ? '↑' : '↓'} {a.targetPrice?.toFixed(2)}
+                              {a.mode === 'rearm' ? ' ↻' : a.mode === 'repeat' ? ' 🔁' : ''}
                             </button>
                           ))}
                           <button onClick={() => setAlertTarget(w)} title="Ustaw alert cenowy"

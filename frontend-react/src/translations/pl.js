@@ -625,6 +625,12 @@ export default {
   owned_companies:      'Posiadane spółki',
   above_alert:          '↑ Powyżej',
   below_alert:          '↓ Poniżej',
+  alert_mode_once:      'Raz',
+  alert_mode_rearm:     'Po powrocie',
+  alert_mode_repeat:    'Co 24h',
+  alert_mode_once_hint:   'Powiadomi raz i wygaśnie na stałe.',
+  alert_mode_rearm_hint:  'Powiadomi ponownie, gdy cena wróci za próg i znów go przekroczy.',
+  alert_mode_repeat_hint: 'Powiadamia, dopóki warunek trwa — nie częściej niż raz na 24h.',
   click_to_remove:      'Kliknij aby usunąć',
 
   // ── Settings ────────────────────────────────────────────────

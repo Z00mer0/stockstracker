@@ -2105,6 +2105,21 @@ IKE_LIMITS = {  # roczne limity wpłat w PLN (jak w IkeLimitCard.jsx)
     'IKZE': {2024: 9388.80, 2025: 10407.60, 2026: 11304},
 }
 
+ALERT_REPEAT_COOLDOWN_H = 24  # minimalny odstęp między pushami alertu cyklicznego
+
+
+def _cooldown_passed(last_sent):
+    if not last_sent:
+        return True
+    try:
+        prev = datetime.datetime.fromisoformat(last_sent)
+    except (TypeError, ValueError):
+        return True
+    if prev.tzinfo is None:
+        prev = prev.replace(tzinfo=datetime.timezone.utc)
+    delta = datetime.datetime.now(datetime.timezone.utc) - prev
+    return delta.total_seconds() >= ALERT_REPEAT_COOLDOWN_H * 3600
+
 
 def _run_push_checks():
     stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0}
@@ -2125,7 +2140,8 @@ def _run_push_checks():
             for item in items:
                 sym = item.get('symbol', '')
                 for alert in item.get('alerts', []):
-                    if alert.get('triggered'):
+                    mode = alert.get('mode') or 'once'
+                    if alert.get('triggered') and mode == 'once':
                         continue
                     try:
                         if sym not in price_cache:
@@ -2136,14 +2152,25 @@ def _run_push_checks():
                         target = alert.get('targetPrice')
                         hit = ((alert.get('type') == 'above' and price >= target) or
                                (alert.get('type') == 'below' and price <= target))
-                        if hit:
-                            arrow = '↑' if alert.get('type') == 'above' else '↓'
-                            cur_lbl = item.get('currency') or ''
-                            _send_push(username, f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip(),
-                                       f'Aktualna cena: {price:.2f} {cur_lbl}'.strip(), '/watchlist')
+                        if mode == 'rearm' and alert.get('triggered'):
+                            if not hit:  # cena wróciła za próg — uzbrój ponownie
+                                alert['triggered'] = False
+                                dirty = True
+                            continue
+                        if not hit:
+                            continue
+                        if mode == 'repeat' and not _cooldown_passed(alert.get('lastSentAt')):
+                            continue
+                        arrow = '↑' if alert.get('type') == 'above' else '↓'
+                        cur_lbl = item.get('currency') or ''
+                        _send_push(username, f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip(),
+                                   f'Aktualna cena: {price:.2f} {cur_lbl}'.strip(), '/watchlist')
+                        if mode == 'repeat':
+                            alert['lastSentAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        else:
                             alert['triggered'] = True
-                            dirty = True
-                            stats['priceAlerts'] += 1
+                        dirty = True
+                        stats['priceAlerts'] += 1
                     except Exception as e:
                         print(f'[push] alert {username}/{sym}: {e}')
         except Exception as e:

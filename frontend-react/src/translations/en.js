@@ -625,6 +625,12 @@ export default {
   owned_companies:      'Owned stocks',
   above_alert:          '↑ Above',
   below_alert:          '↓ Below',
+  alert_mode_once:      'Once',
+  alert_mode_rearm:     'On re-cross',
+  alert_mode_repeat:    'Every 24h',
+  alert_mode_once_hint:   'Notifies once, then expires for good.',
+  alert_mode_rearm_hint:  'Notifies again once the price returns past the threshold and crosses it anew.',
+  alert_mode_repeat_hint: 'Keeps notifying while the condition holds — at most once per 24h.',
   click_to_remove:      'Click to remove',
 
   // ── Settings ────────────────────────────────────────────────
