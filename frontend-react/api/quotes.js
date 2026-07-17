@@ -32,7 +32,12 @@ export default async function handler(req, res) {
     const changePercent = prev > 0 ? ((price - prev) / prev) * 100 : null;
     return res.status(200).json({
       quoteResponse: {
-        result: [{ regularMarketPrice: price, regularMarketChangePercent: changePercent }],
+        result: [{
+          regularMarketPrice: price,
+          regularMarketChangePercent: changePercent,
+          fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? null,
+          fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? null,
+        }],
       },
     });
   } catch (e1) {
