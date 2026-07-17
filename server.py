@@ -1916,9 +1916,10 @@ def _send_push(username, title, body, url='/'):
 QUOTES_BASE = os.environ.get('QUOTES_URL', 'https://myfund-app.vercel.app').rstrip('/')
 
 
-def _fetch_price_simple(symbol):
-    """Bieżąca cena przez funkcję /api/quotes (Vercel) — to samo źródło co frontend,
-    obsługuje GPW (.WA) i US, omija blokady IP Yahoo. Finnhub jako zapas dla US."""
+def _fetch_quote(symbol):
+    """Bieżące notowanie przez /api/quotes (Vercel) — to samo źródło co frontend.
+    Zwraca {'price','changePct','high52','low52'} lub None. Pola poza price mogą
+    być None (ścieżka stooq / finnhub bez 52W)."""
     try:
         url = f'{QUOTES_BASE}/api/quotes?symbols={urllib.parse.quote(symbol)}'
         req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
@@ -1926,14 +1927,20 @@ def _fetch_price_simple(symbol):
             data = json.loads(r.read())
         if isinstance(data, dict):
             if (data.get('price') or 0) > 0:          # ścieżka stooq: {"stooq":true,"price":N}
-                return float(data['price'])
+                return {'price': float(data['price']), 'changePct': None, 'high52': None, 'low52': None}
             res = data.get('quoteResponse', {}).get('result') or []
-            price = res[0].get('regularMarketPrice') if res else None
-            if (price or 0) > 0:
-                return float(price)
+            if res:
+                q = res[0]
+                if (q.get('regularMarketPrice') or 0) > 0:
+                    return {
+                        'price': float(q['regularMarketPrice']),
+                        'changePct': q.get('regularMarketChangePercent'),
+                        'high52': q.get('fiftyTwoWeekHigh'),
+                        'low52': q.get('fiftyTwoWeekLow'),
+                    }
     except Exception as e:
         print(f'[push] price quotes {symbol}: {e}')
-    # zapas dla US — finnhub
+    # zapas dla US — finnhub (c=cena, dp=zmiana dzienna %)
     if not symbol.endswith('.WA'):
         try:
             token = os.environ.get('FINNHUB_TOKEN', '')
@@ -1942,7 +1949,8 @@ def _fetch_price_simple(symbol):
                 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
                 with urllib.request.urlopen(req, timeout=6) as r:
                     q = json.loads(r.read())
-                return q.get('c') if (q.get('c') or 0) > 0 else None
+                if (q.get('c') or 0) > 0:
+                    return {'price': float(q['c']), 'changePct': q.get('dp'), 'high52': None, 'low52': None}
         except Exception as e:
             print(f'[push] price finnhub {symbol}: {e}')
     return None
@@ -2145,15 +2153,34 @@ def _run_push_checks():
                         continue
                     try:
                         if sym not in price_cache:
-                            price_cache[sym] = _fetch_price_simple(sym)
-                        price = price_cache[sym]
-                        if price is None:
+                            price_cache[sym] = _fetch_quote(sym)
+                        quote = price_cache[sym]
+                        if quote is None:
                             continue
-                        target = alert.get('targetPrice')
-                        hit = ((alert.get('type') == 'above' and price >= target) or
-                               (alert.get('type') == 'below' and price <= target))
+                        price = quote['price']
+                        kind = alert.get('kind') or 'price'
+                        # ── warunek zadziałania per rodzaj ──
+                        if kind == 'price':
+                            target = alert.get('targetPrice')
+                            hit = ((alert.get('type') == 'above' and price >= target) or
+                                   (alert.get('type') == 'below' and price <= target))
+                        elif kind == 'dailyChange':
+                            chg = quote.get('changePct')
+                            if chg is None:
+                                continue  # brak danych w tym cyklu (stooq)
+                            tp = float(alert.get('targetPercent') or 0)
+                            if tp <= 0:
+                                continue
+                            hit = (chg >= tp) if alert.get('type') == 'above' else (chg <= -tp)
+                        elif kind == 'week52':
+                            bound = quote.get('high52') if alert.get('type') == 'above' else quote.get('low52')
+                            if bound is None:
+                                continue  # brak danych w tym cyklu
+                            hit = (price >= bound) if alert.get('type') == 'above' else (price <= bound)
+                        else:
+                            continue
                         if mode == 'rearm' and alert.get('triggered'):
-                            if not hit:  # cena wróciła za próg — uzbrój ponownie
+                            if not hit:  # warunek ustał — uzbrój ponownie
                                 alert['triggered'] = False
                                 dirty = True
                             continue
@@ -2161,10 +2188,20 @@ def _run_push_checks():
                             continue
                         if mode == 'repeat' and not _cooldown_passed(alert.get('lastSentAt')):
                             continue
-                        arrow = '↑' if alert.get('type') == 'above' else '↓'
+                        # ── treść powiadomienia per rodzaj ──
                         cur_lbl = item.get('currency') or ''
-                        _send_push(username, f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip(),
-                                   f'Aktualna cena: {price:.2f} {cur_lbl}'.strip(), '/watchlist')
+                        if kind == 'price':
+                            arrow = '↑' if alert.get('type') == 'above' else '↓'
+                            title = f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip()
+                        elif kind == 'dailyChange':
+                            chg = quote['changePct']
+                            title = (f'📈 {sym} +{chg:.1f}% dziś' if alert.get('type') == 'above'
+                                     else f'📉 {sym} {chg:.1f}% dziś')
+                        else:  # week52
+                            title = (f'🚀 {sym} — nowe 52-tyg. maksimum' if alert.get('type') == 'above'
+                                     else f'⚓ {sym} — nowe 52-tyg. minimum')
+                        body = f'Aktualna cena: {price:.2f} {cur_lbl}'.strip()
+                        _send_push(username, title, body, '/watchlist')
                         if mode == 'repeat':
                             alert['lastSentAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                         else:
