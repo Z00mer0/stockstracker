@@ -1265,6 +1265,15 @@ if DATABASE_URL:
                     sent_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     PRIMARY KEY (username, notif_key)
                 )""")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_alerts (
+                    username      TEXT PRIMARY KEY,
+                    threshold_pct NUMERIC NOT NULL,
+                    enabled       BOOLEAN DEFAULT TRUE,
+                    triggered     BOOLEAN DEFAULT FALSE,
+                    ath_value     NUMERIC,
+                    last_sent_at  TIMESTAMPTZ
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1971,6 +1980,40 @@ def _nbp_rates():
         return {'PLN': 1.0}
 
 
+def _portfolio_market_value(username, price_cache, rates):
+    """Wycena akcje+gotówka wszystkich portfeli użytkownika w PLN.
+    None gdy jakakolwiek cena/kurs niedostępny — częściowa wycena dałaby fałszywy drawdown.
+    Świadomie pomija obligacje i inne aktywa (patrz spec)."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""SELECT h.symbol, h.qty, h.currency FROM portfolio_holdings h
+                       JOIN portfolio_list p ON p.id = h.portfolio_id
+                       WHERE p.user_id = %s""", (username,))
+        holdings = cur.fetchall()
+        cur.execute("""SELECT pc.currency, SUM(pc.amount) FROM portfolio_cash pc
+                       JOIN portfolio_list p ON p.id = pc.portfolio_id
+                       WHERE p.user_id = %s GROUP BY pc.currency""", (username,))
+        cash = cur.fetchall()
+    total = 0.0
+    for sym, qty, curr in holdings:
+        if float(qty or 0) <= 0:
+            continue
+        if sym not in price_cache:
+            price_cache[sym] = _fetch_quote(sym)
+        q = price_cache[sym]
+        if q is None:
+            return None
+        fx = rates.get(curr or 'PLN')
+        if fx is None:
+            return None
+        total += float(qty) * q['price'] * fx
+    for curr, amount in cash:
+        fx = rates.get(curr or 'PLN')
+        if fx is None:
+            return None
+        total += float(amount or 0) * fx
+    return total
+
+
 # ── Publiczny link do portfela (tylko %) ─────────────────────────────────────
 _share_price_cache = {}   # {symbol: (ts, price)}
 _share_fx_cache = {'ts': 0, 'rates': {'PLN': 1.0}}
@@ -2131,7 +2174,7 @@ def _cooldown_passed(last_sent):
 
 
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -2139,6 +2182,7 @@ def _run_push_checks():
     today = datetime.date.today()
     price_cache = {}
     div_cache = {}
+    fx_rates = _nbp_rates()
 
     for username in users:
         # ── 1. Alerty cenowe (co wywołanie) ──────────────────────────────
@@ -2219,6 +2263,37 @@ def _run_push_checks():
                     save_watchlist(username, items)
                 except Exception as e:
                     print(f'[push] save_watchlist {username}: {e}')
+
+        # ── 1b. Alert spadku portfela (drawdown od ATH) ──────────────────
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("SELECT threshold_pct, triggered, ath_value FROM portfolio_alerts WHERE username=%s AND enabled", (username,))
+                row = cur.fetchone()
+            if row:
+                threshold, was_triggered, ath = float(row[0]), bool(row[1]), row[2]
+                value = _portfolio_market_value(username, price_cache, fx_rates)
+                if value is not None and value > 0:
+                    sets, params = [], []
+                    if ath is None or value > float(ath):
+                        ath = value
+                        sets.append('ath_value=%s'); params.append(value)
+                        if was_triggered:               # nowy szczyt = pełne odrobienie
+                            sets.append('triggered=FALSE'); was_triggered = False
+                    ath = float(ath)
+                    if not was_triggered and value <= ath * (1 - threshold / 100):
+                        dd = (1 - value / ath) * 100
+                        _send_push(username, f'📉 Portfel −{dd:.1f}% od szczytu',
+                                   f'Wartość: {value:,.0f} zł (szczyt: {ath:,.0f} zł)', '/')
+                        sets.append('triggered=TRUE'); sets.append('last_sent_at=NOW()')
+                        stats['portfolio'] += 1
+                    elif was_triggered and value >= ath * (1 - threshold / 200):
+                        sets.append('triggered=FALSE')  # odrobił połowę — uzbrój ponownie
+                    if sets:
+                        with _conn() as c, c.cursor() as cur:
+                            cur.execute(f"UPDATE portfolio_alerts SET {', '.join(sets)} WHERE username=%s",
+                                        (*params, username))
+        except Exception as e:
+            print(f'[push] portfolio alert {username}: {e}')
 
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
@@ -2362,6 +2437,19 @@ class Handler(SimpleHTTPRequestHandler):
             if not VAPID_PUBLIC_KEY:
                 self.send_json(503, {'error': 'push not configured'}); return
             self.send_json(200, {'key': VAPID_PUBLIC_KEY}); return
+
+        elif path == '/api/portfolio-alert':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("SELECT enabled, threshold_pct FROM portfolio_alerts WHERE username=%s", (username,))
+                row = cur.fetchone()
+            if row:
+                self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1])})
+            else:
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10})
+            return
 
         elif path == '/api/calendar':
             qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
@@ -4686,6 +4774,29 @@ async function doRecover() {
             except Exception as e:
                 print(f'[push] test: {e}')
                 self.send_json(500, {'error': 'push failed'})
+
+        elif path == '/api/portfolio-alert':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=1024)
+                enabled = bool(body.get('enabled'))
+                threshold = float(body.get('thresholdPct') or 0)
+                if enabled and not (0.5 <= threshold <= 90):
+                    self.send_json(400, {'error': 'thresholdPct must be 0.5-90'}); return
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (username) DO UPDATE
+                        SET threshold_pct=EXCLUDED.threshold_pct, enabled=EXCLUDED.enabled,
+                            triggered=FALSE, ath_value=NULL
+                    """, (username, threshold or 10, enabled))
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                print(f'[push] portfolio-alert save: {e}')
+                self.send_json(400, {'error': 'bad request'})
 
         elif path == '/api/push/check':
             secret = self.headers.get('X-Push-Secret', '')
