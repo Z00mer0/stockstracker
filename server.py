@@ -1274,6 +1274,8 @@ if DATABASE_URL:
                     ath_value     NUMERIC,
                     last_sent_at  TIMESTAMPTZ
                 )""")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS us_summary BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS gpw_summary BOOLEAN DEFAULT FALSE")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -2174,7 +2176,7 @@ def _cooldown_passed(last_sent):
 
 
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -2294,6 +2296,74 @@ def _run_push_checks():
                                         (*params, username))
         except Exception as e:
             print(f'[push] portfolio alert {username}: {e}')
+
+        # ── 1c. Podsumowania sesji (USA i GPW: otwarcie / zamknięcie) ────
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("SELECT us_summary, gpw_summary FROM portfolio_alerts WHERE username=%s", (username,))
+                srow = cur.fetchone()
+            want_us = bool(srow and srow[0])
+            want_gpw = bool(srow and srow[1])
+            if want_us or want_gpw:
+                from zoneinfo import ZoneInfo
+                windows = []  # (klucz, tytuł) — okna aktywne w tej chwili
+                if want_us:
+                    et_now = datetime.datetime.now(ZoneInfo('America/New_York'))
+                    if et_now.weekday() < 5:
+                        m = et_now.hour * 60 + et_now.minute
+                        if 9 * 60 + 30 <= m < 11 * 60 + 30:
+                            windows.append((f'ussum:open:{et_now.date().isoformat()}', '🇺🇸 Otwarcie'))
+                        elif 16 * 60 <= m < 18 * 60:
+                            windows.append((f'ussum:close:{et_now.date().isoformat()}', '🏁 Zamknięcie USA'))
+                if want_gpw:
+                    pl_now = datetime.datetime.now(ZoneInfo('Europe/Warsaw'))
+                    if pl_now.weekday() < 5:
+                        m = pl_now.hour * 60 + pl_now.minute
+                        if 9 * 60 <= m < 11 * 60:
+                            windows.append((f'gpwsum:open:{pl_now.date().isoformat()}', '🇵🇱 Otwarcie GPW'))
+                        elif 17 * 60 + 5 <= m < 19 * 60:
+                            windows.append((f'gpwsum:close:{pl_now.date().isoformat()}', '🏁 Zamknięcie GPW'))
+                windows = [w for w in windows if not _already_sent(username, w[0])]
+                if windows:
+                    value = _portfolio_market_value(username, price_cache, fx_rates)
+                    if value is not None and value > 0:
+                        # zmiana dzienna: wartość wczorajsza z changePct per pozycja
+                        pct = None
+                        with _conn() as c, c.cursor() as cur:
+                            cur.execute("""SELECT h.symbol, h.qty, h.currency FROM portfolio_holdings h
+                                           JOIN portfolio_list p ON p.id = h.portfolio_id
+                                           WHERE p.user_id = %s""", (username,))
+                            holdings = cur.fetchall()
+                            cur.execute("""SELECT pc.currency, SUM(pc.amount) FROM portfolio_cash pc
+                                           JOIN portfolio_list p ON p.id = pc.portfolio_id
+                                           WHERE p.user_id = %s GROUP BY pc.currency""", (username,))
+                            cash = cur.fetchall()
+                        prev_total, have_all_chg = 0.0, True
+                        for sym, qty, curr in holdings:
+                            if float(qty or 0) <= 0:
+                                continue
+                            q = price_cache.get(sym)
+                            fx = fx_rates.get(curr or 'PLN')
+                            if q is None or fx is None or q.get('changePct') is None:
+                                have_all_chg = False
+                                break
+                            prev_total += float(qty) * (q['price'] / (1 + q['changePct'] / 100)) * fx
+                        if have_all_chg:
+                            for curr, amount in cash:
+                                fx = fx_rates.get(curr or 'PLN')
+                                if fx is None:
+                                    have_all_chg = False
+                                    break
+                                prev_total += float(amount or 0) * fx
+                        if have_all_chg and prev_total > 0:
+                            pct = (value / prev_total - 1) * 100
+                        body = f'Zmiana dziś: {pct:+.2f}%' if pct is not None else 'Poziom wartości portfela'
+                        for key, title in windows:
+                            _mark_sent(username, key)
+                            _send_push(username, f'{title} — portfel {value:,.0f} zł', body, '/')
+                            stats['usSummary'] += 1
+        except Exception as e:
+            print(f'[push] session summary {username}: {e}')
 
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
@@ -2443,12 +2513,13 @@ class Handler(SimpleHTTPRequestHandler):
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
             with _conn() as c, c.cursor() as cur:
-                cur.execute("SELECT enabled, threshold_pct FROM portfolio_alerts WHERE username=%s", (username,))
+                cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary FROM portfolio_alerts WHERE username=%s", (username,))
                 row = cur.fetchone()
             if row:
-                self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1])})
+                self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1]),
+                                     'usSummary': bool(row[2]), 'gpwSummary': bool(row[3])})
             else:
-                self.send_json(200, {'enabled': False, 'thresholdPct': 10})
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False})
             return
 
         elif path == '/api/calendar':
@@ -4783,16 +4854,26 @@ async function doRecover() {
                 body = self.read_json(max_size=1024)
                 enabled = bool(body.get('enabled'))
                 threshold = float(body.get('thresholdPct') or 0)
+                us_summary = bool(body.get('usSummary'))
+                gpw_summary = bool(body.get('gpwSummary'))
                 if enabled and not (0.5 <= threshold <= 90):
                     self.send_json(400, {'error': 'thresholdPct must be 0.5-90'}); return
                 with _conn() as c, c.cursor() as cur:
+                    # reset pomiaru ATH tylko gdy zmienia się konfiguracja drawdownu —
+                    # przełączanie samych podsumowań nie może kasować szczytu
                     cur.execute("""
-                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled, us_summary, gpw_summary)
+                        VALUES (%s, %s, %s, %s, %s)
                         ON CONFLICT (username) DO UPDATE
                         SET threshold_pct=EXCLUDED.threshold_pct, enabled=EXCLUDED.enabled,
-                            triggered=FALSE, ath_value=NULL
-                    """, (username, threshold or 10, enabled))
+                            us_summary=EXCLUDED.us_summary, gpw_summary=EXCLUDED.gpw_summary,
+                            triggered=CASE WHEN portfolio_alerts.threshold_pct=EXCLUDED.threshold_pct
+                                                AND portfolio_alerts.enabled=EXCLUDED.enabled
+                                           THEN portfolio_alerts.triggered ELSE FALSE END,
+                            ath_value=CASE WHEN portfolio_alerts.threshold_pct=EXCLUDED.threshold_pct
+                                                AND portfolio_alerts.enabled=EXCLUDED.enabled
+                                           THEN portfolio_alerts.ath_value ELSE NULL END
+                    """, (username, threshold or 10, enabled, us_summary, gpw_summary))
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 print(f'[push] portfolio-alert save: {e}')

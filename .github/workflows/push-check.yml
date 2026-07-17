@@ -2,6 +2,11 @@ name: push-check
 on:
   schedule:
     - cron: '*/10 * * * *'
+    # punktualność podsumowań sesji (czasy letnie); okna czasowe po stronie serwera pilnują poprawności
+    - cron: '40 13 * * 1-5'   # otwarcie USA ~9:40 EDT
+    - cron: '10 20 * * 1-5'   # zamknięcie USA ~16:10 EDT
+    - cron: '10 7 * * 1-5'    # otwarcie GPW ~9:10 CEST
+    - cron: '15 15 * * 1-5'   # zamknięcie GPW ~17:15 CEST
   workflow_dispatch: {}
 jobs:
   check:

@@ -483,26 +483,29 @@ function PortfolioAlertCard() {
   const t = useT();
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState(10);
+  const [usSummary, setUsSummary] = useState(false);
+  const [gpwSummary, setGpwSummary] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
     fetch('/api/portfolio-alert', { headers: authHeader() })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); } })
+      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); } })
       .catch(() => {});
   }, []);
 
-  async function save(nextEnabled, nextThreshold) {
+  async function save(next) {
     setBusy(true); setMsg('');
+    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, ...next };
     try {
       const r = await fetch('/api/portfolio-alert', {
         method: 'POST',
         headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: nextEnabled, thresholdPct: nextThreshold }),
+        body: JSON.stringify(cfg),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setEnabled(nextEnabled); setThreshold(nextThreshold);
+      setEnabled(cfg.enabled); setThreshold(cfg.thresholdPct); setUsSummary(cfg.usSummary); setGpwSummary(cfg.gpwSummary);
       setMsg(t('pa_saved'));
     } catch {
       setMsg(t('pa_error'));
@@ -517,17 +520,28 @@ function PortfolioAlertCard() {
         <div style={{ display: 'flex', gap: 6 }}>
           {[5, 10, 15, 20].map(p => (
             <button key={p} className={`btn ${threshold === p ? 'btn-primary' : ''}`} disabled={busy}
-              onClick={() => (enabled ? save(true, p) : setThreshold(p))}
+              onClick={() => (enabled ? save({ thresholdPct: p }) : setThreshold(p))}
               style={{ fontSize: 11, padding: '6px 10px' }}>
               −{p}%
             </button>
           ))}
         </div>
         <button className={`btn ${enabled ? '' : 'btn-primary'}`} disabled={busy}
-          onClick={() => save(!enabled, threshold)} style={{ fontSize: 11 }}>
+          onClick={() => save({ enabled: !enabled })} style={{ fontSize: 11 }}>
           {enabled ? t('pa_disable') : t('pa_enable')}
         </button>
         {msg && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{msg}</span>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 14 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('pa_session_summary_desc')}</span>
+        <button className={`btn ${usSummary ? '' : 'btn-primary'}`} disabled={busy}
+          onClick={() => save({ usSummary: !usSummary })} style={{ fontSize: 11 }}>
+          🇺🇸 {usSummary ? t('pa_summary_off') : t('pa_summary_on')}
+        </button>
+        <button className={`btn ${gpwSummary ? '' : 'btn-primary'}`} disabled={busy}
+          onClick={() => save({ gpwSummary: !gpwSummary })} style={{ fontSize: 11 }}>
+          🇵🇱 {gpwSummary ? t('pa_summary_off') : t('pa_summary_on')}
+        </button>
       </div>
     </Card>
   );

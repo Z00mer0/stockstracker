@@ -646,6 +646,9 @@ export default {
   pa_disable:      'Wyłącz alert',
   pa_saved:        'Zapisano',
   pa_error:        'Błąd zapisu',
+  pa_session_summary_desc: 'Podsumowania sesji — push z wartością portfela na otwarcie i zamknięcie giełdy (dni robocze):',
+  pa_summary_on:      'Włącz',
+  pa_summary_off:     'Wyłącz',
   click_to_remove:      'Kliknij aby usunąć',
 
   // ── Settings ────────────────────────────────────────────────

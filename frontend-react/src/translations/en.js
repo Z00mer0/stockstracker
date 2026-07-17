@@ -646,6 +646,9 @@ export default {
   pa_disable:      'Disable alert',
   pa_saved:        'Saved',
   pa_error:        'Save failed',
+  pa_session_summary_desc: 'Session summaries — push with your portfolio value at market open and close (weekdays):',
+  pa_summary_on:      'Enable',
+  pa_summary_off:     'Disable',
   click_to_remove:      'Click to remove',
 
   // ── Settings ────────────────────────────────────────────────
