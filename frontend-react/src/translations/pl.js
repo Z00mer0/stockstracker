@@ -9,6 +9,7 @@ export default {
   nav_dividends:        'Dywidendy',
   nav_calendar:         'Kalendarz',
   nav_watchlist:        'Watchlist',
+  nav_alerts:           'Alerty',
   nav_scenario:         'Scenario Lab',
   nav_analysis:         'Atrybucja',
   nav_ai:               'AI Insights',

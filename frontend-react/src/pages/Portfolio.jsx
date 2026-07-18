@@ -35,6 +35,8 @@ import SegmentedControl from '../components/shared/SegmentedControl';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
+import AlertModal from '../components/AlertModal';
+import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
 const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v5';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
@@ -138,15 +140,6 @@ function isWatched(symbol) {
   return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]').includes(symbol);
 }
 
-const ALERTS_KEY = 'myfund_price_alerts';
-function loadAlerts() {
-  try { return JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); }
-  catch { return []; }
-}
-function saveAlerts(list) {
-  localStorage.setItem(ALERTS_KEY, JSON.stringify(list));
-}
-
 function NoteEditor({ symbol, initial, onSave, onCancel }) {
   const t = useT();
   const [draft, setDraft] = useState(initial);
@@ -172,55 +165,6 @@ function NoteEditor({ symbol, initial, onSave, onCancel }) {
           onClick={() => onSave(draft)}
           style={{ fontSize: 11, padding: '3px 12px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'white', cursor: 'pointer', fontWeight: 600 }}
         >{t('save_btn')}</button>
-      </div>
-    </div>
-  );
-}
-
-function SetAlertModal({ symbol, currentPrice, onSave, onClose }) {
-  const t = useT();
-  const [target, setTarget] = useState(currentPrice != null ? String(Number(currentPrice).toFixed(2)) : '');
-  const [dir, setDir] = useState(currentPrice != null ? 'above' : 'above');
-
-  function handleSave() {
-    const tgt = parseFloat(target);
-    if (isNaN(tgt) || tgt <= 0) return;
-    onSave({ symbol, target: tgt, direction: dir });
-    onClose();
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-         onClick={onClose}>
-      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 320, boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}
-           onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Alert cenowy — {symbol}</h2>
-        {currentPrice != null && (
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>Cena teraz: {Number(currentPrice).toFixed(2)}</p>
-        )}
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Cena docelowa</label>
-          <input type="number" min="0" step="any" autoFocus
-            value={target} onChange={e => setTarget(e.target.value)}
-            style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
-          />
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Kierunek</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[['above', '▲ Powyżej'], ['below', '▼ Poniżej']].map(([val, label]) => (
-              <button key={val} onClick={() => setDir(val)}
-                style={{ flex: 1, padding: '6px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: dir === val ? 'var(--accent)' : 'var(--border)', color: dir === val ? '#fff' : 'var(--text-dim)' }}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>{t('cancel')}</button>
-          <button onClick={handleSave} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, border: 'none', cursor: 'pointer', fontWeight: 600 }}>{t('save_alert')}</button>
-        </div>
       </div>
     </div>
   );
@@ -355,8 +299,17 @@ export default function Portfolio() {
     return () => { cancelled = true; };
   }, []);
   const [noteEditing, setNoteEditing] = useState(null);
-  const [alerts, setAlerts] = useState(loadAlerts);
-  const [alertTarget, setAlertTarget] = useState(null); // { symbol, price }
+  const [watchItems, setWatchItems] = useState([]);
+  const [alertTarget, setAlertTarget] = useState(null); // { symbol, price, currency }
+
+  // Alerty żyją teraz w /api/watchlist — Portfolio tylko czyta bieżący stan,
+  // żeby wiedzieć, przy których pozycjach zapalić 🔔, i mutuje ten sam zasób
+  // przez API gdy user ustawi alert z menu ⋯.
+  useEffect(() => {
+    const token = localStorage.getItem('myfund_auth_token');
+    if (!token) return;
+    apiLoadWatchlist().then(data => { if (Array.isArray(data)) setWatchItems(data); }).catch(() => {});
+  }, []);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
@@ -539,28 +492,18 @@ export default function Portfolio() {
     };
   }, [enriched, fxRates, displayCurrency]);
 
-  useEffect(() => {
-    if (!alerts.length || !enriched.length) return;
-    const triggered = [];
-    const remaining = alerts.filter(a => {
-      const pos = enriched.find(p => p.symbol === a.symbol);
-      if (!pos?.price) return true;
-      const hit = a.direction === 'above' ? pos.price >= a.target : pos.price <= a.target;
-      if (hit) triggered.push({ ...a, price: pos.price });
-      return !hit;
-    });
-    if (!triggered.length) return;
-    saveAlerts(remaining);
-    setAlerts(remaining);
-    for (const a of triggered) {
-      const msg = `${a.symbol} osiągnął ${a.price.toFixed(2)} (alert: ${a.direction === 'above' ? '≥' : '≤'} ${a.target})`;
-      if (Notification.permission === 'granted') {
-        new Notification('Alert cenowy', { body: msg, icon: '/favicon.ico' });
-      } else {
-        setToast(msg);
-      }
+  // Alert-hit detection przeniesiony na backend (cron + web push) — patrz
+  // services/watchlistService.js. Wszystkie alerty żyją teraz w /api/watchlist,
+  // niezależnie od tego, czy user ma tę zakładkę otwartą.
+
+  // Ile alertów mamy per symbol z portfela — do zapalenia 🔔 przy pozycji.
+  const alertsPerSymbol = useMemo(() => {
+    const m = new Map();
+    for (const item of watchItems) {
+      if ((item.alerts ?? []).length) m.set(item.symbol, item.alerts.length);
     }
-  }, [enriched, alerts]);
+    return m;
+  }, [watchItems]);
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
   const totalValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
@@ -671,8 +614,12 @@ export default function Portfolio() {
                 {notes[pos.symbol]?.text && (
                   <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>📝</span>
                 )}
-                {alerts.some(a => a.symbol === pos.symbol) && (
-                  <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>🔔</span>
+                {alertsPerSymbol.has(pos.symbol) && (
+                  <span
+                    style={{ fontSize: 10, marginLeft: 4, opacity: 0.6, cursor: 'pointer' }}
+                    title={`${alertsPerSymbol.get(pos.symbol)} aktywny(e) alert(y) — otwórz "Alerty" w menu`}
+                    onClick={e => { e.stopPropagation(); }}
+                  >🔔</span>
                 )}
                 {pos.notFound && (
                   editTicker?.oldSymbol === pos.symbol ? (
@@ -1518,7 +1465,7 @@ export default function Portfolio() {
               { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
               { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`); setMenuSym(null); } },
               { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
-              { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price }); setMenuSym(null); } },
+              { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price, currency: pos.currency }); setMenuSym(null); } },
               null,
               { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
               { icon: '✕', label: t('delete_position'), action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
@@ -1559,19 +1506,23 @@ export default function Portfolio() {
         </div>
       )}
       {alertTarget && (
-        <SetAlertModal
+        <AlertModal
           symbol={alertTarget.symbol}
-          currentPrice={alertTarget.price}
-          onSave={(alert) => {
-            if (Notification.permission === 'default') {
-              Notification.requestPermission();
-            }
-            const updated = [...alerts, { ...alert, id: Math.random().toString(36).slice(2, 10) }];
-            setAlerts(updated);
-            saveAlerts(updated);
-            setToast(`Alert dla ${alert.symbol} ustawiony`);
-          }}
+          currency={alertTarget.currency}
+          livePrice={alertTarget.price != null ? { price: alertTarget.price } : null}
+          fallbackPrice={alertTarget.price}
           onClose={() => setAlertTarget(null)}
+          onSave={async (alert) => {
+            const updated = addAlertToItems(watchItems, alertTarget.symbol, alert);
+            setWatchItems(updated);
+            setAlertTarget(null);
+            try {
+              await apiSaveWatchlist(updated);
+              setToast(`Alert dla ${alertTarget.symbol} zapisany`);
+            } catch {
+              setToast('Nie udało się zapisać alertu — spróbuj ponownie');
+            }
+          }}
         />
       )}
     </div>

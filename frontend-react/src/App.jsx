@@ -14,6 +14,7 @@ import Transactions from './pages/Transactions';
 import Dividends    from './pages/Dividends';
 import Calendar     from './pages/Calendar';
 import Watchlist    from './pages/Watchlist';
+import Alerts       from './pages/Alerts';
 import ScenarioLab  from './pages/ScenarioLab';
 import Analysis     from './pages/Analysis';
 import AiInsights      from './pages/AiInsights';
@@ -56,6 +57,7 @@ function AppRoutes() {
           <Route path="dividends"   element={<Dividends />} />
           <Route path="calendar"    element={<Calendar />} />
           <Route path="watchlist"   element={<Watchlist />} />
+          <Route path="alerts"      element={<Alerts />} />
           <Route path="scenario"    element={<ScenarioLab />} />
           <Route path="analysis"    element={<Analysis />} />
           <Route path="ai"          element={<AiInsights />} />

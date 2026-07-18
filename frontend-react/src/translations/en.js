@@ -11,6 +11,7 @@ export default {
   nav_dividends:        'Dividends',
   nav_calendar:         'Calendar',
   nav_watchlist:        'Watchlist',
+  nav_alerts:           'Alerts',
   nav_scenario:         'Scenario Lab',
   nav_analysis:         'Attribution',
   nav_ai:               'AI Insights',

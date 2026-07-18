@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../hooks/useApi';
 import { resetJournalCache } from '../services/journalService';
+import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 
 export const AppContext = createContext(null);
 
@@ -161,6 +162,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (token) fetchData();
   }, [token, activePortfolioId, fetchData]);
+
+  // Jednorazowa migracja starych localStorage-owych alertów z Portfela
+  // do watchlisty (backend jako single source of truth).
+  useEffect(() => {
+    if (!token) return;
+    migratePortfolioAlertsOnce().catch(() => {});
+  }, [token]);
 
   // Fetch company logos for all portfolio symbols after data loads
   useEffect(() => {
