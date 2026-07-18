@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../hooks/useApi';
 import { resetJournalCache } from '../services/journalService';
+import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 
 export const AppContext = createContext(null);
 
 const TOKEN_KEY  = 'myfund_auth_token';
+const DEMO_KEY   = 'myfund_demo';
+const AUTH_NOTICE_KEY = 'myfund_auth_notice';
 const FX_CACHE_KEY = 'myfund_fx_rates';
 const FX_PERSIST_KEY = 'myfund_fx_last';
 const FX_CACHE_TTL = 30 * 60 * 1000; // 30 min
@@ -65,9 +68,11 @@ export function AppProvider({ children }) {
     fetch('/api/keepalive').catch(() => {});
   }, []);
 
-  function login(newToken, name) {
+  function login(newToken, name, opts = {}) {
     localStorage.setItem(TOKEN_KEY, newToken);
     localStorage.setItem(DISPLAY_NAME_KEY, name || '');
+    if (opts.demo) localStorage.setItem(DEMO_KEY, '1');
+    else localStorage.removeItem(DEMO_KEY);
     resetJournalCache();
     setLoading(true); // prevent premature empty-portfolio modal before fetchData fires
     setToken(newToken);
@@ -77,10 +82,34 @@ export function AppProvider({ children }) {
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(DISPLAY_NAME_KEY);
+    localStorage.removeItem(DEMO_KEY);
     resetJournalCache();
     setToken(null);
     setRawData(null);
     setDisplayName('');
+  }
+
+  // 401 = session gone (Render free tier restarts wipe in-memory sessions).
+  // Demo sessions are restarted silently; real users land on the login screen
+  // with a notice instead of being logged out without explanation.
+  const demoRestartRef = useRef(false);
+  async function handleUnauthorized() {
+    if (localStorage.getItem(DEMO_KEY) === '1') {
+      if (demoRestartRef.current) return;
+      demoRestartRef.current = true;
+      try {
+        const res = await api.post('/api/demo', {});
+        login(res.data.token, res.data.display_name, { demo: true });
+        return;
+      } catch {
+        sessionStorage.setItem(AUTH_NOTICE_KEY, 'demo_expired');
+      } finally {
+        demoRestartRef.current = false;
+      }
+    } else {
+      sessionStorage.setItem(AUTH_NOTICE_KEY, 'session_expired');
+    }
+    logout();
   }
 
   // Auto-logout on any 401 from write operations (e.g. backend session cleared after restart)
@@ -88,7 +117,7 @@ export function AppProvider({ children }) {
     const id = api.interceptors.response.use(
       r => r,
       err => {
-        if (err.response?.status === 401) logout();
+        if (err.response?.status === 401 && err.config?.url !== '/api/demo') handleUnauthorized();
         return Promise.reject(err);
       }
     );
@@ -118,7 +147,7 @@ export function AppProvider({ children }) {
     } catch (err) {
       if (myFetchId !== fetchIdRef.current) return; // stale error, ignore
       if (err.response?.status === 401) {
-        logout();
+        handleUnauthorized();
       } else if (err.response?.status === 403 && activePortfolioId !== 'all') {
         // stale portfolio id in localStorage — fall back to aggregate view
         switchPortfolio('all');
@@ -133,6 +162,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (token) fetchData();
   }, [token, activePortfolioId, fetchData]);
+
+  // Jednorazowa migracja starych localStorage-owych alertów z Portfela
+  // do watchlisty (backend jako single source of truth).
+  useEffect(() => {
+    if (!token) return;
+    migratePortfolioAlertsOnce().catch(() => {});
+  }, [token]);
 
   // Fetch company logos for all portfolio symbols after data loads
   useEffect(() => {
