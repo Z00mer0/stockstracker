@@ -717,6 +717,7 @@ export default {
   stats_daily:          'Wynik dnia',
   stats_beta:           'Beta portfela',
   stats_beta_hint:      'Beta portfela wymaga min. 60 sesji historii (obliczenie w przygotowaniu).',
+  totals_roi_hint:      'ROI liczony od kosztu zakupu (wartość / koszt − 1).',
   stats_positions:      'Pozycji',
   alloc_section:        'Alokacja sektorowa',
   filter_pl_label:      'Zysk / strata',

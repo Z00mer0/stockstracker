@@ -385,7 +385,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         }}
       >
         {[...tickers, ...tickers].map((tick, i) => (
-          <div key={`${tick.key}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          <div key={`${tick.key}-${i}`} aria-hidden={i >= tickers.length || undefined} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
             <span className="mono" style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
             {tick.delta != null && (

@@ -717,6 +717,7 @@ export default {
   stats_daily:          'Daily result',
   stats_beta:           'Portfolio beta',
   stats_beta_hint:      'Portfolio beta needs at least 60 sessions of history (computation coming soon).',
+  totals_roi_hint:      'ROI computed from cost basis (value / cost − 1).',
   stats_positions:      'Positions',
   alloc_section:        'Sector Allocation',
   filter_pl_label:      'Gain / loss',

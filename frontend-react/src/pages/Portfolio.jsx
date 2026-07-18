@@ -941,6 +941,7 @@ export default function Portfolio() {
         )}
         <button
           onClick={() => setEditMode(v => !v)}
+          title={editMode ? 'Zakończ edycję i zapisz układ kart' : 'Przeciągnij karty (za nagłówek), by zmienić kolejność i rozmiar'}
           style={{
             fontSize: 12, padding: '6px 14px', borderRadius: 7, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500,
@@ -1116,7 +1117,7 @@ export default function Portfolio() {
                       {metricsLoading ? 'Ładowanie cen…' : 'Brak otwartych pozycji z wyceną'}
                     </div>
                   )
-                ) : ytdChartData.length >= 1 ? (
+                ) : ytdChartData.length >= 2 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={ytdChartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                       <defs>
@@ -1149,8 +1150,10 @@ export default function Portfolio() {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
-                    Brak zamkniętych pozycji w {new Date().getFullYear()} r.
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 13, textAlign: 'center', padding: '0 12px' }}>
+                    {ytdChartData.length === 1
+                      ? `Tylko jedna zamknięta pozycja w ${new Date().getFullYear()} r. — wykres pojawi się od 2. transakcji.`
+                      : `Brak zamkniętych pozycji w ${new Date().getFullYear()} r.`}
                   </div>
                 )}
               </div>
@@ -1362,7 +1365,7 @@ export default function Portfolio() {
                       if (key === 'costPLN')  return <td key={key} className="right">{fmt(portToDisp(tot.cost), 2, locale)} {portCurrLabel}</td>;
                       return <td key={key} />;
                     })}
-                    <td className="right">{totRetPct != null ? ((totRetPct >= 0 ? '+' : '') + totRetPct.toFixed(1) + '%') : '—'}</td>
+                    <td className="right" title={t('totals_roi_hint')}>{totRetPct != null ? ((totRetPct >= 0 ? '+' : '') + fmt(totRetPct, 1, locale) + '%') : '—'}</td>
                     <td />
                   </tr>
                 </tfoot>
