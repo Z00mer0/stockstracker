@@ -575,17 +575,19 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   const fmtDateL  = (ts) => fmtDate(ts, locale);
   const [raw, setRaw]         = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
 
   useEffect(() => {
     if (!symbol) return;
     setLoading(true);
     setRaw(null);
+    setLoadErr(false);
     fetch(`/api/financials/keystats?symbol=${encodeURIComponent(symbol)}`, {
       headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
     })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(json => setRaw(json.error ? null : json))
-      .catch(() => {})
+      .catch(() => setLoadErr(true))
       .finally(() => setLoading(false));
   }, [symbol]);
 
@@ -659,7 +661,9 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   if (!hasValuation && !has52W && !hasAnalysts && !hasDividend && !hasProfit && !hasFundamentals) {
     return (
       <div style={{ padding: '24px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>
-        Brak danych — załaduj dane finansowe w zakładce Finanse
+        {loadErr
+          ? 'Dane fundamentalne chwilowo niedostępne (błąd źródła danych) — spróbuj ponownie za chwilę.'
+          : 'Brak danych — załaduj dane finansowe w zakładce Finanse'}
       </div>
     );
   }

@@ -553,6 +553,8 @@ export default {
   auth_demo_btn:        'Try the demo',
   auth_demo_loading:    'Preparing demo…',
   auth_demo_err:        'Could not start the demo — please try again',
+  auth_demo_expired:    'The demo session expired — start the demo again.',
+  auth_session_expired: 'Your session expired — please sign in again.',
   rc_title:             'Recovery codes',
   rc_sub:               'The only way to recover your account if you forget your password. Store them somewhere safe — each code works once.',
   rc_download:          'Download .txt',

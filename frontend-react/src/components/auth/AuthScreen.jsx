@@ -70,6 +70,15 @@ export default function AuthScreen({
   const [wig20, setWig20]             = useState(null);
   const uid = useId();
 
+  // Notice left by AppContext when a session expired (e.g. backend restart)
+  useEffect(() => {
+    const notice = sessionStorage.getItem('myfund_auth_notice');
+    if (!notice) return;
+    sessionStorage.removeItem('myfund_auth_notice');
+    setInfo(notice === 'demo_expired' ? t('auth_demo_expired') : t('auth_session_expired'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const base = import.meta.env.VITE_API_URL ?? '';
     fetch(`${base}/api/wig20-quote`)

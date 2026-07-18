@@ -553,6 +553,8 @@ export default {
   auth_demo_btn:        'Wypróbuj wersję demo',
   auth_demo_loading:    'Przygotowywanie demo…',
   auth_demo_err:        'Nie udało się uruchomić demo — spróbuj ponownie',
+  auth_demo_expired:    'Sesja demo wygasła — uruchom demo ponownie.',
+  auth_session_expired: 'Sesja wygasła — zaloguj się ponownie.',
   rc_title:             'Kody odzyskiwania',
   rc_sub:               'To jedyny sposób na odzyskanie konta, gdy zapomnisz hasła. Zapisz je w bezpiecznym miejscu — każdy kod działa tylko raz.',
   rc_download:          'Pobierz .txt',

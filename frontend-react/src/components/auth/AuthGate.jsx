@@ -51,7 +51,7 @@ export default function AuthGate({ onLogin }) {
   async function handleDemo() {
     try {
       const res = await api.post('/api/demo', {});
-      onLogin(res.data.token, res.data.display_name);
+      onLogin(res.data.token, res.data.display_name, { demo: true });
     } catch (err) {
       throw new Error(err.response?.data?.error ?? 'Nie udało się uruchomić demo — spróbuj ponownie');
     }
