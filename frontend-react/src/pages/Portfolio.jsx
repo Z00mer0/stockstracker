@@ -568,12 +568,10 @@ export default function Portfolio() {
   const portCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const portToDisp = v => v / portFx;
 
-  const dailyChangePLN = enriched.reduce((sum, pos) => {
-    if (pos.valuePLN != null && pos.dailyChg != null) {
-      return sum + pos.valuePLN * pos.dailyChg / 100;
-    }
-    return sum;
-  }, 0);
+  const dailyContribs = enriched.filter(p => p.valuePLN != null && p.dailyChg != null);
+  const dailyChangePLN = dailyContribs.length
+    ? dailyContribs.reduce((sum, pos) => sum + pos.valuePLN * pos.dailyChg / 100, 0)
+    : null;
 
   const snapshotsSorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
   const snapshotsForPortfolio = (() => {
@@ -979,7 +977,7 @@ export default function Portfolio() {
                   <div className="pv-total" style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
                     {fmt(portToDisp(totalValuePLN), 2, locale)} {portCurrLabel}
                   </div>
-                  {dailyChangePLN !== 0 && (
+                  {dailyChangePLN != null && dailyChangePLN !== 0 && (
                     <div className="pv-daily" style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
                       {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel} {t('today')}
                     </div>
@@ -1013,14 +1011,21 @@ export default function Portfolio() {
                   </div>
                   <div className="rail-stat">
                     <span className="rs-lbl">{t('stats_daily')}</span>
-                    <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                      {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel}
-                    </span>
+                    {dailyChangePLN == null ? (
+                      <span className="rs-val" style={{ color: 'var(--text-faint)' }}>—</span>
+                    ) : (
+                      <span className="rs-val" style={{ color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                        {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel}
+                      </span>
+                    )}
                   </div>
-                  <div className="rail-stat">
+                  <div className="rail-stat" title={t('stats_beta_hint')}>
                     <span className="rs-lbl">{t('stats_beta')}</span>
-                    <span className="rs-val" style={{ color: 'var(--text-faint)', fontSize: 11, fontWeight: 400 }}>
-                      {snapshotsSorted.length}/60 sesji
+                    <span className="rs-val" style={{ color: 'var(--text-faint)' }}>
+                      —
+                      <span style={{ fontSize: 10, fontWeight: 400, marginLeft: 6, color: 'var(--text-faint)' }}>
+                        ({snapshotsSorted.length}/60)
+                      </span>
                     </span>
                   </div>
                   <div className="rail-stat">
@@ -1153,6 +1158,9 @@ export default function Portfolio() {
           </div>
         </GridLayout>}
       </div>
+
+      <OtherAssetsSection />
+      <BondsSection />
 
       {/* Table */}
       <div className="card" style={{ overflow: 'visible' }}>
@@ -1563,8 +1571,6 @@ export default function Portfolio() {
           onClose={() => setAlertTarget(null)}
         />
       )}
-      <OtherAssetsSection />
-      <BondsSection />
     </div>
   );
 }
@@ -1652,7 +1658,7 @@ function OtherAssetModal({ initial, onSave, onClose }) {
 }
 
 function OtherAssetsSection() {
-  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates, displayCurrency } = useApp();
+  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates, displayCurrency, canWrite } = useApp();
   const oaFx = fxRates[displayCurrency] ?? 1;
   const oaCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const t = useT();
@@ -1676,7 +1682,7 @@ function OtherAssetsSection() {
           <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{t('other_assets')}</p>
           <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>{t('real_estate_hint')}</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 12 }}>+ {t('add')}</button>
+        {canWrite && <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ fontSize: 12 }}>+ {t('add')}</button>}
       </div>
     );
   }
@@ -1690,7 +1696,7 @@ function OtherAssetsSection() {
             <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 10 }}>≈ {fmtLocal(totalPLN / oaFx)} {oaCurrLabel} {t('total_approx')}</span>
           )}
         </div>
-        <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ {t('add')}</button>
+        {canWrite && <button onClick={() => { setEditTarget(null); setShowModal(true); }} className="btn" style={{ fontSize: 12 }}>+ {t('add')}</button>}
       </div>
       <div className="overflow-x-auto">
         <table className="data-table">

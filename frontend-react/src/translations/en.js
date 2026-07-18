@@ -716,6 +716,7 @@ export default {
   stats_cost:           'Purchase cost',
   stats_daily:          'Daily result',
   stats_beta:           'Portfolio beta',
+  stats_beta_hint:      'Portfolio beta needs at least 60 sessions of history (computation coming soon).',
   stats_positions:      'Positions',
   alloc_section:        'Sector Allocation',
   filter_pl_label:      'Gain / loss',

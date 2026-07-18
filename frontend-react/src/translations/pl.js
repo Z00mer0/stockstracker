@@ -716,6 +716,7 @@ export default {
   stats_cost:           'Koszt zakupu',
   stats_daily:          'Wynik dnia',
   stats_beta:           'Beta portfela',
+  stats_beta_hint:      'Beta portfela wymaga min. 60 sesji historii (obliczenie w przygotowaniu).',
   stats_positions:      'Pozycji',
   alloc_section:        'Alokacja sektorowa',
   filter_pl_label:      'Zysk / strata',
