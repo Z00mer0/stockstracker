@@ -1,9 +1,47 @@
 // Computes realized P&L from SELL transactions.
 // Each SELL already carries costBasis (avg price at time of sale) stored by AppContext.
+// SELL-e z importu brokera NIE mają zapisanego costBasis — dla nich koszt
+// nabycia odtwarzamy z historii: replay zakupów per symbol (średnia ważona,
+// ta sama metoda co avgPrice w portfelu). Sprzedaż bez żadnego wcześniejszego
+// zakupu w historii nadal jest pomijana (nie znamy kosztu).
+
+function backfillCostBasis(transactions) {
+  const bySym = new Map();
+  for (const tx of transactions) {
+    if ((tx.type !== 'BUY' && tx.type !== 'SELL') || !tx.qty || tx.qty <= 0) continue;
+    if (!bySym.has(tx.symbol)) bySym.set(tx.symbol, []);
+    bySym.get(tx.symbol).push(tx);
+  }
+  const filled = new Map(); // tx (referencja) → odtworzony costBasis
+  for (const txs of bySym.values()) {
+    // sort stabilny: w ramach tego samego dnia zachowuje kolejność z historii
+    const sorted = [...txs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    let qty = 0, avg = 0;
+    for (const tx of sorted) {
+      if (tx.type === 'BUY') {
+        const newQty = qty + tx.qty;
+        avg = newQty > 0 ? (qty * avg + tx.qty * tx.price) / newQty : 0;
+        qty = newQty;
+      } else {
+        if (tx.costBasis == null && qty > 0) filled.set(tx, avg);
+        qty = Math.max(0, qty - tx.qty);
+        if (qty === 0) avg = 0;
+      }
+    }
+  }
+  return filled;
+}
 
 export function computeRealizedTrades(transactions = [], fxRates = {}) {
-  const sells = transactions.filter(tx => tx.type === 'SELL' && tx.costBasis != null);
-  return sells.map(tx => {
+  const filled = backfillCostBasis(transactions);
+  const sells = transactions.filter(tx => tx.type === 'SELL' && (tx.costBasis != null || filled.has(tx)));
+  return sells.map(txRaw => {
+    const tx = txRaw.costBasis != null ? txRaw : { ...txRaw, costBasis: filled.get(txRaw) };
+    return mapTrade(tx, fxRates);
+  }).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function mapTrade(tx, fxRates) {
     const qty        = tx.qty   ?? 0;
     const sellPrice  = tx.price ?? 0;
     const costBasis  = tx.overridePL != null ? (sellPrice - tx.overridePL / qty) : (tx.costBasis ?? 0);
@@ -24,7 +62,6 @@ export function computeRealizedTrades(transactions = [], fxRates = {}) {
       pct,
       note:      tx.note ?? '',
     };
-  }).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function groupBySymbol(trades) {
