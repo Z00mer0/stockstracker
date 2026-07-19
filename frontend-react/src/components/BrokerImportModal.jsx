@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import { dedupeBatch, dedupeAgainstExisting } from '../utils/brokerDedupe';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -279,22 +280,14 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
 
   function handleDrop(e) { e.preventDefault(); handleFiles(e.dataTransfer.files); }
 
-  // Intra-batch dedup: when both sheets are uploaded, same trade appears in both
-  const allNewTxsRaw = results.flatMap(r => r.transactions);
-  const batchKeys = new Set();
-  const allNewTxs = allNewTxsRaw.filter(tx => {
-    const k = `${tx.symbol}_${tx.date}_${tx.type}_${Number(tx.price).toFixed(4)}`;
-    if (batchKeys.has(k)) return false;
-    batchKeys.add(k);
-    return true;
-  });
-  const preview = allNewTxs.length > 0 ? computePortfolioPreview(allNewTxs, existingPortfolio, existingCash) : null;
-  const existingBrokerIds = new Set(existingTransactions.map(t => t.brokerPositionId).filter(Boolean));
-  const existingKeys = new Set(existingTransactions.map(t => `${t.symbol}_${t.date}_${t.type}_${t.price}`));
-  const deduped = allNewTxs.filter(tx => {
-    if (tx.brokerPositionId && existingBrokerIds.has(tx.brokerPositionId)) return false;
-    return !existingKeys.has(`${tx.symbol}_${tx.date}_${tx.type}_${tx.price}`);
-  });
+  // Intra-batch dedup: when both sheets are uploaded, same trade appears in both.
+  // Multiset semantics — kilka identycznych transakcji w JEDNYM arkuszu to nie
+  // duplikaty (patrz utils/brokerDedupe.js).
+  const allNewTxs = dedupeBatch(results.map(r => r.transactions));
+  const deduped = dedupeAgainstExisting(allNewTxs, existingTransactions);
+  // Podgląd liczony z tego, co faktycznie zostanie zapisane (deduped),
+  // żeby nie pokazywał zmian, których import potem nie wykona.
+  const preview = deduped.length > 0 ? computePortfolioPreview(deduped, existingPortfolio, existingCash) : null;
   const instruments = new Set(deduped.map(t => t.symbol));
 
   async function handleImport() {
