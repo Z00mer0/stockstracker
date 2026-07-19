@@ -1,24 +1,38 @@
 // Deduplikacja transakcji z importu brokera.
 //
-// Klucz MUSI zawierać ilość, a porównanie musi być multisetowe (liczyć
-// wystąpienia), bo kilka identycznych transakcji jednego dnia po tej samej
-// cenie to normalna sytuacja (np. trzykrotne "CLOSE BUY 1/3 @ 34.91").
-// Zbiorowa deduplikacja po samym kluczu zjadała takie wiersze i zaniżała
-// stan pozycji po imporcie.
+// Dwie osobne klasy problemów:
+//
+// 1. WEWNĄTRZ arkusza: kilka identycznych transakcji jednego dnia po tej
+//    samej cenie (np. trzykrotne "CLOSE BUY 1/3 @ 34.91") to NIE duplikaty.
+//    Dlatego klucz zawiera ilość, a porównania są multisetowe (liczą
+//    wystąpienia zamiast pamiętać "czy klucz już był").
+//
+// 2. MIĘDZY arkuszami: Closed Positions i Cash Operations opisują te same
+//    transakcje, ale inaczej zapisane — arkusz zamkniętych AGREGUJE
+//    (jeden wiersz "volume 3"), gotówkowy ma trzy osobne wiersze po 1 szt.
+//    Ścisłe porównanie kluczy tego nie scali, więc Cash Operations jest
+//    źródłem prawdy: wiersz z Closed Positions odpada, jeśli jego ilość
+//    mieści się w puli gotówkowej po (symbol, typ, data, cena). Zostają
+//    tylko niepokryte (np. otwarcie pozycji sprzed okna eksportu).
 
 export function txKey(tx) {
-  const price = Number(tx.price);
   const qty = tx.qty == null ? '' : Number(tx.qty).toFixed(4);
-  return `${tx.symbol}_${tx.date}_${tx.type}_${isNaN(price) ? '' : price.toFixed(4)}_${qty}`;
+  return `${coarseKey(tx)}_${qty}`;
 }
 
-// Scala transakcje z wielu plików/arkuszy jednej partii.
-// Ten sam trade może pojawić się w Closed Positions i Cash Operations —
-// dla każdego klucza bierzemy maksymalną liczbę wystąpień z pojedynczego
-// arkusza (nie sumę). Wewnątrz jednego arkusza nic nie jest wyrzucane.
-export function dedupeBatch(perSheetTransactions) {
+// Klucz bez ilości — do dopasowywania zagregowanych wierszy między arkuszami.
+function coarseKey(tx) {
+  const price = Number(tx.price);
+  return `${tx.symbol}_${tx.date}_${tx.type}_${isNaN(price) ? '' : price.toFixed(4)}`;
+}
+
+// Scala wiele arkuszy TEGO SAMEGO rodzaju: dla każdego klucza bierze
+// maksymalną liczbę wystąpień z pojedynczego arkusza (nie sumę), więc ten
+// sam plik wgrany dwa razy się nie dubluje, a powtórzone legalne
+// transakcje w jednym arkuszu zostają.
+function multisetMax(sheets) {
   const target = new Map();
-  for (const txs of perSheetTransactions) {
+  for (const txs of sheets) {
     const counts = new Map();
     for (const tx of txs) {
       const k = txKey(tx);
@@ -30,7 +44,7 @@ export function dedupeBatch(perSheetTransactions) {
   }
   const used = new Map();
   const out = [];
-  for (const txs of perSheetTransactions) {
+  for (const txs of sheets) {
     for (const tx of txs) {
       const k = txKey(tx);
       const u = used.get(k) ?? 0;
@@ -38,6 +52,43 @@ export function dedupeBatch(perSheetTransactions) {
         used.set(k, u + 1);
         out.push(tx);
       }
+    }
+  }
+  return out;
+}
+
+// Scala transakcje z wielu plików/arkuszy jednej partii.
+export function dedupeBatch(perSheetTransactions) {
+  const cashSheets = [];
+  const closedSheets = [];
+  for (const txs of perSheetTransactions) {
+    const cash = txs.filter(t => !t.fromClosedPosition);
+    const closed = txs.filter(t => t.fromClosedPosition);
+    if (cash.length) cashSheets.push(cash);
+    if (closed.length) closedSheets.push(closed);
+  }
+
+  const cash = multisetMax(cashSheets);
+  const closed = multisetMax(closedSheets);
+  if (!closed.length) return cash;
+
+  // Pula pokrycia z operacji gotówkowych: (symbol, typ, data, cena) → suma szt.
+  const pool = new Map();
+  for (const tx of cash) {
+    if ((tx.type !== 'BUY' && tx.type !== 'SELL') || !tx.qty) continue;
+    const k = coarseKey(tx);
+    pool.set(k, (pool.get(k) ?? 0) + Number(tx.qty));
+  }
+
+  const out = [...cash];
+  for (const tx of closed) {
+    const q = Number(tx.qty) || 0;
+    const k = coarseKey(tx);
+    const avail = pool.get(k) ?? 0;
+    if (q > 0 && avail >= q - 1e-9) {
+      pool.set(k, avail - q); // pokryte przez operacje gotówkowe → duplikat
+    } else {
+      out.push(tx); // niepokryte (np. otwarcie sprzed okna eksportu) → zostaje
     }
   }
   return out;
