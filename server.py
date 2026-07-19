@@ -2512,6 +2512,9 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
+            if not DATABASE_URL:
+                # Tryb plikowy (lokalny dev/demo): brak tabeli portfolio_alerts — zwróć domyślne
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False}); return
             with _conn() as c, c.cursor() as cur:
                 cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary FROM portfolio_alerts WHERE username=%s", (username,))
                 row = cur.fetchone()
@@ -4850,6 +4853,8 @@ async function doRecover() {
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
+            if not DATABASE_URL:
+                self.send_json(503, {'error': 'alerty portfela wymagają bazy danych (tryb plikowy)'}); return
             try:
                 body = self.read_json(max_size=1024)
                 enabled = bool(body.get('enabled'))

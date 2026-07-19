@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { dedupeBatch, dedupeAgainstExisting } from '../utils/brokerDedupe';
+import { useApp } from '../context/AppContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -255,6 +256,10 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
   const [saved, setSaved]     = useState(false);
   const [error, setError]     = useState('');
   const inputRef = useRef(null);
+  // Import zapisuje do AKTYWNEGO portfela — widok "Wszystkie" nie jest
+  // prawidłowym celem zapisu, więc wymuszamy wybór konkretnego portfela.
+  const { portfolios, activePortfolioId, switchPortfolio, loading } = useApp();
+  const isAggregate = activePortfolioId === 'all';
 
   function handleFiles(files) {
     setError(''); setSaved(false);
@@ -348,6 +353,31 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
           </div>
         ))}
 
+        {/* Target portfolio */}
+        {results.length > 0 && (
+          <div style={{ borderRadius: 8, padding: '10px 14px', marginBottom: 10, background: 'var(--panel-2)', border: `1px solid ${isAggregate ? 'var(--warn)' : 'var(--border)'}` }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Portfel docelowy
+            </p>
+            <select
+              value={isAggregate ? '' : activePortfolioId}
+              onChange={e => e.target.value && switchPortfolio(e.target.value)}
+              className="field-input"
+              style={{ width: '100%', fontSize: 13 }}
+            >
+              <option value="" disabled>— wybierz portfel —</option>
+              {portfolios.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.currency})</option>
+              ))}
+            </select>
+            {isAggregate && (
+              <p style={{ fontSize: 11, color: 'var(--warn)', marginTop: 6, marginBottom: 0 }}>
+                Masz aktywny widok „Wszystkie" — transakcje muszą trafić do konkretnego portfela. Wybierz go powyżej.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Summary */}
         {results.length > 0 && (
           <div style={{
@@ -412,8 +442,12 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn" style={{ flex: 1 }} onClick={onClose}>{saved ? 'Zamknij' : 'Anuluj'}</button>
           {!saved && (
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleImport} disabled={saving || deduped.length === 0}>
-              {saving ? 'Importowanie…' : `Importuj (${deduped.length})`}
+            <button
+              className="btn btn-primary" style={{ flex: 1 }} onClick={handleImport}
+              disabled={saving || deduped.length === 0 || isAggregate || loading}
+              title={isAggregate ? 'Wybierz portfel docelowy powyżej' : undefined}
+            >
+              {saving ? 'Importowanie…' : loading ? 'Ładowanie portfela…' : `Importuj (${deduped.length})`}
             </button>
           )}
         </div>
