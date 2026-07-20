@@ -102,17 +102,36 @@ export function dedupeAgainstExisting(txs, existingTransactions) {
     existingTransactions.map(t => t.brokerPositionId).filter(Boolean)
   );
   const existingCounts = new Map();
+  // Coverage pool from existing CASH transactions: (symbol, type, date, price) → total qty.
+  // Used to reconcile a new AGGREGATED closed-position row against per-fill cash rows
+  // already in history (import Cash Ops one session, Closed Positions the next).
+  const cashPool = new Map();
   for (const t of existingTransactions) {
     const k = txKey(t);
     existingCounts.set(k, (existingCounts.get(k) ?? 0) + 1);
+    if (!t.fromClosedPosition && (t.type === 'BUY' || t.type === 'SELL') && t.qty > 0) {
+      const ck = coarseKey(t);
+      cashPool.set(ck, (cashPool.get(ck) ?? 0) + Number(t.qty));
+    }
   }
-  const used = new Map();
+  const usedCount = new Map();
+  const usedPool  = new Map();
   return txs.filter(tx => {
     if (tx.brokerPositionId && existingIds.has(tx.brokerPositionId)) return false;
+    // Cross-session reconciliation for aggregated closed rows.
+    if (tx.fromClosedPosition && (tx.type === 'BUY' || tx.type === 'SELL') && Number(tx.qty) > 0) {
+      const ck = coarseKey(tx);
+      const avail = (cashPool.get(ck) ?? 0) - (usedPool.get(ck) ?? 0);
+      if (avail >= Number(tx.qty) - 1e-9) {
+        usedPool.set(ck, (usedPool.get(ck) ?? 0) + Number(tx.qty));
+        return false;
+      }
+    }
+    // Fallback: strict multiset difference on full key (with qty).
     const k = txKey(tx);
-    const u = used.get(k) ?? 0;
+    const u = usedCount.get(k) ?? 0;
     if (u < (existingCounts.get(k) ?? 0)) {
-      used.set(k, u + 1);
+      usedCount.set(k, u + 1);
       return false;
     }
     return true;

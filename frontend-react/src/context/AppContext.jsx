@@ -66,7 +66,9 @@ export function AppProvider({ children }) {
   // into the server watchlist — gates Watchlist.jsx's autosave and Portfolio's
   // "Ustaw alert" button so they can't race the migration write.
   const [watchlistMigrationPending, setWatchlistMigrationPending] = useState(
-    () => !!localStorage.getItem('myfund_price_alerts') && !localStorage.getItem('myfund_alerts_migrated_v1')
+    () => !!localStorage.getItem('myfund_price_alerts')
+          && !localStorage.getItem('myfund_alerts_migrated_v1')
+          && localStorage.getItem('myfund_demo') !== '1'
   );
 
   useEffect(() => {

@@ -69,6 +69,11 @@ export async function migratePortfolioAlertsOnce() {
   const token = localStorage.getItem('myfund_auth_token');
   if (!token) return { migrated: 0, skipped: true };
 
+  if (localStorage.getItem('myfund_demo') === '1') {
+    // Don't leak legacy alerts into a throwaway demo account; retry on the next real login.
+    return { migrated: 0, skipped: true };
+  }
+
   let oldAlerts;
   try { oldAlerts = JSON.parse(localStorage.getItem(OLD_PORTFOLIO_ALERTS_KEY) || '[]'); }
   catch { oldAlerts = []; }
