@@ -38,7 +38,7 @@ async function fetchLivePrice(sym) {
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
 export default function Watchlist() {
-  const { portfolio } = useApp();
+  const { portfolio, watchlistMigrationPending } = useApp();
   const { openChart } = useChart();
   const { locale } = useLanguage();
   const t = useT();
@@ -90,12 +90,25 @@ export default function Watchlist() {
     }
   }, []);
 
+  // Gdy migracja z LS się dopina (pending flipuje z true→false), watchItems
+  // trzyma stan sprzed migracji — musi być re-loadowany z serwera, inaczej
+  // pierwszy save (nawet zwykła zmiana w UI) nadpisze zmigrowane alerty.
   useEffect(() => {
-    if (!initialized) return;
+    if (watchlistMigrationPending || !initialized) return;
+    const token = localStorage.getItem('myfund_auth_token');
+    if (!token) return;
+    apiLoadWatchlist()
+      .then(data => { if (Array.isArray(data)) setWatchItems(data); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchlistMigrationPending]);
+
+  useEffect(() => {
+    if (!initialized || watchlistMigrationPending) return;
     saveWatchlistLocal(watchItems);
     const token = localStorage.getItem('myfund_auth_token');
     if (token) apiSaveWatchlist(watchItems).catch(() => {});
-  }, [watchItems, initialized]);
+  }, [watchItems, initialized, watchlistMigrationPending]);
 
   useEffect(() => {
     if (!watchItems.length) return;

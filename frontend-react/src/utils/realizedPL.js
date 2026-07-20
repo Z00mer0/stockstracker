@@ -14,8 +14,12 @@ function backfillCostBasis(transactions) {
   }
   const filled = new Map(); // tx (referencja) → odtworzony costBasis
   for (const txs of bySym.values()) {
-    // sort stabilny: w ramach tego samego dnia zachowuje kolejność z historii
-    const sorted = [...txs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const sorted = [...txs].sort((a, b) => {
+      const d = (a.date || '').localeCompare(b.date || '');
+      if (d !== 0) return d;
+      // Within a day, apply BUYs first so a same-day SELL has coverage.
+      return (a.type === 'BUY' ? 0 : 1) - (b.type === 'BUY' ? 0 : 1);
+    });
     let qty = 0, avg = 0;
     for (const tx of sorted) {
       if (tx.type === 'BUY') {
@@ -23,7 +27,7 @@ function backfillCostBasis(transactions) {
         avg = newQty > 0 ? (qty * avg + tx.qty * tx.price) / newQty : 0;
         qty = newQty;
       } else {
-        if (tx.costBasis == null && qty > 0) filled.set(tx, avg);
+        if (tx.costBasis == null && qty >= tx.qty) filled.set(tx, avg);
         qty = Math.max(0, qty - tx.qty);
         if (qty === 0) avg = 0;
       }

@@ -16,12 +16,13 @@ export async function apiLoadWatchlist() {
 }
 
 export async function apiSaveWatchlist(items) {
-  await fetch('/api/watchlist', {
+  const r = await fetch('/api/watchlist', {
     method: 'POST',
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify(items),
     signal: AbortSignal.timeout(8000),
   });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
 }
 
 export function loadWatchlistLocal() {
@@ -67,6 +68,11 @@ export async function migratePortfolioAlertsOnce() {
   if (localStorage.getItem(MIGRATION_KEY) === '1') return { migrated: 0, skipped: true };
   const token = localStorage.getItem('myfund_auth_token');
   if (!token) return { migrated: 0, skipped: true };
+
+  if (localStorage.getItem('myfund_demo') === '1') {
+    // Don't leak legacy alerts into a throwaway demo account; retry on the next real login.
+    return { migrated: 0, skipped: true };
+  }
 
   let oldAlerts;
   try { oldAlerts = JSON.parse(localStorage.getItem(OLD_PORTFOLIO_ALERTS_KEY) || '[]'); }

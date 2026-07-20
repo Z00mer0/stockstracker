@@ -62,6 +62,14 @@ export function AppProvider({ children }) {
   const [activePortfolioId, setActivePortfolioId] = useState(
     () => localStorage.getItem(ACTIVE_PORTFOLIO_KEY) || 'all'
   );
+  // True only while we have old localStorage alerts that still need to be merged
+  // into the server watchlist — gates Watchlist.jsx's autosave and Portfolio's
+  // "Ustaw alert" button so they can't race the migration write.
+  const [watchlistMigrationPending, setWatchlistMigrationPending] = useState(
+    () => !!localStorage.getItem('myfund_price_alerts')
+          && !localStorage.getItem('myfund_alerts_migrated_v1')
+          && localStorage.getItem('myfund_demo') !== '1'
+  );
 
   useEffect(() => {
     loadFxRates().then(setFxRates);
@@ -167,7 +175,12 @@ export function AppProvider({ children }) {
   // do watchlisty (backend jako single source of truth).
   useEffect(() => {
     if (!token) return;
-    migratePortfolioAlertsOnce().catch(() => {});
+    let cancelled = false;
+    (async () => {
+      try { await migratePortfolioAlertsOnce(); } catch {}
+      finally { if (!cancelled) setWatchlistMigrationPending(false); }
+    })();
+    return () => { cancelled = true; };
   }, [token]);
 
   // Fetch company logos for all portfolio symbols after data loads
@@ -720,6 +733,7 @@ export function AppProvider({ children }) {
     addBond,
     editBond,
     deleteBond,
+    watchlistMigrationPending,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
