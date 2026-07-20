@@ -273,7 +273,7 @@ function renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency = 'P
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId } = useApp();
+  const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId, watchlistMigrationPending } = useApp();
   const { locale } = useLanguage();
   const t = useT();
   const { isPrivate } = usePrivacy();
@@ -308,7 +308,7 @@ export default function Portfolio() {
   useEffect(() => {
     const token = localStorage.getItem('myfund_auth_token');
     if (!token) return;
-    apiLoadWatchlist().then(data => { if (Array.isArray(data)) setWatchItems(data); }).catch(() => {});
+    apiLoadWatchlist().then(data => { if (Array.isArray(data)) setWatchItems(data); }).catch(e => console.warn('[Portfolio] watchlist load failed:', e));
   }, []);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef(null);
@@ -1465,7 +1465,7 @@ export default function Portfolio() {
               { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
               { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`); setMenuSym(null); } },
               { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
-              { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price, currency: pos.currency }); setMenuSym(null); } },
+              { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price, currency: pos.currency }); setMenuSym(null); }, disabled: watchlistMigrationPending, disabledTitle: 'Trwa migracja alertów, spróbuj za chwilę…' },
               null,
               { icon: '📝', label: 'Notatka', action: () => { setNoteEditing(noteEditing === pos.symbol ? null : pos.symbol); setMenuSym(null); } },
               { icon: '✕', label: t('delete_position'), action: () => { setConfirmDel(pos.symbol); setMenuSym(null); }, danger: true },
@@ -1476,14 +1476,18 @@ export default function Portfolio() {
                 <button
                   key={item.label}
                   onClick={item.action}
+                  disabled={item.disabled}
+                  title={item.disabled ? item.disabledTitle : undefined}
                   style={{
                     width: '100%', textAlign: 'left', padding: '8px 16px',
                     display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    background: 'transparent', border: 'none',
+                    cursor: item.disabled ? 'not-allowed' : 'pointer',
                     color: item.danger ? 'var(--down)' : 'var(--text)',
+                    opacity: item.disabled ? 0.5 : 1,
                     transition: 'background 0.15s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-2)'; }}
+                  onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = 'var(--panel-2)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
@@ -1513,12 +1517,19 @@ export default function Portfolio() {
           fallbackPrice={alertTarget.price}
           onClose={() => setAlertTarget(null)}
           onSave={async (alert) => {
-            const updated = addAlertToItems(watchItems, alertTarget.symbol, alert);
-            setWatchItems(updated);
+            const symbol = alertTarget.symbol;
             setAlertTarget(null);
             try {
-              await apiSaveWatchlist(updated);
-              setToast(`Alert dla ${alertTarget.symbol} zapisany`);
+              // Read-modify-write against fresh server state — don't rely on the
+              // local snapshot, which may be stale (mount-time load failed, or
+              // another tab edited the list) and would otherwise wipe the server
+              // watchlist with just this one item (backend is full-replace).
+              const current = await apiLoadWatchlist();
+              const base = Array.isArray(current) ? current : [];
+              const merged = addAlertToItems(base, symbol, alert);
+              await apiSaveWatchlist(merged);
+              setWatchItems(merged);
+              setToast(`Alert dla ${symbol} zapisany`);
             } catch {
               setToast('Nie udało się zapisać alertu — spróbuj ponownie');
             }

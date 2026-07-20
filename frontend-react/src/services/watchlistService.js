@@ -16,12 +16,13 @@ export async function apiLoadWatchlist() {
 }
 
 export async function apiSaveWatchlist(items) {
-  await fetch('/api/watchlist', {
+  const r = await fetch('/api/watchlist', {
     method: 'POST',
     headers: { ...authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify(items),
     signal: AbortSignal.timeout(8000),
   });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
 }
 
 export function loadWatchlistLocal() {
