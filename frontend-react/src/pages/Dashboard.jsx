@@ -268,13 +268,16 @@ export default function Dashboard() {
     const allPriced = allPositions.every(p => p.valuePLN != null);
     if (!allPriced) return;
 
+    // Zamrażamy fx dnia razem ze snapshotem — historyczne wartości nie
+    // będą się już zmieniać z aktualnym kursem NBP (PR #15).
+    const fxSnapshot = { ...fxRates };
     if (activePortfolioId === 'all') {
       // In "Wszystkie" view: save snapshot for each individual portfolio separately
       const byPid = {};
       allPositions.forEach(pos => {
         const pid = pos._portfolioId;
         if (!pid) return;
-        if (!byPid[pid]) byPid[pid] = { total: 0, invested: 0 };
+        if (!byPid[pid]) byPid[pid] = { total: 0, invested: 0, fx: fxSnapshot };
         byPid[pid].total += pos.valuePLN ?? 0;
         byPid[pid].invested += pos.costPLN ?? 0;
       });
@@ -286,7 +289,7 @@ export default function Dashboard() {
         + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
       const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
       if (totalValue > 0 && investedValue > 0) {
-        saveSnapshot(totalValue, investedValue);
+        saveSnapshot(totalValue, investedValue, fxSnapshot);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

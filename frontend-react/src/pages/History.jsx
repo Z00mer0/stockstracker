@@ -111,6 +111,14 @@ function generateSynthBench(key, startDate, endDate) {
 
 export default function History() {
   const { snapshots, loading, invested, displayCurrency, fxRates } = useApp();
+  // Per-date fx: dla snapshotu z zapisanym fx używamy jego wtedy-aktualnego
+  // kursu (wartość historyczna zamrożona). Fallback do dzisiejszego kursu
+  // dla starych wpisów bez fx — inaczej wartości "oddychają" z kursem NBP.
+  const displayFxFor = (snap) => {
+    const dayFx = snap?.fx?.[displayCurrency];
+    return (dayFx && dayFx > 0) ? dayFx : (fxRates[displayCurrency] ?? 1);
+  };
+  const toDispAt = (v, snap) => v == null ? null : v / displayFxFor(snap);
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -266,10 +274,10 @@ export default function History() {
       {/* KPI grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
-          { label: t('value_filter'), value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDisp(filteredLast?.total), currLabel, locale)}</span>, sub: null },
-          { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(toDisp(gainPLN), currLabel, locale)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
+          { label: t('value_filter'), value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDispAt(filteredLast?.total, filteredLast), currLabel, locale)}</span>, sub: null },
+          { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(toDispAt(gainPLN, filteredLast), currLabel, locale)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
           { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? <>{t('cagr_min_days')} ({days} {t('days_of_history')}){cagrUnlockStr && <><br /><span style={{ color: '#888' }}>dostępne ~{cagrUnlockStr}</span></>}</> : null },
-          { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDisp(ath?.total), currLabel, locale)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
+          { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDispAt(ath?.total, ath), currLabel, locale)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
           {
             label: 'Max Drawdown',
             value: mdd
@@ -367,13 +375,13 @@ export default function History() {
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{
                         color: valueUp === true ? 'var(--up)' : valueUp === false ? 'var(--down)' : 'var(--text)',
                         fontWeight: 600,
-                      }}>{fmt(toDisp(s.total), 0, locale)} {currLabel}</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(toDisp(s.invested), 0, locale)} {currLabel}</td>
+                      }}>{fmt(toDispAt(s.total, s), 0, locale)} {currLabel}</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(toDispAt(s.invested, s), 0, locale)} {currLabel}</td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl == null ? 'var(--text-faint)' : pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
-                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(toDisp(pl), 0, locale)} {currLabel}<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1, locale)}%)</span></>}
+                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(toDispAt(pl, s), 0, locale)} {currLabel}<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1, locale)}%)</span></>}
                       </td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
-                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(toDisp(delta), 0, locale)} ${currLabel}`}
+                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(toDispAt(delta, s), 0, locale)} ${currLabel}`}
                       </td>
                     </tr>
                   );
