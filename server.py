@@ -1266,6 +1266,13 @@ if DATABASE_URL:
                     PRIMARY KEY (username, notif_key)
                 )""")
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS push_runs (
+                    id         BIGSERIAL PRIMARY KEY,
+                    ran_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    stats_json TEXT NOT NULL,
+                    notes      TEXT
+                )""")
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_alerts (
                     username      TEXT PRIMARY KEY,
                     threshold_pct NUMERIC NOT NULL,
@@ -2408,6 +2415,15 @@ def _run_push_checks():
                 windows = [w for w in windows if not _already_sent(username, w[0])]
                 if windows:
                     value = _portfolio_market_value(username, price_cache, fx_rates)
+                    if value is None:
+                        # Log które ceny/kursy brakują — najczęstszy powód
+                        # cichego pomijania powiadomień w oknach sesji.
+                        missing_prices = [s for s, q in price_cache.items() if q is None]
+                        print(f'[push] session summary {username}: value=None, '
+                              f'missing_prices={missing_prices or "n/a"}, '
+                              f'windows_skipped={[w[0] for w in windows]}')
+                    elif value <= 0:
+                        print(f'[push] session summary {username}: value={value}, skip')
                     if value is not None and value > 0:
                         # zmiana dzienna: wartość wczorajsza z changePct per pozycja
                         pct = None
@@ -2441,9 +2457,13 @@ def _run_push_checks():
                             pct = (value / prev_total - 1) * 100
                         body = f'Zmiana dziś: {pct:+.2f}%' if pct is not None else 'Poziom wartości portfela'
                         for key, title in windows:
-                            _mark_sent(username, key)
-                            _send_push(username, f'{title} — portfel {value:,.0f} zł', body, '/')
-                            stats['usSummary'] += 1
+                            sent = _send_push(username, f'{title} — portfel {value:,.0f} zł', body, '/')
+                            if sent > 0:
+                                _mark_sent(username, key)  # dopiero po realnej wysyłce
+                                stats['usSummary'] += 1
+                            else:
+                                print(f'[push] session summary {username}/{key}: '
+                                      f'_send_push zwrócił 0 (brak subskrypcji?) — retry przy następnym cyklu')
         except Exception as e:
             print(f'[push] session summary {username}: {e}')
 
@@ -2523,6 +2543,16 @@ def _run_push_checks():
         except Exception as e:
             print(f'[push] ike {username}: {e}')
 
+    # Zapisz log biegu — dzięki temu można sprawdzić czy cron w ogóle uderza
+    # (GET /api/push/status). Zachowujemy tylko ostatnie 100 wpisów.
+    try:
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("INSERT INTO push_runs (stats_json) VALUES (%s)",
+                        (json.dumps(stats),))
+            cur.execute("DELETE FROM push_runs WHERE id NOT IN "
+                        "(SELECT id FROM push_runs ORDER BY id DESC LIMIT 100)")
+    except Exception as e:
+        print(f'[push] run log: {e}')
     return stats
 
 
@@ -2589,6 +2619,29 @@ class Handler(SimpleHTTPRequestHandler):
             if not VAPID_PUBLIC_KEY:
                 self.send_json(503, {'error': 'push not configured'}); return
             self.send_json(200, {'key': VAPID_PUBLIC_KEY}); return
+
+        elif path == '/api/push/status':
+            # Diagnostyka: ostatnie 20 uruchomień crona push. Auth zwykłym
+            # tokenem — user może sam sprawdzić czy /api/push/check w ogóle jest wołane.
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            if not DATABASE_URL:
+                self.send_json(200, {'runs': [], 'note': 'file mode — brak historii'}); return
+            try:
+                with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("SELECT ran_at, stats_json FROM push_runs ORDER BY id DESC LIMIT 20")
+                    rows = cur.fetchall()
+                    cur.execute("SELECT COUNT(*) AS n FROM push_subscriptions WHERE username=%s", (username,))
+                    subs_count = cur.fetchone()['n']
+                runs = [{'ranAt': r['ran_at'].isoformat(), 'stats': json.loads(r['stats_json'])} for r in rows]
+                self.send_json(200, {
+                    'runs': runs,
+                    'subscriptions': subs_count,
+                    'lastRunAt': runs[0]['ranAt'] if runs else None,
+                }); return
+            except Exception as e:
+                self.send_json(500, {'error': str(e)}); return
 
         elif path == '/api/portfolio-alert':
             username = get_username(self)
