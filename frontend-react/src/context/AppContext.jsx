@@ -484,6 +484,12 @@ export function AppProvider({ children }) {
     let newCash = { ...baseCash };
     const sorted = [...tagged].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
+    // Cash adjust w tym samym warunku dla BUY i SELL:
+    // - fromClosedPosition: cash-flow już policzony z arkusza Cash Operations
+    // - skipCashAdjust: świadomy opt-out (broker historical dump)
+    // - fromSnapshot: replace stanu, snapshot ma własną gotówkę
+    const affectsCash = tx => !tx.fromClosedPosition && !tx.skipCashAdjust && !tx.fromSnapshot;
+
     for (const tx of sorted) {
       if (!tx.qty || tx.qty <= 0) continue;
       const cur = tx.currency || 'PLN';
@@ -507,7 +513,12 @@ export function AppProvider({ children }) {
             currency: cur, date: tx.date, name: '',
           }];
         }
-        // fromClosedPosition BUY for existing position: skip (SELL will reduce it)
+        // Zdejmij środki na zakup (symetrycznie do SELL).
+        // fromClosedPosition BUY: nie ruszaj holdings (SELL zredukuje), ale
+        // też nie ruszaj cash — cash-flow wynika z Cash Ops, nie z Closed Pos.
+        if (affectsCash(tx)) {
+          newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) - tx.qty * tx.price };
+        }
       } else if (tx.type === 'SELL') {
         const idx = findHolding(newHoldings, tx.symbol);
         if (idx >= 0) {
@@ -516,8 +527,7 @@ export function AppProvider({ children }) {
             ? newHoldings.filter((_, i) => i !== idx)
             : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
         }
-        // Add sale proceeds to cash (skip closed-position SELLs and broker historical imports)
-        if (!tx.fromClosedPosition && !tx.skipCashAdjust) {
+        if (affectsCash(tx)) {
           newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
         }
       }
