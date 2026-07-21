@@ -652,6 +652,8 @@ export default {
   pa_session_summary_desc: 'Podsumowania sesji — push z wartością portfela na otwarcie i zamknięcie giełdy (dni robocze):',
   pa_summary_on:      'Włącz',
   pa_summary_off:     'Wyłącz',
+  pa_push_missing:    'Powiadomienia push nie są aktywne w tej przeglądarce — alert nie zadziała bez subskrypcji.',
+  pa_push_failed:     'Nie udało się włączyć powiadomień — spróbuj ponownie.',
   click_to_remove:      'Kliknij aby usunąć',
 
   // ── Settings ────────────────────────────────────────────────

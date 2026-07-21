@@ -8,6 +8,8 @@ import BrokerImportModal from '../components/BrokerImportModal';
 import SnapshotImportModal from '../components/SnapshotImportModal';
 import Card from '../components/shared/Card';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { authHeader } from '../utils/auth.js';
+import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
 
 function SettingsRow({ label, value, children }) {
   return (
@@ -477,8 +479,6 @@ function ShareLinkSection() {
   );
 }
 
-function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
-
 function PortfolioAlertCard() {
   const t = useT();
   const [enabled, setEnabled] = useState(false);
@@ -487,15 +487,36 @@ function PortfolioAlertCard() {
   const [gpwSummary, setGpwSummary] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [hasSub, setHasSub] = useState(true); // domyślnie true → nie pokazujemy warna zanim sprawdzimy
 
   useEffect(() => {
     fetch('/api/portfolio-alert', { headers: authHeader() })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); } })
       .catch(() => {});
+    getPushSubscription().then(sub => setHasSub(!!sub));
   }, []);
 
+  // Zwraca true jeśli ta zmiana WŁĄCZA którykolwiek toggle (transition false→true).
+  function isEnabling(next) {
+    return (next.enabled === true && !enabled)
+        || (next.usSummary === true && !usSummary)
+        || (next.gpwSummary === true && !gpwSummary);
+  }
+
   async function save(next) {
+    // Bez subskrypcji push toggle byłby bezużyteczny — zapytaj i włącz jeśli user zgodzi.
+    if (isEnabling(next) && pushSupported && !hasSub) {
+      setBusy(true); setMsg(t('pa_push_missing'));
+      const r = await subscribePush();
+      setBusy(false);
+      if (!r.ok) {
+        setMsg(r.reason === 'denied' ? t('push_denied') : t('pa_push_failed'));
+        return; // NIE zapisuj toggla — user zobaczył prompt i musi zdecydować co dalej
+      }
+      setHasSub(true);
+      setMsg('');
+    }
     setBusy(true); setMsg('');
     const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, ...next };
     try {
@@ -512,9 +533,28 @@ function PortfolioAlertCard() {
     } finally { setBusy(false); }
   }
 
+  const anyOn = enabled || usSummary || gpwSummary;
+  const showSubWarn = pushSupported && !hasSub && anyOn;
+
+  async function enablePushNow() {
+    setBusy(true); setMsg('');
+    const r = await subscribePush();
+    setBusy(false);
+    if (r.ok) { setHasSub(true); setMsg(t('pa_saved')); }
+    else setMsg(r.reason === 'denied' ? t('push_denied') : t('pa_push_failed'));
+  }
+
   return (
     <Card title={`📉 ${t('pa_title')}`}>
       <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 16 }}>{t('pa_desc')}</p>
+      {showSubWarn && (
+        <div style={{ padding: '10px 12px', marginBottom: 12, background: 'var(--warn-bg, rgba(255,180,0,0.12))', border: '1px solid var(--warn, #d99e00)', borderRadius: 6, fontSize: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--warn, #d99e00)' }}>⚠️ {t('pa_push_missing')}</span>
+          <button className="btn btn-primary" disabled={busy} onClick={enablePushNow} style={{ fontSize: 11 }}>
+            🔔 {t('push_enable')}
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <label style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('pa_threshold')}</label>
         <div style={{ display: 'flex', gap: 6 }}>

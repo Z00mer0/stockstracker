@@ -1,9 +1,6 @@
 // frontend-react/src/hooks/usePortfolioMetrics.js
 import { useState, useEffect } from 'react';
-
-function authHeader() {
-  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
-}
+import { authHeader } from '../utils/auth.js';
 
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min

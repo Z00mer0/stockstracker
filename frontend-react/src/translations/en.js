@@ -652,6 +652,8 @@ export default {
   pa_session_summary_desc: 'Session summaries — push with your portfolio value at market open and close (weekdays):',
   pa_summary_on:      'Enable',
   pa_summary_off:     'Disable',
+  pa_push_missing:    'Push notifications are not active in this browser — the alert will not fire without a subscription.',
+  pa_push_failed:     'Could not enable notifications — try again.',
   click_to_remove:      'Click to remove',
 
   // ── Settings ────────────────────────────────────────────────

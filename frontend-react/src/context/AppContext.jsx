@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { api } from '../hooks/useApi';
 import { resetJournalCache } from '../services/journalService';
 import { migratePortfolioAlertsOnce } from '../services/watchlistService';
+import { weightedAvg } from '../utils/weightedAvg.js';
 
 export const AppContext = createContext(null);
 
@@ -308,11 +309,10 @@ export function AppProvider({ children }) {
     let newHoldings;
     if (src && dst) {
       // Target already exists — merge: weighted avg price, summed qty
-      const mergedQty = dst.qty + src.qty;
-      const mergedAvg = (dst.qty * dst.avgPrice + src.qty * src.avgPrice) / mergedQty;
+      const mergedAvg = weightedAvg(dst.qty, dst.avgPrice, src.qty, src.avgPrice);
       newHoldings = holdings
         .filter(h => h.symbol !== oldSymbol)
-        .map(h => h.symbol === newSymbol ? { ...h, qty: mergedQty, avgPrice: mergedAvg } : h);
+        .map(h => h.symbol === newSymbol ? { ...h, qty: dst.qty + src.qty, avgPrice: mergedAvg } : h);
     } else {
       newHoldings = holdings.map(h =>
         h.symbol === oldSymbol ? { ...h, symbol: newSymbol } : h
@@ -394,9 +394,7 @@ export function AppProvider({ children }) {
     if (existing) {
       newHoldings = holdings.map(h => {
         if (h.symbol !== symbol) return h;
-        const newQty = h.qty + qty;
-        const newAvg = (h.qty * h.avgPrice + qty * price) / newQty;
-        return { ...h, qty: newQty, avgPrice: newAvg };
+        return { ...h, qty: h.qty + qty, avgPrice: weightedAvg(h.qty, h.avgPrice, qty, price) };
       });
     } else {
       newHoldings = [...holdings, {
@@ -507,9 +505,8 @@ export function AppProvider({ children }) {
             // Snapshot = authoritative state: replace holding entirely (avoids mixing currencies / stale symbols)
             newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur } : h2);
           } else {
-            const newQty = h.qty + tx.qty;
-            const newAvg = (h.qty * h.avgPrice + tx.qty * tx.price) / newQty;
-            newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty, avgPrice: newAvg } : h2);
+            const newAvg = weightedAvg(h.qty, h.avgPrice, tx.qty, tx.price);
+            newHoldings = newHoldings.map((h2, i) => i === idx ? { ...h2, qty: h.qty + tx.qty, avgPrice: newAvg } : h2);
           }
         } else if (idx < 0) {
           newHoldings = [...newHoldings, {
