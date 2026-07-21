@@ -268,13 +268,16 @@ export default function Dashboard() {
     const allPriced = allPositions.every(p => p.valuePLN != null);
     if (!allPriced) return;
 
+    // Zamrażamy fx dnia razem ze snapshotem — historyczne wartości nie
+    // będą się już zmieniać z aktualnym kursem NBP (PR #15).
+    const fxSnapshot = { ...fxRates };
     if (activePortfolioId === 'all') {
       // In "Wszystkie" view: save snapshot for each individual portfolio separately
       const byPid = {};
       allPositions.forEach(pos => {
         const pid = pos._portfolioId;
         if (!pid) return;
-        if (!byPid[pid]) byPid[pid] = { total: 0, invested: 0 };
+        if (!byPid[pid]) byPid[pid] = { total: 0, invested: 0, fx: fxSnapshot };
         byPid[pid].total += pos.valuePLN ?? 0;
         byPid[pid].invested += pos.costPLN ?? 0;
       });
@@ -286,7 +289,7 @@ export default function Dashboard() {
         + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
       const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
       if (totalValue > 0 && investedValue > 0) {
-        saveSnapshot(totalValue, investedValue);
+        saveSnapshot(totalValue, investedValue, fxSnapshot);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,7 +314,9 @@ export default function Dashboard() {
     let sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     // Always inject today's live value so current period has an endpoint
     if (kpi.totalValue > 0 && (sorted.length === 0 || sorted[sorted.length - 1].date !== today)) {
-      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null }];
+      // fx dnia dołączony — chart używa per-pkt fx, więc live endpoint
+      // musi być rysowany po dzisiejszym kursie (spójnie z resztą punktów).
+      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null, fx: { ...fxRates } }];
     }
     if (tf === 'MAX') return sorted;
     const days = { '1T': 7, '1M': 30, '3M': 90, '6M': 180, '1R': 365 }[tf] || 30;
@@ -323,7 +328,7 @@ export default function Dashboard() {
       if (before.length > 0) return [before[before.length - 1], ...inRange];
     }
     return inRange;
-  }, [snapshots, tf, kpi.totalValue, invested]);
+  }, [snapshots, tf, kpi.totalValue, invested, fxRates]);
 
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;

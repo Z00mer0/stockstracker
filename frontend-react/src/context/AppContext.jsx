@@ -249,9 +249,14 @@ export function AppProvider({ children }) {
   }
 
   const snapshotsInv = rawData?.snapshotsInvested ?? {};
+  const snapshotsFx = rawData?.snapshotsFx ?? {};
   const snapshots = rawData?.snapshots
     ? Object.entries(rawData.snapshots)
-        .map(([date, total]) => ({ date, total, invested: snapshotsInv[date] ?? null }))
+        .map(([date, total]) => ({
+          date, total,
+          invested: snapshotsInv[date] ?? null,
+          fx: snapshotsFx[date] ?? null,
+        }))
     : [];
 
   const portfolioInvested = useMemo(() => {
@@ -601,32 +606,41 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
-  async function setSnapshot(date, totalValue, investedValue) {
+  async function setSnapshot(date, totalValue, investedValue, fxSnapshot) {
     assertLoaded();
     const rd = rawDataRef.current;
     const updated = {
       ...rd,
       snapshots: { ...(rd.snapshots ?? {}), [date]: totalValue },
       snapshotsInvested: { ...(rd.snapshotsInvested ?? {}), [date]: investedValue },
+      snapshotsFx: fxSnapshot
+        ? { ...(rd.snapshotsFx ?? {}), [date]: fxSnapshot }
+        : (rd.snapshotsFx ?? {}),
     };
     await postUpdate(updated);
   }
 
-  async function saveSnapshot(totalValue, investedValue) {
+  async function saveSnapshot(totalValue, investedValue, fxSnapshot) {
     if (!canWrite) return; // "all" view cannot save directly — use saveBatchSnapshots instead
     assertLoaded();
     const rd = rawDataRef.current;
     const today = new Date().toISOString().slice(0, 10);
+    // Zamrażamy kursy dnia razem ze snapshotem — inaczej historyczne
+    // wartości pływałyby z aktualnym kursem NBP (widoczna wartość invested
+    // zmieniałaby się mimo braku transakcji, patrz PR #15).
     const updated = {
       ...rd,
       snapshots: { ...(rd.snapshots ?? {}), [today]: totalValue },
       snapshotsInvested: { ...(rd.snapshotsInvested ?? {}), [today]: investedValue },
+      snapshotsFx: fxSnapshot
+        ? { ...(rd.snapshotsFx ?? {}), [today]: fxSnapshot }
+        : (rd.snapshotsFx ?? {}),
     };
     await postUpdate(updated);
   }
 
   async function saveBatchSnapshots(snapshotsMap) {
-    // snapshotsMap: {portfolioId: {total, invested}}
+    // snapshotsMap: {portfolioId: {total, invested, fx?}}
     await api.post('/api/portfolios/save-snapshots', snapshotsMap);
   }
 

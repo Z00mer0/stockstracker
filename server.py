@@ -1157,8 +1157,10 @@ if DATABASE_URL:
                     date         DATE NOT NULL,
                     total        NUMERIC,
                     invested     NUMERIC,
+                    fx_json      TEXT,
                     PRIMARY KEY (portfolio_id, date)
                 )""")
+            cur.execute("ALTER TABLE portfolio_snapshots ADD COLUMN IF NOT EXISTS fx_json TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_cash (
                     portfolio_id TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
@@ -1364,10 +1366,17 @@ if DATABASE_URL:
                 except Exception:
                     pass
                 transactions.append(tx)
-            cur.execute("SELECT date::text, total, invested FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
+            cur.execute("SELECT date::text, total, invested, fx_json FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
             snaps_rows = cur.fetchall()
             snapshots = {r['date']: float(r['total']) for r in snaps_rows if r['total'] is not None}
             snapshots_inv = {r['date']: float(r['invested']) for r in snaps_rows if r['invested'] is not None}
+            snapshots_fx = {}
+            for r in snaps_rows:
+                if r['fx_json']:
+                    try:
+                        snapshots_fx[r['date']] = json.loads(r['fx_json'])
+                    except Exception:
+                        pass
             cur.execute("SELECT currency, amount FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
             cash = {r['currency']: float(r['amount']) for r in cur.fetchall()}
             cur.execute("SELECT id, name, category, value, currency, note, updated_at FROM portfolio_other_assets WHERE portfolio_id=%s", (portfolio_id,))
@@ -1388,7 +1397,8 @@ if DATABASE_URL:
             except Exception:
                 bonds = []
         return {'portfolio': {'holdings': holdings}, 'transactions': transactions,
-                'snapshots': snapshots, 'snapshotsInvested': snapshots_inv, 'cash': cash,
+                'snapshots': snapshots, 'snapshotsInvested': snapshots_inv,
+                'snapshotsFx': snapshots_fx, 'cash': cash,
                 'otherAssets': other_assets, 'importSnapshots': import_snapshots,
                 'bonds': bonds}
 
@@ -1397,6 +1407,7 @@ if DATABASE_URL:
         transactions = data.get('transactions', [])
         snapshots = data.get('snapshots', {})
         snapshots_inv = data.get('snapshotsInvested', {})
+        snapshots_fx = data.get('snapshotsFx', {})
         cash = data.get('cash', {})
         with _conn() as c, c.cursor() as cur:
             cur.execute("DELETE FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
@@ -1424,8 +1435,10 @@ if DATABASE_URL:
             cur.execute("DELETE FROM portfolio_snapshots WHERE portfolio_id=%s", (portfolio_id,))
             for date, total in snapshots.items():
                 inv = snapshots_inv.get(date)
-                cur.execute("INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested) VALUES (%s,%s,%s,%s)",
-                            (portfolio_id, date, total, inv))
+                fx  = snapshots_fx.get(date)
+                fx_str = json.dumps(fx) if isinstance(fx, dict) and fx else None
+                cur.execute("INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json) VALUES (%s,%s,%s,%s,%s)",
+                            (portfolio_id, date, total, inv, fx_str))
             cur.execute("DELETE FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
             for cur_code, amount in cash.items():
                 cur.execute("INSERT INTO portfolio_cash (portfolio_id, currency, amount) VALUES (%s,%s,%s)",
@@ -4475,6 +4488,7 @@ async function doRecover() {
                         continue
                     total = vals.get('total')
                     invested = vals.get('invested')
+                    fx_map = vals.get('fx') if isinstance(vals.get('fx'), dict) else None
                     if total is None or invested is None or total <= 0:
                         continue
                     pdata = load_portfolio_data(pid)
@@ -4491,6 +4505,8 @@ async function doRecover() {
                             continue
                     snaps[today] = total
                     pdata.setdefault('snapshotsInvested', {})[today] = invested
+                    if fx_map:
+                        pdata.setdefault('snapshotsFx', {})[today] = fx_map
                     save_portfolio_data(pid, pdata)
                 self.send_json(200, {'ok': True})
             except Exception as e:
@@ -5153,18 +5169,25 @@ def _run_daily_snapshots():
             print('[snapshot] No portfolios — skipping')
             return
 
-        # Load holdings for each portfolio, collect all unique symbols
+        # Load holdings + cash for each portfolio, collect all unique symbols
         pid_holdings = {}
+        pid_cash = {}
         all_symbols = set()
         for pid in all_pids:
             with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute(
-                    "SELECT symbol, qty, avg_price FROM portfolio_holdings "
+                    "SELECT symbol, qty, avg_price, currency FROM portfolio_holdings "
                     "WHERE portfolio_id=%s AND qty>0",
                     (pid,)
                 )
                 holdings = list(cur.fetchall())
+                cur.execute(
+                    "SELECT currency, amount FROM portfolio_cash WHERE portfolio_id=%s",
+                    (pid,)
+                )
+                cash = list(cur.fetchall())
             pid_holdings[pid] = holdings
+            pid_cash[pid] = cash
             for h in holdings:
                 all_symbols.add(h['symbol'])
 
@@ -5176,10 +5199,13 @@ def _run_daily_snapshots():
         prices = _fetch_all_prices(list(all_symbols))
         print(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
 
+        # Kursy NBP — snapshoty ZAWSZE w PLN (spójnie z klientem Dashboard).
+        # Wcześniej scheduler zapisywał w walucie natywnej bez fx — powodowało
+        # rozjazd jednostek między dniami zapisanymi przez klienta a scheduler.
+        fx_rates = _nbp_rates()
+
         # Compute and upsert snapshot per portfolio.
-        # WYMAGAMY pełnego pokrycia cenami — częściowy batch zaniża total
-        # (2026-07-19/20 zapisały ~25% prawdziwej wartości bo YF zwrócił
-        # tylko część symboli i kod liczył total z podpróby).
+        # WYMAGAMY pełnego pokrycia cenami — częściowy batch zaniża total.
         saved = 0
         skipped = []
         for pid in all_pids:
@@ -5193,18 +5219,34 @@ def _run_daily_snapshots():
                       f'symboli bez ceny ({missing}) — brak wpisu lepszy niż zaniżony')
                 skipped.append(pid)
                 continue
-            total    = sum(float(h['qty']) * prices[h['symbol']]     for h in holdings)
-            invested = sum(float(h['qty']) * float(h['avg_price'])   for h in holdings)
+            # Sprawdź czy mamy fx dla WSZYSTKICH walut w portfelu (holdings + cash)
+            all_currs = set([h.get('currency') or 'PLN' for h in holdings])
+            all_currs.update([c.get('currency') or 'PLN' for c in pid_cash.get(pid, [])])
+            missing_fx = [c for c in all_currs if fx_rates.get(c) is None]
+            if missing_fx:
+                print(f'[snapshot] SKIP pid={pid}: brak fx dla walut {missing_fx}')
+                skipped.append(pid)
+                continue
+            # Total = holdings + cash (spójnie z Dashboard.jsx klienta,
+            # który dolicza cash * fx do totalValue).
+            total_holdings = sum(float(h['qty']) * prices[h['symbol']] * fx_rates.get(h.get('currency') or 'PLN', 1.0)
+                                 for h in holdings)
+            total_cash = sum(float(c['amount']) * fx_rates.get(c.get('currency') or 'PLN', 1.0)
+                             for c in pid_cash.get(pid, []))
+            total = total_holdings + total_cash
+            invested = sum(float(h['qty']) * float(h['avg_price']) * fx_rates.get(h.get('currency') or 'PLN', 1.0)
+                           for h in holdings)
             if total <= 0:
                 skipped.append(pid)
                 continue
+            fx_json = json.dumps({k: float(v) for k, v in fx_rates.items()})
             with _conn() as conn, conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (portfolio_id, date) DO UPDATE
-                        SET total=EXCLUDED.total, invested=EXCLUDED.invested
-                """, (pid, today, total, invested))
+                        SET total=EXCLUDED.total, invested=EXCLUDED.invested, fx_json=EXCLUDED.fx_json
+                """, (pid, today, total, invested, fx_json))
             saved += 1
 
         if skipped:
