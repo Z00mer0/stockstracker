@@ -2043,15 +2043,43 @@ def _share_fx():
     return _share_fx_cache['rates']
 
 
+def _xirr(cashflows):
+    """Newton-Raphson XIRR na listach (amount, date_iso). Zwraca stopę roczną (0.12 = 12%)."""
+    if len(cashflows) < 2:
+        return None
+    try:
+        t0 = datetime.date.fromisoformat(cashflows[0][1])
+        days = [(datetime.date.fromisoformat(d) - t0).days / 365.0 for _, d in cashflows]
+    except Exception:
+        return None
+    rate = 0.1
+    for _ in range(100):
+        f, df = 0.0, 0.0
+        for i, (amt, _d) in enumerate(cashflows):
+            denom = (1 + rate) ** days[i]
+            if denom == 0:
+                return None
+            f  += amt / denom
+            df -= days[i] * amt / (denom * (1 + rate))
+        if abs(f) < 1e-7:
+            return rate if abs(rate) < 50 else None
+        if df == 0:
+            return None
+        rate = rate - f / df
+    return None
+
+
 def _build_shared_payload(username, portfolio_id):
-    """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot."""
+    """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot.
+    Metryki portfela to również same ratio/procenty — nie zdradzają kwot."""
     meta = next((p for p in list_portfolios(username) if p['id'] == portfolio_id), None)
     if meta is None:
         return None
     data = load_portfolio_data(portfolio_id)
     holdings = (data.get('portfolio') or {}).get('holdings') or []
+    transactions = data.get('transactions') or []
     fx = _share_fx()
-    rows, total = [], 0.0
+    rows, total_val, total_cost = [], 0.0, 0.0
     for h in holdings:
         qty = float(h.get('qty') or 0)
         avg = float(h.get('avgPrice') or 0)
@@ -2060,21 +2088,75 @@ def _build_shared_payload(username, portfolio_id):
         price = _share_price(h.get('symbol') or '')
         live = (price or 0) > 0
         eff_price = price if live else avg
-        value = qty * eff_price * fx.get(h.get('currency') or 'PLN', 1.0)
+        rate = fx.get(h.get('currency') or 'PLN', 1.0)
+        value = qty * eff_price * rate
+        cost  = qty * avg * rate
         rows.append({
             'symbol': h.get('symbol'),
             'value': value,
+            'cost':  cost,
             'plPct': round((eff_price / avg - 1) * 100, 2) if live and avg > 0 else None,
         })
-        total += value
+        total_val += value
+        total_cost += cost
+
+    sorted_rows = sorted(rows, key=lambda r: -r['value'])
     positions = [{
         'symbol': r['symbol'],
-        'pct': round(r['value'] / total * 100, 1) if total > 0 else 0,
+        'pct': round(r['value'] / total_val * 100, 1) if total_val > 0 else 0,
         'plPct': r['plPct'],
-    } for r in sorted(rows, key=lambda r: -r['value'])]
+    } for r in sorted_rows]
+
+    # ── Metryki portfela (wszystko ratio/%) ─────────────────────────────
+    metrics = {}
+    if total_cost > 0:
+        metrics['plPct'] = round((total_val / total_cost - 1) * 100, 2)
+        metrics['moic']  = round(total_val / total_cost, 2)
+    if total_val > 0 and len(positions) >= 3:
+        metrics['top3Pct'] = round(sum(p['pct'] for p in positions[:3]), 1)
+    metrics['positionsCount'] = len(positions)
+    with_pl = [p for p in positions if p['plPct'] is not None]
+    metrics['winnersCount'] = sum(1 for p in with_pl if p['plPct'] > 0)
+    metrics['losersCount']  = sum(1 for p in with_pl if p['plPct'] < 0)
+    if with_pl:
+        best  = max(with_pl, key=lambda p: p['plPct'])
+        worst = min(with_pl, key=lambda p: p['plPct'])
+        metrics['best']  = {'symbol': best['symbol'],  'plPct': best['plPct']}
+        metrics['worst'] = {'symbol': worst['symbol'], 'plPct': worst['plPct']}
+
+    # IRR — cashflows z transakcji + terminal value = bieżąca wartość
+    try:
+        cfs = []
+        for tx in transactions:
+            typ = tx.get('type')
+            qty = float(tx.get('qty') or 0)
+            prc = float(tx.get('price') or 0)
+            dt  = tx.get('date')
+            cur = tx.get('currency') or 'PLN'
+            if not dt or qty <= 0 or prc <= 0:
+                continue
+            r = fx.get(cur, 1.0)
+            if typ == 'BUY':
+                cfs.append((-qty * prc * r, dt))
+            elif typ == 'SELL':
+                cfs.append((+qty * prc * r, dt))
+            elif typ == 'DIV':
+                cfs.append((+qty * prc * r, dt))
+        if cfs and total_val > 0:
+            cfs.sort(key=lambda x: x[1])
+            day_span = (datetime.date.today() - datetime.date.fromisoformat(cfs[0][1])).days
+            if day_span >= 30:
+                cfs.append((total_val, datetime.date.today().isoformat()))
+                irr = _xirr(cfs)
+                if irr is not None:
+                    metrics['irrPct'] = round(irr * 100, 1)
+    except Exception as e:
+        print(f'[share] IRR error: {e}')
+
     return {
         'name': meta.get('name') or 'Portfel',
         'positions': positions,
+        'metrics': metrics,
         'updated': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
     }
 
