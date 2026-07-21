@@ -1266,6 +1266,13 @@ if DATABASE_URL:
                     PRIMARY KEY (username, notif_key)
                 )""")
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS push_runs (
+                    id         BIGSERIAL PRIMARY KEY,
+                    ran_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    stats_json TEXT NOT NULL,
+                    notes      TEXT
+                )""")
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_alerts (
                     username      TEXT PRIMARY KEY,
                     threshold_pct NUMERIC NOT NULL,
@@ -2043,15 +2050,43 @@ def _share_fx():
     return _share_fx_cache['rates']
 
 
+def _xirr(cashflows):
+    """Newton-Raphson XIRR na listach (amount, date_iso). Zwraca stopę roczną (0.12 = 12%)."""
+    if len(cashflows) < 2:
+        return None
+    try:
+        t0 = datetime.date.fromisoformat(cashflows[0][1])
+        days = [(datetime.date.fromisoformat(d) - t0).days / 365.0 for _, d in cashflows]
+    except Exception:
+        return None
+    rate = 0.1
+    for _ in range(100):
+        f, df = 0.0, 0.0
+        for i, (amt, _d) in enumerate(cashflows):
+            denom = (1 + rate) ** days[i]
+            if denom == 0:
+                return None
+            f  += amt / denom
+            df -= days[i] * amt / (denom * (1 + rate))
+        if abs(f) < 1e-7:
+            return rate if abs(rate) < 50 else None
+        if df == 0:
+            return None
+        rate = rate - f / df
+    return None
+
+
 def _build_shared_payload(username, portfolio_id):
-    """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot."""
+    """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot.
+    Metryki portfela to również same ratio/procenty — nie zdradzają kwot."""
     meta = next((p for p in list_portfolios(username) if p['id'] == portfolio_id), None)
     if meta is None:
         return None
     data = load_portfolio_data(portfolio_id)
     holdings = (data.get('portfolio') or {}).get('holdings') or []
+    transactions = data.get('transactions') or []
     fx = _share_fx()
-    rows, total = [], 0.0
+    rows, total_val, total_cost = [], 0.0, 0.0
     for h in holdings:
         qty = float(h.get('qty') or 0)
         avg = float(h.get('avgPrice') or 0)
@@ -2060,21 +2095,75 @@ def _build_shared_payload(username, portfolio_id):
         price = _share_price(h.get('symbol') or '')
         live = (price or 0) > 0
         eff_price = price if live else avg
-        value = qty * eff_price * fx.get(h.get('currency') or 'PLN', 1.0)
+        rate = fx.get(h.get('currency') or 'PLN', 1.0)
+        value = qty * eff_price * rate
+        cost  = qty * avg * rate
         rows.append({
             'symbol': h.get('symbol'),
             'value': value,
+            'cost':  cost,
             'plPct': round((eff_price / avg - 1) * 100, 2) if live and avg > 0 else None,
         })
-        total += value
+        total_val += value
+        total_cost += cost
+
+    sorted_rows = sorted(rows, key=lambda r: -r['value'])
     positions = [{
         'symbol': r['symbol'],
-        'pct': round(r['value'] / total * 100, 1) if total > 0 else 0,
+        'pct': round(r['value'] / total_val * 100, 1) if total_val > 0 else 0,
         'plPct': r['plPct'],
-    } for r in sorted(rows, key=lambda r: -r['value'])]
+    } for r in sorted_rows]
+
+    # ── Metryki portfela (wszystko ratio/%) ─────────────────────────────
+    metrics = {}
+    if total_cost > 0:
+        metrics['plPct'] = round((total_val / total_cost - 1) * 100, 2)
+        metrics['moic']  = round(total_val / total_cost, 2)
+    if total_val > 0 and len(positions) >= 3:
+        metrics['top3Pct'] = round(sum(p['pct'] for p in positions[:3]), 1)
+    metrics['positionsCount'] = len(positions)
+    with_pl = [p for p in positions if p['plPct'] is not None]
+    metrics['winnersCount'] = sum(1 for p in with_pl if p['plPct'] > 0)
+    metrics['losersCount']  = sum(1 for p in with_pl if p['plPct'] < 0)
+    if with_pl:
+        best  = max(with_pl, key=lambda p: p['plPct'])
+        worst = min(with_pl, key=lambda p: p['plPct'])
+        metrics['best']  = {'symbol': best['symbol'],  'plPct': best['plPct']}
+        metrics['worst'] = {'symbol': worst['symbol'], 'plPct': worst['plPct']}
+
+    # IRR — cashflows z transakcji + terminal value = bieżąca wartość
+    try:
+        cfs = []
+        for tx in transactions:
+            typ = tx.get('type')
+            qty = float(tx.get('qty') or 0)
+            prc = float(tx.get('price') or 0)
+            dt  = tx.get('date')
+            cur = tx.get('currency') or 'PLN'
+            if not dt or qty <= 0 or prc <= 0:
+                continue
+            r = fx.get(cur, 1.0)
+            if typ == 'BUY':
+                cfs.append((-qty * prc * r, dt))
+            elif typ == 'SELL':
+                cfs.append((+qty * prc * r, dt))
+            elif typ == 'DIV':
+                cfs.append((+qty * prc * r, dt))
+        if cfs and total_val > 0:
+            cfs.sort(key=lambda x: x[1])
+            day_span = (datetime.date.today() - datetime.date.fromisoformat(cfs[0][1])).days
+            if day_span >= 30:
+                cfs.append((total_val, datetime.date.today().isoformat()))
+                irr = _xirr(cfs)
+                if irr is not None:
+                    metrics['irrPct'] = round(irr * 100, 1)
+    except Exception as e:
+        print(f'[share] IRR error: {e}')
+
     return {
         'name': meta.get('name') or 'Portfel',
         'positions': positions,
+        'metrics': metrics,
         'updated': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
     }
 
@@ -2326,6 +2415,15 @@ def _run_push_checks():
                 windows = [w for w in windows if not _already_sent(username, w[0])]
                 if windows:
                     value = _portfolio_market_value(username, price_cache, fx_rates)
+                    if value is None:
+                        # Log które ceny/kursy brakują — najczęstszy powód
+                        # cichego pomijania powiadomień w oknach sesji.
+                        missing_prices = [s for s, q in price_cache.items() if q is None]
+                        print(f'[push] session summary {username}: value=None, '
+                              f'missing_prices={missing_prices or "n/a"}, '
+                              f'windows_skipped={[w[0] for w in windows]}')
+                    elif value <= 0:
+                        print(f'[push] session summary {username}: value={value}, skip')
                     if value is not None and value > 0:
                         # zmiana dzienna: wartość wczorajsza z changePct per pozycja
                         pct = None
@@ -2359,9 +2457,13 @@ def _run_push_checks():
                             pct = (value / prev_total - 1) * 100
                         body = f'Zmiana dziś: {pct:+.2f}%' if pct is not None else 'Poziom wartości portfela'
                         for key, title in windows:
-                            _mark_sent(username, key)
-                            _send_push(username, f'{title} — portfel {value:,.0f} zł', body, '/')
-                            stats['usSummary'] += 1
+                            sent = _send_push(username, f'{title} — portfel {value:,.0f} zł', body, '/')
+                            if sent > 0:
+                                _mark_sent(username, key)  # dopiero po realnej wysyłce
+                                stats['usSummary'] += 1
+                            else:
+                                print(f'[push] session summary {username}/{key}: '
+                                      f'_send_push zwrócił 0 (brak subskrypcji?) — retry przy następnym cyklu')
         except Exception as e:
             print(f'[push] session summary {username}: {e}')
 
@@ -2441,6 +2543,16 @@ def _run_push_checks():
         except Exception as e:
             print(f'[push] ike {username}: {e}')
 
+    # Zapisz log biegu — dzięki temu można sprawdzić czy cron w ogóle uderza
+    # (GET /api/push/status). Zachowujemy tylko ostatnie 100 wpisów.
+    try:
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("INSERT INTO push_runs (stats_json) VALUES (%s)",
+                        (json.dumps(stats),))
+            cur.execute("DELETE FROM push_runs WHERE id NOT IN "
+                        "(SELECT id FROM push_runs ORDER BY id DESC LIMIT 100)")
+    except Exception as e:
+        print(f'[push] run log: {e}')
     return stats
 
 
@@ -2507,6 +2619,29 @@ class Handler(SimpleHTTPRequestHandler):
             if not VAPID_PUBLIC_KEY:
                 self.send_json(503, {'error': 'push not configured'}); return
             self.send_json(200, {'key': VAPID_PUBLIC_KEY}); return
+
+        elif path == '/api/push/status':
+            # Diagnostyka: ostatnie 20 uruchomień crona push. Auth zwykłym
+            # tokenem — user może sam sprawdzić czy /api/push/check w ogóle jest wołane.
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            if not DATABASE_URL:
+                self.send_json(200, {'runs': [], 'note': 'file mode — brak historii'}); return
+            try:
+                with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                    cur.execute("SELECT ran_at, stats_json FROM push_runs ORDER BY id DESC LIMIT 20")
+                    rows = cur.fetchall()
+                    cur.execute("SELECT COUNT(*) AS n FROM push_subscriptions WHERE username=%s", (username,))
+                    subs_count = cur.fetchone()['n']
+                runs = [{'ranAt': r['ran_at'].isoformat(), 'stats': json.loads(r['stats_json'])} for r in rows]
+                self.send_json(200, {
+                    'runs': runs,
+                    'subscriptions': subs_count,
+                    'lastRunAt': runs[0]['ranAt'] if runs else None,
+                }); return
+            except Exception as e:
+                self.send_json(500, {'error': str(e)}); return
 
         elif path == '/api/portfolio-alert':
             username = get_username(self)
@@ -4343,7 +4478,18 @@ async function doRecover() {
                     if total is None or invested is None or total <= 0:
                         continue
                     pdata = load_portfolio_data(pid)
-                    pdata.setdefault('snapshots', {})[today] = total
+                    snaps = pdata.setdefault('snapshots', {})
+                    # Sanity guard: odrzuć zapis który jest <50% ostatniego
+                    # znanego total (klient wystartował autosave z tylko
+                    # częścią wycenionych pozycji — patrz Dashboard.jsx).
+                    prior_dates = sorted(d for d in snaps.keys() if d != today)
+                    if prior_dates:
+                        last_total = snaps.get(prior_dates[-1])
+                        if last_total and total < last_total * 0.5:
+                            print(f'[snapshot] REJECT pid={pid} today={today} '
+                                  f'total={total} < 50% ostatniego {last_total}')
+                            continue
+                    snaps[today] = total
                     pdata.setdefault('snapshotsInvested', {})[today] = invested
                     save_portfolio_data(pid, pdata)
                 self.send_json(200, {'ok': True})
@@ -5030,17 +5176,25 @@ def _run_daily_snapshots():
         prices = _fetch_all_prices(list(all_symbols))
         print(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
 
-        # Compute and upsert snapshot per portfolio
+        # Compute and upsert snapshot per portfolio.
+        # WYMAGAMY pełnego pokrycia cenami — częściowy batch zaniża total
+        # (2026-07-19/20 zapisały ~25% prawdziwej wartości bo YF zwrócił
+        # tylko część symboli i kod liczył total z podpróby).
         saved = 0
         skipped = []
         for pid in all_pids:
             holdings = pid_holdings.get(pid, [])
-            priced   = [h for h in holdings if h['symbol'] in prices]
-            if not priced:
+            if not holdings:
                 skipped.append(pid)
                 continue
-            total    = sum(float(h['qty']) * prices[h['symbol']] for h in priced)
-            invested = sum(float(h['qty']) * float(h['avg_price']) for h in priced)
+            missing = [h['symbol'] for h in holdings if h['symbol'] not in prices]
+            if missing:
+                print(f'[snapshot] SKIP pid={pid}: {len(missing)}/{len(holdings)} '
+                      f'symboli bez ceny ({missing}) — brak wpisu lepszy niż zaniżony')
+                skipped.append(pid)
+                continue
+            total    = sum(float(h['qty']) * prices[h['symbol']]     for h in holdings)
+            invested = sum(float(h['qty']) * float(h['avg_price'])   for h in holdings)
             if total <= 0:
                 skipped.append(pid)
                 continue
@@ -5071,6 +5225,63 @@ def _run_daily_snapshots():
     except Exception as e:
         import traceback
         print(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
+
+
+def _repair_partial_snapshots_2026_07():
+    """One-shot: nadpisz snapshoty z 2026-07-19 i 2026-07-20 wartościami
+    z dnia poprzedniego. Backfill po bugu, gdzie _run_daily_snapshots
+    zapisywał total z podpróby wycenionych symboli.
+    Idempotentna: rusza wpis tylko jeśli total < 50% ostatniego zdrowego."""
+    if not DATABASE_URL:
+        return
+    TARGETS = ('2026-07-19', '2026-07-20')
+    try:
+        with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id FROM portfolio_list")
+            all_pids = [r['id'] for r in cur.fetchall()]
+        fixed = 0
+        for pid in all_pids:
+            with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT date::text AS date, total, invested
+                    FROM portfolio_snapshots
+                    WHERE portfolio_id=%s
+                    ORDER BY date
+                """, (pid,))
+                rows = cur.fetchall()
+            by_date = {r['date']: r for r in rows}
+            for tgt in TARGETS:
+                if tgt not in by_date:
+                    continue
+                tgt_total = float(by_date[tgt]['total']) if by_date[tgt]['total'] is not None else 0
+                prev = None
+                for d in sorted(by_date.keys()):
+                    if d >= tgt or d in TARGETS:
+                        continue
+                    if by_date[d]['total'] is None:
+                        continue
+                    prev = by_date[d]
+                if not prev:
+                    continue
+                prev_total = float(prev['total'])
+                if prev_total <= 0 or tgt_total >= prev_total * 0.5:
+                    continue  # albo brak zdrowego pkt odniesienia, albo już naprawione
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE portfolio_snapshots
+                        SET total=%s, invested=%s
+                        WHERE portfolio_id=%s AND date=%s
+                    """, (prev['total'], prev['invested'], pid, tgt))
+                print(f'[repair] pid={pid} {tgt}: {tgt_total:.2f} → {prev_total:.2f} '
+                      f'(z {prev["date"]})')
+                fixed += 1
+        if fixed:
+            print(f'[repair] naprawiono {fixed} snapshotów 19/20 lipca')
+        else:
+            print('[repair] brak snapshotów do naprawy (już czyste albo pusta baza)')
+    except Exception as e:
+        import traceback
+        print(f'[repair] błąd: {e}\n{traceback.format_exc()}')
 
 
 def _snapshot_scheduler():
@@ -5118,6 +5329,11 @@ def _snapshot_scheduler():
 if __name__ == '__main__':
     if DATABASE_URL:
         import threading as _threading
+        # Jednorazowa naprawa uszkodzonych snapshotów 2026-07-19/20
+        _threading.Thread(
+            target=_repair_partial_snapshots_2026_07,
+            daemon=True, name='repair-snapshots-2026-07'
+        ).start()
         _snap_thread = _threading.Thread(
             target=_snapshot_scheduler, daemon=True, name='snapshot-scheduler'
         )

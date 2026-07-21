@@ -258,12 +258,15 @@ export default function Dashboard() {
     return { portfolioIrr: xirr(cashflows), irrMissingSymbols: missingSymbols, irrDaySpan: daySpan };
   }, [transactions, fxRates, allPositions]);
 
-  // ── Snapshot — only save when real prices are loaded ─────────────────────
+  // ── Snapshot — only save when ALL positions are priced ──────────────────
+  // `.some` zapisywał częściowy total gdy tylko jedna pozycja miała cenę
+  // (weekend/rate-limit YF) — 2026-07-19/20 zapisały ~25% prawdziwej wartości.
   const positionsValueKey = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0).toFixed(0);
   useEffect(() => {
     if (loading) return;
-    const pricesLoaded = allPositions.some(p => p.valuePLN != null);
-    if (!pricesLoaded) return;
+    if (allPositions.length === 0) return;
+    const allPriced = allPositions.every(p => p.valuePLN != null);
+    if (!allPriced) return;
 
     if (activePortfolioId === 'all') {
       // In "Wszystkie" view: save snapshot for each individual portfolio separately
