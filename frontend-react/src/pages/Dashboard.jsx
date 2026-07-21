@@ -314,7 +314,9 @@ export default function Dashboard() {
     let sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     // Always inject today's live value so current period has an endpoint
     if (kpi.totalValue > 0 && (sorted.length === 0 || sorted[sorted.length - 1].date !== today)) {
-      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null }];
+      // fx dnia dołączony — chart używa per-pkt fx, więc live endpoint
+      // musi być rysowany po dzisiejszym kursie (spójnie z resztą punktów).
+      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null, fx: { ...fxRates } }];
     }
     if (tf === 'MAX') return sorted;
     const days = { '1T': 7, '1M': 30, '3M': 90, '6M': 180, '1R': 365 }[tf] || 30;
@@ -326,7 +328,7 @@ export default function Dashboard() {
       if (before.length > 0) return [before[before.length - 1], ...inRange];
     }
     return inRange;
-  }, [snapshots, tf, kpi.totalValue, invested]);
+  }, [snapshots, tf, kpi.totalValue, invested, fxRates]);
 
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;

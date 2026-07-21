@@ -5169,18 +5169,25 @@ def _run_daily_snapshots():
             print('[snapshot] No portfolios — skipping')
             return
 
-        # Load holdings for each portfolio, collect all unique symbols
+        # Load holdings + cash for each portfolio, collect all unique symbols
         pid_holdings = {}
+        pid_cash = {}
         all_symbols = set()
         for pid in all_pids:
             with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute(
-                    "SELECT symbol, qty, avg_price FROM portfolio_holdings "
+                    "SELECT symbol, qty, avg_price, currency FROM portfolio_holdings "
                     "WHERE portfolio_id=%s AND qty>0",
                     (pid,)
                 )
                 holdings = list(cur.fetchall())
+                cur.execute(
+                    "SELECT currency, amount FROM portfolio_cash WHERE portfolio_id=%s",
+                    (pid,)
+                )
+                cash = list(cur.fetchall())
             pid_holdings[pid] = holdings
+            pid_cash[pid] = cash
             for h in holdings:
                 all_symbols.add(h['symbol'])
 
@@ -5212,15 +5219,21 @@ def _run_daily_snapshots():
                       f'symboli bez ceny ({missing}) — brak wpisu lepszy niż zaniżony')
                 skipped.append(pid)
                 continue
-            # Sprawdź czy mamy fx dla WSZYSTKICH walut w portfelu
-            missing_fx = [h['currency'] for h in holdings
-                          if fx_rates.get(h.get('currency') or 'PLN') is None]
+            # Sprawdź czy mamy fx dla WSZYSTKICH walut w portfelu (holdings + cash)
+            all_currs = set([h.get('currency') or 'PLN' for h in holdings])
+            all_currs.update([c.get('currency') or 'PLN' for c in pid_cash.get(pid, [])])
+            missing_fx = [c for c in all_currs if fx_rates.get(c) is None]
             if missing_fx:
                 print(f'[snapshot] SKIP pid={pid}: brak fx dla walut {missing_fx}')
                 skipped.append(pid)
                 continue
-            total = sum(float(h['qty']) * prices[h['symbol']] * fx_rates.get(h.get('currency') or 'PLN', 1.0)
-                        for h in holdings)
+            # Total = holdings + cash (spójnie z Dashboard.jsx klienta,
+            # który dolicza cash * fx do totalValue).
+            total_holdings = sum(float(h['qty']) * prices[h['symbol']] * fx_rates.get(h.get('currency') or 'PLN', 1.0)
+                                 for h in holdings)
+            total_cash = sum(float(c['amount']) * fx_rates.get(c.get('currency') or 'PLN', 1.0)
+                             for c in pid_cash.get(pid, []))
+            total = total_holdings + total_cash
             invested = sum(float(h['qty']) * float(h['avg_price']) * fx_rates.get(h.get('currency') or 'PLN', 1.0)
                            for h in holdings)
             if total <= 0:

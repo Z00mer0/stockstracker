@@ -21,6 +21,15 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   const blurCls = isPrivate ? 'privacy-blur' : undefined;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
 
+  // Per-punkt fx: snapshoty z zapisanym .fx (od PR #15) używają swojego
+  // wtedy-aktualnego kursu — historyczna wartość zamrożona. Fallback do
+  // `fxRate` prop dla starych wpisów bez fx w bazie. Bez tego Y-oś i
+  // tooltipy chart oddychają z dzisiejszym NBP mimo tego samego portfela.
+  const rateFor = (d) => {
+    const dayFx = d?.fx?.[displayCurrency];
+    return (dayFx && dayFx > 0) ? dayFx : (fxRate || 1);
+  };
+
   function fmtXDate(iso) {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
@@ -47,8 +56,10 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   const chartW = svgWidth - M.right - M.left;
   const totalH = H + M.top + M.bottom;
 
-  const totals    = data.map(d => d.total    ?? 0);
-  const investeds = data.map(d => d.invested ?? 0);
+  // Przekonwertowane od razu na displayCurrency przez per-pkt fx —
+  // Y-oś i scale operują na spójnych jednostkach niezależnie od dnia.
+  const totals    = data.map(d => (d.total    ?? 0) / rateFor(d));
+  const investeds = data.map(d => (d.invested ?? 0) / rateFor(d));
   const hasInvested = data.some(d => d.invested != null && d.invested > 0);
 
   // Normalize benchmark to portfolio's first value so both lines share the same scale
@@ -119,15 +130,20 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
     const mx   = e.clientX - rect.left - M.left;
     const idx  = Math.max(0, Math.min(data.length - 1, Math.round((mx / chartW) * (data.length - 1))));
     const d    = data[idx];
-    const pl   = (d.total ?? 0) - (d.invested ?? 0);
+    const r    = rateFor(d);
+    const dispTotal    = d.total    != null ? d.total    / r : null;
+    const dispInvested = d.invested != null ? d.invested / r : null;
+    const pl = dispTotal != null && dispInvested != null ? dispTotal - dispInvested : null;
     setTooltip({
       x:          xScale(idx),
       screenX:    e.clientX - rect.left,
       y:          e.clientY - rect.top,
       date:       d.date,
-      total:      d.total,
-      invested:   d.invested,
-      pl,
+      total:      dispTotal,       // już w displayCurrency
+      invested:   dispInvested,    // już w displayCurrency
+      pl,                          // już w displayCurrency
+      // benchNormalized[idx] jest w tych samych jednostkach co totals[idx]
+      // (bo skalujemy do totals[0]), a totals[i] też już podzielone przez rateFor
       benchValue: hasBenchNorm ? benchNormalized[idx] : null,
       idx,
     });
@@ -157,7 +173,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
               <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
                 stroke="#334155" strokeDasharray="3,3" strokeWidth={0.5} />
               <text x={svgWidth - M.right + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start" className={blurCls}>
-                {fmtVal(v / fxRate)} {currLabel}
+                {fmtVal(v)} {currLabel}
               </text>
             </g>
           );
@@ -225,21 +241,21 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
           <p className="font-semibold text-slate-300 mb-1.5">{tooltip.date}</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
             <span>Wartość</span>
-            <span className={`text-slate-100 text-right font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.total / fxRate)} {currLabel}</span>
+            <span className={`text-slate-100 text-right font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.total)} {currLabel}</span>
             {hasInvested && tooltip.invested != null && (
               <>
                 <span>Zainwest.</span>
-                <span className={`text-slate-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.invested / fxRate)} {currLabel}</span>
+                <span className={`text-slate-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.invested)} {currLabel}</span>
                 <span>P&L</span>
                 <span className={`text-right font-semibold ${tooltip.pl >= 0 ? 'text-emerald-400' : 'text-rose-400'}${isPrivate ? ' privacy-blur' : ''}`}>
-                  {tooltip.pl >= 0 ? '+' : ''}{fmtVal(tooltip.pl / fxRate)} {currLabel}
+                  {tooltip.pl >= 0 ? '+' : ''}{fmtVal(tooltip.pl)} {currLabel}
                 </span>
               </>
             )}
             {hasBenchNorm && tooltip.benchValue != null && (
               <>
                 <span>{benchLabel || 'Benchmark'}</span>
-                <span className={`text-blue-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.benchValue / fxRate)} {currLabel}</span>
+                <span className={`text-blue-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.benchValue)} {currLabel}</span>
               </>
             )}
           </div>
