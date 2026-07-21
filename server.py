@@ -4343,7 +4343,18 @@ async function doRecover() {
                     if total is None or invested is None or total <= 0:
                         continue
                     pdata = load_portfolio_data(pid)
-                    pdata.setdefault('snapshots', {})[today] = total
+                    snaps = pdata.setdefault('snapshots', {})
+                    # Sanity guard: odrzuć zapis który jest <50% ostatniego
+                    # znanego total (klient wystartował autosave z tylko
+                    # częścią wycenionych pozycji — patrz Dashboard.jsx).
+                    prior_dates = sorted(d for d in snaps.keys() if d != today)
+                    if prior_dates:
+                        last_total = snaps.get(prior_dates[-1])
+                        if last_total and total < last_total * 0.5:
+                            print(f'[snapshot] REJECT pid={pid} today={today} '
+                                  f'total={total} < 50% ostatniego {last_total}')
+                            continue
+                    snaps[today] = total
                     pdata.setdefault('snapshotsInvested', {})[today] = invested
                     save_portfolio_data(pid, pdata)
                 self.send_json(200, {'ok': True})
@@ -5030,17 +5041,25 @@ def _run_daily_snapshots():
         prices = _fetch_all_prices(list(all_symbols))
         print(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
 
-        # Compute and upsert snapshot per portfolio
+        # Compute and upsert snapshot per portfolio.
+        # WYMAGAMY pełnego pokrycia cenami — częściowy batch zaniża total
+        # (2026-07-19/20 zapisały ~25% prawdziwej wartości bo YF zwrócił
+        # tylko część symboli i kod liczył total z podpróby).
         saved = 0
         skipped = []
         for pid in all_pids:
             holdings = pid_holdings.get(pid, [])
-            priced   = [h for h in holdings if h['symbol'] in prices]
-            if not priced:
+            if not holdings:
                 skipped.append(pid)
                 continue
-            total    = sum(float(h['qty']) * prices[h['symbol']] for h in priced)
-            invested = sum(float(h['qty']) * float(h['avg_price']) for h in priced)
+            missing = [h['symbol'] for h in holdings if h['symbol'] not in prices]
+            if missing:
+                print(f'[snapshot] SKIP pid={pid}: {len(missing)}/{len(holdings)} '
+                      f'symboli bez ceny ({missing}) — brak wpisu lepszy niż zaniżony')
+                skipped.append(pid)
+                continue
+            total    = sum(float(h['qty']) * prices[h['symbol']]     for h in holdings)
+            invested = sum(float(h['qty']) * float(h['avg_price'])   for h in holdings)
             if total <= 0:
                 skipped.append(pid)
                 continue
@@ -5071,6 +5090,63 @@ def _run_daily_snapshots():
     except Exception as e:
         import traceback
         print(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
+
+
+def _repair_partial_snapshots_2026_07():
+    """One-shot: nadpisz snapshoty z 2026-07-19 i 2026-07-20 wartościami
+    z dnia poprzedniego. Backfill po bugu, gdzie _run_daily_snapshots
+    zapisywał total z podpróby wycenionych symboli.
+    Idempotentna: rusza wpis tylko jeśli total < 50% ostatniego zdrowego."""
+    if not DATABASE_URL:
+        return
+    TARGETS = ('2026-07-19', '2026-07-20')
+    try:
+        with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id FROM portfolio_list")
+            all_pids = [r['id'] for r in cur.fetchall()]
+        fixed = 0
+        for pid in all_pids:
+            with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT date::text AS date, total, invested
+                    FROM portfolio_snapshots
+                    WHERE portfolio_id=%s
+                    ORDER BY date
+                """, (pid,))
+                rows = cur.fetchall()
+            by_date = {r['date']: r for r in rows}
+            for tgt in TARGETS:
+                if tgt not in by_date:
+                    continue
+                tgt_total = float(by_date[tgt]['total']) if by_date[tgt]['total'] is not None else 0
+                prev = None
+                for d in sorted(by_date.keys()):
+                    if d >= tgt or d in TARGETS:
+                        continue
+                    if by_date[d]['total'] is None:
+                        continue
+                    prev = by_date[d]
+                if not prev:
+                    continue
+                prev_total = float(prev['total'])
+                if prev_total <= 0 or tgt_total >= prev_total * 0.5:
+                    continue  # albo brak zdrowego pkt odniesienia, albo już naprawione
+                with _conn() as conn, conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE portfolio_snapshots
+                        SET total=%s, invested=%s
+                        WHERE portfolio_id=%s AND date=%s
+                    """, (prev['total'], prev['invested'], pid, tgt))
+                print(f'[repair] pid={pid} {tgt}: {tgt_total:.2f} → {prev_total:.2f} '
+                      f'(z {prev["date"]})')
+                fixed += 1
+        if fixed:
+            print(f'[repair] naprawiono {fixed} snapshotów 19/20 lipca')
+        else:
+            print('[repair] brak snapshotów do naprawy (już czyste albo pusta baza)')
+    except Exception as e:
+        import traceback
+        print(f'[repair] błąd: {e}\n{traceback.format_exc()}')
 
 
 def _snapshot_scheduler():
@@ -5118,6 +5194,11 @@ def _snapshot_scheduler():
 if __name__ == '__main__':
     if DATABASE_URL:
         import threading as _threading
+        # Jednorazowa naprawa uszkodzonych snapshotów 2026-07-19/20
+        _threading.Thread(
+            target=_repair_partial_snapshots_2026_07,
+            daemon=True, name='repair-snapshots-2026-07'
+        ).start()
         _snap_thread = _threading.Thread(
             target=_snapshot_scheduler, daemon=True, name='snapshot-scheduler'
         )
