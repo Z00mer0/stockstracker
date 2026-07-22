@@ -185,23 +185,36 @@ export default function Dashboard() {
     const sorted      = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
-    // Live values — use real-time position prices, fall back to cost for unpriced positions
-    const positionsValue   = allPositions.reduce((s, p) => s + (p.valuePLN ?? p.costPLN ?? 0), 0);
+    // Live values — real-time position prices (no cost-basis fallback: mieszanie
+    // kosztu z ceną rynkową dawało w trakcie ładowania fałszywy total).
+    const positionsValue   = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
     const cashValue        = Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
     const otherAssetsValue = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
-    const totalValue       = positionsValue + cashValue + otherAssetsValue;
 
-    // Unrealized P&L: sum of per-position P&L (null if price unknown → 0)
-    const costBasis  = invested ?? 0; // = sum(qty * avgPrice * fx) for current holdings
+    const pricesLoaded = allPositions.length === 0 || allPositions.every(p => p.valuePLN != null);
+
+    // Gdy nie wszystkie ceny są jeszcze pobrane, wartość portfela == ostatni
+    // znany snapshot (uczciwa liczba z ostatniej sesji). Jeśli i tego nie ma —
+    // null (UI pokaże „—" + loader).
+    let totalValue;
+    let staleTotal = false;
+    if (pricesLoaded) {
+      totalValue = positionsValue + cashValue + otherAssetsValue;
+    } else {
+      const latestSnap = snapshots.length
+        ? [...snapshots].sort((a, b) => b.date.localeCompare(a.date))[0]
+        : null;
+      totalValue = latestSnap ? latestSnap.total : null;
+      staleTotal = totalValue != null;
+    }
+
+    // Unrealized P&L / ROI: sumuje po pozycjach z ceną (bez ceny → 0).
+    const costBasis  = invested ?? 0;
     const unrealPLN  = allPositions.reduce((s, p) => s + (p.plPLN ?? 0), 0);
-    const unrealPct  = costBasis > 0 ? (unrealPLN / costBasis) * 100 : 0;
-
-    // Total ROI: (positionsValue + realizedPLN + dividendsPLN - costBasis) / costBasis
-    const totalROI = costBasis > 0
+    const unrealPct  = pricesLoaded && costBasis > 0 ? (unrealPLN / costBasis) * 100 : null;
+    const totalROI   = pricesLoaded && costBasis > 0
       ? ((positionsValue + realizedPLN + dividendsPLN - costBasis) / costBasis) * 100
       : null;
-
-    const pricesLoaded = allPositions.some(p => p.valuePLN != null);
 
     console.log('[KPI] Total Invested vs Total Value', {
       costBasis:       costBasis.toFixed(2),
@@ -219,7 +232,7 @@ export default function Dashboard() {
       unrealPLN, unrealPct, totalROI,
       realizedPLN, dividendsPLN, annualDivPLN,
       ytdRealizedPLN,
-      sparkValues, pricesLoaded,
+      sparkValues, pricesLoaded, staleTotal,
     };
   }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
 
@@ -385,10 +398,10 @@ export default function Dashboard() {
         <KpiPro
           hero
           label={t('portfolio_value')}
-          value={`${fmtDisp(kpi.totalValue)} ${currLabel}`}
-          chip={dayChipVal}
+          value={kpi.totalValue == null ? '—' : `${fmtDisp(kpi.totalValue)} ${currLabel}`}
+          chip={kpi.pricesLoaded ? dayChipVal : null}
           chipUp={dailyChange.pln >= 0}
-          sub={t('today')}
+          sub={kpi.staleTotal ? t('last_session') : kpi.pricesLoaded ? t('today') : t('loading_prices')}
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={dailyChange.pln >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
@@ -433,7 +446,10 @@ export default function Dashboard() {
                 {t('portfolio_value_tf')} · {tf}
               </div>
               <div className={isPrivate ? 'privacy-blur' : ''} style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                {fmtDisp(kpi.totalValue)} {currLabel}
+                {kpi.totalValue == null ? '—' : `${fmtDisp(kpi.totalValue)} ${currLabel}`}
+                {kpi.staleTotal && (
+                  <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-faint)', fontWeight: 500 }}>~ {t('last_session')}</span>
+                )}
               </div>
             </div>
             <SegmentedControl
@@ -530,7 +546,16 @@ export default function Dashboard() {
             </div>
           </div>
           <div style={{ height: unrealRows.length * 30 + 40, padding: '4px 8px 12px' }}>
-            <UnrealizedPnlBar rows={unrealRows} currLabel={currLabel} locale={locale} fmt={(v, d) => fmtVal(v, d)} />
+            <UnrealizedPnlBar
+              rows={unrealRows}
+              currLabel={currLabel}
+              locale={locale}
+              fmt={(v, d) => fmtVal(v, d)}
+              onSymbolClick={sym => {
+                const pos = allPositions.find(p => p.symbol === sym);
+                if (pos) setSelectedStock(pos);
+              }}
+            />
           </div>
         </div>
       )}

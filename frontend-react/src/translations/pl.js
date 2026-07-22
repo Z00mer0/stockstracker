@@ -33,6 +33,8 @@ export default {
   // ── Dashboard KPIs ───────────────────────────────────────────
   portfolio_value:      'Wartość portfela',
   today:                'dziś',
+  loading_prices:       'aktualizacja cen…',
+  last_session:         'z ostatniej sesji',
   gain_loss:            'Zysk / strata',
   gain_ytd:             'Zysk / strata YTD',
   ytd_realized:         'zrealizowany w tym roku',

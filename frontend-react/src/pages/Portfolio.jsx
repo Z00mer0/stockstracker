@@ -1058,7 +1058,16 @@ export default function Portfolio() {
               <div style={{ flex: 1, padding: '4px 8px 12px', minHeight: 0 }}>
                 {plView === 'unrealized' ? (
                   unrealizedData.chartRows.length > 0 ? (
-                    <UnrealizedPnlBar rows={unrealizedData.chartRows} currLabel={portCurrLabel} locale={locale} fmt={fmt} />
+                    <UnrealizedPnlBar
+                      rows={unrealizedData.chartRows}
+                      currLabel={portCurrLabel}
+                      locale={locale}
+                      fmt={fmt}
+                      onSymbolClick={sym => {
+                        const pos = enriched.find(p => p.symbol === sym);
+                        if (pos) setSelectedItem(pos);
+                      }}
+                    />
                   ) : (
                     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
                       {metricsLoading ? 'Ładowanie cen…' : 'Brak otwartych pozycji z wyceną'}

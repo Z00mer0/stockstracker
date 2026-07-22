@@ -35,6 +35,8 @@ export default {
   // ── Dashboard KPIs ───────────────────────────────────────────
   portfolio_value:      'Portfolio value',
   today:                'today',
+  loading_prices:       'refreshing prices…',
+  last_session:         'from last session',
   gain_loss:            'Gain / loss',
   dividends_ytd:        'Dividends YTD',
   free_cash:            'Free cash',
