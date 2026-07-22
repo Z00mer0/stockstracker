@@ -3,8 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
 
 const M = { top: 10, right: 75, bottom: 28, left: 10 };
-const H_DEFAULT = 220;
-const H_MIN = 100;
+const H = 220;
 
 // Returns the benchmark price at or before a given date (binary-search style scan)
 function priceAtDate(benchData, date) {
@@ -43,31 +42,18 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   }
   const containerRef = useRef(null);
   const svgRef       = useRef(null);
-  const [svgWidth, setSvgWidth]   = useState(800);
-  const [svgHeight, setSvgHeight] = useState(H_DEFAULT + M.top + M.bottom);
+  const [svgWidth, setSvgWidth] = useState(800);
   const [tooltip, setTooltip]   = useState(null);
 
-  // Śledzimy width i height kontenera; wykres dopasowuje H tak, żeby oś X i
-  // legenda zawsze były widoczne — kafelek w Portfolio ma stałe h grid units,
-  // więc na mobile chart-body bywał mniejszy niż 258px i „ucinało" daty.
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(([e]) => {
-      const cr = e.contentRect;
-      setSvgWidth(Math.floor(cr.width));
-      // ~24px rezerwy pod legendę renderowaną pod SVG
-      const avail = Math.floor(cr.height) - 24;
-      if (avail > 0) setSvgHeight(Math.max(H_MIN + M.top + M.bottom, avail));
-    });
-    obs.observe(el);
+    const obs = new ResizeObserver(([e]) => setSvgWidth(Math.floor(e.contentRect.width)));
+    if (containerRef.current) obs.observe(containerRef.current);
     return () => obs.disconnect();
   }, []);
 
   if (!data || data.length < 2) return null;
 
   const chartW = svgWidth - M.right - M.left;
-  const H = Math.max(H_MIN, svgHeight - M.top - M.bottom);
   const totalH = H + M.top + M.bottom;
 
   // Przekonwertowane od razu na displayCurrency przez per-pkt fx —
@@ -164,7 +150,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   };
 
   return (
-    <div ref={containerRef} className="w-full relative select-none cursor-crosshair" style={{ height: '100%', minHeight: H_MIN + M.top + M.bottom + 24 }}>
+    <div ref={containerRef} className="w-full relative select-none cursor-crosshair">
       <svg
         ref={svgRef}
         width={svgWidth}

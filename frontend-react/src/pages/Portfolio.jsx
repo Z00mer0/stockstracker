@@ -37,15 +37,15 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import AlertModal from '../components/AlertModal';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
-const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v5';
+const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v6';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
 const DASH_DEFAULT_LAYOUT = [
-  { i: 'chart',   x: 0, y: 0,  w: 8,  h: 9, minW: 4, minH: 5, maxH: 15 },
-  { i: 'stats',   x: 8, y: 0,  w: 4,  h: 9, minW: 2, minH: 4, maxH: 15 },
-  { i: 'pie',     x: 0, y: 9,  w: 6,  h: 8, minW: 3, minH: 4, maxH: 15 },
-  { i: 'alloc',   x: 6, y: 9,  w: 6,  h: 8, minW: 3, minH: 4, maxH: 15 },
-  { i: 'realytd', x: 0, y: 17, w: 12, h: 8, minW: 4, minH: 5, maxH: 15 },
+  { i: 'chart',   x: 0, y: 0,  w: 8,  h: 11, minW: 4, minH: 8, maxH: 20 },
+  { i: 'stats',   x: 8, y: 0,  w: 4,  h: 11, minW: 2, minH: 4, maxH: 20 },
+  { i: 'pie',     x: 0, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
+  { i: 'alloc',   x: 6, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
+  { i: 'realytd', x: 0, y: 19, w: 12, h: 8,  minW: 4, minH: 5, maxH: 20 },
 ];
 
 const CRYPTO_OPTIONS = [
@@ -341,7 +341,7 @@ export default function Portfolio() {
       const saved = localStorage.getItem(`${DASH_LAYOUT_KEY}_${activePortfolioId}`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const valid = Array.isArray(parsed) && parsed.every(item => item.h <= 15 && item.w <= 12 && item.h >= 1);
+        const valid = Array.isArray(parsed) && parsed.every(item => item.h <= 20 && item.w <= 12 && item.h >= 1);
         setDashLayout(valid ? parsed : DASH_DEFAULT_LAYOUT);
       } else {
         setDashLayout(DASH_DEFAULT_LAYOUT);
@@ -922,12 +922,11 @@ export default function Portfolio() {
           onLayoutChange={newLayout => { if (editMode) { setDashLayout(newLayout); saveLayoutToServer(newLayout); } }}
         >
           <div key="chart">
-            <div className="card" style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div className="card" style={{ height: '100%', overflow: 'hidden' }}>
               <div className="card-head" style={{
                 cursor: editMode ? 'grab' : undefined,
                 display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, padding: '14px 20px 4px',
                 outline: editMode ? '2px solid transparent' : undefined,
-                flexShrink: 0,
               }}>
                 <div>
                   <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
@@ -956,10 +955,10 @@ export default function Portfolio() {
                   onChange={setTfPortfolio}
                 />
               </div>
-              <div style={{ flex: 1, minHeight: 0, padding: '4px 12px 14px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '4px 12px 14px' }}>
                 {snapshotsForPortfolio.length >= 2
                   ? <HistoryChart data={snapshotsForPortfolio} displayCurrency={displayCurrency} fxRate={fxRates[displayCurrency] ?? 1} />
-                  : <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
+                  : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
                 }
               </div>
             </div>
