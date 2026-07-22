@@ -120,10 +120,13 @@ export default function History() {
     return (dayFx && dayFx > 0) ? dayFx : (fxRates[displayCurrency] ?? 1);
   };
   const toDispAt = (v, snap) => v == null ? null : v / displayFxFor(snap);
-  // Invested per snapshot z replay transakcji — dla portfela jednowalutowego w tej samej
-  // walucie co display, wynik jest constant (bez fx). Dla multi-currency używa frozen fx
-  // ze snapshotu (fallback: dzisiejsze fx dla starych snapshotów bez fx_json).
+  // Invested per snapshot: priorytet ma wartość zapisana w snapshotcie (`snap.invested`
+  // w PLN, dzielone przez frozen fx — jak w wykresie). To odzwierciedla, ile było
+  // faktycznie zainwestowane W TEJ DACIE, więc retroaktywne transakcje z dzisiaj
+  // nie zniekształcają starych wierszy.
+  // Fallback do replay transakcji dla starych snapshotów bez `invested`.
   const investedAt = (snap) => {
+    if (snap?.invested != null) return toDispAt(snap.invested, snap);
     const fxForDate = snap?.fx || fxRates;
     return investedInDisplayAt(transactions, snap.date, displayCurrency, fxForDate);
   };
