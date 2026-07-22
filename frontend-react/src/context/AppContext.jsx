@@ -494,8 +494,23 @@ export function AppProvider({ children }) {
     const affectsCash = tx => !tx.fromClosedPosition && !tx.skipCashAdjust && !tx.fromSnapshot;
 
     for (const tx of sorted) {
-      if (!tx.qty || tx.qty <= 0) continue;
       const cur = tx.currency || 'PLN';
+
+      // CASH/DIV nie mają qty — obsługiwane osobno, nie ruszają holdings.
+      if (tx.type === 'CASH') {
+        if (affectsCash(tx) === false && tx.fromSnapshot) continue; // snapshot: cash już zamrożony
+        const delta = Number(tx.price) || 0; // znak w price: wpłata +, wypłata −
+        newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + delta };
+        continue;
+      }
+      if (tx.type === 'DIV') {
+        if (tx.fromSnapshot) continue;
+        const credit = Math.abs(Number(tx.price) || 0);
+        newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + credit };
+        continue;
+      }
+
+      if (!tx.qty || tx.qty <= 0) continue;
 
       if (tx.type === 'BUY') {
         const idx = findHolding(newHoldings, tx.symbol);
