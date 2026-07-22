@@ -8,6 +8,7 @@ import RollingReturnsChart from '../components/RollingReturnsChart';
 import Spinner from '../components/shared/Spinner';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Card from '../components/shared/Card';
+import { investedInDisplayAt } from '../utils/investedAtDate.js';
 
 function fmt(n, decimals = 0, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
@@ -110,7 +111,7 @@ function generateSynthBench(key, startDate, endDate) {
 }
 
 export default function History() {
-  const { snapshots, loading, invested, displayCurrency, fxRates } = useApp();
+  const { snapshots, loading, invested, displayCurrency, fxRates, transactions } = useApp();
   // Per-date fx: dla snapshotu z zapisanym fx używamy jego wtedy-aktualnego
   // kursu (wartość historyczna zamrożona). Fallback do dzisiejszego kursu
   // dla starych wpisów bez fx — inaczej wartości "oddychają" z kursem NBP.
@@ -119,6 +120,13 @@ export default function History() {
     return (dayFx && dayFx > 0) ? dayFx : (fxRates[displayCurrency] ?? 1);
   };
   const toDispAt = (v, snap) => v == null ? null : v / displayFxFor(snap);
+  // Invested per snapshot z replay transakcji — dla portfela jednowalutowego w tej samej
+  // walucie co display, wynik jest constant (bez fx). Dla multi-currency używa frozen fx
+  // ze snapshotu (fallback: dzisiejsze fx dla starych snapshotów bez fx_json).
+  const investedAt = (snap) => {
+    const fxForDate = snap?.fx || fxRates;
+    return investedInDisplayAt(transactions, snap.date, displayCurrency, fxForDate);
+  };
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -363,25 +371,29 @@ export default function History() {
               {(() => {
                 const rows = [...filtered].reverse();
                 return rows.map((s, i) => {
-                  const pl      = s.invested != null ? (s.total ?? 0) - s.invested : null;
-                  const pct     = s.invested > 0 && pl != null ? (pl / s.invested) * 100 : null;
+                  // Invested z replay transakcji (nie z zapisanego PLN → nie "oddycha" z fx).
+                  const invDisp = investedAt(s);
+                  const totDisp = toDispAt(s.total, s);
+                  const pl      = totDisp != null && invDisp != null ? totDisp - invDisp : null;
+                  const pct     = invDisp > 0 && pl != null ? (pl / invDisp) * 100 : null;
                   const prev    = rows[i + 1];
-                  const delta   = prev != null ? (s.total ?? 0) - (prev.total ?? 0) : null;
+                  const prevTot = prev != null ? toDispAt(prev.total, prev) : null;
+                  const delta   = prevTot != null && totDisp != null ? totDisp - prevTot : null;
                   const deltaUp = delta != null && delta >= 0;
-                  const valueUp = prev != null ? (s.total ?? 0) >= (prev.total ?? 0) : null;
+                  const valueUp = prevTot != null && totDisp != null ? totDisp >= prevTot : null;
                   return (
                     <tr key={s.date + i}>
                       <td style={{ color: 'var(--text-dim)' }}>{fmtDate(s.date)}</td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{
                         color: valueUp === true ? 'var(--up)' : valueUp === false ? 'var(--down)' : 'var(--text)',
                         fontWeight: 600,
-                      }}>{fmt(toDispAt(s.total, s), 0, locale)} {currLabel}</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(toDispAt(s.invested, s), 0, locale)} {currLabel}</td>
+                      }}>{fmt(totDisp, 0, locale)} {currLabel}</td>
+                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(invDisp, 0, locale)} {currLabel}</td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl == null ? 'var(--text-faint)' : pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
-                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(toDispAt(pl, s), 0, locale)} {currLabel}<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1, locale)}%)</span></>}
+                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(pl, 0, locale)} {currLabel}<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1, locale)}%)</span></>}
                       </td>
                       <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
-                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(toDispAt(delta, s), 0, locale)} ${currLabel}`}
+                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta, 0, locale)} ${currLabel}`}
                       </td>
                     </tr>
                   );
