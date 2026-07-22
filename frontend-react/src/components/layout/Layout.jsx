@@ -15,14 +15,17 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewPortfolio, setShowNewPortfolio] = useState(false);
 
-  const { portfolios, isAuthenticated, loading } = useApp();
+  const { portfolios, isAuthenticated, loading, error } = useApp();
 
-  // Auto-open new portfolio modal only for genuinely new users (after data loads)
+  // Auto-open new portfolio modal only for genuinely new users (after data loads).
+  // Guard against backend errors (503/timeouts): portfolios stays [] on a failed
+  // fetch, so we'd otherwise pop the "create portfolio" modal at users who already
+  // have data — during a Render cold start, for example.
   useEffect(() => {
-    if (isAuthenticated && !loading && portfolios.length === 0) {
+    if (isAuthenticated && !loading && !error && portfolios.length === 0) {
       setShowNewPortfolio(true);
     }
-  }, [isAuthenticated, loading, portfolios.length]);
+  }, [isAuthenticated, loading, error, portfolios.length]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
