@@ -8,6 +8,10 @@ export default {
   nav_closed:           'Closed Positions',
   gain_ytd:             'Gain / Loss YTD',
   ytd_realized:         'realized this year',
+  current_gain:         'Current gain',
+  total_result:         'total result',
+  realized_short:       'realized',
+  paper_short:          'paper',
   nav_dividends:        'Dividends',
   nav_calendar:         'Calendar',
   nav_watchlist:        'Watchlist',
@@ -68,6 +72,15 @@ export default {
   under_pressure:       'Under pressure',
   biggest_move:         'Biggest move today',
   daily_result:         'Daily result',
+
+  // ── Chart legend ─────────────────────────────────────────────
+  legend_portfolio_value: 'Portfolio value',
+  legend_invested:        'Invested capital',
+  legend_benchmark:       '(norm.)',
+
+  // ── Winners/Losers toggle ────────────────────────────────────
+  wl_mode_pct:          '%',
+  wl_mode_abs:          'amount',
 
   // ── Table column headers ─────────────────────────────────────
   col_symbol:           'Symbol',

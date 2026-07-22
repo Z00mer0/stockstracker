@@ -7,10 +7,17 @@ function getPlPct(p) {
   return (p.plPLN / p.costPLN) * 100;
 }
 
-export default function WinnersLosers({ positions = [], onSymbolClick }) {
+export default function WinnersLosers({
+  positions = [],
+  onSymbolClick,
+  mode = 'pct',
+  fxRate = 1,
+  currLabel = 'zł',
+  locale = 'pl-PL',
+}) {
   const t = useT();
   const withPl = positions
-    .map(p => ({ ...p, _plPct: getPlPct(p) }))
+    .map(p => ({ ...p, _plPct: getPlPct(p), _plDisp: p.plPLN != null ? p.plPLN / (fxRate || 1) : null }))
     .filter(p => p._plPct != null);
 
   if (withPl.length === 0) {
@@ -22,19 +29,25 @@ export default function WinnersLosers({ positions = [], onSymbolClick }) {
   const bottom = sorted.slice(-3).filter(p => p._plPct < 0);
   const display = [...top, ...bottom];
 
-  const max = Math.max(...display.map(p => Math.abs(p._plPct)));
+  const isPct = mode !== 'abs';
+  const magnitude = (p) => (isPct ? Math.abs(p._plPct) : Math.abs(p._plDisp ?? 0));
+  const max = Math.max(...display.map(magnitude));
+
+  const absFmt = new Intl.NumberFormat(locale, { maximumFractionDigits: 0, signDisplay: 'exceptZero' });
 
   return (
     <div className="wl-list">
       {display.map(p => {
         const up = p._plPct >= 0;
-        const w = max > 0 ? (Math.abs(p._plPct) / max) * 50 : 0;
+        const w = max > 0 ? (magnitude(p) / max) * 50 : 0;
+        const valueStr = isPct
+          ? (p._plPct >= 0 ? '+' : '') + p._plPct.toFixed(1) + '%'
+          : `${absFmt.format(p._plDisp ?? 0)} ${currLabel}`;
         return (
           <div
             className={'wl-row' + (onSymbolClick ? ' clickable' : '')}
             key={p.symbol ?? p.id}
             onClick={() => onSymbolClick?.(p)}
-            style={onSymbolClick ? { cursor: 'pointer' } : undefined}
           >
             <div className="wl-sym">
               <TickerLogo symbol={p.symbol} size={24} />
@@ -51,7 +64,7 @@ export default function WinnersLosers({ positions = [], onSymbolClick }) {
               className="wl-pct"
               style={{ color: up ? 'var(--up)' : 'var(--down)' }}
             >
-              {(p._plPct >= 0 ? '+' : '') + p._plPct.toFixed(1)}%
+              {valueStr}
             </div>
           </div>
         );

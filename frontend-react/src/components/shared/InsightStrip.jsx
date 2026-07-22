@@ -7,15 +7,29 @@ function fmtPct(n) {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
 
-export default function InsightStrip({ positions = [], dailyChangePLN = 0, dailyChangePct = null, onSymbolClick }) {
+export default function InsightStrip({
+  positions = [],
+  dailyChangePLN = 0,
+  dailyChangePct = null,
+  onSymbolClick,
+  displayCurrency = 'PLN',
+  fxRate = 1,
+}) {
   const { locale } = useLanguage();
   const t = useT();
   const { isPrivate } = usePrivacy();
   const blur = isPrivate ? ' privacy-blur' : '';
 
-  function fmtPLN(n) {
+  const moneyFmt = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: displayCurrency,
+    maximumFractionDigits: 0,
+    signDisplay: 'exceptZero',
+  });
+
+  function fmtMoney(n) {
     if (n == null || isNaN(n)) return '—';
-    return (n >= 0 ? '+' : '') + Math.round(n).toLocaleString(locale) + ' zł';
+    return moneyFmt.format(n / (fxRate || 1));
   }
 
   const withPl = positions.filter(p => p.plPLN != null && p.costPLN > 0);
@@ -78,7 +92,7 @@ export default function InsightStrip({ positions = [], dailyChangePLN = 0, daily
           <div className="ins-body">
             <div className="ins-label">{t('daily_result')}</div>
             <div className="ins-text">
-              <span className={'num ' + (dayUp ? 'up' : 'down') + blur}>{fmtPLN(dailyChangePLN)}</span>
+              <span className={'num ' + (dayUp ? 'up' : 'down') + blur}>{fmtMoney(dailyChangePLN)}</span>
               {dailyChangePct != null && (
                 <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontSize: 11, color: dayUp ? 'var(--up)' : 'var(--down)', marginLeft: 4 }}>
                   {fmtPct(dailyChangePct)}

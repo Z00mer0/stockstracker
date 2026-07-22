@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
 
 const M = { top: 10, right: 75, bottom: 28, left: 10 };
@@ -18,6 +18,7 @@ function priceAtDate(benchData, date) {
 
 export default function HistoryChart({ data, benchData = [], benchLabel = '', displayCurrency = 'PLN', fxRate = 1 }) {
   const { locale } = useLanguage();
+  const t = useT();
   const { isPrivate } = usePrivacy();
   const blurCls = isPrivate ? 'privacy-blur' : undefined;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
@@ -277,23 +278,21 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
       )}
 
       {/* Legend */}
-      <div className="flex gap-5 mt-3 text-xs text-slate-500">
-        <div className="flex items-center gap-1.5">
-          <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke={lineColor} strokeWidth="2" /></svg>
-          Wartość portfela
+      <div className="hc-legend">
+        <div className="hc-legend-item">
+          <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" /></svg>
+          <span>{t('legend_portfolio_value')}</span>
         </div>
         {hasInvested && (
-          <div className="flex items-center gap-1.5">
-            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="#475569" strokeWidth="1.5" strokeDasharray="5,3" /></svg>
-            Zainwestowano
+          <div className="hc-legend-item">
+            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="#94a3b8" strokeWidth="1.8" strokeDasharray="5,3" strokeLinecap="round" /></svg>
+            <span>{t('legend_invested')}</span>
           </div>
         )}
         {hasBenchNorm && benchLabel && (
-          <div className="flex items-center gap-1.5">
-            <svg width="16" height="4">
-              <line x1="0" y1="2" x2="16" y2="2" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="4,2" />
-            </svg>
-            {benchLabel} (znorm.)
+          <div className="hc-legend-item">
+            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="#60a5fa" strokeWidth="1.8" strokeDasharray="4,2" strokeLinecap="round" /></svg>
+            <span>{benchLabel} <span style={{ color: 'var(--text-faint)' }}>{t('legend_benchmark')}</span></span>
           </div>
         )}
       </div>

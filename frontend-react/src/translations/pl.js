@@ -38,6 +38,10 @@ export default {
   gain_loss:            'Zysk / strata',
   gain_ytd:             'Zysk / strata YTD',
   ytd_realized:         'zrealizowany w tym roku',
+  current_gain:         'Obecny zysk',
+  total_result:         'łączny wynik',
+  realized_short:       'zrealizowany',
+  paper_short:          'papierowy',
   dividends_ytd:        'Dywidendy YTD',
   free_cash:            'Wolne środki',
   next_dividend:        'Nast. dywidenda',
@@ -68,6 +72,15 @@ export default {
   under_pressure:       'Pod presją',
   biggest_move:         'Największy ruch dziś',
   daily_result:         'Wynik dnia',
+
+  // ── Chart legend ─────────────────────────────────────────────
+  legend_portfolio_value: 'Wartość portfela',
+  legend_invested:        'Zainwestowany kapitał',
+  legend_benchmark:       '(znorm.)',
+
+  // ── Winners/Losers toggle ────────────────────────────────────
+  wl_mode_pct:          '%',
+  wl_mode_abs:          'kwota',
 
   // ── Table column headers ─────────────────────────────────────
   col_symbol:           'Symbol',

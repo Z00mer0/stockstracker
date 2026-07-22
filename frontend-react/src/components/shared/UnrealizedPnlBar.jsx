@@ -13,13 +13,22 @@ export default function UnrealizedPnlBar({ rows, currLabel, locale, fmt, onSymbo
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 52, bottom: 4, left: 8 }}>
         <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false}
           tickFormatter={v => Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })} />
-        <YAxis type="category" dataKey="symbol" width={72} interval={0} tick={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} />
+        <YAxis
+          type="category"
+          dataKey="symbol"
+          width={72}
+          interval={0}
+          tick={{ fontSize: 11, fill: 'var(--text-dim)', fontFamily: 'var(--font-mono)', cursor: clickable ? 'pointer' : 'default' }}
+          tickLine={false}
+          axisLine={false}
+          onClick={clickable ? (e) => e?.value && onSymbolClick(e.value) : undefined}
+        />
         <ReferenceLine x={0} stroke="var(--border)" />
         <Bar
           dataKey="pl"
           radius={[0, 3, 3, 0]}
           maxBarSize={16}
-          onClick={clickable ? (data) => onSymbolClick(data.symbol) : undefined}
+          onClick={clickable ? (data) => data?.symbol && onSymbolClick(data.symbol) : undefined}
           style={clickable ? { cursor: 'pointer' } : undefined}
         >
           {rows.map(r => (

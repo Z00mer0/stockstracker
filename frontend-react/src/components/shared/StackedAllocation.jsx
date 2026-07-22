@@ -44,6 +44,12 @@ export default function StackedAllocation({ positions = [], totalValue, currency
 
   const currencySymbol = currency === 'PLN' ? ' zł' : ` ${currency}`;
 
+  const pctFmt = new Intl.NumberFormat(locale, {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
   function fmtK(n) {
     if (n == null) return '—';
     return ((n / fxRate) / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k' + currencySymbol;
@@ -61,6 +67,7 @@ export default function StackedAllocation({ positions = [], totalValue, currency
       label: SECTOR_KEY_MAP[key] ? t(SECTOR_KEY_MAP[key]) : key,
       value,
       color: getColor(key),
+      ratio: value / total,
     }))
     .sort((a, b) => b.value - a.value);
 
@@ -70,15 +77,15 @@ export default function StackedAllocation({ positions = [], totalValue, currency
     <div className="stack-alloc">
       <div className="stack-bar">
         {slices.map((s, i) => {
-          const pct = (s.value / total) * 100;
+          const pctStr = pctFmt.format(s.ratio);
           return (
             <div
               key={i}
               className="stack-seg"
               style={{ flex: s.value, background: s.color }}
-              title={`${s.label}: ${pct.toFixed(1)}%`}
+              title={`${s.label}: ${pctStr}`}
             >
-              {pct > 5 ? Math.round(pct) + '%' : ''}
+              {s.ratio > 0.05 ? pctStr : ''}
             </div>
           );
         })}
@@ -89,7 +96,7 @@ export default function StackedAllocation({ positions = [], totalValue, currency
             <span className="sw" style={{ background: s.color }} />
             <span className="lg-name">{s.label}</span>
             <span className="lg-val">{fmtK(s.value)}</span>
-            <span className="lg-pct">{((s.value / total) * 100).toFixed(1)}%</span>
+            <span className="lg-pct">{pctFmt.format(s.ratio)}</span>
           </div>
         ))}
       </div>
