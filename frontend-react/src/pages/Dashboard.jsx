@@ -118,6 +118,7 @@ export default function Dashboard() {
   const [selectedStock, setSelectedStock] = useState(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const [cashEdit, setCashEdit] = useState({});
+  const [wlMode, setWlMode] = useState('pct');
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
@@ -390,7 +391,14 @@ export default function Dashboard() {
 
       {/* InsightStrip */}
       {allPositions.length > 0 && (
-        <InsightStrip positions={allPositions} dailyChangePLN={dailyChange.pln} dailyChangePct={dailyChange.pct} onSymbolClick={setSelectedStock} />
+        <InsightStrip
+          positions={allPositions}
+          dailyChangePLN={dailyChange.pln}
+          dailyChangePct={dailyChange.pct}
+          onSymbolClick={setSelectedStock}
+          displayCurrency={displayCurrency}
+          fxRate={dispFx}
+        />
       )}
 
       {/* KPI grid */}
@@ -407,16 +415,33 @@ export default function Dashboard() {
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
           onClick={() => navigate('/portfolio')}
         />
-        <KpiPro
-          label={t('gain_ytd')}
-          tone={kpi.ytdRealizedPLN >= 0 ? 'up' : 'down'}
-          value={`${kpi.ytdRealizedPLN >= 0 ? '+' : ''}${fmtDisp(kpi.ytdRealizedPLN)} ${currLabel}`}
-          sub={t('ytd_realized')}
-          spark={kpi.sparkValues.slice(-24)}
-          sparkUp={kpi.ytdRealizedPLN >= 0}
-          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
-          onClick={() => navigate('/closed')}
-        />
+        {(() => {
+          const currentGainPLN = (kpi.unrealPLN ?? 0) + (kpi.realizedPLN ?? 0);
+          const currentGainPct = kpi.costBasis > 0 ? (currentGainPLN / kpi.costBasis) * 100 : null;
+          const gainUp = currentGainPLN >= 0;
+          const sign = (v) => (v >= 0 ? '+' : '');
+          return (
+            <KpiPro
+              label={t('current_gain')}
+              tone={gainUp ? 'up' : 'down'}
+              value={`${sign(currentGainPLN)}${fmtDisp(currentGainPLN)} ${currLabel}`}
+              chip={currentGainPct != null ? `${sign(currentGainPct)}${fmtVal(currentGainPct, 2)}%` : null}
+              chipUp={gainUp}
+              subWrap
+              sub={
+                <span style={{ fontSize: 11 }}>
+                  {t('realized_short')}: <span style={{ color: kpi.realizedPLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>{sign(kpi.realizedPLN)}{fmtDisp(kpi.realizedPLN)}</span>
+                  {' · '}
+                  {t('paper_short')}: <span style={{ color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN)}</span>
+                </span>
+              }
+              spark={kpi.sparkValues.slice(-24)}
+              sparkUp={gainUp}
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
+              onClick={() => navigate('/closed')}
+            />
+          );
+        })()}
         <KpiPro
           label={t('dividends_ytd')}
           value={`${fmtDisp(kpi.annualDivPLN)} ${currLabel}`}
@@ -551,7 +576,7 @@ export default function Dashboard() {
               currLabel={currLabel}
               locale={locale}
               fmt={(v, d) => fmtVal(v, d)}
-              onSymbolClick={sym => {
+              onSymbolClick={(sym) => {
                 const pos = allPositions.find(p => p.symbol === sym);
                 if (pos) setSelectedStock(pos);
               }}
@@ -568,16 +593,35 @@ export default function Dashboard() {
               <div className="card-title">{t('sector_alloc')}</div>
             </div>
             <div style={{ padding: '16px 20px' }}>
-              <StackedAllocation positions={allPositions} totalValue={kpi.positionsValue} />
+              <StackedAllocation
+                positions={allPositions}
+                totalValue={kpi.positionsValue}
+                currency={displayCurrency}
+                fxRate={dispFx}
+              />
             </div>
           </div>
           <div className="card">
             <div className="card-head">
               <div className="card-title">{t('winners_losers')}</div>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('returns_pct')}</span>
+              <SegmentedControl
+                options={[
+                  { value: 'pct', label: t('wl_mode_pct') },
+                  { value: 'abs', label: currLabel },
+                ]}
+                value={wlMode}
+                onChange={setWlMode}
+              />
             </div>
             <div style={{ padding: '16px 20px' }}>
-              <WinnersLosers positions={allPositions} onSymbolClick={setSelectedStock} />
+              <WinnersLosers
+                positions={allPositions}
+                onSymbolClick={setSelectedStock}
+                mode={wlMode}
+                fxRate={dispFx}
+                currLabel={currLabel}
+                locale={locale}
+              />
             </div>
           </div>
         </div>

@@ -5,6 +5,23 @@
 
 .btn { white-space: nowrap; }
 
+/* ---- History chart legend ---- */
+.hc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 4px 2px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.hc-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+}
+.hc-legend-item svg { flex-shrink: 0; }
+
 /* ---- KPI PRO ---- */
 .kpi-pro {
   background: var(--panel);
@@ -61,7 +78,16 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
+.kpi-pro .kp-sub.wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.35;
+}
+.kpi-pro .kp-foot { align-items: flex-start; }
+.kpi-pro .kp-foot .kp-sub.wrap span { flex: 1; }
 .kpi-pro.clickable {
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -206,11 +232,16 @@
 .wl-list { display: flex; flex-direction: column; gap: 9px; }
 .wl-row {
   display: grid;
-  grid-template-columns: 92px 1fr 64px;
+  grid-template-columns: 92px 1fr minmax(72px, auto);
   align-items: center;
   gap: 12px;
-  cursor: pointer;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 6px;
+  transition: background 0.15s;
 }
+.wl-row.clickable { cursor: pointer; }
+.wl-row.clickable:hover { background: var(--panel-2); }
 .wl-sym {
   display: flex;
   align-items: center;
