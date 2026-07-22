@@ -34,6 +34,15 @@ export default function ClosedPositions() {
 
   const [view, setView]   = useState('symbol'); // 'symbol' | 'trade'
   const [filter, setFilter] = useState('');
+  // Sortowanie tabeli — klucz kolumny + kierunek. Domyślnie P&L malejąco (tak jak było w groupBySymbol).
+  const [sortKey, setSortKey] = useState('pl');
+  const [sortDir, setSortDir] = useState('desc');
+
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  }
+  const arrow = k => sortKey === k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
 
   const trades = useMemo(() => computeRealizedTrades(transactions, fxRates), [transactions, fxRates]);
   const grouped = useMemo(() => groupBySymbol(trades), [trades]);
@@ -73,6 +82,52 @@ export default function ClosedPositions() {
 
   const filteredTrades  = filter ? trades.filter(t  => t.symbol.toUpperCase().includes(filter.toUpperCase())) : trades;
   const filteredGrouped = filter ? grouped.filter(g => g.symbol.toUpperCase().includes(filter.toUpperCase())) : grouped;
+
+  // Sortowanie — pre-liczymy pochodne (avgCost/avgSell/avgPct) żeby były sortowalne.
+  const sortedGrouped = useMemo(() => {
+    const enriched = filteredGrouped.map(g => ({
+      ...g,
+      _avgCost: g.trades.reduce((s, t) => s + t.costBasis * t.qty, 0) / g.totalQty,
+      _avgSell: g.trades.reduce((s, t) => s + t.sellPrice * t.qty, 0) / g.totalQty,
+      _avgPct:  g.trades.reduce((s, t) => s + t.pct, 0) / g.trades.length,
+      _n:       g.trades.length,
+    }));
+    const cmp = (a, b) => {
+      let av, bv;
+      switch (sortKey) {
+        case 'symbol':  av = a.symbol;   bv = b.symbol;   break;
+        case 'count':   av = a._n;       bv = b._n;       break;
+        case 'qty':     av = a.totalQty; bv = b.totalQty; break;
+        case 'cost':    av = a._avgCost; bv = b._avgCost; break;
+        case 'sell':    av = a._avgSell; bv = b._avgSell; break;
+        case 'pct':     av = a._avgPct;  bv = b._avgPct;  break;
+        case 'pl':
+        default:        av = a.plPLN;    bv = b.plPLN;    break;
+      }
+      if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortDir === 'asc' ? av - bv : bv - av;
+    };
+    return [...enriched].sort(cmp);
+  }, [filteredGrouped, sortKey, sortDir]);
+
+  const sortedTrades = useMemo(() => {
+    const cmp = (a, b) => {
+      let av, bv;
+      switch (sortKey) {
+        case 'symbol': av = a.symbol;    bv = b.symbol;    break;
+        case 'date':   av = a.date || ''; bv = b.date || ''; break;
+        case 'qty':    av = a.qty;       bv = b.qty;       break;
+        case 'cost':   av = a.costBasis; bv = b.costBasis; break;
+        case 'sell':   av = a.sellPrice; bv = b.sellPrice; break;
+        case 'pct':    av = a.pct;       bv = b.pct;       break;
+        case 'pl':
+        default:       av = a.plPLN;     bv = b.plPLN;     break;
+      }
+      if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sortDir === 'asc' ? av - bv : bv - av;
+    };
+    return [...filteredTrades].sort(cmp);
+  }, [filteredTrades, sortKey, sortDir]);
 
   function downloadCSV() {
     const csv  = exportPIT38CSV(trades, fxRates, locale);
@@ -222,23 +277,21 @@ export default function ClosedPositions() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {view === 'symbol'
-                    ? ['Symbol', t('trades_count'), t('total_qty'), t('avg_cost'), t('avg_sell'), `P&L (${currSym})`, 'P&L %'].map((h, i) => (
-                        <th key={i} style={{ padding: '8px 12px', textAlign: i >= 2 ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))
-                    : ['Symbol', t('col_date'), t('qty_short'), t('avg_cost'), t('col_price'), `P&L (${currSym})`, 'P&L %'].map((h, i) => (
-                        <th key={i} style={{ padding: '8px 12px', textAlign: i >= 2 ? 'right' : 'left', fontSize: 10, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))
-                  }
+                  {(view === 'symbol'
+                    ? [['symbol', 'Symbol', 'left'], ['count', t('trades_count'), 'right'], ['qty', t('total_qty'), 'right'], ['cost', t('avg_cost'), 'right'], ['sell', t('avg_sell'), 'right'], ['pl', `P&L (${currSym})`, 'right'], ['pct', 'P&L %', 'right']]
+                    : [['symbol', 'Symbol', 'left'], ['date', t('col_date'), 'left'], ['qty', t('qty_short'), 'right'], ['cost', t('avg_cost'), 'right'], ['sell', t('col_price'), 'right'], ['pl', `P&L (${currSym})`, 'right'], ['pct', 'P&L %', 'right']]
+                  ).map(([key, label, align]) => (
+                    <th key={key} onClick={() => toggleSort(key)} style={{ padding: '8px 12px', textAlign: align, fontSize: 10, fontWeight: 600, color: sortKey === key ? 'var(--accent)' : 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>{label}{arrow(key)}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {view === 'symbol'
-                  ? filteredGrouped.map(g => {
-                      const avgSell = g.trades.reduce((s, t) => s + t.sellPrice * t.qty, 0) / g.totalQty;
-                      const avgCost = g.trades.reduce((s, t) => s + t.costBasis * t.qty, 0) / g.totalQty;
+                  ? sortedGrouped.map(g => {
+                      const avgSell = g._avgSell;
+                      const avgCost = g._avgCost;
                       const plDisp  = toDisp(g.plPLN);
-                      const avgPct  = g.trades.reduce((s, t) => s + t.pct, 0) / g.trades.length;
+                      const avgPct  = g._avgPct;
                       return (
                         <tr key={g.symbol} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 12px' }}>
@@ -256,7 +309,7 @@ export default function ClosedPositions() {
                         </tr>
                       );
                     })
-                  : filteredTrades.map(tr => {
+                  : sortedTrades.map(tr => {
                       const plDisp = toDisp(tr.plPLN);
                       return (
                         <tr key={tr.id} style={{ borderBottom: '1px solid var(--border)' }}>

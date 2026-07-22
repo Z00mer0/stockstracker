@@ -1366,6 +1366,12 @@ if DATABASE_URL:
                 except Exception:
                     pass
                 transactions.append(tx)
+            # Uzupełnij brakujące fx_json (dla snapshotów sprzed PR#15) z NBP historical.
+            # Idempotentne — noop jeśli wszystko ma już fx.
+            try:
+                _backfill_snapshot_fx(portfolio_id)
+            except Exception as _e:
+                print(f'[fx-backfill] skipped: {_e}')
             cur.execute("SELECT date::text, total, invested, fx_json FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
             snaps_rows = cur.fetchall()
             snapshots = {r['date']: float(r['total']) for r in snaps_rows if r['total'] is not None}
@@ -2000,6 +2006,96 @@ def _nbp_rates():
     except Exception as e:
         print(f'[push] nbp: {e}')
         return {'PLN': 1.0}
+
+
+def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
+    """Zwraca {date: {ccy: rate, ..., PLN: 1.0}} dla listy dat. Używa fx_rates_history
+    jako cache; braki pobiera z NBP (z fallbackiem 8-dniowym na weekendy)."""
+    if not dates:
+        return {}
+    out = {d: {'PLN': 1.0} for d in dates}
+    if not DATABASE_URL:
+        return out
+    for currency in currencies:
+        cached = {}
+        with _conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT date, rate FROM fx_rates_history WHERE currency=%s AND date = ANY(%s::date[])",
+                (currency, list(dates))
+            )
+            for d, r in cur.fetchall():
+                cached[d.isoformat()] = float(r)
+        missing = [d for d in dates if d not in cached]
+        if missing:
+            def _fetch(date_str):
+                base = datetime.date.fromisoformat(date_str)
+                for offset in range(8):
+                    d = base - datetime.timedelta(days=offset)
+                    url = (f'https://api.nbp.pl/api/exchangerates/rates/A/{currency}/'
+                           f'{d.isoformat()}/?format=json')
+                    try:
+                        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+                        with urllib.request.urlopen(req, timeout=6) as resp:
+                            data = json.loads(resp.read().decode())
+                        rate = data.get('rates', [{}])[0].get('mid')
+                        if rate:
+                            return date_str, float(rate)
+                    except Exception:
+                        continue
+                return date_str, None
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+                results = list(ex.map(_fetch, missing))
+            to_insert = [(currency, d, r) for d, r in results if r is not None]
+            for d, r in results:
+                if r is not None:
+                    cached[d] = r
+            if to_insert:
+                try:
+                    with _conn() as conn, conn.cursor() as cur:
+                        cur.executemany(
+                            "INSERT INTO fx_rates_history (currency, date, rate) "
+                            "VALUES (%s,%s,%s) ON CONFLICT (currency,date) DO NOTHING",
+                            to_insert
+                        )
+                except Exception as e:
+                    print(f'[fx-hist] insert: {e}')
+        for d, r in cached.items():
+            if d in out:
+                out[d][currency] = r
+    return out
+
+
+def _backfill_snapshot_fx(portfolio_id):
+    """Uzupełnia fx_json dla snapshotów gdzie brakuje — używa NBP historical.
+    Idempotentne: pominie dni które już mają fx_json."""
+    if not DATABASE_URL:
+        return
+    try:
+        with _conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT date::text FROM portfolio_snapshots "
+                "WHERE portfolio_id=%s AND (fx_json IS NULL OR fx_json = '')",
+                (portfolio_id,)
+            )
+            dates = [r[0] for r in cur.fetchall()]
+        if not dates:
+            return
+        rates_by_date = _nbp_historical_rates(dates)
+        updates = []
+        for d in dates:
+            fx = rates_by_date.get(d)
+            if fx and any(v > 0 for k, v in fx.items() if k != 'PLN'):
+                updates.append((json.dumps(fx), portfolio_id, d))
+        if updates:
+            with _conn() as conn, conn.cursor() as cur:
+                cur.executemany(
+                    "UPDATE portfolio_snapshots SET fx_json=%s WHERE portfolio_id=%s AND date=%s::date",
+                    updates
+                )
+            print(f'[fx-backfill] {portfolio_id}: {len(updates)} snapshotów uzupełnione')
+    except Exception as e:
+        print(f'[fx-backfill] {portfolio_id}: {e}')
 
 
 def _portfolio_market_value(username, price_cache, rates):
