@@ -19,14 +19,23 @@ export function investedByCurrencyAt(transactions, date) {
 
   // Per symbol → { qty, avg, currency }. Same-symbol w różnych walutach: bierzemy
   // walutę pierwszego BUY-a jako kanon (i tak w portfelu jeden symbol = jedna waluta).
+  // fromSnapshot BUY: replace stanu (snapshot importu brokera = autorytatywna baseline
+  // z ich avgPrice), zgodnie z AppContext:504-509. Kolejne "zwykłe" BUY po snapshotcie
+  // dokładają się weighted-avg do tej baseline.
   const holdings = new Map();
   for (const tx of relevant) {
     const cur = tx.currency || 'PLN';
     const h = holdings.get(tx.symbol) || { qty: 0, avg: 0, currency: cur };
     if (tx.type === 'BUY') {
-      h.avg = weightedAvg(h.qty, h.avg, tx.qty, tx.price);
-      h.qty = h.qty + tx.qty;
-      h.currency = h.currency || cur;
+      if (tx.fromSnapshot) {
+        h.qty = tx.qty;
+        h.avg = tx.price;
+        h.currency = cur;
+      } else {
+        h.avg = weightedAvg(h.qty, h.avg, tx.qty, tx.price);
+        h.qty = h.qty + tx.qty;
+        h.currency = h.currency || cur;
+      }
     } else {
       h.qty = Math.max(0, h.qty - tx.qty);
       if (h.qty === 0) h.avg = 0;
