@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useT } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
 import PortfolioReview from '../components/PortfolioReview';
+import { authHeader } from '../utils/auth.js';
 
 const MANUAL_KEY = 'myfund_manual_insights';
 
@@ -19,10 +20,6 @@ function loadManual() {
 
 function saveManual(data) {
   localStorage.setItem(MANUAL_KEY, JSON.stringify(data));
-}
-
-function authHeader() {
-  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
 }
 
 async function apiLoadInsights() {

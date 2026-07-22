@@ -3,10 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useT, useLanguage } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
 import TickerLogo from '../components/shared/TickerLogo';
-
-function authHeader() {
-  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
-}
+import { authHeader } from '../utils/auth.js';
 
 function fmtDateTime(iso, locale = 'pl-PL') {
   if (!iso) return '';

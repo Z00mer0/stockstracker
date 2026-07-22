@@ -4,6 +4,7 @@
 // nabycia odtwarzamy z historii: replay zakupów per symbol (średnia ważona,
 // ta sama metoda co avgPrice w portfelu). Sprzedaż bez żadnego wcześniejszego
 // zakupu w historii nadal jest pomijana (nie znamy kosztu).
+import { weightedAvg } from './weightedAvg.js';
 
 function backfillCostBasis(transactions) {
   const bySym = new Map();
@@ -23,9 +24,8 @@ function backfillCostBasis(transactions) {
     let qty = 0, avg = 0;
     for (const tx of sorted) {
       if (tx.type === 'BUY') {
-        const newQty = qty + tx.qty;
-        avg = newQty > 0 ? (qty * avg + tx.qty * tx.price) / newQty : 0;
-        qty = newQty;
+        avg = weightedAvg(qty, avg, tx.qty, tx.price);
+        qty = qty + tx.qty;
       } else {
         if (tx.costBasis == null && qty >= tx.qty) filled.set(tx, avg);
         qty = Math.max(0, qty - tx.qty);

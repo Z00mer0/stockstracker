@@ -1,11 +1,11 @@
 // Wspólna logika watchlisty (jedno źródło prawdy dla alertów).
 // Backend jest źródłem prawdy — localStorage tylko jako cache offline.
+import { authHeader } from '../utils/auth.js';
 
 export const WATCH_KEY = 'myfund_watchlist';
 export const OLD_PORTFOLIO_ALERTS_KEY = 'myfund_price_alerts';
 export const MIGRATION_KEY = 'myfund_alerts_migrated_v1';
 
-function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
 export function genAlertId() { return Math.random().toString(36).slice(2, 10); }
 function genItemId()  { return Math.random().toString(36).slice(2, 10); }
 

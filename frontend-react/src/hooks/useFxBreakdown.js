@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-
-function authHeader() {
-  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
-}
+import { authHeader } from '../utils/auth.js';
 
 // Fetches a { date: rate } map for one currency in a single batched backend call.
 // Backend caches historical rates permanently in Postgres.

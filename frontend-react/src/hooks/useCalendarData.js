@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-
-function authHeader() {
-  return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
-}
+import { authHeader } from '../utils/auth.js';
 
 const CACHE_TTL_MS  = 6 * 60 * 60 * 1000;  // 6h dla makro
 
