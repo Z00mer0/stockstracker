@@ -43,7 +43,7 @@ export default function Layout() {
     <div style={{
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : '232px 1fr',
-      height: '100vh',
+      height: '100dvh',
       background: 'var(--bg)',
       color: 'var(--text)',
       overflow: 'hidden',
@@ -61,7 +61,7 @@ export default function Layout() {
           isMobile={isMobile}
           onMenuToggle={() => setSidebarOpen(o => !o)}
         />
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto', containerType: 'inline-size', containerName: 'app' }}>
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto', containerType: 'inline-size', containerName: 'app' }}>
           <Outlet />
         </main>
       </div>

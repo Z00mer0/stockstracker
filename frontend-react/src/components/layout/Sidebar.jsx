@@ -79,7 +79,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
     <aside style={{
       background: 'var(--bg-2)',
       borderRight: '1px solid var(--border)',
-      height: '100vh',
+      height: '100dvh',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
