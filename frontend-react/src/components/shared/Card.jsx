@@ -23,9 +23,14 @@ function clampAncestorScroll(el) {
   }
 }
 
-export default function Card({ title, actions, children, className = '', collapsible = false, collapseKey }) {
+export default function Card({ title, actions, children, className = '', collapsible = false, collapseKey, defaultCollapsed = false }) {
   const storageKey = collapseKey ?? (typeof title === 'string' ? title : null);
-  const [collapsed, setCollapsed] = useState(() => collapsible && storageKey ? !!loadCollapsed()[storageKey] : false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (!collapsible) return false;
+    if (!storageKey) return defaultCollapsed;
+    const saved = loadCollapsed();
+    return storageKey in saved ? !!saved[storageKey] : defaultCollapsed;
+  });
   const rootRef = useRef(null);
 
   function toggle() {
