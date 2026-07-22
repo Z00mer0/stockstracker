@@ -130,7 +130,7 @@ function RiskSection({ snapshots }) {
   if (values.length < 10 || daySpan < 30) {
     if (daySpan > 0) {
       return (
-        <Card title={t('risk_section')} collapsible collapseKey="an_risk">
+        <Card title={t('risk_section')} collapsible defaultCollapsed collapseKey="an_risk">
           <div className="card-body">
             <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
               {t('not_enough_history')} (min. 30 {t('days_of_history')}: {daySpan})
@@ -144,7 +144,7 @@ function RiskSection({ snapshots }) {
   const hasEnoughSessions = values.length >= MIN_SESSIONS;
 
   return (
-    <Card title={t('risk_section')} collapsible collapseKey="an_risk">
+    <Card title={t('risk_section')} collapsible defaultCollapsed collapseKey="an_risk">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}></p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
@@ -271,7 +271,7 @@ function RebalanceSection({ enriched, totalValue }) {
   }
 
   return (
-    <Card title={t('rebalance_section')} collapsible collapseKey="an_rebal" actions={
+    <Card title={t('rebalance_section')} collapsible defaultCollapsed collapseKey="an_rebal" actions={
       <button onClick={editMode ? saveEdit : openEdit} className="btn" style={{ fontSize: 11 }}>
         {editMode ? t('save_goals') : t('set_goals')}
       </button>
@@ -506,7 +506,7 @@ function FireSection({ totalValue }) {
   const labelStyle = { fontSize: 11, color: 'var(--text-faint)', marginBottom: 4, display: 'block' };
 
   return (
-    <Card title={t('fire_title')} collapsible collapseKey="an_fire">
+    <Card title={t('fire_title')} collapsible defaultCollapsed collapseKey="an_fire">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16 }}>
           {t('fire_description')}
@@ -828,7 +828,7 @@ function SmartInsightsSection({ enrichedPositions }) {
   });
 
   return (
-    <Card title={t('smart_insights')} collapsible collapseKey="an_insights">
+    <Card title={t('smart_insights')} collapsible defaultCollapsed collapseKey="an_insights">
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>{t('smart_insights_sub')}</p>
         {insights.map((ins, i) => (
@@ -900,7 +900,7 @@ function SectorAnalysisSection({ enriched, totalValue }) {
   }
 
   return (
-    <Card title={t('sector_analysis')} collapsible collapseKey="an_sector" actions={
+    <Card title={t('sector_analysis')} collapsible defaultCollapsed collapseKey="an_sector" actions={
       <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
         {[['sector', t('sector_label')], ['industry', t('industry_label')]].map(([k, label]) => (
           <button key={k} onClick={() => setView(k)} style={{
@@ -1010,7 +1010,7 @@ function TaxOptimizerSection({ enriched, transactions, fxRates, accountType }) {
   // Konta IKE/IKZE — zwolnione z Belki
   if (accountType === 'IKE' || accountType === 'IKZE') {
     return (
-      <Card title={`💰 ${t('tax_opt_title')}`} collapsible collapseKey="an_tax">
+      <Card title={`💰 ${t('tax_opt_title')}`} collapsible defaultCollapsed collapseKey="an_tax">
         <div className="card-body" style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
           {t('tax_opt_ike_note').replace('{type}', accountType)}
         </div>
@@ -1032,7 +1032,7 @@ function TaxOptimizerSection({ enriched, transactions, fxRates, accountType }) {
   const taxAfter = taxDue - totalSaving;
 
   return (
-    <Card title={`💰 ${t('tax_opt_title')}`} collapsible collapseKey="an_tax">
+    <Card title={`💰 ${t('tax_opt_title')}`} collapsible defaultCollapsed collapseKey="an_tax">
       <div className="card-body">
         {/* KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -1208,7 +1208,7 @@ export default function Analysis() {
       </div>
 
       {/* Alokacja walutowa */}
-      <Card title={t('currency_alloc')} collapsible collapseKey="an_curr">
+      <Card title={t('currency_alloc')} collapsible defaultCollapsed collapseKey="an_curr">
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
@@ -1239,7 +1239,7 @@ export default function Analysis() {
       </Card>
 
       {/* Koncentracja pozycji */}
-      <Card title={t('position_concentration')} collapsible collapseKey="an_conc">
+      <Card title={t('position_concentration')} collapsible defaultCollapsed collapseKey="an_conc">
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
@@ -1307,7 +1307,7 @@ function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
   }
 
   return (
-    <Card title={t('fx_decomp')} collapsible collapseKey="an_fx">
+    <Card title={t('fx_decomp')} collapsible defaultCollapsed collapseKey="an_fx">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>
           {t('fx_description')}
@@ -1379,7 +1379,7 @@ function PerformanceTable({ title, positions }) {
   }
 
   return (
-    <Card title={title} collapsible>
+    <Card title={title} collapsible defaultCollapsed>
       <div style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
