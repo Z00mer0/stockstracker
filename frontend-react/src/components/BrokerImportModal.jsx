@@ -143,17 +143,29 @@ function parseBrokerRows(rows) {
         : /\.(DE|FR|NL|IT|ES|BE|AT|FI|SE|DK|NO)$/i.test(normalizedCashSym) ? 'EUR'
         : 'USD';
 
+      // Semantyka pól per typ:
+      // - CASH: qty=null, price = kwota ze znakiem (wpłata +, wypłata −); cash-flow z tx.price
+      // - DIV : qty=null, price = |amount| (zawsze uznanie na rachunek)
+      // - BUY/SELL: qty i price z komentarza "BUY x @ y"; cash-flow z qty·price
+      //   (Cash Ops JEST źródłem prawdy o cash — tylko gdy nie ma commentMatch,
+      //   zabezpieczamy się skipCashAdjust, żeby nie liczyć śmieciowej pary).
+      const isCashType = txType === 'CASH';
+      const isDivType  = txType === 'DIV';
+      const hasQtyPrice = qty != null && !isNaN(qty) && qty > 0;
       transactions.push({
         id: genId(),
         type: txType,
         symbol: normalizedCashSym,
-        qty: txType === 'CASH' ? null : (qty ?? Math.abs(amount)),
-        price,
+        qty: isCashType || isDivType ? null : (hasQtyPrice ? qty : Math.abs(amount)),
+        price: isCashType ? amount : (isDivType ? Math.abs(amount) : price),
         currency: cashCurrency,
         date: parseDate(timeStr) || new Date().toISOString().slice(0, 10),
         note: comment || opType,
         brokerPositionId: positionId || undefined,
-        skipCashAdjust: true,
+        // Dla BUY/SELL bez rozpoznanego "x @ y" nie ruszamy cash (byłby śmieć).
+        // CASH/DIV mają własne branchy w importBrokerTransactions — flaga tam
+        // ignorowana.
+        ...((!isCashType && !isDivType && !hasQtyPrice) ? { skipCashAdjust: true } : {}),
       });
     }
   }
@@ -194,9 +206,20 @@ function computePortfolioPreview(txs, holdings, cash) {
   let h = holdings.map(x => ({ ...x }));
   let c = { ...cash };
   const sorted = [...txs].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const affectsCash = tx => !tx.fromClosedPosition && !tx.skipCashAdjust && !tx.fromSnapshot;
   for (const tx of sorted) {
-    if (!tx.qty || tx.qty <= 0) continue;
     const cur = tx.currency || 'PLN';
+
+    if (tx.type === 'CASH') {
+      c[cur] = (c[cur] ?? 0) + (Number(tx.price) || 0);
+      continue;
+    }
+    if (tx.type === 'DIV') {
+      c[cur] = (c[cur] ?? 0) + Math.abs(Number(tx.price) || 0);
+      continue;
+    }
+    if (!tx.qty || tx.qty <= 0) continue;
+
     const base = baseSymbol(tx.symbol);
     const idx = h.findIndex(x => x.symbol === tx.symbol || baseSymbol(x.symbol) === base);
     if (tx.type === 'BUY') {
@@ -207,12 +230,15 @@ function computePortfolioPreview(txs, holdings, cash) {
       } else if (idx < 0) {
         h.push({ symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur });
       }
+      if (affectsCash(tx)) {
+        c[cur] = (c[cur] ?? 0) - tx.qty * tx.price;
+      }
     } else if (tx.type === 'SELL') {
       if (idx >= 0) {
         const qty = h[idx].qty - tx.qty;
         if (qty <= 0) h.splice(idx, 1); else h[idx] = { ...h[idx], qty };
       }
-      if (!tx.fromClosedPosition && !tx.skipCashAdjust) {
+      if (affectsCash(tx)) {
         c[cur] = (c[cur] ?? 0) + tx.qty * tx.price;
       }
     }
@@ -220,9 +246,11 @@ function computePortfolioPreview(txs, holdings, cash) {
   const oldMap = Object.fromEntries(holdings.map(x => [x.symbol, x]));
   const newMap = Object.fromEntries(h.map(x => [x.symbol, x]));
   const cashAdded = {};
+  const cashRemoved = {};
   for (const [cur, val] of Object.entries(c)) {
     const diff = val - (cash[cur] ?? 0);
     if (diff > 0.01) cashAdded[cur] = diff;
+    else if (diff < -0.01) cashRemoved[cur] = -diff;
   }
   return {
     added:    h.filter(x => !oldMap[x.symbol]),
@@ -230,6 +258,7 @@ function computePortfolioPreview(txs, holdings, cash) {
     modified: h.filter(x => oldMap[x.symbol] && Math.abs(x.qty - oldMap[x.symbol].qty) > 0.001)
                .map(x => ({ ...x, oldQty: oldMap[x.symbol].qty })),
     cashAdded,
+    cashRemoved,
   };
 }
 
@@ -400,8 +429,9 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
 
         {/* Portfolio preview */}
         {preview && (() => {
-          const { added, removed, modified, cashAdded } = preview;
-          const hasChanges = added.length + removed.length + modified.length + Object.keys(cashAdded).length > 0;
+          const { added, removed, modified, cashAdded, cashRemoved = {} } = preview;
+          const hasChanges = added.length + removed.length + modified.length
+            + Object.keys(cashAdded).length + Object.keys(cashRemoved).length > 0;
           return (
             <div style={{ borderRadius: 8, padding: '10px 14px', marginBottom: 16, background: 'var(--panel-2)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: hasChanges ? 6 : 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -428,8 +458,13 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
                 </p>
               ))}
               {Object.entries(cashAdded).map(([cur, v]) => (
-                <p key={cur} style={{ fontSize: 11, color: 'var(--up)', margin: '2px 0' }}>
-                  💵 Gotówka +{v.toFixed(2)} {cur} (wpływy ze sprzedaży)
+                <p key={'add_' + cur} style={{ fontSize: 11, color: 'var(--up)', margin: '2px 0' }}>
+                  💵 Gotówka +{v.toFixed(2)} {cur}
+                </p>
+              ))}
+              {Object.entries(cashRemoved).map(([cur, v]) => (
+                <p key={'rm_' + cur} style={{ fontSize: 11, color: 'var(--down)', margin: '2px 0' }}>
+                  💵 Gotówka −{v.toFixed(2)} {cur}
                 </p>
               ))}
             </div>
