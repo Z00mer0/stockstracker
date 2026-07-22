@@ -220,9 +220,9 @@ export default function Dashboard() {
       costBasis:       costBasis.toFixed(2),
       positionsValue:  positionsValue.toFixed(2),
       cashValue:       cashValue.toFixed(2),
-      totalValue:      totalValue.toFixed(2),
+      totalValue:      totalValue != null ? totalValue.toFixed(2) : 'n/a',
       unrealPLN:       unrealPLN.toFixed(2),
-      unrealPct:       unrealPct.toFixed(2) + '%',
+      unrealPct:       unrealPct != null ? unrealPct.toFixed(2) + '%' : 'n/a',
       totalROI:        totalROI != null ? totalROI.toFixed(2) + '%' : 'n/a',
       pricesLoaded,
     });
