@@ -217,17 +217,6 @@ export default function Dashboard() {
       ? ((positionsValue + realizedPLN + dividendsPLN - costBasis) / costBasis) * 100
       : null;
 
-    console.log('[KPI] Total Invested vs Total Value', {
-      costBasis:       costBasis.toFixed(2),
-      positionsValue:  positionsValue.toFixed(2),
-      cashValue:       cashValue.toFixed(2),
-      totalValue:      totalValue != null ? totalValue.toFixed(2) : 'n/a',
-      unrealPLN:       unrealPLN.toFixed(2),
-      unrealPct:       unrealPct != null ? unrealPct.toFixed(2) + '%' : 'n/a',
-      totalROI:        totalROI != null ? totalROI.toFixed(2) + '%' : 'n/a',
-      pricesLoaded,
-    });
-
     return {
       totalValue, positionsValue, cashValue, costBasis,
       unrealPLN, unrealPct, totalROI,

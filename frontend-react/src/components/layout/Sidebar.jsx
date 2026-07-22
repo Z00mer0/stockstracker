@@ -96,7 +96,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           <BrandIcon />
         </div>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          stockstracker<span style={{ color: 'var(--accent)' }}>.</span>
+          myfund<span style={{ color: 'var(--accent)' }}>.</span>
         </span>
         {isMobile && (
           <button
