@@ -506,7 +506,17 @@ export default function Portfolio() {
   }, [watchItems]);
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
-  const totalValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
+  const pricesLoaded = enriched.length === 0 || enriched.every(p => p.valuePLN != null);
+  const positionsValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
+  // Podczas ładowania (nie wszystkie ceny znane) używamy najnowszego snapshotu
+  // — nie pokazujemy „0,00" ani sumy kosztu w miejscu na wartość rynkową.
+  const latestSnap = snapshots.length
+    ? [...snapshots].sort((a, b) => b.date.localeCompare(a.date))[0]
+    : null;
+  const totalValuePLN = pricesLoaded
+    ? positionsValuePLN
+    : (latestSnap ? latestSnap.total : null);
+  const staleTotal = !pricesLoaded && totalValuePLN != null;
   const portFx = fxRates[displayCurrency] ?? 1;
   const portCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const portToDisp = v => v / portFx;
@@ -906,26 +916,35 @@ export default function Portfolio() {
           layout={dashLayout}
           width={gridWidth}
           gridConfig={{ cols: 12, rowHeight: DASH_ROW_H, margin: DASH_MARGIN, containerPadding: [0, 0] }}
-          dragConfig={{ enabled: editMode, handle: '.card-head' }}
-          resizeConfig={{ enabled: editMode, handles: ['se', 'sw', 'ne', 'nw'] }}
+          dragConfig={{ enabled: editMode, handle: '.card-head', bounded: true, threshold: 10 }}
+          resizeConfig={{ enabled: editMode, handles: ['se'] }}
           compactor={noCompactor}
           onLayoutChange={newLayout => { if (editMode) { setDashLayout(newLayout); saveLayoutToServer(newLayout); } }}
         >
           <div key="chart">
-            <div className="card" style={{ height: '100%', overflow: 'hidden' }}>
+            <div className="card" style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div className="card-head" style={{
                 cursor: editMode ? 'grab' : undefined,
                 display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, padding: '14px 20px 4px',
                 outline: editMode ? '2px solid transparent' : undefined,
+                flexShrink: 0,
               }}>
                 <div>
                   <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
                     {t('portfolio_value_rail')}
                   </div>
                   <div className="pv-total" style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                    {fmt(portToDisp(totalValuePLN), 2, locale)} {portCurrLabel}
+                    {totalValuePLN == null ? '—' : `${fmt(portToDisp(totalValuePLN), 2, locale)} ${portCurrLabel}`}
+                    {staleTotal && (
+                      <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-faint)', fontWeight: 500 }}>~ {t('last_session')}</span>
+                    )}
                   </div>
-                  {dailyChangePLN != null && dailyChangePLN !== 0 && (
+                  {!pricesLoaded && !staleTotal && (
+                    <div className="pv-daily" style={{ fontSize: 11, marginTop: 4, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                      {t('loading_prices')}
+                    </div>
+                  )}
+                  {pricesLoaded && dailyChangePLN != null && dailyChangePLN !== 0 && (
                     <div className="pv-daily" style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
                       {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel} {t('today')}
                     </div>
@@ -937,10 +956,10 @@ export default function Portfolio() {
                   onChange={setTfPortfolio}
                 />
               </div>
-              <div style={{ padding: '4px 12px 14px' }}>
+              <div style={{ flex: 1, minHeight: 0, padding: '4px 12px 14px', display: 'flex', flexDirection: 'column' }}>
                 {snapshotsForPortfolio.length >= 2
                   ? <HistoryChart data={snapshotsForPortfolio} displayCurrency={displayCurrency} fxRate={fxRates[displayCurrency] ?? 1} />
-                  : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
+                  : <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
                 }
               </div>
             </div>
@@ -992,7 +1011,7 @@ export default function Portfolio() {
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '8px 20px 16px', overflow: 'hidden' }}>
                 {enriched.length > 0
-                  ? <PortfolioPieChart positions={enriched} totalValue={totalValuePLN} currency={displayCurrency} fxRate={portFx} />
+                  ? <PortfolioPieChart positions={enriched} totalValue={positionsValuePLN} currency={displayCurrency} fxRate={portFx} />
                   : <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Brak danych</div>
                 }
               </div>
@@ -1006,7 +1025,7 @@ export default function Portfolio() {
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 20px 16px', overflow: 'auto' }}>
                 {enriched.length > 0
-                  ? <StackedAllocation positions={enriched} totalValue={totalValuePLN} currency={displayCurrency} fxRate={portFx} />
+                  ? <StackedAllocation positions={enriched} totalValue={positionsValuePLN} currency={displayCurrency} fxRate={portFx} />
                   : <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Brak danych</div>
                 }
               </div>
@@ -1290,7 +1309,7 @@ export default function Portfolio() {
                               {sec}
                               <span className="sg-count">· {list.length}</span>
                               <span className="sg-val">
-                                {(sv / 1000).toFixed(1)}k · {totalValuePLN > 0 ? ((sv / totalValuePLN) * 100).toFixed(1) : 0}%
+                                {(sv / 1000).toFixed(1)}k · {positionsValuePLN > 0 ? ((sv / positionsValuePLN) * 100).toFixed(1) : 0}%
                               </span>
                             </div>
                           </td>
@@ -1445,7 +1464,7 @@ export default function Portfolio() {
         <StockDetailModal
           item={selectedItem}
           existingPortfolio={portfolio}
-          totalPortfolioValue={totalValuePLN}
+          totalPortfolioValue={positionsValuePLN}
           onSave={async (data) => { await addPosition(data); refresh(); }}
           onClose={() => setSelectedItem(null)}
         />

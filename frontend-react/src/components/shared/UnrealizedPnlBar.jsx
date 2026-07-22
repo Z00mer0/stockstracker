@@ -29,7 +29,7 @@ export default function UnrealizedPnlBar({ rows, currLabel, locale, fmt, onSymbo
             dataKey="pl"
             position="right"
             formatter={v => `${v >= 0 ? '+' : ''}${Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })}`}
-            style={{ fontSize: 10, fontFamily: 'var(--font-mono)', fill: 'var(--text-dim)' }}
+            style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-mono)', fill: 'var(--text)' }}
           />
         </Bar>
       </BarChart>
