@@ -164,7 +164,7 @@ export default function AuthScreen({
         <div className="auth-brand">
           <span className="mark"><TrendIcon size={isTerm ? 21 : 20} /></span>
           <div>
-            <div className="name">stockstracker<span className="dot">.</span></div>
+            <div className="name">myfund<span className="dot">.</span></div>
             {isTerm && <div className="tag">PORTFOLIO · REAL-TIME</div>}
           </div>
         </div>

@@ -12,12 +12,12 @@ export default function RecoveryCodes({ codes, onContinue }) {
 
   function download() {
     const blob = new Blob(
-      [`stockstracker — ${t('rc_title')}\n\n${codes.join('\n')}\n`],
+      [`myfund — ${t('rc_title')}\n\n${codes.join('\n')}\n`],
       { type: 'text/plain' },
     );
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'stockstracker-recovery-codes.txt';
+    a.download = 'myfund-recovery-codes.txt';
     a.click();
     URL.revokeObjectURL(a.href);
   }

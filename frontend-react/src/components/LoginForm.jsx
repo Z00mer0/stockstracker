@@ -51,7 +51,7 @@ export default function LoginForm({ onLogin }) {
               <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
             </svg>
           </div>
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>stockstracker.</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>myfund<span style={{ color: 'var(--accent)' }}>.</span></span>
         </div>
 
         {/* Tab switcher */}
