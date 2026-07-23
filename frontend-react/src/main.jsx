@@ -6,10 +6,11 @@ import './tabs.css';
 import { PrivacyProvider } from './context/PrivacyContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { installFetchRetry } from './services/apiClient';
+import { installFetchRetry, warmupBackend } from './services/apiClient';
 import { inject } from '@vercel/analytics';
 
 inject();
+warmupBackend();
 
 function FetchRetryInstaller() {
   const { showToast } = useToast();
