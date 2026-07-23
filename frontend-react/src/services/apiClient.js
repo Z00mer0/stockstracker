@@ -3,10 +3,14 @@
 // Mutacje (POST/PATCH/PUT/DELETE) NIE są retry'owane — ryzyko dubli.
 
 const RETRY_STATUSES = new Set([503, 504]);
-// Render hobby cold start ~30-60s → retry window ~45s (2+4+8+12+18s).
+// Render hobby cold start bywa i 60-90s → retry window ~90s (2+5+10+15+25+30s).
 // Toast pokazujemy dopiero po wyczerpaniu wszystkich prób.
-const BACKOFF_MS = [2000, 4000, 8000, 12000, 18000];
+const BACKOFF_MS = [2000, 5000, 10000, 15000, 25000, 30000];
 const TOAST_COOLDOWN_MS = 10_000;
+// Nie strasz toastem podczas rozgrzewki backendu — pierwsze 90s od boota
+// najprawdopodobniej to jeszcze cold-start. Retry i tak leci, dane dotra.
+const BOOT_QUIET_MS = 90_000;
+const bootAt = Date.now();
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -58,6 +62,7 @@ export function installFetchRetry(showToast) {
 
   const notify = () => {
     const now = Date.now();
+    if (now - bootAt < BOOT_QUIET_MS) return;
     if (now - lastToastAt < TOAST_COOLDOWN_MS) return;
     lastToastAt = now;
     showToast?.('Serwer chwilowo niedostępny — spróbuj odświeżyć za chwilę', {

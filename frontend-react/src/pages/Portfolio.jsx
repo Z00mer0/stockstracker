@@ -1,6 +1,6 @@
 // frontend-react/src/pages/Portfolio.jsx
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import GridLayout, { noCompactor } from 'react-grid-layout';
+import GridLayout, { verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useApp } from '../context/AppContext';
@@ -40,10 +40,6 @@ import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services
 const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v6';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
-// preventCollision + noCompactor: karta upuszczona na inną wraca na miejsce
-// zamiast rozpychać sąsiadów (bez tego layout "eksplodował" — cards leciały
-// w losowe pozycje bo noCompactor nie reflowuje).
-const NO_COMPACT_PREVENT_COLLISION = { ...noCompactor, preventCollision: true };
 const DASH_DEFAULT_LAYOUT = [
   { i: 'chart',   x: 0, y: 0,  w: 8,  h: 11, minW: 4, minH: 8, maxH: 20 },
   { i: 'stats',   x: 8, y: 0,  w: 4,  h: 11, minW: 2, minH: 4, maxH: 20 },
@@ -920,9 +916,9 @@ export default function Portfolio() {
           layout={dashLayout}
           width={gridWidth}
           gridConfig={{ cols: 12, rowHeight: DASH_ROW_H, margin: DASH_MARGIN, containerPadding: [0, 0] }}
-          dragConfig={{ enabled: editMode, handle: '.card-head', bounded: true, threshold: 10 }}
-          resizeConfig={{ enabled: editMode, handles: ['se'] }}
-          compactor={NO_COMPACT_PREVENT_COLLISION}
+          dragConfig={{ enabled: editMode, handle: '.card-head', bounded: false, threshold: 5 }}
+          resizeConfig={{ enabled: editMode, handles: ['se', 'sw', 'ne', 'nw', 'e', 's'] }}
+          compactor={verticalCompactor}
           onLayoutChange={newLayout => { if (editMode) { setDashLayout(newLayout); saveLayoutToServer(newLayout); } }}
         >
           <div key="chart">
