@@ -12,6 +12,7 @@ import Chip from '../components/shared/Chip';
 import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
+import { formatPercent } from '../utils/format.js';
 import KpiPro from '../components/shared/KpiPro';
 import InsightStrip from '../components/shared/InsightStrip';
 import StackedAllocation from '../components/shared/StackedAllocation';
@@ -361,7 +362,7 @@ export default function Dashboard() {
     ? (kpi.unrealPct >= 0 ? '+' : '') + fmtVal(kpi.unrealPct, 2) + '%'
     : null;
   const irrChipVal = portfolioIrr != null
-    ? (portfolioIrr * 100).toFixed(1) + '%/r'
+    ? formatPercent(portfolioIrr * 100, { locale, decimals: 1 }) + '/r'
     : null;
 
   const TF_OPTIONS = ['1T', '1M', '3M', '6M', '1R', 'MAX'];
@@ -504,7 +505,7 @@ export default function Dashboard() {
                         </div>
                         <div style={{ textAlign: 'right', minWidth: 58 }}>
                           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                            {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
+                            {formatPercent(pos.dailyChg, { locale, decimals: 2 })}
                           </div>
                           {pos.price != null && (
                             <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
@@ -525,7 +526,7 @@ export default function Dashboard() {
                         </div>
                         <div style={{ textAlign: 'right', minWidth: 58 }}>
                           <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                            {pos.dailyChg >= 0 ? '+' : ''}{pos.dailyChg?.toFixed(2)}%
+                            {formatPercent(pos.dailyChg, { locale, decimals: 2 })}
                           </div>
                           {pos.price != null && (
                             <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>

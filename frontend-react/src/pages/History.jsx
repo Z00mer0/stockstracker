@@ -9,6 +9,7 @@ import Spinner from '../components/shared/Spinner';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Card from '../components/shared/Card';
 import { investedInDisplayAt } from '../utils/investedAtDate.js';
+import { formatPercent } from '../utils/format.js';
 
 function fmt(n, decimals = 0, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
@@ -286,13 +287,13 @@ export default function History() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
           { label: t('value_filter'), value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDispAt(filteredLast?.total, filteredLast), currLabel, locale)}</span>, sub: null },
-          { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(toDispAt(gainPLN, filteredLast), currLabel, locale)}</span>, sub: gainPct != null ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%` : null },
-          { label: 'CAGR', value: cagr != null ? `${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%` : '—', sub: cagr == null ? <>{t('cagr_min_days')} ({days} {t('days_of_history')}){cagrUnlockStr && <><br /><span style={{ color: '#888' }}>dostępne ~{cagrUnlockStr}</span></>}</> : null },
+          { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(toDispAt(gainPLN, filteredLast), currLabel, locale)}</span>, sub: gainPct != null ? formatPercent(gainPct, { locale, decimals: 2 }) : null },
+          { label: 'CAGR', value: cagr != null ? formatPercent(cagr, { locale, decimals: 1 }) : '—', sub: cagr == null ? <>{t('cagr_min_days')} ({days} {t('days_of_history')}){cagrUnlockStr && <><br /><span style={{ color: '#888' }}>dostępne ~{cagrUnlockStr}</span></>}</> : null },
           { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDispAt(ath?.total, ath), currLabel, locale)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
           {
             label: 'Max Drawdown',
             value: mdd
-              ? <span style={{ color: mdd.pct > 25 ? 'var(--down)' : mdd.pct > 10 ? 'var(--warn)' : 'var(--up)' }}>-{mdd.pct.toFixed(1)}%</span>
+              ? <span style={{ color: mdd.pct > 25 ? 'var(--down)' : mdd.pct > 10 ? 'var(--warn)' : 'var(--up)' }}>{formatPercent(-mdd.pct, { locale, decimals: 1, showSign: false })}</span>
               : <span style={{ color: 'var(--text-faint)' }}>—</span>,
             sub: mdd ? `${fmtDate(mdd.from)} → ${fmtDate(mdd.to)}` : t('no_data_short'),
           },
