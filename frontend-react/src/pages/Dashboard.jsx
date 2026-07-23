@@ -187,21 +187,26 @@ export default function Dashboard() {
     const sorted      = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
-    // Live values — real-time position prices (no cost-basis fallback: mieszanie
-    // kosztu z ceną rynkową dawało w trakcie ładowania fałszywy total).
+    // Live values — real-time position prices.
     const positionsValue   = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
+    // Hybrid: pozycje bez ceny (delisting / zmiana tickera / chwilowy brak quote)
+    // liczone po koszcie zakupu — jeden brakujący symbol nie zamraża całej
+    // wartości na wczorajszym snapshocie. Snapshot tylko dopóki NIC się nie
+    // załadowało (patrz anyPriceLoaded).
+    const hybridPositionsValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? p.costPLN ?? 0), 0);
     const cashValue        = Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
     const otherAssetsValue = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
 
     const pricesLoaded = allPositions.length === 0 || allPositions.every(p => p.valuePLN != null);
+    const anyPriceLoaded = allPositions.length === 0 || allPositions.some(p => p.valuePLN != null);
 
-    // Gdy nie wszystkie ceny są jeszcze pobrane, wartość portfela == ostatni
-    // znany snapshot (uczciwa liczba z ostatniej sesji). Jeśli i tego nie ma —
-    // null (UI pokaże „—" + loader).
+    // Gdy mamy choć jedną żywą cenę — pokazujemy żywą (hybrydową) wartość.
+    // Snapshot („z ostatniej sesji") tylko gdy ZERO cen (pierwsze sekundy /
+    // padnięty backend cen). Bez żadnego snapshotu — null (UI: „—" + loader).
     let totalValue;
     let staleTotal = false;
-    if (pricesLoaded) {
-      totalValue = positionsValue + cashValue + otherAssetsValue;
+    if (anyPriceLoaded) {
+      totalValue = (pricesLoaded ? positionsValue : hybridPositionsValue) + cashValue + otherAssetsValue;
     } else {
       const latestSnap = snapshots.length
         ? [...snapshots].sort((a, b) => b.date.localeCompare(a.date))[0]
@@ -209,6 +214,7 @@ export default function Dashboard() {
       totalValue = latestSnap ? latestSnap.total : null;
       staleTotal = totalValue != null;
     }
+    const partialPrices = anyPriceLoaded && !pricesLoaded;
 
     // Unrealized P&L / ROI: sumuje po pozycjach z ceną (bez ceny → 0).
     const costBasis  = invested ?? 0;
@@ -223,7 +229,7 @@ export default function Dashboard() {
       unrealPLN, unrealPct, totalROI,
       realizedPLN, dividendsPLN, annualDivPLN,
       ytdRealizedPLN,
-      sparkValues, pricesLoaded, staleTotal,
+      sparkValues, pricesLoaded, staleTotal, partialPrices,
     };
   }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
 
@@ -397,9 +403,9 @@ export default function Dashboard() {
           hero
           label={t('portfolio_value')}
           value={kpi.totalValue == null ? '—' : `${fmtDisp(kpi.totalValue)} ${currLabel}`}
-          chip={kpi.pricesLoaded ? dayChipVal : null}
+          chip={(kpi.pricesLoaded || kpi.partialPrices) ? dayChipVal : null}
           chipUp={dailyChange.pln >= 0}
-          sub={kpi.staleTotal ? t('last_session') : kpi.pricesLoaded ? t('today') : t('loading_prices')}
+          sub={kpi.staleTotal ? t('last_session') : kpi.partialPrices ? t('prices_partial') : kpi.pricesLoaded ? t('today') : t('loading_prices')}
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={dailyChange.pln >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
