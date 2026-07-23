@@ -4,6 +4,7 @@ import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
 import TickerLogo from './shared/TickerLogo';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 import { getThesis, setThesis } from '../services/journalService';
 
 const PERIODS_BASE = [
@@ -244,6 +245,9 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
 export default function StockDetailModal({ item, existingPortfolio, totalPortfolioValue = 0, onSave, onClose }) {
   const { locale } = useLanguage();
   const t = useT();
+  const { displayCurrency, fxRates } = useApp();
+  const dispFx = fxRates?.[displayCurrency] ?? 1;
+  const dispCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const PERIODS = PERIODS_BASE.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
@@ -457,7 +461,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
             </span>
             {item.plPLN != null && (
               <span style={{ fontSize: 11, fontWeight: 600, color: item.plPLN >= 0 ? 'var(--up)' : 'var(--down)', marginLeft: 'auto' }}>
-                {item.plPLN >= 0 ? '+' : ''}{item.plPLN.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł
+                {item.plPLN >= 0 ? '+' : ''}{(item.plPLN / dispFx).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {dispCurrLabel}
                 {item.costPLN > 0 && (
                   <span style={{ fontWeight: 400, opacity: 0.8 }}>
                     {' '}({((item.plPLN / item.costPLN) * 100) >= 0 ? '+' : ''}{((item.plPLN / item.costPLN) * 100).toFixed(1)}%)
