@@ -525,16 +525,24 @@ export default function Portfolio() {
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
   const pricesLoaded = enriched.length === 0 || enriched.every(p => p.valuePLN != null);
+  const anyPriceLoaded = enriched.some(p => p.valuePLN != null);
+  // Suma tylko wycenionych pozycji — do pie / alokacji / % udziałów.
   const positionsValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
-  // Podczas ładowania (nie wszystkie ceny znane) używamy najnowszego snapshotu
-  // — nie pokazujemy „0,00" ani sumy kosztu w miejscu na wartość rynkową.
+  // Wartość całego portfela do nagłówka: pozycje z ceną po rynku, a te bez ceny
+  // (delisting, zmiana tickera, chwilowy brak quote) po koszcie zakupu — żeby
+  // JEDEN brakujący symbol nie zamrażał całej wartości na wczorajszym snapshocie.
+  const hybridValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? p.costPLN ?? 0), 0);
+  // Snapshot pokazujemy tylko dopóki NIC nie zdążyło się załadować (pierwsze sekundy).
   const latestSnap = snapshots.length
     ? [...snapshots].sort((a, b) => b.date.localeCompare(a.date))[0]
     : null;
-  const totalValuePLN = pricesLoaded
-    ? positionsValuePLN
+  const totalValuePLN = anyPriceLoaded
+    ? hybridValuePLN
     : (latestSnap ? latestSnap.total : null);
-  const staleTotal = !pricesLoaded && totalValuePLN != null;
+  // „~ z ostatniej sesji" tylko gdy realnie pokazujemy snapshot (zero żywych cen).
+  const staleTotal = !anyPriceLoaded && totalValuePLN != null;
+  // Mamy żywą wartość, ale część pozycji bez ceny (liczona po koszcie).
+  const partialPrices = anyPriceLoaded && !pricesLoaded;
   const portFx = fxRates[displayCurrency] ?? 1;
   const portCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const portToDisp = v => v / portFx;
@@ -956,12 +964,17 @@ export default function Portfolio() {
                       <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-faint)', fontWeight: 500 }}>~ {t('last_session')}</span>
                     )}
                   </div>
-                  {!pricesLoaded && !staleTotal && (
+                  {metricsLoading && !anyPriceLoaded && !staleTotal && (
                     <div className="pv-daily" style={{ fontSize: 11, marginTop: 4, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
                       {t('loading_prices')}
                     </div>
                   )}
-                  {pricesLoaded && dailyChangePLN != null && dailyChangePLN !== 0 && (
+                  {partialPrices && (
+                    <div className="pv-daily" style={{ fontSize: 11, marginTop: 4, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                      {t('prices_partial')}
+                    </div>
+                  )}
+                  {dailyChangePLN != null && dailyChangePLN !== 0 && (
                     <div className="pv-daily" style={{ fontSize: 12, marginTop: 4, color: dailyChangePLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>
                       {dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel} {t('today')}
                     </div>

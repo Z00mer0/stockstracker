@@ -34,6 +34,7 @@ export default {
   portfolio_value:      'Wartość portfela',
   today:                'dziś',
   loading_prices:       'aktualizacja cen…',
+  prices_partial:       'część pozycji bez ceny — liczona po koszcie',
   last_session:         'z ostatniej sesji',
   gain_loss:            'Zysk / strata',
   gain_ytd:             'Zysk / strata YTD',

@@ -40,6 +40,7 @@ export default {
   portfolio_value:      'Portfolio value',
   today:                'today',
   loading_prices:       'refreshing prices…',
+  prices_partial:       'some holdings unpriced — valued at cost',
   last_session:         'from last session',
   gain_loss:            'Gain / loss',
   dividends_ytd:        'Dividends YTD',
