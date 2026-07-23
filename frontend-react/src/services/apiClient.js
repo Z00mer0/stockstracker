@@ -3,7 +3,9 @@
 // Mutacje (POST/PATCH/PUT/DELETE) NIE są retry'owane — ryzyko dubli.
 
 const RETRY_STATUSES = new Set([503, 504]);
-const BACKOFF_MS = [1000, 2000, 4000];
+// Render hobby cold start ~30-60s → retry window ~45s (2+4+8+12+18s).
+// Toast pokazujemy dopiero po wyczerpaniu wszystkich prób.
+const BACKOFF_MS = [2000, 4000, 8000, 12000, 18000];
 const TOAST_COOLDOWN_MS = 10_000;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -32,6 +34,20 @@ function isRetriableRequest(input, init) {
 }
 
 let installed = false;
+
+// Fire-and-forget ping do /api/health tuż po boot appki — cold-start
+// Rendera startuje rownolegle z inicjalizacja UI zamiast czekac na
+// pierwszy request z Dashboardu. Ignorujemy wynik, retry i tak zalatwi
+// wolne odpowiedzi.
+export function warmupBackend() {
+  const base = import.meta.env.VITE_API_URL ?? '';
+  try {
+    fetch(`${base}/api/health`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => {});
+  } catch { /* older Safari bez AbortSignal.timeout */ }
+}
 
 export function installFetchRetry(showToast) {
   if (installed) return;
