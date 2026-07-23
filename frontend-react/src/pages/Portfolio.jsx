@@ -1,6 +1,6 @@
 // frontend-react/src/pages/Portfolio.jsx
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import GridLayout, { noCompactor } from 'react-grid-layout';
+import GridLayout, { verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useApp } from '../context/AppContext';
@@ -40,16 +40,23 @@ import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services
 const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v6';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
-// preventCollision + noCompactor: karta upuszczona na inną wraca na miejsce
-// zamiast rozpychać sąsiadów (bez tego layout "eksplodował" — cards leciały
-// w losowe pozycje bo noCompactor nie reflowuje).
-const NO_COMPACT_PREVENT_COLLISION = { ...noCompactor, preventCollision: true };
 const DASH_DEFAULT_LAYOUT = [
   { i: 'chart',   x: 0, y: 0,  w: 8,  h: 11, minW: 4, minH: 8, maxH: 20 },
   { i: 'stats',   x: 8, y: 0,  w: 4,  h: 11, minW: 2, minH: 4, maxH: 20 },
   { i: 'pie',     x: 0, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
   { i: 'alloc',   x: 6, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
   { i: 'realytd', x: 0, y: 19, w: 12, h: 8,  minW: 4, minH: 5, maxH: 20 },
+];
+// Poniżej tej szerokości grid zwija się do jednej kolumny (karty na całą
+// szerokość, stos pionowy) — 12-kolumnowy układ desktopowy ściska i ucina
+// treść na telefonie. Mobilny układ ma własny zapis, nie miesza się z desktopem.
+const DASH_MOBILE_BREAKPOINT = 640;
+const DASH_MOBILE_LAYOUT = [
+  { i: 'chart',   x: 0, y: 0,  w: 12, h: 10, minW: 12, minH: 7, maxH: 20 },
+  { i: 'stats',   x: 0, y: 10, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
+  { i: 'pie',     x: 0, y: 18, w: 12, h: 8,  minW: 12, minH: 4, maxH: 20 },
+  { i: 'alloc',   x: 0, y: 26, w: 12, h: 7,  minW: 12, minH: 4, maxH: 20 },
+  { i: 'realytd', x: 0, y: 33, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
 ];
 
 const CRYPTO_OPTIONS = [
@@ -339,28 +346,35 @@ export default function Portfolio() {
     gridRoRef.current = ro;
   }, []);
 
+  const isMobile = gridWidth > 0 && gridWidth < DASH_MOBILE_BREAKPOINT;
+  const defaultLayout = isMobile ? DASH_MOBILE_LAYOUT : DASH_DEFAULT_LAYOUT;
+  // Osobny klucz dla mobile — desktopowy układ (12 kolumn) i mobilny (1 kolumna)
+  // nie nadpisują się nawzajem.
+  const layoutKey = `${DASH_LAYOUT_KEY}_${isMobile ? 'm_' : ''}${activePortfolioId}`;
+
   useEffect(() => {
     if (!activePortfolioId) return;
     try {
-      const saved = localStorage.getItem(`${DASH_LAYOUT_KEY}_${activePortfolioId}`);
+      const saved = localStorage.getItem(layoutKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         const valid = Array.isArray(parsed) && parsed.every(item => item.h <= 20 && item.w <= 12 && item.h >= 1);
-        setDashLayout(valid ? parsed : DASH_DEFAULT_LAYOUT);
+        setDashLayout(valid ? parsed : defaultLayout);
       } else {
-        setDashLayout(DASH_DEFAULT_LAYOUT);
+        setDashLayout(defaultLayout);
       }
     } catch {
-      setDashLayout(DASH_DEFAULT_LAYOUT);
+      setDashLayout(defaultLayout);
     }
-  }, [activePortfolioId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePortfolioId, layoutKey]);
 
   const saveLayoutToServer = useCallback((newLayout) => {
     if (!activePortfolioId) return;
     try {
-      localStorage.setItem(`${DASH_LAYOUT_KEY}_${activePortfolioId}`, JSON.stringify(newLayout));
+      localStorage.setItem(layoutKey, JSON.stringify(newLayout));
     } catch {}
-  }, [activePortfolioId]);
+  }, [activePortfolioId, layoutKey]);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -894,7 +908,7 @@ export default function Portfolio() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         {editMode && (
           <button
-            onClick={() => { setDashLayout(DASH_DEFAULT_LAYOUT); saveLayoutToServer(DASH_DEFAULT_LAYOUT); }}
+            onClick={() => { setDashLayout(defaultLayout); saveLayoutToServer(defaultLayout); }}
             style={{ fontSize: 11, padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'var(--panel-2)', color: 'var(--text-dim)' }}
           >
             ↺ Resetuj
@@ -920,9 +934,9 @@ export default function Portfolio() {
           layout={dashLayout}
           width={gridWidth}
           gridConfig={{ cols: 12, rowHeight: DASH_ROW_H, margin: DASH_MARGIN, containerPadding: [0, 0] }}
-          dragConfig={{ enabled: editMode, handle: '.card-head', bounded: true, threshold: 10 }}
-          resizeConfig={{ enabled: editMode, handles: ['se'] }}
-          compactor={NO_COMPACT_PREVENT_COLLISION}
+          dragConfig={{ enabled: editMode, handle: '.card-head', bounded: false, threshold: 5 }}
+          resizeConfig={{ enabled: editMode, handles: isMobile ? ['s'] : ['se', 'sw', 'ne', 'nw', 'e', 's'] }}
+          compactor={verticalCompactor}
           onLayoutChange={newLayout => { if (editMode) { setDashLayout(newLayout); saveLayoutToServer(newLayout); } }}
         >
           <div key="chart">
