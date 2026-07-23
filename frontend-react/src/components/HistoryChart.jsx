@@ -39,7 +39,9 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
 
   function fmtVal(n) {
     if (n == null || isNaN(n)) return '—';
-    return n.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    // useGrouping:'always' — pl-PL domyślnie grupuje dopiero od 10 000
+    // ("5162" vs "10 907"), przez co Y-oś wyglądała niespójnie.
+    return n.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: 'always' });
   }
   const containerRef = useRef(null);
   const svgRef       = useRef(null);

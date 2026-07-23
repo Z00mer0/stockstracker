@@ -7,6 +7,7 @@ import { useFxBreakdown } from '../hooks/useFxBreakdown';
 import Spinner from '../components/shared/Spinner';
 import Card from '../components/shared/Card';
 import { computeRealizedTrades } from '../utils/realizedPL';
+import { formatPercent } from '../utils/format.js';
 import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip as ChartTooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 
 function calcDailyReturns(values) {
@@ -75,6 +76,7 @@ function calcBeta(portValues, bmValues) {
 
 function RiskSection({ snapshots }) {
   const t = useT();
+  const { locale } = useLanguage();
   // Filter out anomalous snapshots from the race condition bug where stock prices
   // hadn't loaded yet (total showed only cash). Threshold: 40% of all-time high.
   const maxTotal = Math.max(...snapshots.map(s => s.total), 0);
@@ -149,8 +151,8 @@ function RiskSection({ snapshots }) {
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}></p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
           {[
-            { label: t('volatility_label'), value: vol, fmt: v => `${v.toFixed(1)}%`, color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: t('volatility_sub'), needsSessions: true },
-            { label: t('max_drawdown_label'), value: maxDD > 0 ? maxDD : null, fmt: v => `-${v.toFixed(1)}%`, color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: t('max_drawdown_sub') },
+            { label: t('volatility_label'), value: vol, fmt: v => formatPercent(v, { locale, decimals: 1, showSign: false }), color: vol < 15 ? 'var(--up)' : vol > 30 ? 'var(--down)' : 'var(--warn)', sub: t('volatility_sub'), needsSessions: true },
+            { label: t('max_drawdown_label'), value: maxDD > 0 ? maxDD : null, fmt: v => formatPercent(-v, { locale, decimals: 1, showSign: false }), color: maxDD < 10 ? 'var(--up)' : maxDD > 25 ? 'var(--down)' : 'var(--warn)', sub: t('max_drawdown_sub') },
             { label: t('sharpe_label'), value: sharpe, fmt: v => v.toFixed(2), color: sharpe >= 1 ? 'var(--up)' : sharpe < 0 ? 'var(--down)' : 'var(--text)', sub: t('sharpe_sub') },
             { label: t('sortino_label'), value: sortino, fmt: v => v.toFixed(2), color: sortino >= 1 ? 'var(--up)' : sortino < 0 ? 'var(--down)' : 'var(--text)', sub: t('sortino_sub') },
             { label: t('beta_label'), value: betaLoading ? null : beta, fmt: v => v.toFixed(2), color: 'var(--text)', sub: t('beta_sub'), needsSessions: true },
@@ -1289,13 +1291,13 @@ export default function Analysis() {
 
 function FxBreakdownSection({ enriched, breakdown, loading, isPrivate }) {
   const t = useT();
+  const { locale } = useLanguage();
   const fxPositions = enriched.filter(p => p.currency && p.currency !== 'PLN' && p.price != null);
 
   if (!fxPositions.length) return null;
 
   function fmtPct(v) {
-    if (v == null || isNaN(v)) return '—';
-    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+    return formatPercent(v, { locale, decimals: 2 });
   }
   function fmtFx(v) {
     if (v == null) return '—';
