@@ -63,6 +63,8 @@ export default {
   unreal_pl_sub:        'Paper result on open positions',
   returns_pct:          'return %',
   no_portfolio_data:    'No portfolio data',
+  connection_error:     'Could not connect to the server',
+  connection_error_hint: 'The server may be waking up (it sleeps when idle). Try again in a moment.',
   greeting:             'Hello',
   investor_fallback:    'Investor',
   market_live:          'live',

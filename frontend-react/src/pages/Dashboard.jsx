@@ -106,7 +106,7 @@ function renderCellDash(key, pos, isPrivate, locale = 'pl-PL', currLabel = 'zł'
 
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, error, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
@@ -342,6 +342,24 @@ export default function Dashboard() {
 
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  }
+
+  // Fetch danych padł (backend nie odpowiada) i nie mamy nic w pamięci — pokaż
+  // uczciwy błąd połączenia z retry zamiast mylących „0 zł" jak przy pustym portfelu.
+  if (error && !loading && !portfolio.length) {
+    return (
+      <div style={{ textAlign: 'center', padding: '64px 20px', color: 'var(--text-faint)' }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🔌</div>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('connection_error')}</p>
+        <p style={{ fontSize: 14, marginTop: 4, maxWidth: 380, marginInline: 'auto' }}>{t('connection_error_hint')}</p>
+        <button
+          onClick={() => refresh()}
+          style={{ marginTop: 16, padding: '8px 18px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13 }}
+        >
+          ↻ {t('refresh_data')}
+        </button>
+      </div>
+    );
   }
 
   const fmtVal = (n, d = 0) => n == null || isNaN(n)
