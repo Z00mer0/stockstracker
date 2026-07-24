@@ -1,0 +1,33 @@
+name: keep-render-awake
+
+# Render (darmowy plan) usypia backend po ~15 min bezczynności; wybudzenie to
+# 30-90s "cold-startu", przez co pierwsze wejście do aplikacji bywa bardzo wolne.
+# Ten workflow trzyma backend obudzony pingując /api/health.
+#
+# Dlaczego pętla, a nie pojedynczy ping: harmonogram GitHub Actions jest
+# best-effort i pod obciążeniem opóźnia crony `*/10` nawet do 20-40 min, co
+# zostawia >15-min lukę i pozwala Renderowi zasnąć. Każdy bieg pinguje przez
+# ~14 min (co 2 min), więc nakładające się biegi dają ciągłe pokrycie mimo
+# opóźnień schedulera. Repo jest publiczne → minuty Actions są darmowe.
+# Działa jako druga, niezależna kłódka obok push-check.yml.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # co 10 min (efektywnie rzadziej — stąd pętla w biegu)
+  workflow_dispatch: {}       # ręczne odpalenie do testu
+
+permissions: {}               # tylko wychodzący curl — zero uprawnień do repo
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Ping /api/health przez ~14 min (bridżuje opóźnienia crona)
+        run: |
+          url="https://stockstracker.onrender.com/api/health"
+          for i in $(seq 1 8); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 120 "$url" || echo 000)
+            echo "$(date -u +%H:%M:%S) ping $i -> HTTP $code"
+            [ "$i" -lt 8 ] && sleep 120
+          done
