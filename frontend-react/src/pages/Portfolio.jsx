@@ -284,7 +284,7 @@ function renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency = 'P
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, snapshots, rawData, loading, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId, watchlistMigrationPending } = useApp();
+  const { portfolio, transactions, snapshots, rawData, loading, error, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId, watchlistMigrationPending } = useApp();
   const { locale } = useLanguage();
   const t = useT();
   const { isPrivate } = usePrivacy();
@@ -847,6 +847,24 @@ export default function Portfolio() {
 
   if (loading && !portfolio.length) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  }
+
+  // Fetch danych padł (backend nie odpowiada) — pokaż błąd połączenia z retry
+  // zamiast „Brak pozycji" (który sugeruje pusty portfel, nie awarię).
+  if (error && !loading && !portfolio.length) {
+    return (
+      <div style={{ textAlign: 'center', padding: '64px 20px', color: 'var(--text-faint)' }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🔌</div>
+        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('connection_error')}</p>
+        <p style={{ fontSize: 14, marginTop: 4, maxWidth: 380, marginInline: 'auto' }}>{t('connection_error_hint')}</p>
+        <button
+          onClick={() => refresh()}
+          style={{ marginTop: 16, padding: '8px 18px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13 }}
+        >
+          ↻ {t('refresh_data')}
+        </button>
+      </div>
+    );
   }
 
   if (!portfolio.length) {

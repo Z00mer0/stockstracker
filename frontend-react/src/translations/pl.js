@@ -63,6 +63,8 @@ export default {
   unreal_pl_sub:        'Papierowy wynik na otwartych pozycjach',
   returns_pct:          'zwrot %',
   no_portfolio_data:    'Brak danych portfela',
+  connection_error:     'Nie udało się połączyć z serwerem',
+  connection_error_hint: 'Serwer mógł się właśnie budzić (usypia po bezczynności). Spróbuj ponownie za chwilę.',
   greeting:             'Witaj',
   investor_fallback:    'Inwestorze',
   market_live:          'live',
