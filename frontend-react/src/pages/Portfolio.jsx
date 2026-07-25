@@ -1,5 +1,6 @@
 // frontend-react/src/pages/Portfolio.jsx
 import React, { useMemo, useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { isAuthed } from '../utils/auth.js';
 import GridLayout, { verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -328,8 +329,7 @@ export default function Portfolio() {
   // żeby wiedzieć, przy których pozycjach zapalić 🔔, i mutuje ten sam zasób
   // przez API gdy user ustawi alert z menu ⋯.
   useEffect(() => {
-    const token = localStorage.getItem('myfund_auth_token');
-    if (!token) return;
+    if (!isAuthed()) return;
     apiLoadWatchlist().then(data => { if (Array.isArray(data)) setWatchItems(data); }).catch(e => console.warn('[Portfolio] watchlist load failed:', e));
   }, []);
   const [showExportMenu, setShowExportMenu] = useState(false);

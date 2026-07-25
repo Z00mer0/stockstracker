@@ -1,17 +1,13 @@
 import axios from 'axios';
 import { useState, useCallback } from 'react';
 
-// Token jest współdzielony z myfund.html (ten sam localStorage)
-const getToken = () => localStorage.getItem('myfund_auth_token');
-
+// Uwierzytelnienie niesie ciasteczko HttpOnly, wysyłane przez przeglądarkę
+// automatycznie — nie ma już czego wstrzykiwać w nagłówki. withCredentials
+// jest potrzebne tylko wtedy, gdy VITE_API_URL wskazuje inne źródło; przy
+// domyślnych ścieżkach względnych i tak nic nie zmienia.
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '',
-});
-
-api.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) config.headers['X-Auth-Token'] = token;
-  return config;
+  withCredentials: true,
 });
 
 export function useApi() {

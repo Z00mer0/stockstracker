@@ -299,8 +299,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d&range=1y`;
     fetch(`/api/proxy?url=${encodeURIComponent(url)}`, {
       signal: AbortSignal.timeout(10000),
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
-    })
+      })
       .then(r => r.json())
       .then(json => {
         const result = json?.chart?.result?.[0];
@@ -327,8 +326,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=${interval}&range=${range}&includePrePost=true`;
     fetch(`/api/proxy?url=${encodeURIComponent(url)}`, {
       signal: AbortSignal.timeout(12000),
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
-    })
+      })
       .then(r => r.json())
       .then(json => {
         const result = json?.chart?.result?.[0];
@@ -352,7 +350,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   useEffect(() => {
     if (!benchSymbol) { setBenchData([]); return; }
     setBenchLoading(true);
-    const authHeader = { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+    const authHeader = { };
     if (benchSymbol.startsWith('PL:')) {
       const sym = benchSymbol.slice(3);
       fetch(`/api/bench-pl?s=${sym}`, { signal: AbortSignal.timeout(15000), headers: authHeader })

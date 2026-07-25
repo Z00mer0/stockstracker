@@ -1,6 +1,6 @@
 // Wspólna logika watchlisty (jedno źródło prawdy dla alertów).
 // Backend jest źródłem prawdy — localStorage tylko jako cache offline.
-import { authHeader } from '../utils/auth.js';
+import { authHeader, isAuthed } from '../utils/auth.js';
 
 export const WATCH_KEY = 'myfund_watchlist';
 export const OLD_PORTFOLIO_ALERTS_KEY = 'myfund_price_alerts';
@@ -66,8 +66,7 @@ export function collectAllAlerts(items) {
 // Uruchamiana raz per użytkownik — po sukcesie flag ustawiony, nie próbuje ponownie.
 export async function migratePortfolioAlertsOnce() {
   if (localStorage.getItem(MIGRATION_KEY) === '1') return { migrated: 0, skipped: true };
-  const token = localStorage.getItem('myfund_auth_token');
-  if (!token) return { migrated: 0, skipped: true };
+  if (!isAuthed()) return { migrated: 0, skipped: true };
 
   if (localStorage.getItem('myfund_demo') === '1') {
     // Don't leak legacy alerts into a throwaway demo account; retry on the next real login.

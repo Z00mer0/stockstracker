@@ -2043,8 +2043,27 @@ def _session_drop(token):
             print(f'[sessions] delete failed: {e}')
 
 
+_SESSION_COOKIE = 'myfund_session'
+
+
+def _token_from(handler):
+    """Token z ciasteczka, a jeśli go nie ma — ze starego nagłówka.
+
+    Nagłówek zostaje celowo: w chwili wdrożenia zalogowani użytkownicy mają
+    token wyłącznie w localStorage i bez tej ścieżki wszyscy wylecieliby
+    z sesji. Nowe logowania od razu dostają ciasteczko.
+    """
+    raw = handler.headers.get('Cookie', '')
+    if raw:
+        for part in raw.split(';'):
+            name, _, value = part.strip().partition('=')
+            if name == _SESSION_COOKIE and value:
+                return value
+    return handler.headers.get('X-Auth-Token', '')
+
+
 def get_username(handler):
-    token = handler.headers.get('X-Auth-Token', '')
+    token = _token_from(handler)
     if not isinstance(token, str) or len(token) > 100:
         return None
     entry = SESSIONS.get(token)
@@ -2856,7 +2875,7 @@ class Handler(SimpleHTTPRequestHandler):
             return
         self._serve_static(REACT_DIST / 'index.html')
 
-    def send_json(self, status, data):
+    def send_json(self, status, data, cookies=()):
         body = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -2865,8 +2884,44 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'DENY')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        for c in cookies:
+            self.send_header('Set-Cookie', c)
         self.end_headers()
         self.wfile.write(body)
+
+    def _is_https(self):
+        # Na Renderze TLS kończy się na proxy, więc samo połączenie do procesu
+        # jest zwykłym HTTP — o szyfrowaniu mówi dopiero nagłówek.
+        return self.headers.get('X-Forwarded-Proto', '').split(',')[0].strip() == 'https'
+
+    def session_cookie(self, token):
+        """Ciasteczko sesji: HttpOnly, żeby JavaScript nie mógł go odczytać.
+
+        To cały sens zmiany — token w localStorage mógł zostać wyniesiony przez
+        dowolny skrypt na stronie. Do ciasteczka HttpOnly przeglądarka nie
+        dopuszcza kodu strony w ogóle.
+
+        SameSite=Lax, bo front i API są dla przeglądarki tym samym źródłem
+        (/api/* jest przepisywane po stronie serwera). Secure tylko po HTTPS —
+        na localhoście przeglądarka odrzuciłaby takie ciasteczko i logowanie
+        w środowisku deweloperskim przestałoby działać.
+        """
+        parts = [
+            f'{_SESSION_COOKIE}={token}',
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Lax',
+            f'Max-Age={_SESSION_TTL}',
+        ]
+        if self._is_https():
+            parts.append('Secure')
+        return '; '.join(parts)
+
+    def clearing_cookie(self):
+        parts = [f'{_SESSION_COOKIE}=', 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
+        if self._is_https():
+            parts.append('Secure')
+        return '; '.join(parts)
 
     def read_json(self, max_size: int = 8 * 1024):
         length = int(self.headers.get('Content-Length', 0))
@@ -4467,8 +4522,8 @@ async function doRecover() {
                 if authenticated:
                     token = secrets.token_hex(24)
                     _session_put(token, username)
-                    self.send_json(200, {'ok': True, 'token': token,
-                                         'display_name': users[username]['display_name']})
+                    self.send_json(200, {'ok': True, 'display_name': users[username]['display_name']},
+                                   cookies=[self.session_cookie(token)])
                 else:
                     self.send_json(401, {'ok': False, 'error': 'Błędny login lub hasło'})
             except ValueError as e:
@@ -4493,8 +4548,8 @@ async function doRecover() {
                 save_user(username, display_name or username, hash_password(password))
                 token = secrets.token_hex(24)
                 _session_put(token, username)
-                self.send_json(200, {'ok': True, 'token': token,
-                                      'display_name': display_name or username})
+                self.send_json(200, {'ok': True, 'display_name': display_name or username},
+                               cookies=[self.session_cookie(token)])
             except ValueError as e:
                 self.send_json(400, {'ok': False, 'error': str(e)})
             except Exception as e:
@@ -4511,15 +4566,24 @@ async function doRecover() {
                 save_portfolio_data(pid, _demo_seed_data())
                 token = secrets.token_hex(24)
                 _session_put(token, username)
-                self.send_json(200, {'ok': True, 'token': token,
-                                     'display_name': display_name, 'demo': True})
+                self.send_json(200, {'ok': True, 'display_name': display_name, 'demo': True},
+                               cookies=[self.session_cookie(token)])
             except Exception as e:
                 print(f'[demo] create failed: {e}')
                 self.send_json(500, {'ok': False, 'error': 'Nie udało się utworzyć konta demo'})
 
+        elif path == '/api/session/upgrade':
+            # Jednorazowe przeniesienie sesji z localStorage do ciasteczka.
+            # W chwili wdrożenia zalogowani mają token tylko w localStorage;
+            # bez tego kroku wszyscy zostaliby wylogowani. Frontend woła to raz
+            # przy starcie, jeśli zastanie stary token, i zaraz potem go kasuje.
+            if not get_username(self):
+                self.send_json(401, {'ok': False, 'error': 'unauthorized'}); return
+            self.send_json(200, {'ok': True}, cookies=[self.session_cookie(_token_from(self))])
+
         elif path == '/api/logout':
-            _session_drop(self.headers.get('X-Auth-Token', ''))
-            self.send_json(200, {'ok': True})
+            _session_drop(_token_from(self))
+            self.send_json(200, {'ok': True}, cookies=[self.clearing_cookie()])
 
         elif path == '/api/change-password':
             username = get_username(self)

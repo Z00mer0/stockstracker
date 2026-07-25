@@ -6,7 +6,12 @@ import { weightedAvg } from '../utils/weightedAvg.js';
 
 export const AppContext = createContext(null);
 
-const TOKEN_KEY  = 'myfund_auth_token';
+// Token nie jest już przechowywany po stronie przeglądarki — siedzi
+// w ciasteczku HttpOnly, do którego JavaScript nie ma dostępu. W localStorage
+// zostaje wyłącznie flaga „ktoś jest zalogowany", która niczego nie odblokowuje:
+// o dostępie decyduje ciasteczko, a przy jego braku serwer i tak odpowie 401.
+const AUTHED_KEY = 'myfund_authed';
+const LEGACY_TOKEN_KEY = 'myfund_auth_token';
 const DEMO_KEY   = 'myfund_demo';
 const AUTH_NOTICE_KEY = 'myfund_auth_notice';
 const FX_CACHE_KEY = 'myfund_fx_rates';
@@ -47,10 +52,12 @@ async function loadFxRates() {
 }
 
 export function AppProvider({ children }) {
-  const [token, setToken]           = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [authed, setAuthed]         = useState(() => localStorage.getItem(AUTHED_KEY) === '1'
+                                                  || !!localStorage.getItem(LEGACY_TOKEN_KEY));
   const [displayName, setDisplayName] = useState(() => localStorage.getItem(DISPLAY_NAME_KEY) || '');
   const [rawData, setRawData]       = useState(null);
-  const [loading, setLoading]       = useState(() => !!localStorage.getItem(TOKEN_KEY));
+  const [loading, setLoading]       = useState(() => localStorage.getItem(AUTHED_KEY) === '1'
+                                                  || !!localStorage.getItem(LEGACY_TOKEN_KEY));
   const [error, setError]           = useState(null);
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
   // Zanim /api/fx odpowie, w fxRates siedzą stałe z kodu — dlatego start jest
@@ -86,23 +93,46 @@ export function AppProvider({ children }) {
     fetch('/api/keepalive').catch(() => {});
   }, []);
 
-  function login(newToken, name, opts = {}) {
-    localStorage.setItem(TOKEN_KEY, newToken);
+  // Jednorazowe przeniesienie sesji sprzed zmiany: kto był zalogowany, ten ma
+  // token wyłącznie w localStorage i bez tego kroku wyleciałby przy pierwszym
+  // wejściu. Oddajemy go raz, serwer odsyła ciasteczko, token znika z dysku.
+  useEffect(() => {
+    const legacy = localStorage.getItem(LEGACY_TOKEN_KEY);
+    if (!legacy) return;
+    api.post('/api/session/upgrade', {}, { headers: { 'X-Auth-Token': legacy } })
+      .then(() => {
+        localStorage.setItem(AUTHED_KEY, '1');
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+      })
+      .catch(() => {
+        // Token wygasł albo serwer nie odpowiada — czyścimy go tak czy tak,
+        // bo trzymanie go dalej to dokładnie ta podatność, którą usuwamy.
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+      });
+  }, []);
+
+  function login(name, opts = {}) {
+    localStorage.setItem(AUTHED_KEY, '1');
     localStorage.setItem(DISPLAY_NAME_KEY, name || '');
     if (opts.demo) localStorage.setItem(DEMO_KEY, '1');
     else localStorage.removeItem(DEMO_KEY);
     resetJournalCache();
     setLoading(true); // prevent premature empty-portfolio modal before fetchData fires
-    setToken(newToken);
+    setAuthed(true);
     setDisplayName(name || '');
   }
 
   function logout() {
-    localStorage.removeItem(TOKEN_KEY);
+    // Ciasteczka nie da się skasować z JavaScriptu (HttpOnly), więc wylogowanie
+    // musi przejść przez serwer. Przy okazji sesja jest naprawdę unieważniana —
+    // wcześniej wylogowanie tylko czyściło localStorage, a token zostawał ważny.
+    api.post('/api/logout', {}).catch(() => {});
+    localStorage.removeItem(AUTHED_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
     localStorage.removeItem(DISPLAY_NAME_KEY);
     localStorage.removeItem(DEMO_KEY);
     resetJournalCache();
-    setToken(null);
+    setAuthed(false);
     setRawData(null);
     setDisplayName('');
   }
@@ -117,7 +147,7 @@ export function AppProvider({ children }) {
       demoRestartRef.current = true;
       try {
         const res = await api.post('/api/demo', {});
-        login(res.data.token, res.data.display_name, { demo: true });
+        login(res.data.display_name, { demo: true });
         return;
       } catch {
         sessionStorage.setItem(AUTH_NOTICE_KEY, 'demo_expired');
@@ -143,7 +173,7 @@ export function AppProvider({ children }) {
   }, []);
 
   const fetchData = useCallback(async () => {
-    if (!token) return;
+    if (!authed) return;
     if (writeInProgressRef.current) return;
     // Guard against out-of-order responses: if activePortfolioId changes while a
     // fetch is in flight, an older (e.g. "all") request can resolve AFTER a newer
@@ -175,28 +205,28 @@ export function AppProvider({ children }) {
     } finally {
       if (myFetchId === fetchIdRef.current) setLoading(false);
     }
-  }, [token, activePortfolioId]);
+  }, [authed, activePortfolioId]);
 
   useEffect(() => {
-    if (token) fetchData();
-  }, [token, activePortfolioId, fetchData]);
+    if (authed) fetchData();
+  }, [authed, activePortfolioId, fetchData]);
 
   // Jednorazowa migracja starych localStorage-owych alertów z Portfela
   // do watchlisty (backend jako single source of truth).
   useEffect(() => {
-    if (!token) return;
+    if (!authed) return;
     let cancelled = false;
     (async () => {
       try { await migratePortfolioAlertsOnce(); } catch {}
       finally { if (!cancelled) setWatchlistMigrationPending(false); }
     })();
     return () => { cancelled = true; };
-  }, [token]);
+  }, [authed]);
 
   // Fetch company logos for all portfolio symbols after data loads
   useEffect(() => {
     const holdings = rawData?.portfolio?.holdings ?? [];
-    if (!token || !holdings.length) return;
+    if (!authed || !holdings.length) return;
     const symbols = [...new Set(holdings.map(h => h.symbol))];
     const missing = symbols.filter(s => !(s in logoMap));
     if (!missing.length) return;
@@ -204,7 +234,7 @@ export function AppProvider({ children }) {
       .then(res => setLogoMap(prev => ({ ...prev, ...res.data })))
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawData, token]);
+  }, [rawData, authed]);
 
   function switchPortfolio(id) {
     localStorage.setItem(ACTIVE_PORTFOLIO_KEY, id);
@@ -733,7 +763,7 @@ export function AppProvider({ children }) {
   }
 
   const value = {
-    isAuthenticated: !!token,
+    isAuthenticated: authed,
     displayName,
     login,
     logout,

@@ -16,7 +16,7 @@ export default function AuthGate({ onLogin }) {
   async function handleLogin({ username, password }) {
     try {
       const res = await api.post('/api/login', { username, password });
-      onLogin(res.data.token, res.data.display_name);
+      onLogin(res.data.display_name);
     } catch (err) {
       throw new Error(err.response?.data?.error ?? 'Błąd logowania — spróbuj ponownie', { cause: err });
     }
@@ -34,24 +34,22 @@ export default function AuthGate({ onLogin }) {
       throw new Error(err.response?.data?.error ?? 'Błąd rejestracji — spróbuj ponownie', { cause: err });
     }
     try {
-      const rc = await api.post('/api/recovery-codes', {}, {
-        headers: { 'X-Auth-Token': res.data.token },
-      });
+      // Bez nagłówka — ciasteczko sesji ustawiła już odpowiedź na /api/register.
+      const rc = await api.post('/api/recovery-codes', {});
       setPendingCodes({
-        token: res.data.token,
         displayName: res.data.display_name,
         codes: rc.data.codes,
       });
     } catch {
       // Codes are a bonus — never block a successful registration on them.
-      onLogin(res.data.token, res.data.display_name);
+      onLogin(res.data.display_name);
     }
   }
 
   async function handleDemo() {
     try {
       const res = await api.post('/api/demo', {});
-      onLogin(res.data.token, res.data.display_name, { demo: true });
+      onLogin(res.data.display_name, { demo: true });
     } catch (err) {
       throw new Error(err.response?.data?.error ?? 'Nie udało się uruchomić demo — spróbuj ponownie', { cause: err });
     }
@@ -73,7 +71,7 @@ export default function AuthGate({ onLogin }) {
     return (
       <RecoveryCodes
         codes={pendingCodes.codes}
-        onContinue={() => onLogin(pendingCodes.token, pendingCodes.displayName)}
+        onContinue={() => onLogin(pendingCodes.displayName)}
       />
     );
   }
