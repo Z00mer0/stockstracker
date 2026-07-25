@@ -1,0 +1,44 @@
+name: ci
+
+# Testy jednostkowe + build produkcyjny. Build jest tu celowo: przez większość
+# życia projektu jedyną weryfikacją było „u mnie działa", a błąd w imporcie
+# wychodził dopiero przy wdrożeniu.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Nie uruchamiamy serwera (wymaga bazy i kluczy API) — sprawdzamy, czy
+      # w ogóle się kompiluje. Wyłapuje literówki i błędy składni, które inaczej
+      # ujawniłyby się dopiero po wdrożeniu na Render.
+      - run: python -m py_compile server.py
