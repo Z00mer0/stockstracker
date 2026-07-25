@@ -8,7 +8,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 min
 // ── XIRR ────────────────────────────────────────────────────────────────────
 // cashFlows: [{ date: 'YYYY-MM-DD', amount: number }]
 // Returns annualised rate as percentage (e.g. 12.0 = 12%), or null if can't converge
-function calcXIRR(cashFlows) {
+export function calcXIRR(cashFlows) {
   if (!cashFlows || cashFlows.length < 2) return null;
   const sorted = [...cashFlows].sort((a, b) => a.date.localeCompare(b.date));
   const t0 = new Date(sorted[0].date).getTime();
@@ -29,7 +29,16 @@ function calcXIRR(cashFlows) {
     if (Math.abs(next - r) < 1e-8) { r = next; break; }
     r = Math.max(-0.99, next);
   }
-  return isFinite(r) && r > -0.99 ? r * 100 : null;
+  if (!isFinite(r) || r <= -0.99) return null;
+  // Samo zakończenie pętli nic nie znaczy: przy płaskim NPV (np. pozycja
+  // wyzerowana, bo ceny się nie załadowały) pochodna jest zerowa, pętla
+  // przerywa się w pierwszym kroku i na zewnątrz wyciekało `r` = 0.1, czyli
+  // "+10%" na inwestycji wartej zero. Wynik uznajemy tylko wtedy, gdy NPV
+  // faktycznie wyszło na zero — w skali samych przepływów, bo bezwzględny
+  // próg znaczyłby co innego dla portfela za 1 tys. i za 1 mln.
+  const scale = sorted.reduce((s, cf) => s + Math.abs(cf.amount), 0);
+  if (scale > 0 && Math.abs(npv(r)) > 1e-4 * scale) return null;
+  return r * 100;
 }
 
 // ── Period formatter ─────────────────────────────────────────────────────────
