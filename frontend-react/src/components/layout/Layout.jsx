@@ -1,6 +1,8 @@
 // src/components/layout/Layout.jsx
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Suspense } from 'react';
+import RouteFallback from '../RouteFallback';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
@@ -65,7 +67,12 @@ export default function Layout() {
           onMenuToggle={() => setSidebarOpen(o => !o)}
         />
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto', containerType: 'inline-size', containerName: 'app' }}>
-          <Outlet />
+          {/* Suspense tutaj, a nie wokół <Routes> — dzięki temu przy przejściu
+              między stronami menu i nagłówek zostają na miejscu, a wymienia się
+              tylko obszar treści. */}
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       {showNewPortfolio && <NewPortfolioModal onClose={() => setShowNewPortfolio(false)} />}

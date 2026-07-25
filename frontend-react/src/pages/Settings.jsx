@@ -1,11 +1,13 @@
 // src/pages/Settings.jsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../hooks/useApi';
 import { getMdApiKey, setMdApiKey } from '../services/MarketDataService';
 import { US_TAX_KEY } from '../services/dividendService';
-import BrokerImportModal from '../components/BrokerImportModal';
-import SnapshotImportModal from '../components/SnapshotImportModal';
+// Oba modale ciągną ciężkie parsery (xlsx, pdfjs, tesseract) — ładowane dopiero
+// po otwarciu, nie przy każdym wejściu w ustawienia.
+const BrokerImportModal   = lazy(() => import('../components/BrokerImportModal'));
+const SnapshotImportModal = lazy(() => import('../components/SnapshotImportModal'));
 import Card from '../components/shared/Card';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { authHeader } from '../utils/auth.js';
@@ -723,21 +725,23 @@ export default function Settings() {
         StocksTracker — Vite + React. Dane: Render (PostgreSQL).
       </div>
 
-      {showBrokerImport && (
-        <BrokerImportModal
-          existingTransactions={transactions}
-          existingPortfolio={portfolio}
-          existingCash={cash}
-          onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
-          onClose={() => setShowBrokerImport(false)}
-        />
-      )}
-      {showSnapshotImport && (
-        <SnapshotImportModal
-          onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
-          onClose={() => setShowSnapshotImport(false)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showBrokerImport && (
+          <BrokerImportModal
+            existingTransactions={transactions}
+            existingPortfolio={portfolio}
+            existingCash={cash}
+            onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
+            onClose={() => setShowBrokerImport(false)}
+          />
+        )}
+        {showSnapshotImport && (
+          <SnapshotImportModal
+            onSave={async (newTxs) => { await importBrokerTransactions(newTxs); }}
+            onClose={() => setShowSnapshotImport(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

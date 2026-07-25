@@ -3079,6 +3079,47 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
 
+        elif path == '/api/finnhub-batch':
+            # Frontend pytał o /v1/quote i /v1/stock/metric osobno dla każdej spółki
+            # — przy 41 pozycjach to 82 osobne przejścia przez Vercel do Rendera,
+            # każde z własnym opóźnieniem sieci. Tutaj robimy to samo równolegle
+            # po stronie serwera i oddajemy jedną mapę.
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
+            token = os.environ.get('FINNHUB_TOKEN', '')
+            if not token:
+                self.send_json(503, {'error': 'FINNHUB_TOKEN not configured'}); return
+            qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()][:_MAX_SYMBOLS]
+            if not symbols or not all(re.fullmatch(r'[A-Z0-9.\-]{1,15}', s) for s in symbols):
+                self.send_json(400, {'error': 'symbols required'}); return
+
+            def _fh_one(sym):
+                out = {'quote': None, 'metric': None}
+                for key, url in (
+                    ('quote',  f'https://finnhub.io/api/v1/quote?symbol={sym}&token={token}'),
+                    ('metric', f'https://finnhub.io/api/v1/stock/metric?symbol={sym}&metric=all&token={token}'),
+                ):
+                    try:
+                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                        with urllib.request.urlopen(req, timeout=8) as resp:
+                            out[key] = json.loads(resp.read() or b'null')
+                    except Exception:
+                        pass    # brak jednej metryki nie może przewrócić całej paczki
+                return sym, out
+
+            try:
+                import concurrent.futures as _cf
+                # 6 wątków, nie 30: darmowy Finnhub daje 60 zapytań na minutę,
+                # a każdy symbol kosztuje dwa. Zalewanie go równolegle kończy się
+                # odpowiedziami 429 zamiast notowań.
+                with _cf.ThreadPoolExecutor(max_workers=6) as ex:
+                    data = dict(ex.map(_fh_one, symbols))
+                self.send_json(200, data)
+            except Exception as e:
+                print(f'[finnhub-batch] {e}')
+                self.send_json(502, {'error': 'upstream request failed'})
+
         elif path.startswith('/api/finnhub/'):
             if not get_username(self):
                 self.send_json(401, {'error': 'unauthorized'}); return
