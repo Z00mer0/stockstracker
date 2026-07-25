@@ -60,30 +60,61 @@ async function fetchStooqPrice(sym) {
 }
 
 // ── Yahoo Finance — Vercel serverless function (different IP, no auth needed) ─
-// Returns null on temporary failure, { notFound: true } when symbol doesn't exist anywhere
-async function fetchYahooQuote(sym) {
-  try {
-    const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(sym)}`, { signal: AbortSignal.timeout(8000) });
-    if (res.status === 404) return { notFound: true }; // Vercel already tried Stooq, still nothing
+// Cała paczka symboli jednym zapytaniem; funkcja po stronie Vercela odpytuje
+// Yahoo równolegle. Zwraca mapę symbol → dane, null przy błędzie przejściowym,
+// { notFound: true } gdy symbol nigdzie nie istnieje.
+const YQ_CHUNK = 60;   // limit przyjmowany przez api/quotes.js
+
+async function fetchYahooBatch(symbols) {
+  const out = {};
+  const chunks = [];
+  for (let i = 0; i < symbols.length; i += YQ_CHUNK) chunks.push(symbols.slice(i, i + YQ_CHUNK));
+
+  await Promise.allSettled(chunks.map(async (chunk) => {
+    try {
+      const url = `/api/quotes?format=map&symbols=${chunk.map(encodeURIComponent).join(',')}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { quotes } = await res.json();
+      for (const sym of chunk) {
+        const e = quotes?.[sym];
+        if (!e)          { out[sym] = null; continue; }
+        if (e.notFound)  { out[sym] = { notFound: true }; continue; }
+        if (e.stooq)     { out[sym] = { price: e.price, dailyChg: null, pe: null, peFwd: null, pb: null }; continue; }
+        const q = e.quote;
+        out[sym] = q?.regularMarketPrice
+          ? { price: q.regularMarketPrice, dailyChg: q.regularMarketChangePercent ?? null,
+              pe: null, peFwd: null, pb: null, sector: null, earningsTs: null }
+          : null;
+      }
+    } catch {
+      // Cała paczka padła (Vercel niedostępny) — wracamy do proxy Rendera,
+      // dokładnie tak jak robił to poprzedni fallback, tylko dla tych symboli.
+      const settled = await Promise.allSettled(chunk.map(fetchStooqPrice));
+      chunk.forEach((sym, i) => {
+        const price = settled[i].status === 'fulfilled' ? settled[i].value : null;
+        out[sym] = price ? { price, dailyChg: null, pe: null, peFwd: null, pb: null } : null;
+      });
+    }
+  }));
+  return out;
+}
+
+// ── Finnhub — jedno zapytanie na paczkę zamiast dwóch na spółkę ──────────────
+const FH_CHUNK = 30;   // _MAX_SYMBOLS po stronie serwera
+
+async function fetchFinnhubBatch(symbols) {
+  const out = {};
+  const chunks = [];
+  for (let i = 0; i < symbols.length; i += FH_CHUNK) chunks.push(symbols.slice(i, i + FH_CHUNK));
+
+  await Promise.allSettled(chunks.map(async (chunk) => {
+    const url = `/api/finnhub-batch?symbols=${chunk.map(encodeURIComponent).join(',')}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(25000), headers: authHeader() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (json.stooq) return { price: json.price, dailyChg: null, pe: null, peFwd: null, pb: null };
-    const q = json?.quoteResponse?.result?.[0];
-    if (!q?.regularMarketPrice) throw new Error('no price');
-    return {
-      price:      q.regularMarketPrice,
-      dailyChg:   q.regularMarketChangePercent ?? null,
-      pe:         q.trailingPE  ?? null,
-      peFwd:      q.forwardPE   ?? null,
-      pb:         q.priceToBook ?? null,
-      sector:     q.sector      ?? null,
-      earningsTs: q.earningsTimestamp ?? q.earningsTimestampStart ?? null,
-    };
-  } catch {
-    // Fallback: Render proxy (if Vercel function fails)
-    const price = await fetchStooqPrice(sym);
-    return price ? { price, dailyChg: null, pe: null, peFwd: null, pb: null } : null;
-  }
+    Object.assign(out, await res.json());
+  }));
+  return out;   // brak wpisu = Yahoo poniżej i tak dołoży cenę
 }
 
 // ── CoinGecko crypto prices ───────────────────────────────────────────────────
@@ -211,54 +242,66 @@ async function fetchFinnhubEarningsTs(sym) {
 // ── Finnhub fetch (with Yahoo Finance fallback for missing prices) ────────────
 // Returns results map; symbols with notFound:true are definitely unavailable (skip retry)
 async function fetchAllMetrics(symbols) {
-  const results = {};
-  await Promise.allSettled(
-    symbols.map(async (sym) => {
-      try {
-        let price = null, dailyChg = null, pe = null, peFwd = null, pb = null, sector = null, earningsTs = null;
+  const results     = {};
+  const usSymbols   = symbols.filter(s => !s.includes('.'));
+  const nonUs       = symbols.filter(s =>  s.includes('.'));
 
-        if (sym.includes('.')) {
-          // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance for price/fundamentals
-          const yq = await fetchYahooQuote(sym);
-          if (yq?.notFound) { results[sym] = { price: null, notFound: true }; return; }
-          if (yq) { price = yq.price; dailyChg = yq.dailyChg; pe = yq.pe; peFwd = yq.peFwd; pb = yq.pb; sector = yq.sector; earningsTs = yq.earningsTs; }
-          if (sym.endsWith('.WA')) {
-            sector = sector ?? WA_SECTOR_MAP[sym] ?? null;
-          }
-        } else {
-          // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
-          const [qRes, mRes] = await Promise.allSettled([
-            fetch(`/api/finnhub/v1/quote?symbol=${sym}`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json()),
-            fetch(`/api/finnhub/v1/stock/metric?symbol=${sym}&metric=all`, { signal: AbortSignal.timeout(8000), headers: authHeader() }).then(r => r.json()),
-          ]);
-          const q = qRes.status === 'fulfilled' ? qRes.value : null;
-          const m = mRes.status === 'fulfilled' ? mRes.value?.metric : null;
-          price    = (q?.c  > 0) ? q.c  : null;
-          dailyChg = (q?.dp != null && q.c > 0) ? q.dp : null;
-          pe    = m?.peBasicExclExtraTTM ?? null;
-          peFwd = m?.peForwardDiluted   ?? null;
-          pb    = m?.pbAnnual            ?? null;
-          if (price == null || pe == null || sector == null) {
-            const yq = await fetchYahooQuote(sym);
-            if (yq && !yq.notFound) {
-              price      = price      ?? yq.price;
-              dailyChg   = dailyChg   ?? yq.dailyChg;
-              pe         = pe         ?? yq.pe;
-              peFwd      = peFwd      ?? yq.peFwd;
-              pb         = pb         ?? yq.pb;
-              sector     = sector     ?? yq.sector;
-              earningsTs = earningsTs ?? yq.earningsTs;
-            }
-          }
-        }
+  const [fh, yqNonUs] = await Promise.all([
+    usSymbols.length ? fetchFinnhubBatch(usSymbols) : Promise.resolve({}),
+    nonUs.length     ? fetchYahooBatch(nonUs)       : Promise.resolve({}),
+  ]);
 
-        sector = sector ?? US_SECTOR_MAP[sym] ?? WA_SECTOR_MAP[sym] ?? null;
-        results[sym] = { price, dailyChg, pe, peFwd, pb, sector, earningsTs };
-      } catch {
-        results[sym] = { price: null, dailyChg: null, pe: null, peFwd: null, pb: null, sector: null, earningsTs: null };
-      }
-    })
-  );
+  // Non-US exchange (GPW .WA, LSE .L, etc.) — Yahoo Finance for price/fundamentals
+  for (const sym of nonUs) {
+    const yq = yqNonUs[sym];
+    if (yq?.notFound) { results[sym] = { price: null, notFound: true }; continue; }
+    let sector = yq?.sector ?? null;
+    if (sym.endsWith('.WA')) sector = sector ?? WA_SECTOR_MAP[sym] ?? null;
+    results[sym] = {
+      price:      yq?.price      ?? null,
+      dailyChg:   yq?.dailyChg   ?? null,
+      pe:         yq?.pe         ?? null,
+      peFwd:      yq?.peFwd      ?? null,
+      pb:         yq?.pb         ?? null,
+      sector:     sector ?? US_SECTOR_MAP[sym] ?? WA_SECTOR_MAP[sym] ?? null,
+      earningsTs: yq?.earningsTs ?? null,
+    };
+  }
+
+  // US stocks — Finnhub primary, Yahoo fallback for price + fundamentals
+  const rows = {};
+  const needFallback = [];
+  for (const sym of usSymbols) {
+    const q = fh[sym]?.quote ?? null;
+    const m = fh[sym]?.metric?.metric ?? null;
+    const row = {
+      price:      (q?.c > 0) ? q.c : null,
+      dailyChg:   (q?.dp != null && q.c > 0) ? q.dp : null,
+      pe:         m?.peBasicExclExtraTTM ?? null,
+      peFwd:      m?.peForwardDiluted    ?? null,
+      pb:         m?.pbAnnual            ?? null,
+      sector:     null,
+      earningsTs: null,
+    };
+    rows[sym] = row;
+    if (row.price == null || row.pe == null || row.sector == null) needFallback.push(sym);
+  }
+  const yqUs = needFallback.length ? await fetchYahooBatch(needFallback) : {};
+  for (const sym of usSymbols) {
+    const row = rows[sym];
+    const yq  = yqUs[sym];
+    if (yq && !yq.notFound) {
+      row.price      = row.price      ?? yq.price      ?? null;
+      row.dailyChg   = row.dailyChg   ?? yq.dailyChg   ?? null;
+      row.pe         = row.pe         ?? yq.pe         ?? null;
+      row.peFwd      = row.peFwd      ?? yq.peFwd      ?? null;
+      row.pb         = row.pb         ?? yq.pb         ?? null;
+      row.sector     = row.sector     ?? yq.sector     ?? null;
+      row.earningsTs = row.earningsTs ?? yq.earningsTs ?? null;
+    }
+    row.sector = row.sector ?? US_SECTOR_MAP[sym] ?? WA_SECTOR_MAP[sym] ?? null;
+    results[sym] = row;
+  }
   return results;
 }
 

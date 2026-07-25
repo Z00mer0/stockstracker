@@ -6,22 +6,27 @@ import Layout from './components/layout/Layout';
 import AuthGate from './components/auth/AuthGate';
 import UpdatePrompt from './components/UpdatePrompt';
 import SetupWizard, { shouldShowWizard } from './components/SetupWizard';
+import RouteFallback from './components/RouteFallback';
 
-import Dashboard    from './pages/Dashboard';
-import Portfolio    from './pages/Portfolio';
-import History      from './pages/History';
-import Transactions from './pages/Transactions';
-import Dividends    from './pages/Dividends';
-import Calendar     from './pages/Calendar';
-import Watchlist    from './pages/Watchlist';
-import Alerts       from './pages/Alerts';
-import ScenarioLab  from './pages/ScenarioLab';
-import Analysis     from './pages/Analysis';
-import AiInsights      from './pages/AiInsights';
-import News            from './pages/News';
-import ClosedPositions from './pages/ClosedPositions';
-import Settings        from './pages/Settings';
-import SharedPortfolio from './pages/SharedPortfolio';
+// Strony ładowane na żądanie. Wcześniej wszystkie 15 siedziało w jednej paczce
+// ~2 MB, którą przeglądarka musiała ściągnąć i sparsować, zanim pokazała
+// cokolwiek — łącznie z ekranem logowania. Teraz wejście ciągnie tylko trasę,
+// na której użytkownik faktycznie jest.
+const Dashboard       = React.lazy(() => import('./pages/Dashboard'));
+const Portfolio       = React.lazy(() => import('./pages/Portfolio'));
+const History         = React.lazy(() => import('./pages/History'));
+const Transactions    = React.lazy(() => import('./pages/Transactions'));
+const Dividends       = React.lazy(() => import('./pages/Dividends'));
+const Calendar        = React.lazy(() => import('./pages/Calendar'));
+const Watchlist       = React.lazy(() => import('./pages/Watchlist'));
+const Alerts          = React.lazy(() => import('./pages/Alerts'));
+const ScenarioLab     = React.lazy(() => import('./pages/ScenarioLab'));
+const Analysis        = React.lazy(() => import('./pages/Analysis'));
+const AiInsights      = React.lazy(() => import('./pages/AiInsights'));
+const News            = React.lazy(() => import('./pages/News'));
+const ClosedPositions = React.lazy(() => import('./pages/ClosedPositions'));
+const Settings        = React.lazy(() => import('./pages/Settings'));
+const SharedPortfolio = React.lazy(() => import('./pages/SharedPortfolio'));
 
 function AppRoutes() {
   const { isAuthenticated, login, portfolio } = useApp();
@@ -31,10 +36,12 @@ function AppRoutes() {
   // Publiczny widok udostępnionego portfela — bez logowania
   if (location.pathname.startsWith('/s/')) {
     return (
-      <Routes>
-        <Route path="/s/:token" element={<SharedPortfolio />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <React.Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/s/:token" element={<SharedPortfolio />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </React.Suspense>
     );
   }
 

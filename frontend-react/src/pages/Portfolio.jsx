@@ -1,10 +1,11 @@
 // frontend-react/src/pages/Portfolio.jsx
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import GridLayout, { verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useApp } from '../context/AppContext';
-import CsvImportModal from '../components/CsvImportModal';
+// Modal importu ciągnie za sobą parser xlsx — ładujemy go dopiero po otwarciu.
+const CsvImportModal = lazy(() => import('../components/CsvImportModal'));
 import AddStockModal from '../components/AddStockModal';
 import SellStockModal from '../components/SellStockModal';
 import EditPositionModal from '../components/EditPositionModal';
@@ -28,7 +29,6 @@ import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import PortfolioPieChart from '../components/PortfolioPieChart';
 import Card from '../components/shared/Card';
-import * as XLSX from 'xlsx';
 import HistoryChart from '../components/HistoryChart';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import SegmentedControl from '../components/shared/SegmentedControl';
@@ -37,6 +37,16 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import AlertModal from '../components/AlertModal';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
+// xlsx waży ~416 KB. Statyczny import wciągał go przy każdym wejściu do
+// portfela, choć potrzebny jest wyłącznie w chwili kliknięcia „eksportuj".
+async function exportXlsx(headers, rows, sheetName, fileName) {
+  const XLSX = await import('xlsx');
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, fileName);
+}
+
 const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v6';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
@@ -813,10 +823,7 @@ export default function Portfolio() {
       p.costPLN > 0 && p.plPLN != null ? parseFloat(((p.plPLN / p.costPLN) * 100).toFixed(2)) : '',
       p.dailyChg != null ? parseFloat(p.dailyChg.toFixed(2)) : '',
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Portfel');
-    XLSX.writeFile(wb, `portfel_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    exportXlsx(headers, rows, 'Portfel', `portfel_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function handleExportXlsTransactions() {
@@ -827,10 +834,7 @@ export default function Portfolio() {
       tx.price != null ? tx.price : '',
       tx.currency ?? '', tx.note ?? '',
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transakcje');
-    XLSX.writeFile(wb, `transakcje_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    exportXlsx(headers, rows, 'Transakcje', `transakcje_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function handleExportXlsSnapshots() {
@@ -839,10 +843,7 @@ export default function Portfolio() {
       .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(s => [s.date, s.total ?? '', s.invested ?? '']);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Historia');
-    XLSX.writeFile(wb, `historia_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    exportXlsx(headers, rows, 'Historia', `historia_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   if (loading && !portfolio.length) {
@@ -1398,27 +1399,29 @@ export default function Portfolio() {
         </div>
       </div>
       {showImport && (
-        <CsvImportModal
-          existingHoldings={portfolio}
-          onSave={async (holdings, rawRows) => {
-            await saveHoldings(holdings);
-            if (rawRows?.length) {
-              const newTxs = rawRows.map(r => ({
-                id: Math.random().toString(36).slice(2, 10),
-                type: 'BUY',
-                symbol: r.symbol,
-                qty: r.qty,
-                price: r.avgPrice,
-                currency: r.currency,
-                date: r.date,
-                note: 'Import CSV',
-              }));
-              await saveTransactions(prev => [...prev, ...newTxs]);
-            }
-            refresh();
-          }}
-          onClose={() => setShowImport(false)}
-        />
+        <Suspense fallback={null}>
+          <CsvImportModal
+            existingHoldings={portfolio}
+            onSave={async (holdings, rawRows) => {
+              await saveHoldings(holdings);
+              if (rawRows?.length) {
+                const newTxs = rawRows.map(r => ({
+                  id: Math.random().toString(36).slice(2, 10),
+                  type: 'BUY',
+                  symbol: r.symbol,
+                  qty: r.qty,
+                  price: r.avgPrice,
+                  currency: r.currency,
+                  date: r.date,
+                  note: 'Import CSV',
+                }));
+                await saveTransactions(prev => [...prev, ...newTxs]);
+              }
+              refresh();
+            }}
+            onClose={() => setShowImport(false)}
+          />
+        </Suspense>
       )}
       {showAdd && (
         <AddStockModal
