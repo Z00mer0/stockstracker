@@ -106,7 +106,7 @@ function renderCellDash(key, pos, isPrivate, locale = 'pl-PL', currLabel = 'zł'
 
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, error, fxRates, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
@@ -423,7 +423,14 @@ export default function Dashboard() {
           value={kpi.totalValue == null ? '—' : `${fmtDisp(kpi.totalValue)} ${currLabel}`}
           chip={(kpi.pricesLoaded || kpi.partialPrices) ? dayChipVal : null}
           chipUp={dailyChange.pln >= 0}
-          sub={kpi.staleTotal ? t('last_session') : kpi.partialPrices ? t('prices_partial') : kpi.pricesLoaded ? t('today') : t('loading_prices')}
+          sub={
+            // Nieaktualny kurs walut idzie przed resztą: fałszuje przeliczenie
+            // każdej pozycji w obcej walucie, więc jest gorszy niż brak ceny.
+            fxStale ? (fxStale === 'fallback' ? t('fx_fallback') : t('fx_stale'))
+              : kpi.staleTotal ? t('last_session')
+              : kpi.partialPrices ? t('prices_partial')
+              : kpi.pricesLoaded ? t('today') : t('loading_prices')
+          }
           spark={kpi.sparkValues.slice(-24)}
           sparkUp={dailyChange.pln >= 0}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}

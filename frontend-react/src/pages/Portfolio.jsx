@@ -294,7 +294,7 @@ function renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency = 'P
 }
 
 export default function Portfolio() {
-  const { portfolio, transactions, snapshots, rawData, loading, error, fxRates, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId, watchlistMigrationPending } = useApp();
+  const { portfolio, transactions, snapshots, rawData, loading, error, fxRates, fxStale, saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition, refresh, displayCurrency, activePortfolioId, watchlistMigrationPending } = useApp();
   const { locale } = useLanguage();
   const t = useT();
   const { isPrivate } = usePrivacy();
@@ -991,6 +991,11 @@ export default function Portfolio() {
                   {partialPrices && (
                     <div className="pv-daily" style={{ fontSize: 11, marginTop: 4, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
                       {t('prices_partial')}
+                    </div>
+                  )}
+                  {fxStale && (
+                    <div className="pv-daily" style={{ fontSize: 11, marginTop: 4, color: 'var(--warn, var(--text-faint))', fontFamily: 'var(--font-mono)' }}>
+                      {fxStale === 'fallback' ? t('fx_fallback') : t('fx_stale')}
                     </div>
                   )}
                   {dailyChangePLN != null && dailyChangePLN !== 0 && (
