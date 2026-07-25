@@ -75,6 +75,36 @@ _extra_origin = os.environ.get('CORS_EXTRA_ORIGIN', '').strip()
 if _extra_origin:
     _ALLOWED_ORIGINS.add(_extra_origin)
 
+# ── PROXY ALLOWLIST ────────────────────────────────────────────────────────────
+# Ukośnik na końcu każdego wpisu jest istotny: bez niego 'https://stooq.com'
+# pasowałoby także do 'https://stooq.com.atakujacy.net/'.
+_PROXY_ALLOWED = (
+    'https://query1.finance.yahoo.com/',
+    'https://query2.finance.yahoo.com/',
+    'https://finance.yahoo.com/',
+    'https://stooq.com/',
+    'https://nfs.faireconomy.media/',
+    'https://api.frankfurter.app/',
+)
+
+def _proxy_url_allowed(url: str) -> bool:
+    return any(url.startswith(a) for a in _PROXY_ALLOWED)
+
+class _AllowlistRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Sprawdza allowlistę ponownie przy każdym przekierowaniu.
+
+    Sama allowlista pilnowała tylko adresu podanego przez klienta, a urlopen
+    podąża za przekierowaniami bez pytania. Dozwolony adres, który odpowie
+    302 na dowolny inny — także wewnętrzny, jak metadane chmury — obchodził
+    całe zabezpieczenie.
+    """
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _proxy_url_allowed(newurl):
+            raise urllib.error.HTTPError(newurl, code, 'redirect poza allowliste', headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+_proxy_opener = urllib.request.build_opener(_AllowlistRedirectHandler)
+
 def _str(val, max_len: int, field: str) -> str:
     """Assert val is a string, strip whitespace, enforce max_len."""
     if not isinstance(val, str):
@@ -84,8 +114,34 @@ def _str(val, max_len: int, field: str) -> str:
         raise ValueError(f'{field}: too long (max {max_len} chars)')
     return v
 
+# ── CACHE Z LIMITEM ────────────────────────────────────────────────────────────
+# Cache'e w pamięci nie miały żadnego ograniczenia rozmiaru. Dopóki Render
+# usypiał backend po kwadransie bezczynności, czyściły się same przy każdym
+# przebudzeniu i problem był niewidoczny. Z zewnętrznym pingerem proces żyje
+# tygodniami, a każdy nowy symbol czy zapytanie zostaje w pamięci na zawsze.
+class _BoundedCache(dict):
+    """Słownik z górnym limitem wpisów — przy przekroczeniu wypadają najstarsze.
+
+    Zapisy chronione blokadą, bo serwer jest wielowątkowy: bez niej iteracja
+    po kluczach mogła trafić na równoległą zmianę rozmiaru i wywalić się
+    wyjątkiem w środku obsługi żądania.
+    """
+    def __init__(self, max_entries):
+        super().__init__()
+        self._max  = max_entries
+        self._lock = __import__('threading').Lock()
+
+    def __setitem__(self, key, value):
+        with self._lock:
+            if key not in self and len(self) >= self._max:
+                # dict zachowuje kolejność wstawiania — pierwsze klucze są najstarsze
+                for oldest in list(self)[:len(self) - self._max + 1]:
+                    self.pop(oldest, None)
+            super().__setitem__(key, value)
+
+
 # ── CALENDAR CACHE ─────────────────────────────────────────────────────────────
-_CAL_CACHE = {}   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
+_CAL_CACHE = _BoundedCache(32)   # { 'thisweek': {'data': [...], 'ts': float}, 'nextweek': {...} }
 _CAL_TTL   = 4 * 3600  # 4 hours
 
 # ── YAHOO FINANCE SESSION (crumb-based auth) ───────────────────────────────────
@@ -162,11 +218,11 @@ _WIG20_QUOTE_CACHE = {}   # { 'wig20': {'data': {...}, 'ts': float} }
 _WIG20_QUOTE_TTL   = 300  # 5 minutes
 
 # ── CRYPTO PRICE CACHE ─────────────────────────────────────────────────────────
-_CRYPTO_CACHE = {}   # { 'bitcoin,ethereum': {'data': {...}, 'ts': float} }
+_CRYPTO_CACHE = _BoundedCache(256)   # { 'bitcoin,ethereum': {'data': {...}, 'ts': float} }
 _CRYPTO_TTL   = 300  # 5 minutes
 
 # ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
-_BENCH_PL_CACHE = {}   # { 'WIG20': {'data': [...], 'ts': float}, ... }
+_BENCH_PL_CACHE = _BoundedCache(64)   # { 'WIG20': {'data': [...], 'ts': float}, ... }
 _BENCH_PL_TTL   = 6 * 3600   # 6 hours
 
 _BANKIER_SYMBOLS = {
@@ -1102,9 +1158,9 @@ if _env.exists():
             os.environ.setdefault(_k.strip(), _v.strip())
 
 SESSIONS     = {}
-_ESPI_CACHE  = {}   # { cache_key: {'ts': float, 'data': dict} }
-_NEWS_CACHE  = {}   # { cache_key: {'ts': float, 'data': dict} }
-_logo_cache  = {}  # symbol → domain (in-memory, populated by /api/logos)
+_ESPI_CACHE  = _BoundedCache(512)   # { cache_key: {'ts': float, 'data': dict} }
+_NEWS_CACHE  = _BoundedCache(512)   # { cache_key: {'ts': float, 'data': dict} }
+_logo_cache  = _BoundedCache(2048)  # symbol → domain (in-memory, populated by /api/logos)
 PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
@@ -1839,6 +1895,13 @@ def check_password(password: str, stored_hash: str) -> bool:
         return False
 
 
+# Hash nieistniejącego konta. Logowanie na nieznaną nazwę i tak musi policzyć
+# bcrypta, inaczej odpowiedź wraca zauważalnie szybciej i zdradza, które nazwy
+# są zajęte. Liczony raz przy starcie — jego koszt ma odpowiadać kosztowi
+# prawdziwego sprawdzenia.
+_DUMMY_HASH = hash_password(secrets.token_hex(16))
+
+
 # ── DEMO MODE ──────────────────────────────────────────────────────────────────
 # Each visitor gets a throwaway account (username: demo-<epoch>-<hex>) seeded
 # with a sample portfolio they can freely edit. Accounts older than _DEMO_TTL
@@ -2225,7 +2288,7 @@ def _portfolio_market_value(username, price_cache, rates):
 
 
 # ── Publiczny link do portfela (tylko %) ─────────────────────────────────────
-_share_price_cache = {}   # {symbol: (ts, price)}
+_share_price_cache = _BoundedCache(1024)   # {symbol: (ts, price)}
 _share_fx_cache = {'ts': 0, 'rates': {'PLN': 1.0}}
 _SHARE_PRICE_TTL = 600
 _SHARE_FX_TTL = 3600
@@ -3177,15 +3240,7 @@ class Handler(SimpleHTTPRequestHandler):
             target = qs.get('url', '')
             if not target or len(target) > 2000:
                 self.send_json(400, {'error': 'invalid url'}); return
-            allowed = (
-                'https://query1.finance.yahoo.com/',
-                'https://query2.finance.yahoo.com/',
-                'https://finance.yahoo.com/',
-                'https://stooq.com/',
-                'https://nfs.faireconomy.media/',
-                'https://api.frankfurter.app/',
-            )
-            if not any(target.startswith(a) for a in allowed):
+            if not _proxy_url_allowed(target):
                 self.send_json(403, {'error': 'forbidden'}); return
             try:
                 req = urllib.request.Request(target, headers={
@@ -3195,7 +3250,7 @@ class Handler(SimpleHTTPRequestHandler):
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache',
             })
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                with _proxy_opener.open(req, timeout=10) as resp:
                     data = resp.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -4395,14 +4450,19 @@ async function doRecover() {
                 if not _USERNAME_RE.match(username):
                     self.send_json(400, {'ok': False, 'error': 'Nieprawidłowa nazwa użytkownika'}); return
                 users = load_users()
-                authenticated = False
-                if username in users:
-                    stored = users[username]['password_hash']
-                    if check_password(password, stored):
-                        authenticated = True
-                    elif hashlib.sha256(password.encode()).hexdigest() == stored:
-                        # Migrate legacy SHA-256 hash to bcrypt on first login
-                        save_user(username, users[username]['display_name'], hash_password(password))
+                entry  = users.get(username)
+                # Zawsze liczymy bcrypta — przy nieznanej nazwie na atrapie.
+                # Wcześniej ta gałąź kończyła się natychmiast, więc sam czas
+                # odpowiedzi mówił, czy konto istnieje.
+                stored = entry['password_hash'] if entry else _DUMMY_HASH
+                authenticated = check_password(password, stored) and entry is not None
+                if entry is not None and not authenticated:
+                    # Stare konta sprzed przejścia na bcrypta. compare_digest,
+                    # nie ==, bo zwykłe porównanie kończy się na pierwszym
+                    # różnym bajcie i wycieka hash znak po znaku.
+                    legacy = hashlib.sha256(password.encode()).hexdigest()
+                    if secrets.compare_digest(legacy, stored):
+                        save_user(username, entry['display_name'], hash_password(password))
                         authenticated = True
                 if authenticated:
                     token = secrets.token_hex(24)
