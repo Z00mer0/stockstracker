@@ -189,7 +189,7 @@ function ImportCSVModal({ existingTransactions, onSave, onClose }) {
 
   function parseCSV(text) {
     // Strip BOM
-    const clean = text.replace(/^﻿/, '');
+    const clean = text.replace(/^\uFEFF/, '');
     const lines = clean.split(/\r?\n/).filter(l => l.trim() !== '');
     if (lines.length < 2) return { valid: [], skippedCount: 0 };
 

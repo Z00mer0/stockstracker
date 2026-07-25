@@ -28,6 +28,10 @@ jobs:
           cache-dependency-path: frontend-react/package-lock.json
 
       - run: npm ci
+      # Blokuje na bledach, ostrzezenia przepuszcza. Ostrzezen jest teraz 103
+      # (glownie nieuzywane zmienne i zaleznosci useEffect) — wywalanie sie na
+      # nich zablokowaloby kazdy PR i skonczyloby sie wylaczeniem lintera.
+      - run: npm run lint
       - run: npm test
       - run: npm run build
 

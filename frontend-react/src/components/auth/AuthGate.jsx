@@ -18,7 +18,7 @@ export default function AuthGate({ onLogin }) {
       const res = await api.post('/api/login', { username, password });
       onLogin(res.data.token, res.data.display_name);
     } catch (err) {
-      throw new Error(err.response?.data?.error ?? 'Błąd logowania — spróbuj ponownie');
+      throw new Error(err.response?.data?.error ?? 'Błąd logowania — spróbuj ponownie', { cause: err });
     }
   }
 
@@ -31,7 +31,7 @@ export default function AuthGate({ onLogin }) {
         password,
       });
     } catch (err) {
-      throw new Error(err.response?.data?.error ?? 'Błąd rejestracji — spróbuj ponownie');
+      throw new Error(err.response?.data?.error ?? 'Błąd rejestracji — spróbuj ponownie', { cause: err });
     }
     try {
       const rc = await api.post('/api/recovery-codes', {}, {
@@ -53,7 +53,7 @@ export default function AuthGate({ onLogin }) {
       const res = await api.post('/api/demo', {});
       onLogin(res.data.token, res.data.display_name, { demo: true });
     } catch (err) {
-      throw new Error(err.response?.data?.error ?? 'Nie udało się uruchomić demo — spróbuj ponownie');
+      throw new Error(err.response?.data?.error ?? 'Nie udało się uruchomić demo — spróbuj ponownie', { cause: err });
     }
   }
 
@@ -65,7 +65,7 @@ export default function AuthGate({ onLogin }) {
         new_password: newPassword,
       });
     } catch (err) {
-      throw new Error(err.response?.data?.error ?? 'Nie udało się zresetować hasła');
+      throw new Error(err.response?.data?.error ?? 'Nie udało się zresetować hasła', { cause: err });
     }
   }
 

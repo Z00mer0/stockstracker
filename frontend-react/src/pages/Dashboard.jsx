@@ -20,6 +20,7 @@ import WinnersLosers from '../components/shared/WinnersLosers';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
+import { computePortfolioValue } from '../utils/portfolioValue.js';
 
 function xirr(cashflows) {
   if (cashflows.length < 2) return null;
@@ -187,34 +188,12 @@ export default function Dashboard() {
     const sorted      = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     const sparkValues = sorted.slice(-60).map(s => s.total ?? 0);
 
-    // Live values — real-time position prices.
-    const positionsValue   = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0);
-    // Hybrid: pozycje bez ceny (delisting / zmiana tickera / chwilowy brak quote)
-    // liczone po koszcie zakupu — jeden brakujący symbol nie zamraża całej
-    // wartości na wczorajszym snapshocie. Snapshot tylko dopóki NIC się nie
-    // załadowało (patrz anyPriceLoaded).
-    const hybridPositionsValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? p.costPLN ?? 0), 0);
     const cashValue        = Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
     const otherAssetsValue = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
 
-    const pricesLoaded = allPositions.length === 0 || allPositions.every(p => p.valuePLN != null);
-    const anyPriceLoaded = allPositions.length === 0 || allPositions.some(p => p.valuePLN != null);
-
-    // Gdy mamy choć jedną żywą cenę — pokazujemy żywą (hybrydową) wartość.
-    // Snapshot („z ostatniej sesji") tylko gdy ZERO cen (pierwsze sekundy /
-    // padnięty backend cen). Bez żadnego snapshotu — null (UI: „—" + loader).
-    let totalValue;
-    let staleTotal = false;
-    if (anyPriceLoaded) {
-      totalValue = (pricesLoaded ? positionsValue : hybridPositionsValue) + cashValue + otherAssetsValue;
-    } else {
-      const latestSnap = snapshots.length
-        ? [...snapshots].sort((a, b) => b.date.localeCompare(a.date))[0]
-        : null;
-      totalValue = latestSnap ? latestSnap.total : null;
-      staleTotal = totalValue != null;
-    }
-    const partialPrices = anyPriceLoaded && !pricesLoaded;
+    // Ta sama funkcja co w Portfolio — patrz utils/portfolioValue.js.
+    const { totalValue, positionsValue, pricesLoaded, staleTotal, partialPrices } =
+      computePortfolioValue(allPositions, snapshots, cashValue + otherAssetsValue);
 
     // Unrealized P&L / ROI: sumuje po pozycjach z ceną (bez ceny → 0).
     const costBasis  = invested ?? 0;

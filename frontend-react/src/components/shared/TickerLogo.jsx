@@ -135,7 +135,6 @@ const DOMAIN_MAP = {
   'TGT': 'target.com',
   'HD': 'homedepot.com',
   'LOW': 'lowes.com',
-  'AMGN': 'amgen.com',
 };
 
 export default function TickerLogo({ symbol = '', size }) {

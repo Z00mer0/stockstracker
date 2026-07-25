@@ -29,6 +29,7 @@ import TickerLogo from '../components/shared/TickerLogo';
 import Chip from '../components/shared/Chip';
 import PortfolioPieChart from '../components/PortfolioPieChart';
 import Card from '../components/shared/Card';
+import { computePortfolioValue } from '../utils/portfolioValue.js';
 import HistoryChart from '../components/HistoryChart';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import SegmentedControl from '../components/shared/SegmentedControl';
@@ -534,25 +535,14 @@ export default function Portfolio() {
   }, [watchItems]);
 
   const totalCostPLN = enriched.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
-  const pricesLoaded = enriched.length === 0 || enriched.every(p => p.valuePLN != null);
-  const anyPriceLoaded = enriched.some(p => p.valuePLN != null);
-  // Suma tylko wycenionych pozycji — do pie / alokacji / % udziałów.
-  const positionsValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? 0), 0);
-  // Wartość całego portfela do nagłówka: pozycje z ceną po rynku, a te bez ceny
-  // (delisting, zmiana tickera, chwilowy brak quote) po koszcie zakupu — żeby
-  // JEDEN brakujący symbol nie zamrażał całej wartości na wczorajszym snapshocie.
-  const hybridValuePLN = enriched.reduce((sum, p) => sum + (p.valuePLN ?? p.costPLN ?? 0), 0);
-  // Snapshot pokazujemy tylko dopóki NIC nie zdążyło się załadować (pierwsze sekundy).
-  const latestSnap = snapshots.length
-    ? [...snapshots].sort((a, b) => b.date.localeCompare(a.date))[0]
-    : null;
-  const totalValuePLN = anyPriceLoaded
-    ? hybridValuePLN
-    : (latestSnap ? latestSnap.total : null);
-  // „~ z ostatniej sesji" tylko gdy realnie pokazujemy snapshot (zero żywych cen).
-  const staleTotal = !anyPriceLoaded && totalValuePLN != null;
-  // Mamy żywą wartość, ale część pozycji bez ceny (liczona po koszcie).
-  const partialPrices = anyPriceLoaded && !pricesLoaded;
+  // Ta sama funkcja co w Dashboard — patrz utils/portfolioValue.js. Bez
+  // extraValue, bo nagłówek portfela pokazuje same pozycje, bez gotówki
+  // i innych aktywów.
+  const {
+    totalValue: totalValuePLN,
+    positionsValue: positionsValuePLN,
+    pricesLoaded, anyPriceLoaded, staleTotal, partialPrices,
+  } = computePortfolioValue(enriched, snapshots);
   const portFx = fxRates[displayCurrency] ?? 1;
   const portCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const portToDisp = v => v / portFx;
