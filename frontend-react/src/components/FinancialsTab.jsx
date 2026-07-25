@@ -343,7 +343,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
 
   function parseNumMln(str) {
     if (!str) return null;
-    const s = str.trim().replace(/[, ]/g, '').replace(/[^0-9.\-]/g, '');
+    const s = str.trim().replace(/[, ]/g, '').replace(/[^0-9.-]/g, '');
     const n = parseFloat(s);
     return isNaN(n) ? null : Math.round(n * 1e6);
   }

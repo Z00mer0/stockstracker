@@ -15,7 +15,7 @@ export async function loadJournal() {
   if (cache) return cache;
   if (pending) return pending;
   pending = (async () => {
-    let data = {};
+    let data;
     try {
       const res = await api.get('/api/journal');
       data = res.data && typeof res.data === 'object' ? res.data : {};

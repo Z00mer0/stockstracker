@@ -41,7 +41,7 @@ function parseDate(val) {
     if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
   }
   // XTB exports DD/MM/YYYY or DD-MM-YYYY — reorder to ISO YYYY-MM-DD
-  const dmyMatch = str.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+  const dmyMatch = str.match(/^(\d{2})[/-](\d{2})[/-](\d{4})/);
   if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
   return str.slice(0, 10).replace(/\//g, '-');
 }
@@ -113,7 +113,7 @@ function parseBrokerRows(rows) {
 
       if (!timeStr || isNaN(amount)) continue;
 
-      let txType = null;
+      let txType;
       if (opType.includes('dividend'))                                     txType = 'DIV';
       else if (opType.includes('buy')  || opType.includes('stock purchase')) txType = 'BUY';
       else if (opType.includes('sell') || opType.includes('stock sale'))     txType = 'SELL';

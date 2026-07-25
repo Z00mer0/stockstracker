@@ -78,7 +78,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 function formatPrice(key, price, locale = 'pl-PL') {
   if (price == null) return '—';
   if (FX_KEYS.has(key)) return price.toFixed(3);
-  return Math.round(price).toLocaleString(locale).replace(/ /g, ' ');
+  return Math.round(price).toLocaleString(locale).replace(/\u00A0/g, ' ');
 }
 
 function loadCache() {
