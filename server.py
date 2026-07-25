@@ -31,6 +31,25 @@ _RL_MAX     = 10        # attempts per window
 _rl_store   = {}        # { ip: [timestamp, ...] }
 _rl_lock    = __import__('threading').Lock()
 
+# X-Forwarded-For dopisuje każde kolejne proxy, ale pierwszy element pochodzi od
+# klienta i można go dowolnie podrobić — branie [0] pozwalało obejść limiter
+# jednym nagłówkiem. Zaufać można tylko tylu wpisom od końca, ile proxy naprawdę
+# stoi przed serwerem (na Renderze: 1). Lokalnie, bez proxy, ustaw 0.
+try:
+    _TRUSTED_PROXIES = max(0, int(os.environ.get('TRUSTED_PROXY_COUNT', '1')))
+except ValueError:
+    _TRUSTED_PROXIES = 1
+
+def _client_ip(handler) -> str:
+    if _TRUSTED_PROXIES <= 0:
+        return handler.client_address[0]
+    chain = [p.strip() for p in handler.headers.get('X-Forwarded-For', '').split(',') if p.strip()]
+    if not chain:
+        return handler.client_address[0]
+    # ostatni wpis dopisało nasze proxy; przy N proxy schodzimy N pozycji od końca
+    idx = len(chain) - _TRUSTED_PROXIES
+    return chain[idx] if idx >= 0 else chain[0]
+
 def _rate_limited(ip: str) -> bool:
     """Return True if ip has exceeded the limit; prune old timestamps as a side-effect."""
     now = time.time()
@@ -1239,6 +1258,9 @@ if DATABASE_URL:
                     username   TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )""")
+            # wygasłe tokeny i tak są odrzucane przy odczycie — to tylko żeby
+            # tabela nie puchła w nieskończoność
+            cur.execute("DELETE FROM sessions WHERE created_at < NOW() - INTERVAL '30 days'")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_bonds (
                     portfolio_id TEXT PRIMARY KEY,
@@ -1854,7 +1876,7 @@ def _purge_old_demo_users():
                 cur.execute("DELETE FROM sessions WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM users WHERE username=%s", (uname,))
         stale_set = set(stale)
-        for tok, u in list(SESSIONS.items()):
+        for tok, (u, _) in list(SESSIONS.items()):
             if u in stale_set:
                 SESSIONS.pop(tok, None)
         if stale:
@@ -1928,23 +1950,66 @@ def _demo_seed_data():
     }
 
 
+# Token bez daty ważności żyje wiecznie: raz wyciekły (localStorage, logi proxy,
+# kopia bazy) daje dostęp bezterminowo, bo nic go nie unieważnia poza wylogowaniem.
+_SESSION_TTL = 30 * 86400   # 30 dni
+
+
+def _session_put(token, username):
+    """Zapisuje nową sesję w pamięci i w bazie; przy okazji czyści wygasłe wpisy."""
+    SESSIONS[token] = (username, time.time())
+    cutoff = time.time() - _SESSION_TTL
+    for tok, (_, ts) in list(SESSIONS.items()):
+        if ts < cutoff:
+            SESSIONS.pop(tok, None)
+    if DATABASE_URL:
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
+        except Exception as e:
+            print(f'[sessions] persist failed: {e}')
+
+
+def _session_drop(token):
+    SESSIONS.pop(token, None)
+    if DATABASE_URL:
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("DELETE FROM sessions WHERE token=%s", (token,))
+        except Exception as e:
+            print(f'[sessions] delete failed: {e}')
+
+
 def get_username(handler):
     token = handler.headers.get('X-Auth-Token', '')
     if not isinstance(token, str) or len(token) > 100:
         return None
-    username = SESSIONS.get(token)
-    if username is None and DATABASE_URL:
-        try:
-            with _conn() as c, c.cursor() as cur:
-                cur.execute("SELECT username FROM sessions WHERE token=%s", (token,))
-                row = cur.fetchone()
-                if row:
-                    username = row[0]
-                    SESSIONS[token] = username
-        except Exception as e:
-            print(f'[sessions] lookup failed: {e}')
+    entry = SESSIONS.get(token)
+    if entry is not None:
+        username, created = entry
+        if time.time() - created > _SESSION_TTL:
+            _session_drop(token)
             return None
-    return username
+        return username
+    if not DATABASE_URL:
+        return None
+    try:
+        with _conn() as c, c.cursor() as cur:
+            # wiek liczy baza — created_at jest TIMESTAMPTZ, a porównywanie go
+            # w Pythonie wywracałoby się na strefach czasowych
+            cur.execute("SELECT username, EXTRACT(EPOCH FROM (NOW() - created_at)) FROM sessions WHERE token=%s", (token,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            username, age = row[0], float(row[1])
+            if age > _SESSION_TTL:
+                cur.execute("DELETE FROM sessions WHERE token=%s", (token,))
+                return None
+            SESSIONS[token] = (username, time.time() - age)
+            return username
+    except Exception as e:
+        print(f'[sessions] lookup failed: {e}')
+        return None
 
 
 def _send_push(username, title, body, url='/'):
@@ -2861,8 +2926,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 resolved = resolve_share_token(token) if 8 <= len(token) <= 64 else None
                 if not resolved:
-                    ip = self.headers.get('X-Forwarded-For', self.client_address[0]).split(',')[0].strip()
-                    if _rate_limited(ip):
+                    if _rate_limited(_client_ip(self)):
                         self.send_json(429, {'error': 'too many requests'}); return
                     self.send_json(404, {'error': 'not found'}); return
                 payload = _build_shared_payload(*resolved)
@@ -4279,8 +4343,7 @@ async function doRecover() {
         path = self.path.split('?')[0]
 
         if path in ('/api/login', '/api/register', '/api/reset-password', '/api/demo'):
-            ip = self.headers.get('X-Forwarded-For', self.client_address[0]).split(',')[0].strip()
-            if _rate_limited(ip):
+            if _rate_limited(_client_ip(self)):
                 self.send_json(429, {'ok': False, 'error': 'Za dużo prób. Spróbuj ponownie za 15 minut.'}); return
 
         if path == '/api/login':
@@ -4302,13 +4365,7 @@ async function doRecover() {
                         authenticated = True
                 if authenticated:
                     token = secrets.token_hex(24)
-                    SESSIONS[token] = username
-                    if DATABASE_URL:
-                        try:
-                            with _conn() as c, c.cursor() as cur:
-                                cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
-                        except Exception as e:
-                            print(f'[sessions] persist failed: {e}')
+                    _session_put(token, username)
                     self.send_json(200, {'ok': True, 'token': token,
                                          'display_name': users[username]['display_name']})
                 else:
@@ -4334,13 +4391,7 @@ async function doRecover() {
                     self.send_json(409, {'ok': False, 'error': 'Nazwa użytkownika już zajęta'}); return
                 save_user(username, display_name or username, hash_password(password))
                 token = secrets.token_hex(24)
-                SESSIONS[token] = username
-                if DATABASE_URL:
-                    try:
-                        with _conn() as c, c.cursor() as cur:
-                            cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
-                    except Exception as e:
-                        print(f'[sessions] persist failed: {e}')
+                _session_put(token, username)
                 self.send_json(200, {'ok': True, 'token': token,
                                       'display_name': display_name or username})
             except ValueError as e:
@@ -4358,13 +4409,7 @@ async function doRecover() {
                 create_portfolio(username, pid, 'Portfel Demo', 'PLN')
                 save_portfolio_data(pid, _demo_seed_data())
                 token = secrets.token_hex(24)
-                SESSIONS[token] = username
-                if DATABASE_URL:
-                    try:
-                        with _conn() as c, c.cursor() as cur:
-                            cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
-                    except Exception as e:
-                        print(f'[sessions] persist failed: {e}')
+                _session_put(token, username)
                 self.send_json(200, {'ok': True, 'token': token,
                                      'display_name': display_name, 'demo': True})
             except Exception as e:
@@ -4372,14 +4417,7 @@ async function doRecover() {
                 self.send_json(500, {'ok': False, 'error': 'Nie udało się utworzyć konta demo'})
 
         elif path == '/api/logout':
-            token = self.headers.get('X-Auth-Token', '')
-            SESSIONS.pop(token, None)
-            if DATABASE_URL:
-                try:
-                    with _conn() as c, c.cursor() as cur:
-                        cur.execute("DELETE FROM sessions WHERE token=%s", (token,))
-                except Exception as e:
-                    print(f'[sessions] delete failed: {e}')
+            _session_drop(self.headers.get('X-Auth-Token', ''))
             self.send_json(200, {'ok': True})
 
         elif path == '/api/change-password':
@@ -4428,7 +4466,7 @@ async function doRecover() {
                 save_recovery_codes(username, hashes)
                 save_user(username, entry['display_name'], hash_password(new_pw))
                 # Invalidate every session for this user — the password may have leaked.
-                for tok, u in list(SESSIONS.items()):
+                for tok, (u, _) in list(SESSIONS.items()):
                     if u == username:
                         SESSIONS.pop(tok, None)
                 if DATABASE_URL:

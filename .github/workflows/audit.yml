@@ -1,0 +1,39 @@
+name: npm-audit
+
+# Wyłapuje nowe podatności w zależnościach frontendu, zanim wejdą na produkcję.
+#
+# Próg ustawiony na `critical`, a nie `high`, celowo: w drzewie siedzą podatności
+# high, których nie da się teraz usunąć bez zepsucia builda (opisane w
+# AUDIT-NOTES.md). Gdyby workflow wywalał się na nich przy każdym pushu, szybko
+# przestalibyśmy go czytać. Lista high jest mimo to wypisywana w logu.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 5 * * 1'   # poniedziałkowy przegląd — nowe CVE pojawiają się same
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Lista podatnosci (informacyjnie)
+        run: npm audit || true
+
+      - name: Blokuj tylko podatnosci krytyczne
+        run: npm audit --audit-level=critical
