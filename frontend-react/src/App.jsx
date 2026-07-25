@@ -7,6 +7,7 @@ import AuthGate from './components/auth/AuthGate';
 import UpdatePrompt from './components/UpdatePrompt';
 import SetupWizard, { shouldShowWizard } from './components/SetupWizard';
 import RouteFallback from './components/RouteFallback';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Strony ładowane na żądanie. Wcześniej wszystkie 15 siedziało w jednej paczce
 // ~2 MB, którą przeglądarka musiała ściągnąć i sparsować, zanim pokazała
@@ -37,10 +38,12 @@ function AppRoutes() {
   if (location.pathname.startsWith('/s/')) {
     return (
       <React.Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/s/:token" element={<SharedPortfolio />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <ErrorBoundary name="shared">
+          <Routes>
+            <Route path="/s/:token" element={<SharedPortfolio />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </React.Suspense>
     );
   }
@@ -80,12 +83,17 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-      <AppProvider>
-        <ChartProvider>
-          <AppRoutes />
-          <UpdatePrompt />
-        </ChartProvider>
-      </AppProvider>
+      {/* Ostatnia deska ratunku — łapie też awarie samych kontekstów. Celowo
+          bez tłumaczeń: jeśli wywalił się AppProvider, to i warstwa
+          językowa może być niesprawna. */}
+      <ErrorBoundary name="root">
+        <AppProvider>
+          <ChartProvider>
+            <AppRoutes />
+            <UpdatePrompt />
+          </ChartProvider>
+        </AppProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

@@ -15,10 +15,16 @@ const FX_CACHE_TTL = 30 * 60 * 1000; // 30 min
 const FX_FALLBACK  = { PLN: 1, USD: 3.62, EUR: 4.24, GBP: 4.91 };
 const DISPLAY_NAME_KEY = 'myfund_display_name';
 
+// Zwraca { rates, stale }. `stale` mówi, na ile kursom można ufać:
+//   null       — świeże z API albo z 30-minutowego cache
+//   'last'     — ostatnie znane, prawdziwe kursy, ale nieaktualne
+//   'fallback' — zaszyte w kodzie stałe, czyli wartości wymyślone
+// Bez tego rozróżnienia awaria /api/fx po cichu przeliczała cały portfel po
+// kursie sprzed nie wiadomo jak dawna, a jedynym śladem był console.warn.
 async function loadFxRates() {
   try {
     const cached = JSON.parse(localStorage.getItem(FX_CACHE_KEY) || 'null');
-    if (cached?.ts && Date.now() - cached.ts < FX_CACHE_TTL) return cached.rates;
+    if (cached?.ts && Date.now() - cached.ts < FX_CACHE_TTL) return { rates: cached.rates, stale: null };
   } catch {}
   try {
     const res = await fetch('/api/fx', { signal: AbortSignal.timeout(8000) });
@@ -29,14 +35,14 @@ async function loadFxRates() {
     const rates = { PLN: 1, USD: r.PLN, EUR: r.PLN / r.EUR, GBP: r.PLN / r.GBP };
     localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates }));
     localStorage.setItem(FX_PERSIST_KEY, JSON.stringify({ rates }));
-    return rates;
+    return { rates, stale: null };
   } catch (e) {
     console.warn('[fx] fetch failed, using fallback:', e.message);
     try {
       const persisted = JSON.parse(localStorage.getItem(FX_PERSIST_KEY) || 'null');
-      if (persisted?.rates) return persisted.rates;
+      if (persisted?.rates) return { rates: persisted.rates, stale: 'last' };
     } catch {}
-    return FX_FALLBACK;
+    return { rates: FX_FALLBACK, stale: 'fallback' };
   }
 }
 
@@ -47,6 +53,9 @@ export function AppProvider({ children }) {
   const [loading, setLoading]       = useState(() => !!localStorage.getItem(TOKEN_KEY));
   const [error, setError]           = useState(null);
   const [fxRates, setFxRates]       = useState(FX_FALLBACK);
+  // Zanim /api/fx odpowie, w fxRates siedzą stałe z kodu — dlatego start jest
+  // 'fallback', a nie null.
+  const [fxStale, setFxStale]       = useState('fallback');
   const [logoMap, setLogoMap]       = useState({});
   const writeInProgressRef          = useRef(false);
   const fetchIdRef                  = useRef(0);
@@ -73,7 +82,7 @@ export function AppProvider({ children }) {
   );
 
   useEffect(() => {
-    loadFxRates().then(setFxRates);
+    loadFxRates().then(({ rates, stale }) => { setFxRates(rates); setFxStale(stale); });
     fetch('/api/keepalive').catch(() => {});
   }, []);
 
@@ -738,6 +747,7 @@ export function AppProvider({ children }) {
     error,
     refresh: fetchData,
     fxRates,
+    fxStale,
     invested: portfolioInvested,
     saveCash,
     saveHoldings,
