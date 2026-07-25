@@ -8,6 +8,7 @@ import json
 import hashlib
 import bcrypt
 import datetime
+import functools
 import mimetypes
 import re
 import secrets
@@ -18,7 +19,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import http.cookiejar
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 BASE       = Path(__file__).parent
@@ -1693,6 +1694,32 @@ else:
         v = _load_shares().get(token)
         return (v['username'], v['portfolio_id']) if v else None
 
+    # Serwer jest wielowątkowy, a powyższe funkcje robią odczyt-modyfikacja-zapis
+    # na wspólnych plikach JSON — bez blokady równoległe zapisy gubiłyby zmiany,
+    # a odczyt w trakcie zapisu mógł zobaczyć obcięty plik. W trybie z bazą tego
+    # problemu nie ma (PostgreSQL sam serializuje), więc lock żyje tylko tutaj.
+    _FILE_LOCK = __import__('threading').RLock()
+
+    def _synchronized(fn):
+        @functools.wraps(fn)
+        def _wrapped(*args, **kwargs):
+            with _FILE_LOCK:
+                return fn(*args, **kwargs)
+        return _wrapped
+
+    for _fname in (
+        'load_users', 'save_user', 'save_recovery_codes',
+        'load_data', 'save_data', '_read_pfile', '_write_pfile',
+        'list_portfolios', 'create_portfolio', 'update_portfolio', 'delete_portfolio',
+        'load_portfolio_data', 'save_portfolio_data',
+        'load_watchlist', 'save_watchlist',
+        'load_insights', 'save_insights',
+        'load_journal', 'save_journal',
+        '_load_shares', '_save_shares',
+        'get_share_token', 'create_share_token', 'revoke_share_token', 'resolve_share_token',
+    ):
+        globals()[_fname] = _synchronized(globals()[_fname])
+
 
 def migrate_user_to_portfolios(username):
     """If user has old blob data but no portfolios, create a default portfolio and migrate."""
@@ -2668,6 +2695,10 @@ def _run_push_checks():
 # ── HTTP HANDLER ───────────────────────────────────────────────────────────────
 
 class Handler(SimpleHTTPRequestHandler):
+
+    # Rozłącz klienta, który otworzył połączenie i przestał wysyłać dane.
+    # Bez tego każde takie połączenie trzyma wątek w nieskończoność.
+    timeout = 60
 
     def _cors_origin(self):
         origin = self.headers.get('Origin', '')
@@ -5482,7 +5513,10 @@ if __name__ == '__main__':
             daemon=True, name='financials-startup'
         ).start()
 
-    server = HTTPServer(('0.0.0.0', PORT), Handler)
+    # ThreadingHTTPServer, nie HTTPServer: ten drugi obsługuje żądania szeregowo,
+    # więc jedno wolne zapytanie do Yahoo/Finnhub (timeouty do 20 s) blokowało
+    # wszystkie pozostałe, a pojedyncze wiszące połączenie zatrzymywało cały serwis.
+    server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
     ip = local_ip()
     print('StocksTracker server działa:')
     print(f'  Komputer : http://localhost:{PORT}/myfund.html')
