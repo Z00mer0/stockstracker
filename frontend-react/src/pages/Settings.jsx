@@ -9,6 +9,7 @@ import { US_TAX_KEY } from '../services/dividendService';
 const BrokerImportModal   = lazy(() => import('../components/BrokerImportModal'));
 const SnapshotImportModal = lazy(() => import('../components/SnapshotImportModal'));
 import Card from '../components/shared/Card';
+import ConfirmModal from '../components/ConfirmModal';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { authHeader } from '../utils/auth.js';
 import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
@@ -253,6 +254,7 @@ function SnapshotManagerSection() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [editingDate, setEditingDate] = useState(null);
+  const [confirmSnapshot, setConfirmSnapshot] = useState(null);
 
   const sorted = useMemo(
     () => [...snapshots].sort((a, b) => b.date.localeCompare(a.date)),
@@ -380,7 +382,7 @@ function SnapshotManagerSection() {
                     onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; }}
                   >✏</button>
                   <button
-                    onClick={() => { if (window.confirm(`${t('delete_snapshot_confirm')} ${fmtDate(s.date)}?`)) deleteSnapshot(s.date); }}
+                    onClick={() => setConfirmSnapshot(s.date)}
                     title={t('delete_btn')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-faint)', padding: '2px 5px' }}
                     onMouseEnter={e => { e.currentTarget.style.color = 'var(--down)'; }}
@@ -392,6 +394,13 @@ function SnapshotManagerSection() {
           </div>
         )}
       </div>
+      {confirmSnapshot && (
+        <ConfirmModal
+          message={`${t('delete_snapshot_confirm')} ${fmtDate(confirmSnapshot)}?`}
+          onConfirm={() => { deleteSnapshot(confirmSnapshot); setConfirmSnapshot(null); }}
+          onCancel={() => setConfirmSnapshot(null)}
+        />
+      )}
     </Card>
   );
 }
@@ -597,6 +606,7 @@ export default function Settings() {
   const [showBrokerImport, setShowBrokerImport] = useState(false);
   const [showSnapshotImport, setShowSnapshotImport] = useState(false);
   const [clearingId, setClearingId] = useState(null);
+  const [confirmImport, setConfirmImport] = useState(null);
 
   // Group all imported transactions by importId
   const importBatches = (() => {
@@ -620,7 +630,11 @@ export default function Settings() {
   })();
 
   async function handleClearImport(importId, count) {
-    if (!window.confirm(`${t('delete')} ${count} ${t('delete_import_confirm')}`)) return;
+    setConfirmImport({ importId, count });
+  }
+
+  async function doClearImport(importId) {
+    setConfirmImport(null);
     setClearingId(importId || 'legacy');
     try { await clearBrokerImport(importId); } finally { setClearingId(null); }
   }
@@ -742,6 +756,13 @@ export default function Settings() {
           />
         )}
       </Suspense>
+      {confirmImport && (
+        <ConfirmModal
+          message={`${t('delete')} ${confirmImport.count} ${t('delete_import_confirm')}`}
+          onConfirm={() => doClearImport(confirmImport.importId)}
+          onCancel={() => setConfirmImport(null)}
+        />
+      )}
     </div>
   );
 }

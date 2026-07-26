@@ -6,4 +6,10 @@ __pycache__/
 .claude/
 .playwright-mcp/
 .superpowers/
+
+# Zrzuty ekranu z ręcznego testowania lądowały w korzeniu repo i były
+# śledzone mimo tej reguły — `.gitignore` nie działa wstecz, a dodano go
+# już po commicie. Wyjątek na public/, bo tam leżą ikony PWA, które
+# muszą zostać w repozytorium, inaczej build wypuści aplikację bez ikon.
 *.png
+!frontend-react/public/*.png

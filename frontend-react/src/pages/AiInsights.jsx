@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useT } from '../context/LanguageContext';
 import Spinner from '../components/shared/Spinner';
 import PortfolioReview from '../components/PortfolioReview';
+import ConfirmModal from '../components/ConfirmModal';
 import { authHeader } from '../utils/auth.js';
 
 const MANUAL_KEY = 'myfund_manual_insights';
@@ -460,6 +461,7 @@ function AnalysisView({ text, expanded, onToggle }) {
 function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, onCancel }) {
   const t = useT();
   const [editing, setEditing]         = useState(defaultEditing);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [draft, setDraft]             = useState(entry?.text || '');
   const [expanded, setExpanded]       = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -518,13 +520,20 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
             {text ? `${wc} ${t('ai_words_saved')} ${fmtDate(entry?.savedAt) || '—'}` : t('ai_no_analysis')}
           </div>
         </div>
+        {confirmDelete && (
+          <ConfirmModal
+            message={`${t('ai_delete_confirm')} ${symbol}?`}
+            onConfirm={() => { setConfirmDelete(false); onDelete(); }}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        )}
         {!editing && text && (
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button onClick={() => { setDraft(text); setEditing(true); }}
               style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer' }}>
               {t('ai_edit_btn')}
             </button>
-            <button onClick={() => { if (confirm(`Usunąć analizę dla ${symbol}?`)) onDelete(); }}
+            <button onClick={() => setConfirmDelete(true)}
               style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'none', border: '1px solid var(--border)', color: 'var(--text-faint)', cursor: 'pointer' }}
               title="Usuń">
               🗑

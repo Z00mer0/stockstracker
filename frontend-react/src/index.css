@@ -461,3 +461,20 @@ body.privacy-mode .lg-pct {
 .rgl-edit .react-resizable-handle-s { left: 50% !important; bottom: 3px !important; margin-left: -7px !important; cursor: ns-resize !important; border-radius: 3px; }
 /* Wieksza strefa chwytu na mobile: cala szerokosc naglowka jako handle */
 .rgl-edit .card-head { min-height: 44px; touch-action: none; }
+
+/* ── Widoczny fokus klawiatury ──────────────────────────────────────────────
+   Do tej pory nawigacja Tabem nie zostawiala zadnego sladu — nie bylo widac,
+   na czym stoi zaznaczenie. :focus-visible, a nie :focus, celowo: obramowanie
+   pojawia sie przy nawigacji klawiatura, a nie po kazdym kliknieciu myszka. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Elementy z wlasnym zaokragleniem nie moga dostac prostokatnej ramki. */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
