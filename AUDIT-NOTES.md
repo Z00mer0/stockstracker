@@ -11,13 +11,21 @@ blokuje tylko podatności `critical` — tutaj jest zapisane, dlaczego pozostał
 Zmiany są wyłącznie w `package-lock.json` — żadna deklarowana wersja w
 `package.json` nie ruszona, build przechodzi.
 
-## Zostawione świadomie
+## Usunięte
 
-### `xlsx` (SheetJS) — Prototype Pollution + ReDoS, brak poprawki na npm
-Pakiet na npm jest nieutrzymywany; łatki wychodzą tylko na `cdn.sheetjs.com`.
-Parsuje pliki wgrywane przez użytkownika (import od brokera), więc to realna
-powierzchnia ataku — ale wymaga osobnej decyzji (zmiana źródła pakietu albo
-przeniesienie parsowania na backend). Osobny punkt audytu (P2-1).
+### `xlsx` (SheetJS) — zastąpiony
+Pakiet na npm jest nieutrzymywany, tkwi na 0.18.5 i ma dwie otwarte
+podatności, na które `npm audit` nie ma poprawki. Ponieważ parsował pliki
+wgrywane z zewnątrz, była to realna ścieżka ataku, a nie teoria.
+
+Zastąpiony przez `read-excel-file` (odczyt) i `write-excel-file` (eksport) —
+oba aktywnie utrzymywane i dostępne normalnie na npm.
+
+Utracona obsługa starego, binarnego `.xls`: żadna utrzymywana biblioteka JS
+go nie czyta. Import przyjmuje `.xlsx` i `.csv`, a przy wskazaniu `.xls`
+pokazuje czytelny komunikat zamiast cicho nic nie znaleźć.
+
+## Zostawione świadomie
 
 ### `vite` ≤ 6.4.2 — path traversal w serwerze deweloperskim
 Dotyczy wyłącznie `vite dev` na maszynie dewelopera; artefakt produkcyjny

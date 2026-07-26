@@ -1,60 +1,18 @@
 # Backlog — pozostałe punkty audytu
 
 Stan na 25.07.2026. Audyt obejmował 26 znalezisk: 4 krytyczne, 6 wysokich, 16 średnich.
-**Zamknięte: 12.** Poniżej to, co zostało.
+**Zamknięte: 14 — komplet krytycznych i komplet wysokich.** Poniżej to, co zostało.
 
 Nic z tej listy nie blokuje codziennego korzystania z aplikacji.
 
 ---
 
-## Wymaga decyzji, nie tylko pracy
-
-### P2-1 · `xlsx` (SheetJS) — Prototype Pollution + ReDoS
-**Wysokie.** Pakiet na npm jest nieutrzymywany; łatki wychodzą wyłącznie na
-`cdn.sheetjs.com`. `npm audit fix` nie ma czym tego naprawić.
-
-Parsuje pliki wgrywane przez użytkownika (import od brokera), więc to realna
-powierzchnia ataku — choć wyłącznie na własne dane, bo aplikacja jest
-jednoosobowa.
-
-Dwie drogi:
-- **Zmiana źródła pakietu** na `https://cdn.sheetjs.com/xlsx-X.Y.Z/xlsx-X.Y.Z.tgz`
-  w `package.json`. Szybkie, ale wypada z ekosystemu npm (brak `npm audit`,
-  brak automatycznych aktualizacji).
-- **Parsowanie na backendzie** w osobnym procesie. Solidniejsze, ale to
-  przepisanie ścieżki importu i nowy endpoint przyjmujący pliki.
-
-Nie do zrobienia „przy okazji" — obie opcje mają realne konsekwencje.
-
-### P2-5 · Token w `localStorage`
-**Wysokie.** Klucz `myfund_auth_token`. We własnym kodzie nie ma XSS-a (zero
-`dangerouslySetInnerHTML` i `innerHTML` w ~24 tys. linii), ale zależności mają CVE.
-
-TTL sesji z PR #36 ograniczył okno wycieku z „na zawsze" do 30 dni, więc
-pilność spadła. Docelowo: ciasteczko `httpOnly` + `Secure` + `SameSite`.
-
-Dotyka logowania po obu stronach naraz — backend musi ustawiać i czytać
-ciasteczko, frontend przestać dokładać nagłówek `X-Auth-Token`. Do zrobienia
-świadomie, nie w pośpiechu, bo błąd oznacza zablokowanie logowania.
-
----
-
 ## Dług techniczny — do wzięcia w dowolnej kolejności
 
-### P3-4 · Logika wartości portfela zdublowana
-`Dashboard.jsx` i `Portfolio.jsx` liczą to samo osobno. **To dług wprowadzony
-w trakcie tych prac** — ten sam błąd wymagał dwóch osobnych PR-ów (#31 i #32),
-bo poprawka w jednym miejscu nie działała w drugim.
-
-Do wyciągnięcia: `usePortfolioValue(positions, cash, otherAssets, snapshots)`
-zwracające `{ totalValue, staleTotal, partialPrices }`.
-
-### P3-9 · Brak lintera
-W kodzie są już komentarze `eslint-disable`, mimo że ESLint nigdy nie był
-skonfigurowany. `eslint` + `eslint-plugin-react-hooks`, podpięty do workflow `ci`.
-
-Wyłapałby m.in. brakujące zależności w `useEffect` — a takie błędy w tym
-projekcie już występowały.
+### Ostrzeżenia lintera
+103 ostrzeżeń przepuszczanych przez CI: nieużywane zmienne i brakujące
+zależności w `useEffect`. Do przerobienia stopniowo — blokowanie na nich
+od razu zablokowałoby każdy PR.
 
 ### P3-12 · Natywne `confirm()`
 `AiInsights.jsx:527`, `Settings.jsx:381`, `Settings.jsx:621`. Wygląda obco
@@ -131,3 +89,7 @@ dziwnego, co domyka **P3-15**.
 | P3-2 | Leniwe ładowanie stron — 1953 KB → 466 KB | #37 |
 | P3-7 | Limity rozmiaru cache'y w pamięci | #40 |
 | P3-14 | Allowlista proxy sprawdzana przy przekierowaniach | #40 |
+| P3-4 | Jedna funkcja licząca wartość portfela | #42 |
+| P3-9 | Pierwszy linter + naprawa 19 błędów | #42 |
+| P2-5 | Token sesji w ciasteczku HttpOnly | #43 |
+| P2-1 | SheetJS zastąpiony utrzymywaną biblioteką | #43 |

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import { readSheets, excelSerialToISO } from '../utils/spreadsheet.js';
 import { dedupeBatch, dedupeAgainstExisting } from '../utils/brokerDedupe';
 import { useApp } from '../context/AppContext';
 
@@ -30,15 +30,15 @@ function splitRow(line, sep) {
 function parseDate(val) {
   if (!val) return null;
   if (typeof val === 'number') {
-    const d = XLSX.SSF.parse_date_code(val);
-    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+    const iso = excelSerialToISO(val);
+    if (iso) return iso;
   }
   const str = String(val).trim();
   // col() stringifies numeric Excel serial dates — detect and parse them
   const serial = parseFloat(str);
   if (!isNaN(serial) && serial > 40000 && serial < 60000 && str === String(serial)) {
-    const d = XLSX.SSF.parse_date_code(serial);
-    if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+    const iso = excelSerialToISO(serial);
+    if (iso) return iso;
   }
   // XTB exports DD/MM/YYYY or DD-MM-YYYY — reorder to ISO YYYY-MM-DD
   const dmyMatch = str.match(/^(\d{2})[/-](\d{2})[/-](\d{4})/);
@@ -181,12 +181,9 @@ function parseBrokerCsv(text) {
   return parseBrokerRows(rows);
 }
 
-function parseBrokerXlsx(buffer) {
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+async function parseBrokerXlsx(file) {
   const allResults = [];
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  for (const { name: sheetName, rows } of await readSheets(file)) {
     if (rows.length < 5) continue;
     const result = parseBrokerRows(rows);
     if (result.type !== 'unknown' || result.transactions.length > 0) {
@@ -294,14 +291,20 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
     setError(''); setSaved(false);
     const readers = Array.from(files).flatMap(file => {
       const ext = file.name.split('.').pop().toLowerCase();
-      const isExcel = ext === 'xls' || ext === 'xlsx';
-      if (isExcel) {
-        return [new Promise(resolve => {
-          const reader = new FileReader();
-          reader.onload = e => resolve(parseBrokerXlsx(new Uint8Array(e.target.result)).map(r => ({ name: `${file.name} [${r.sheetName ?? ''}]`, ...r })));
-          reader.readAsArrayBuffer(file);
-        })];
-      } else {
+      if (ext === 'xls') {
+        // Stary, binarny format Excela. Czytała go tylko biblioteka, którą
+        // wymieniliśmy z powodu podatności — lepiej powiedzieć wprost niż
+        // pozwolić, żeby import po cichu nic nie znalazł.
+        return [Promise.resolve([{ name: file.name, type: 'unknown', transactions: [], errors: [],
+          error: 'Format .xls nie jest obsługiwany. Zapisz plik jako .xlsx lub .csv i wgraj ponownie.' }])];
+      }
+      if (ext === 'xlsx') {
+        return [parseBrokerXlsx(file)
+          .then(rs => rs.map(r => ({ name: `${file.name} [${r.sheetName ?? ''}]`, ...r })))
+          .catch(err => [{ name: file.name, type: 'unknown', transactions: [], errors: [],
+            error: `Nie udało się odczytać pliku: ${err.message}` }])];
+      }
+      {
         return [new Promise(resolve => {
           const reader = new FileReader();
           reader.onload = e => resolve([{ name: file.name, ...parseBrokerCsv(e.target.result) }]);
@@ -348,7 +351,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
           Import danych brokera
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20 }}>
-          Obsługuje <strong style={{ color: 'var(--text-dim)' }}>CSV</strong>, <strong style={{ color: 'var(--text-dim)' }}>XLS</strong> i <strong style={{ color: 'var(--text-dim)' }}>XLSX</strong>: pliki Closed Positions i Cash Operations. Format wykrywany automatycznie.
+          Obsługuje <strong style={{ color: 'var(--text-dim)' }}>CSV</strong> i <strong style={{ color: 'var(--text-dim)' }}>XLSX</strong>: pliki Closed Positions i Cash Operations. Format wykrywany automatycznie.
         </p>
 
         {/* Dropzone */}
@@ -364,11 +367,11 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
           onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
         >
-          <input ref={inputRef} type="file" accept=".csv,.xls,.xlsx" multiple className="hidden" onChange={e => handleFiles(e.target.files)} style={{ display: 'none' }} />
+          <input ref={inputRef} type="file" accept=".csv,.xlsx" multiple className="hidden" onChange={e => handleFiles(e.target.files)} style={{ display: 'none' }} />
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 4px' }}>
             Przeciągnij pliki lub <span style={{ color: 'var(--accent)' }}>kliknij aby wybrać</span>
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>CSV, XLS, XLSX — można wybrać kilka naraz</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>CSV, XLSX — można wybrać kilka naraz</p>
         </div>
 
         {/* Results per file */}

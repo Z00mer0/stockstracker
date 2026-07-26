@@ -48,8 +48,7 @@ export default function SummaryTab({ symbol, livePrice }) {
     setSummary(null);
     setSummaryError(null);
     fetch(`/api/financials/keystats?symbol=${encodeURIComponent(symbol)}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
-    })
+      })
       .then(r => r.json())
       .then(json => setRaw(json.error ? null : json))
       .catch(() => {});
@@ -59,8 +58,7 @@ export default function SummaryTab({ symbol, livePrice }) {
     setSummaryLoading(true);
     setSummaryError(null);
     fetch(`/api/financials/summary?symbol=${encodeURIComponent(symbol)}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
-    })
+      })
       .then(r => r.json())
       .then(json => {
         if (json.summary) setSummary(json.summary);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { isAuthed } from '../utils/auth.js';
 import Card from '../components/shared/Card';
 import TickerLogo from '../components/shared/TickerLogo';
 import { useT } from '../context/LanguageContext';
@@ -30,8 +31,7 @@ export default function Alerts() {
   const [error, setError]     = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('myfund_auth_token');
-    if (!token) { setLoading(false); return; }
+    if (!isAuthed()) { setLoading(false); return; }
     apiLoadWatchlist()
       .then(data => { setItems(Array.isArray(data) ? data : []); })
       .catch(e => setError(e.message || 'Nie udało się załadować alertów'))

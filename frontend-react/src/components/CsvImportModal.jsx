@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import { readSheets, excelSerialToISO } from '../utils/spreadsheet.js';
 
 const CSV_EXAMPLE = `Symbol,Ilość,Cena,Waluta,Data
 AAPL,10,185.50,USD,2024-01-15
@@ -33,8 +33,8 @@ function parseCsv(text) {
 function parseDate(val) {
   if (!val) return null;
   if (typeof val === 'number') {
-    const d = XLSX.SSF.parse_date_code(val);
-    if (d) return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+    const iso = excelSerialToISO(val);
+    if (iso) return iso;
   }
   const str = String(val);
   // "28/05/2026 11:03:24" or "2026-05-28 11:03:24"
@@ -43,16 +43,12 @@ function parseDate(val) {
   return str.slice(0, 10).replace(/\//g, '-');
 }
 
-function parseXtbExcel(buffer) {
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+async function parseXtbExcel(file) {
   const results = [];
 
-  for (const sheetName of workbook.SheetNames) {
+  for (const { name: sheetName, rows } of await readSheets(file)) {
     // Only process "OPEN POSITION" sheets
     if (!sheetName.toUpperCase().includes('OPEN POSITION')) continue;
-
-    const sheet = workbook.Sheets[sheetName];
-    const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
     // Find header row: the row containing "Symbol" and "Volume"
     let headerIdx = -1;
@@ -180,15 +176,16 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   function handleFile(file) {
     setError(''); setFileName(file.name);
     const ext = file.name.split('.').pop().toLowerCase();
-    const isExcel = ext === 'xls' || ext === 'xlsx';
-    if (!isExcel) { setError('Plik musi być w formacie XLS lub XLSX (eksport XTB).'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const parsed = parseXtbExcel(new Uint8Array(e.target.result));
-      if (!parsed.length) setError('Nie znaleziono pozycji w pliku. Upewnij się że plik zawiera zakładkę "OPEN POSITION…".');
-      setFilePreview(parsed);
-    };
-    reader.readAsArrayBuffer(file);
+    if (ext === 'xls') {
+      setError('Format .xls nie jest obsługiwany. Zapisz plik jako .xlsx i wgraj ponownie.'); return;
+    }
+    if (ext !== 'xlsx') { setError('Plik musi być w formacie XLSX (eksport XTB).'); return; }
+    parseXtbExcel(file)
+      .then(parsed => {
+        if (!parsed.length) setError('Nie znaleziono pozycji w pliku. Upewnij się że plik zawiera zakładkę "OPEN POSITION…".');
+        setFilePreview(parsed);
+      })
+      .catch(err => setError(`Nie udało się odczytać pliku: ${err.message}`));
   }
 
   function handleDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
@@ -219,7 +216,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
       <div style={card} onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Import pozycji</h2>
         <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>
-          Wrzuć plik XLS/XLSX z XTB <em style={{ color: 'var(--text-dim)' }}>(Open Position)</em> lub wklej CSV poniżej.
+          Wrzuć plik XLSX z XTB <em style={{ color: 'var(--text-dim)' }}>(Open Position)</em> lub wklej CSV poniżej.
         </p>
 
         {/* File drop zone */}
@@ -236,7 +233,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
           onMouseLeave={e => e.currentTarget.style.borderColor = fileName ? 'var(--accent)' : 'var(--border)'}
         >
           <input
-            ref={fileInputRef} type="file" accept=".xls,.xlsx"
+            ref={fileInputRef} type="file" accept=".xlsx"
             style={{ display: 'none' }}
             onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }}
           />
@@ -247,7 +244,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
               <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 2px' }}>
                 Przeciągnij plik lub <span style={{ color: 'var(--accent)' }}>kliknij aby wybrać</span>
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>XLS, XLSX — eksport XTB Open Position</p>
+              <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>XLSX — eksport XTB Open Position</p>
             </>
           )}
         </div>

@@ -5,7 +5,6 @@ import Spinner from './shared/Spinner';
 import { valueBond, fetchCpiSeries } from '../services/bondService';
 import { getTaxRate } from '../services/dividendService';
 
-const AUTH_KEY = 'myfund_auth_token';
 
 // ── mini-markdown (ten sam wzorzec co FinancialsTab) ─────────────────────────
 function parseInline(text) {
@@ -133,7 +132,7 @@ export default function PortfolioReview() {
       if (!ctx) { setError('err_empty_portfolio'); return; }
       const resp = await fetch('/api/portfolio-review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': localStorage.getItem(AUTH_KEY) || '' },
+        headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({ context: ctx, portfolioKey: activePortfolioId || 'all', force }),
       });
       if (!resp.ok) {

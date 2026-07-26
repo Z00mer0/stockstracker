@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 
-const AUTH_KEY = 'myfund_auth_token';
 
 function fmtM(val, locale = 'pl-PL') {
   if (val == null) return '—';
@@ -272,9 +271,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const token = localStorage.getItem(AUTH_KEY) || '';
     fetch(`/api/financials?symbol=${encodeURIComponent(symbol)}&period=${period}`, {
-      headers: { 'X-Auth-Token': token },
     })
       .then(r => {
         if (!r.ok) throw new Error(r.status === 404 ? 'no_data' : 'fetch_error');
@@ -401,10 +398,9 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
     try {
       const text = await file.text();
       const parsed = parseCsvToData(text);
-      const token = localStorage.getItem(AUTH_KEY) || '';
       const resp = await fetch('/api/financials/manual', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol, period: parsed.period, data: parsed }),
       });
       if (!resp.ok) { const b = await resp.json().catch(() => ({})); throw new Error(b.error || 'save_error'); }
@@ -449,10 +445,9 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
     setUploadError('');
     try {
       const base64 = await compressImage(file);
-      const token = localStorage.getItem(AUTH_KEY) || '';
       const resp = await fetch('/api/financials/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol, period, image_b64: base64 }),
       });
       if (resp.status === 422) throw new Error('parse_failed');
@@ -483,11 +478,10 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
     setAnalysisLoading(true);
     setAnalysis('');
     setAnalysisError('');
-    const token = localStorage.getItem(AUTH_KEY) || '';
     try {
       const resp = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol, period, companyName: companyName || '', force }),
       });
       if (!resp.ok) {

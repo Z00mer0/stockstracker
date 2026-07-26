@@ -210,7 +210,7 @@ export default function History() {
   useEffect(() => {
     if (!benchmark) { setBenchData([]); return; }
     setBenchLoading(true);
-    const authHeader = { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' };
+    const authHeader = { };
 
     if (benchmark === 'SYNTH:CPI_PL') {
       // Fetch live HICP index from Eurostat (auto-updated monthly), fall back to hardcoded

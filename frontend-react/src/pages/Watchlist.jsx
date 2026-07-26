@@ -1,5 +1,6 @@
 // src/pages/Watchlist.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { isAuthed } from '../utils/auth.js';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useChart } from '../context/ChartContext';
@@ -16,7 +17,7 @@ import {
   addAlertToItems, removeAlertFromItems,
 } from '../services/watchlistService';
 
-function authHeader() { return { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' }; }
+function authHeader() { return { }; }
 
 async function fetchLivePrice(sym) {
   try {
@@ -78,8 +79,7 @@ export default function Watchlist() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('myfund_auth_token');
-    if (token) {
+    if (isAuthed()) {
       apiLoadWatchlist()
         .then(data => { if (Array.isArray(data)) setWatchItems(data); else setWatchItems(loadWatchlistLocal()); })
         .catch(() => setWatchItems(loadWatchlistLocal()))
@@ -95,8 +95,7 @@ export default function Watchlist() {
   // pierwszy save (nawet zwykła zmiana w UI) nadpisze zmigrowane alerty.
   useEffect(() => {
     if (watchlistMigrationPending || !initialized) return;
-    const token = localStorage.getItem('myfund_auth_token');
-    if (!token) return;
+    if (!isAuthed()) return;
     apiLoadWatchlist()
       .then(data => { if (Array.isArray(data)) setWatchItems(data); })
       .catch(() => {});
@@ -106,8 +105,7 @@ export default function Watchlist() {
   useEffect(() => {
     if (!initialized || watchlistMigrationPending) return;
     saveWatchlistLocal(watchItems);
-    const token = localStorage.getItem('myfund_auth_token');
-    if (token) apiSaveWatchlist(watchItems).catch(() => {});
+    if (isAuthed()) apiSaveWatchlist(watchItems).catch(() => {});
   }, [watchItems, initialized, watchlistMigrationPending]);
 
   useEffect(() => {

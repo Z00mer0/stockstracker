@@ -583,8 +583,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
     setRaw(null);
     setLoadErr(false);
     fetch(`/api/financials/keystats?symbol=${encodeURIComponent(symbol)}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('myfund_auth_token') || '' },
-    })
+      })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(json => setRaw(json.error ? null : json))
       .catch(() => setLoadErr(true))
