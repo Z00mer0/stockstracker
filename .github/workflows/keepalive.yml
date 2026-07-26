@@ -31,8 +31,22 @@ jobs:
         run: |
           url="https://stockstracker.onrender.com/api/health"
           n=15
+          ok=0
           for i in $(seq 1 $n); do
-            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 120 "$url" || echo 000)
-            echo "$(date -u +%H:%M:%S) ping $i/$n -> HTTP $code"
-            [ "$i" -lt "$n" ] && sleep 120
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 120 "$url" || true)
+            echo "$(date -u +%H:%M:%S) ping $i/$n -> HTTP ${code:-000}"
+            if [ "$code" = "200" ]; then ok=$((ok + 1)); fi
+            # Nie "[ ... ] && sleep": przy ostatnim obiegu test jest falszywy,
+            # cala instrukcja zwraca 1 i — jako ostatnia w skrypcie — wywala
+            # krok, mimo ze wszystkie pingi poszly poprawnie. Tak wygladal
+            # kazdy dotychczasowy bieg tego workflow: 15x HTTP 200 i status
+            # "failed" na koniec.
+            if [ "$i" -lt "$n" ]; then sleep 120; fi
           done
+          echo "udanych pingow: $ok/$n"
+          # Pojedyncze bledy sa normalne (Render sie wybudza), ale komplet
+          # nieudanych oznacza, ze backend nie odpowiada — wtedy chcemy alert.
+          if [ "$ok" -eq 0 ]; then
+            echo "::error::zaden ping nie zwrocil 200 — backend nie odpowiada"
+            exit 1
+          fi
