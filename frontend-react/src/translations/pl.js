@@ -37,6 +37,7 @@ export default {
   prices_partial:       'część pozycji bez ceny — liczona po koszcie',
   fx_stale:             'kursy walut nieaktualne — ostatnie znane',
   fx_fallback:          'brak kursów walut — wyceny orientacyjne',
+  ai_delete_confirm:    'Usunąć analizę dla',
   page_error:           'Ta strona się nie wczytała',
   page_error_hint:      'Reszta aplikacji działa — możesz przejść gdzie indziej albo spróbować ponownie.',
   last_session:         'z ostatniej sesji',

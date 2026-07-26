@@ -833,37 +833,40 @@ function RunwayCalculator() {
       </div>
 
       {/* Milestones table */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_year_col')}</th>
-            <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_remaining_capital')}</th>
-            <th style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_status_col')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {milestones.map(yr => {
-            const k = capitalAfterYears(yr);
-            const exhausted = !isEternal && totalMonths != null && yr * 12 > totalMonths;
-            const remaining = exhausted ? 0 : k;
-            const ratio = remaining / capital;
-            const dot = exhausted || remaining <= 0
-              ? '🔴'
-              : ratio >= 0.5
-                ? '🟢'
-                : '🟡';
-            return (
-              <tr key={yr} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '7px 8px', color: 'var(--text)' }}>{yr}</td>
-                <td style={{ padding: '7px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
-                  {exhausted || remaining <= 0 ? '—' : fmt(remaining) + ' zł'}
-                </td>
-                <td style={{ padding: '7px 8px', textAlign: 'center' }}>{dot}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {/* Kontener przewijalny — bez niego wąski ekran rozpycha całą stronę. */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_year_col')}</th>
+              <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_remaining_capital')}</th>
+              <th style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--text-dim)', fontWeight: 600 }}>{t('runway_status_col')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {milestones.map(yr => {
+              const k = capitalAfterYears(yr);
+              const exhausted = !isEternal && totalMonths != null && yr * 12 > totalMonths;
+              const remaining = exhausted ? 0 : k;
+              const ratio = remaining / capital;
+              const dot = exhausted || remaining <= 0
+                ? '🔴'
+                : ratio >= 0.5
+                  ? '🟢'
+                  : '🟡';
+              return (
+                <tr key={yr} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '7px 8px', color: 'var(--text)' }}>{yr}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
+                    {exhausted || remaining <= 0 ? '—' : fmt(remaining) + ' zł'}
+                  </td>
+                  <td style={{ padding: '7px 8px', textAlign: 'center' }}>{dot}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

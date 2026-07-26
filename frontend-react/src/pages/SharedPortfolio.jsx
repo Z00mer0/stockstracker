@@ -158,29 +158,32 @@ export default function SharedPortfolio() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Pozycja', 'Udział', 'Wynik'].map((h, i) => (
-                      <th key={h} style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.positions.map((p, i) => (
-                    <tr key={p.symbol} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '9px 16px', fontWeight: 600 }}>
-                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: i < CHART_TOP_N ? COLORS[i % COLORS.length] : REST_COLOR, marginRight: 8, verticalAlign: 'baseline' }} />
-                        {p.symbol}
-                      </td>
-                      <td className="mono" style={{ padding: '9px 16px', textAlign: 'right' }}>{fmt(p.pct)}%</td>
-                      <td className="mono" style={{ padding: '9px 16px', textAlign: 'right', color: p.plPct == null ? 'var(--text-faint)' : p.plPct >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                        {p.plPct == null ? '—' : `${p.plPct >= 0 ? '+' : ''}${fmt(p.plPct)}%`}
-                      </td>
+              {/* Kontener przewijalny — bez niego wąski ekran rozpycha całą stronę. */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Pozycja', 'Udział', 'Wynik'].map((h, i) => (
+                        <th key={h} style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.positions.map((p, i) => (
+                      <tr key={p.symbol} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '9px 16px', fontWeight: 600 }}>
+                          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: i < CHART_TOP_N ? COLORS[i % COLORS.length] : REST_COLOR, marginRight: 8, verticalAlign: 'baseline' }} />
+                          {p.symbol}
+                        </td>
+                        <td className="mono" style={{ padding: '9px 16px', textAlign: 'right' }}>{fmt(p.pct)}%</td>
+                        <td className="mono" style={{ padding: '9px 16px', textAlign: 'right', color: p.plPct == null ? 'var(--text-faint)' : p.plPct >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
+                          {p.plPct == null ? '—' : `${p.plPct >= 0 ? '+' : ''}${fmt(p.plPct)}%`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}

@@ -43,6 +43,7 @@ export default {
   prices_partial:       'some holdings unpriced — valued at cost',
   fx_stale:             'FX rates out of date — last known',
   fx_fallback:          'no FX rates — values are approximate',
+  ai_delete_confirm:    'Delete analysis for',
   page_error:           'This page failed to load',
   page_error_hint:      'The rest of the app is fine — navigate elsewhere or try again.',
   last_session:         'from last session',
