@@ -110,7 +110,7 @@ async function fetchYahooBatch(symbols) {
 }
 
 // ── Finnhub — jedno zapytanie na paczkę zamiast dwóch na spółkę ──────────────
-const FH_CHUNK = 30;   // _MAX_SYMBOLS po stronie serwera
+const FH_CHUNK = 60;   // _FH_BATCH_MAX po stronie serwera
 
 async function fetchFinnhubBatch(symbols) {
   const out = {};
@@ -293,7 +293,12 @@ async function fetchAllMetrics(symbols) {
       earningsTs: null,
     };
     rows[sym] = row;
-    if (row.price == null || row.pe == null || row.sector == null) needFallback.push(sym);
+    // Tylko brak ceny. Warunek na pe/sector wygladal sensownie, ale byl nie do
+    // spelnienia: fetchYahooBatch zwraca pe/peFwd/pb/sector/earningsTs zawsze
+    // jako null (funkcja Vercela oddaje sam kurs), a sector i tak dokladamy
+    // nizej z US_SECTOR_MAP. Efekt byl taki, ze KAZDY symbol US szedl jeszcze
+    // raz przez /api/quotes, mimo ze Finnhub podal juz komplet.
+    if (row.price == null) needFallback.push(sym);
   }
   const yqUs = needFallback.length ? await fetchYahooBatch(needFallback) : {};
   for (const sym of usSymbols) {

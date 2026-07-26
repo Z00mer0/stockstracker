@@ -59,3 +59,10 @@ jobs:
       # w ogóle się kompiluje. Wyłapuje literówki i błędy składni, które inaczej
       # ujawniłyby się dopiero po wdrożeniu na Render.
       - run: python -m py_compile server.py
+      # py_compile nie importuje modułu, więc do tej pory job nie potrzebował
+      # zależności. Test poniżej importuje server.py naprawdę.
+      - run: pip install -r requirements.txt
+      # Budżet zapytań do Finnhuba (60/min) jest niewidoczny z zewnątrz —
+      # przekroczenie objawia się dopiero brakiem cen u części pozycji.
+      # Test zaślepia Finnhuba i liczy wywołania.
+      - run: python test_finnhub_batch.py
