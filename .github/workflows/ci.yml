@@ -66,3 +66,7 @@ jobs:
       # przekroczenie objawia się dopiero brakiem cen u części pozycji.
       # Test zaślepia Finnhuba i liczy wywołania.
       - run: python test_finnhub_batch.py
+      # Uzupełnianie kursów NBP potrafiło wrócić na ścieżkę żądania i dołożyć
+      # kilka sekund do każdego odczytu portfela. Test pilnuje, że odczyt nie
+      # rusza NBP i że brak kursu jest zapamiętywany zamiast odpytywany w kółko.
+      - run: python test_fx_backfill.py
