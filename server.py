@@ -5389,10 +5389,33 @@ async function doRecover() {
         else:
             self.send_response(405); self.end_headers()
 
+    def do_HEAD(self):
+        """HEAD dla /api/health — inaczej monitoring widzi 404.
+
+        Klasa bazowa obsługuje HEAD po swojemu: szuka ścieżki jako pliku na
+        dysku. Dla /api/health nic takiego nie istnieje, więc odpowiadała 404,
+        mimo że GET na ten sam adres zwraca 200. Wyszło dopiero, gdy podpięty
+        został UptimeRobot — domyślnie pyta metodą HEAD, nie GET.
+
+        Zgodnie ze specyfikacją HTTP HEAD ma zwracać dokładnie to samo co GET,
+        tylko bez treści; stąd Content-Length liczony z odpowiedzi GET.
+        """
+        if self.path.split('?')[0] == '/api/health':
+            body = json.dumps({'status': 'ok'}).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.send_header('Access-Control-Allow-Origin', self._cors_origin())
+            self.send_header('Cache-Control', 'no-store, no-cache')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+            return
+        super().do_HEAD()
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', self._cors_origin())
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'DENY')

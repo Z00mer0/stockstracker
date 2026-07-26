@@ -63,6 +63,11 @@ Jeśli pinger pozwala na warunek sukcesu po treści odpowiedzi, warto wpisać
 `"ok"` — wtedy alert przyjdzie także wtedy, gdy serwer zacznie zwracać coś
 dziwnego, co domyka **P3-15**.
 
+**Uwaga o metodzie HTTP:** UptimeRobot domyślnie pyta metodą `HEAD`, nie `GET`.
+Serwer nie obsługiwał HEAD-a na `/api/health` i klasa bazowa odpowiadała 404 —
+monitoring zgłaszał awarię, choć serwis działał. Naprawione; gdyby jednak
+podpiąć inne narzędzie, warto sprawdzić, jakiej metody używa.
+
 Alternatywa bez zewnętrznej usługi: płatny plan Rendera (~7 USD/mies.),
 gdzie usypianie w ogóle nie występuje.
 
@@ -103,3 +108,4 @@ sensu ciągnąć tego dalej, bo Actions nie jest usługą cron ani monitoringu.
 | P3-6 | 17 MB śmieci wypisanych ze śledzenia | #44 |
 | P3-12 | `ConfirmModal` zamiast natywnego `confirm()` | #44 |
 | P3-13 | Tabele w kontenerach przewijalnych | #44 |
+| P3-15 | Monitoring — UptimeRobot na `/api/health` co 5 min | (poza repo) |
