@@ -21,13 +21,18 @@ permissions: {}               # tylko wychodzący curl — zero uprawnień do re
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
-      - name: Ping /api/health przez ~14 min (bridżuje opóźnienia crona)
+      # Bieg pingujący ~28 min zamiast ~14. Zmierzone odstępy między realnymi
+      # uruchomieniami wynosiły od 14 min do 3 h 24 min przy nominalnych 10,
+      # a Render zasypia po 15 — dłuższy bieg pokrywa większą część tego
+      # rozrzutu. Wielogodzinnej luki nie pokryje nic po tej stronie.
+      - name: Ping /api/health przez ~28 min (bridżuje opóźnienia crona)
         run: |
           url="https://stockstracker.onrender.com/api/health"
-          for i in $(seq 1 8); do
+          n=15
+          for i in $(seq 1 $n); do
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 120 "$url" || echo 000)
-            echo "$(date -u +%H:%M:%S) ping $i -> HTTP $code"
-            [ "$i" -lt 8 ] && sleep 120
+            echo "$(date -u +%H:%M:%S) ping $i/$n -> HTTP $code"
+            [ "$i" -lt "$n" ] && sleep 120
           done

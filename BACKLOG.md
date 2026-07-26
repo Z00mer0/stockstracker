@@ -50,16 +50,33 @@ Czysto kosmetyczne, ale utrudnia każdą kolejną zmianę.
 ## Domykane po Twojej stronie
 
 ### P3-10 · Cold start Rendera · P3-15 · Monitoring
-Zewnętrzny pinger na `https://stockstracker.onrender.com/api/health`, co
-**10 minut** (nie 15 — Render zasypia właśnie po 15).
 
-GitHub Actions **nie wystarczy**: zmierzone na 170 rzeczywistych uruchomieniach
-odstępy wynosiły od 14 min do 3 h 24 min przy nominalnych 10. Workflow
-`keepalive.yml` zostaje jako druga, słabsza kłódka.
+**To jedyna pozycja, której nie da się domknąć z kodu.** Wymaga konta na
+zewnętrznej usłudze — rejestracji i poświadczeń, których nie da się załatwić
+po stronie repozytorium.
+
+Zewnętrzny pinger na `https://stockstracker.onrender.com/api/health`, co
+**10 minut** (nie 15 — Render zasypia właśnie po 15). cron-job.org albo
+UptimeRobot, oba mają darmowy plan wystarczający do tego zadania.
 
 Jeśli pinger pozwala na warunek sukcesu po treści odpowiedzi, warto wpisać
 `"ok"` — wtedy alert przyjdzie także wtedy, gdy serwer zacznie zwracać coś
 dziwnego, co domyka **P3-15**.
+
+Alternatywa bez zewnętrznej usługi: płatny plan Rendera (~7 USD/mies.),
+gdzie usypianie w ogóle nie występuje.
+
+#### Co jest zrobione po stronie repozytorium
+
+Dwa niezależne harmonogramy w GitHub Actions pukają do serwera: `keepalive.yml`
+(`/api/health`) i `push-check.yml` (`/api/push/check`). Każdy bieg keepalive
+pinguje przez ~28 min, żeby bridżować opóźnienia crona.
+
+**To łagodzi problem, ale go nie rozwiązuje.** Harmonogram Actions jest
+best-effort: na 170 rzeczywistych uruchomieniach odstępy wynosiły od 14 min
+do 3 h 24 min przy nominalnych 10. Dłuższy bieg pokrywa większą część tego
+rozrzutu, ale wielogodzinnej luki nie pokryje nic po tej stronie — i nie ma
+sensu ciągnąć tego dalej, bo Actions nie jest usługą cron ani monitoringu.
 
 ---
 
