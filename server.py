@@ -221,6 +221,40 @@ _WIG20_QUOTE_TTL   = 300  # 5 minutes
 _CRYPTO_CACHE = _BoundedCache(256)   # { 'bitcoin,ethereum': {'data': {...}, 'ts': float} }
 _CRYPTO_TTL   = 300  # 5 minutes
 
+# ── FINNHUB FUNDAMENTALS CACHE ─────────────────────────────────────────────────
+# Darmowy Finnhub daje 60 zapytań na minutę, a /api/finnhub-batch pytał o dwie
+# rzeczy na spółkę: kurs i wskaźniki. Przy 41 pozycjach to 82 zapytania, czyli
+# powyżej limitu — nadmiar wracał jako 429, więc część spółek zostawała bez
+# ceny. Wskaźniki (P/E, P/B) zmieniają się raz na kwartał, kurs co chwilę —
+# więc cache'ujemy tylko te pierwsze i schodzimy do jednego zapytania na spółkę.
+_FH_METRIC_CACHE = _BoundedCache(512)   # { 'AAPL': {'data': {...}, 'ts': float} }
+_FH_METRIC_TTL   = 12 * 3600   # 12 hours
+
+# Licznik zapytań do Finnhuba w oknie minuty. Musi być wspólny dla całego
+# procesu, bo frontend przy 41 pozycjach wysyła dwie paczki równolegle —
+# budżet liczony osobno w każdej z nich i tak przekroczyłby limit.
+_FH_BATCH_MAX   = 60   # ile symboli przyjmuje /api/finnhub-batch w jednym żądaniu
+_FH_RATE_MAX    = 55   # z zapasem względem 60/min
+_FH_RATE_WINDOW = 60
+_fh_calls       = []
+_fh_calls_lock  = __import__('threading').Lock()
+
+def _fh_note(n: int) -> None:
+    """Zapisuje n wykonanych zapytań (kursy lecą niezależnie od budżetu)."""
+    now = time.time()
+    with _fh_calls_lock:
+        _fh_calls[:] = [t for t in _fh_calls if now - t < _FH_RATE_WINDOW]
+        _fh_calls.extend([now] * n)
+
+def _fh_reserve(n: int) -> int:
+    """Ile z n opcjonalnych zapytań mieści się jeszcze w limicie."""
+    now = time.time()
+    with _fh_calls_lock:
+        _fh_calls[:] = [t for t in _fh_calls if now - t < _FH_RATE_WINDOW]
+        grant = max(0, min(n, _FH_RATE_MAX - len(_fh_calls)))
+        _fh_calls.extend([now] * grant)
+        return grant
+
 # ── POLISH BENCHMARK CACHE ─────────────────────────────────────────────────────
 _BENCH_PL_CACHE = _BoundedCache(64)   # { 'WIG20': {'data': [...], 'ts': float}, ... }
 _BENCH_PL_TTL   = 6 * 3600   # 6 hours
@@ -3208,31 +3242,66 @@ class Handler(SimpleHTTPRequestHandler):
             if not token:
                 self.send_json(503, {'error': 'FINNHUB_TOKEN not configured'}); return
             qs      = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
-            symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()][:_MAX_SYMBOLS]
+            # 60, nie 30: dzielenie portfela na dwie paczki wysyłane równolegle
+            # rozbijało rachunek limitu — pierwsza rezerwowała wskaźniki, zanim
+            # druga zdążyła zgłosić swoje kursy, i suma wychodziła ponad 60/min.
+            # Jedno zapytanie zna komplet symboli, więc budżet liczy się dokładnie.
+            symbols = [s.strip().upper() for s in qs.get('symbols', '').split(',') if s.strip()][:_FH_BATCH_MAX]
             if not symbols or not all(re.fullmatch(r'[A-Z0-9.\-]{1,15}', s) for s in symbols):
                 self.send_json(400, {'error': 'symbols required'}); return
 
-            def _fh_one(sym):
-                out = {'quote': None, 'metric': None}
-                for key, url in (
-                    ('quote',  f'https://finnhub.io/api/v1/quote?symbol={sym}&token={token}'),
-                    ('metric', f'https://finnhub.io/api/v1/stock/metric?symbol={sym}&metric=all&token={token}'),
-                ):
-                    try:
-                        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                        with urllib.request.urlopen(req, timeout=8) as resp:
-                            out[key] = json.loads(resp.read() or b'null')
-                    except Exception:
-                        pass    # brak jednej metryki nie może przewrócić całej paczki
-                return sym, out
+            def _fh_get(url):
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    return json.loads(resp.read() or b'null')
+
+            def _fh_quote(sym):
+                try:
+                    return sym, _fh_get(f'https://finnhub.io/api/v1/quote?symbol={sym}&token={token}')
+                except Exception:
+                    return sym, None
+
+            def _fh_metric(sym):
+                try:
+                    data = _fh_get(f'https://finnhub.io/api/v1/stock/metric?symbol={sym}&metric=all&token={token}')
+                    if data is not None:
+                        _FH_METRIC_CACHE[sym] = {'data': data, 'ts': time.time()}
+                    return sym, data
+                except Exception:
+                    return sym, None
 
             try:
                 import concurrent.futures as _cf
-                # 6 wątków, nie 30: darmowy Finnhub daje 60 zapytań na minutę,
-                # a każdy symbol kosztuje dwa. Zalewanie go równolegle kończy się
-                # odpowiedziami 429 zamiast notowań.
+                now = time.time()
+                data = {s: {'quote': None, 'metric': None} for s in symbols}
+
+                # Wskaźniki z cache'u idą od ręki i nie kosztują nic z limitu.
+                stale = []
+                for s in symbols:
+                    entry = _FH_METRIC_CACHE.get(s)
+                    if entry and now - entry['ts'] < _FH_METRIC_TTL:
+                        data[s]['metric'] = entry['data']
+                    else:
+                        stale.append(s)
+
+                # Kursy najpierw i zawsze w komplecie — to one decydują o tym, czy
+                # pozycja ma cenę. Wskaźniki dobieramy dopiero z reszty budżetu,
+                # żeby przy pustym cache'u nie wypchnęły kursów poza limit 60/min.
+                # Nieobsłużone w tej rundzie dojdą przy kolejnym wejściu.
+                _fh_note(len(symbols))
+                budget = _fh_reserve(len(stale))
                 with _cf.ThreadPoolExecutor(max_workers=6) as ex:
-                    data = dict(ex.map(_fh_one, symbols))
+                    for sym, q in ex.map(_fh_quote, symbols):
+                        data[sym]['quote'] = q
+                    for sym, m in ex.map(_fh_metric, stale[:budget]):
+                        if m is not None:
+                            data[sym]['metric'] = m
+                        else:
+                            # 429 albo błąd sieci — oddajemy ostatnie znane
+                            # wskaźniki, dane kwartalne nie psują się przez dobę.
+                            entry = _FH_METRIC_CACHE.get(sym)
+                            if entry:
+                                data[sym]['metric'] = entry['data']
                 self.send_json(200, data)
             except Exception as e:
                 print(f'[finnhub-batch] {e}')
