@@ -39,14 +39,22 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import AlertModal from '../components/AlertModal';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
-// xlsx waży ~416 KB. Statyczny import wciągał go przy każdym wejściu do
-// portfela, choć potrzebny jest wyłącznie w chwili kliknięcia „eksportuj".
+// Ładowane dopiero przy kliknięciu „eksportuj" — samo wejście do portfela
+// nie ma po co ciągnąć generatora arkuszy.
 async function exportXlsx(headers, rows, sheetName, fileName) {
-  const XLSX = await import('xlsx');
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, fileName);
+  const { default: writeXlsxFile } = await import('write-excel-file/browser');
+  // Biblioteka oczekuje komórek jako obiektów z jawnym typem. Nagłówki idą
+  // pogrubione, a wartości rozdzielamy na liczby i tekst — bez tego liczby
+  // wylądowałyby w arkuszu jako napisy i nie dałoby się na nich liczyć.
+  const data = [
+    headers.map(h => ({ value: String(h), fontWeight: 'bold', type: String })),
+    ...rows.map(r => r.map(cell =>
+      typeof cell === 'number' && Number.isFinite(cell)
+        ? { value: cell, type: Number }
+        : { value: cell === '' || cell == null ? null : String(cell), type: String }
+    )),
+  ];
+  await writeXlsxFile(data, { fileName, sheet: sheetName });
 }
 
 const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v6';
