@@ -394,6 +394,34 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Bledne tickery — pokazujemy wprost. Bez tego jeden zly ticker
+          (jak SMSN zamiast SMSN.IL) siedzial w portfelu 20 dni bez sygnalu:
+          scheduler po cichu pomijal snapshoty calego portfela. */}
+      {(() => {
+        const brak = allPositions.filter(p => p.notFound).map(p => p.symbol);
+        if (!brak.length) return null;
+        return (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 14, padding: '10px 14px', borderRadius: 8,
+              background: 'var(--warn-bg, rgba(255,180,50,0.12))',
+              border: '1px solid var(--warn, #d69f2b)',
+              color: 'var(--text)', fontSize: 13, cursor: 'pointer',
+            }}
+            onClick={() => navigate('/portfolio')}
+            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/portfolio'); }}
+            tabIndex={0}
+          >
+            <strong>{t('ticker_not_found')}: </strong>
+            <span className="mono">{brak.join(', ')}</span>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+              {t('ticker_not_found_hint')}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPI grid */}
       <div className="kpi-grid" style={{ gap: 14, marginBottom: 18 }}>
         <KpiPro
