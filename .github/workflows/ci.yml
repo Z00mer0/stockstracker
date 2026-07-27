@@ -66,3 +66,7 @@ jobs:
       # przekroczenie objawia się dopiero brakiem cen u części pozycji.
       # Test zaślepia Finnhuba i liczy wywołania.
       - run: python test_finnhub_batch.py
+      # Regresja SMSN: jeden bledny ticker w portfelu 41-elementowym wylaczyl
+      # snapshoty dla calego portfela na 20 dni, bez sygnalu w UI. Test
+      # pilnuje, ze <=20% brakujacych pozycji lapie fallback, wiecej pomijamy.
+      - run: python test_snapshot_partial.py
