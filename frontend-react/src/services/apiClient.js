@@ -10,7 +10,13 @@ const TOAST_COOLDOWN_MS = 10_000;
 // Nie strasz toastem podczas rozgrzewki backendu — pierwsze 90s od boota
 // najprawdopodobniej to jeszcze cold-start. Retry i tak leci, dane dotra.
 const BOOT_QUIET_MS = 90_000;
+// Jesli backend w ciagu ostatniej minuty odpowiedzial na cokolwiek 2xx,
+// to znaczy ze zyje — pojedynczy timeout na wolnym/opcjonalnym endpointcie
+// (np. kalendarz earningsow, fallback do Yahoo) nie jest powodem, zeby
+// straszyc uzytkownika toastem nad w pelni zaladowanym dashboardem.
+const QUIET_AFTER_SUCCESS_MS = 60_000;
 const bootAt = Date.now();
+let lastSuccessAt = 0;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -63,6 +69,7 @@ export function installFetchRetry(showToast) {
   const notify = () => {
     const now = Date.now();
     if (now - bootAt < BOOT_QUIET_MS) return;
+    if (lastSuccessAt && now - lastSuccessAt < QUIET_AFTER_SUCCESS_MS) return;
     if (now - lastToastAt < TOAST_COOLDOWN_MS) return;
     lastToastAt = now;
     showToast?.('Serwer chwilowo niedostępny — spróbuj odświeżyć za chwilę', {
@@ -82,7 +89,10 @@ export function installFetchRetry(showToast) {
     for (let attempt = 0; attempt <= BACKOFF_MS.length; attempt++) {
       try {
         const res = await originalFetch(input, init);
-        if (!RETRY_STATUSES.has(res.status)) return res;
+        if (!RETRY_STATUSES.has(res.status)) {
+          if (res.ok) lastSuccessAt = Date.now();
+          return res;
+        }
         lastRes = res;
       } catch (err) {
         // AbortSignal timeout wywołanego przez caller — nie retry.
