@@ -5,6 +5,7 @@ import Spinner from '../components/shared/Spinner';
 import PortfolioReview from '../components/PortfolioReview';
 import ConfirmModal from '../components/ConfirmModal';
 import { authHeader } from '../utils/auth.js';
+import { lsSet } from '../utils/safeStorage.js';
 
 const MANUAL_KEY = 'myfund_manual_insights';
 
@@ -20,7 +21,7 @@ function loadManual() {
 }
 
 function saveManual(data) {
-  localStorage.setItem(MANUAL_KEY, JSON.stringify(data));
+  lsSet(MANUAL_KEY, JSON.stringify(data));
 }
 
 async function apiLoadInsights() {

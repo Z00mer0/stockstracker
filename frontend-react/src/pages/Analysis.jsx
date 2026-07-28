@@ -9,6 +9,7 @@ import Card from '../components/shared/Card';
 import { computeRealizedTrades } from '../utils/realizedPL';
 import { formatPercent } from '../utils/format.js';
 import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip as ChartTooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
+import { lsSet } from '../utils/safeStorage.js';
 
 function calcDailyReturns(values) {
   const r = [];
@@ -192,7 +193,7 @@ function loadTargets() {
 }
 
 function saveTargets(t) {
-  localStorage.setItem(REBAL_KEY, JSON.stringify(t));
+  lsSet(REBAL_KEY, JSON.stringify(t));
 }
 
 function RebalanceSection({ enriched, totalValue }) {
@@ -458,7 +459,7 @@ function FireSection({ totalValue }) {
   const [vol,       setVol]       = useState(saved.vol       ?? 15);
 
   useEffect(() => {
-    localStorage.setItem(FIRE_KEY, JSON.stringify({ expenses, savings, annReturn, infl, vol }));
+    lsSet(FIRE_KEY, JSON.stringify({ expenses, savings, annReturn, infl, vol }));
   }, [expenses, savings, annReturn, infl, vol]);
 
   const monthlyExp = parseFloat(expenses) || 0;

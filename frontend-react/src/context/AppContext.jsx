@@ -3,6 +3,7 @@ import { api } from '../hooks/useApi';
 import { resetJournalCache } from '../services/journalService';
 import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 import { weightedAvg } from '../utils/weightedAvg.js';
+import { lsSet } from '../utils/safeStorage.js';
 
 export const AppContext = createContext(null);
 
@@ -38,8 +39,8 @@ async function loadFxRates() {
     const r = data.rates;
     if (!r?.PLN) throw new Error('no PLN in response');
     const rates = { PLN: 1, USD: r.PLN, EUR: r.PLN / r.EUR, GBP: r.PLN / r.GBP };
-    localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates }));
-    localStorage.setItem(FX_PERSIST_KEY, JSON.stringify({ rates }));
+    lsSet(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates }));
+    lsSet(FX_PERSIST_KEY, JSON.stringify({ rates }));
     return { rates, stale: null };
   } catch (e) {
     console.warn('[fx] fetch failed, using fallback:', e.message);
@@ -101,7 +102,7 @@ export function AppProvider({ children }) {
     if (!legacy) return;
     api.post('/api/session/upgrade', {}, { headers: { 'X-Auth-Token': legacy } })
       .then(() => {
-        localStorage.setItem(AUTHED_KEY, '1');
+        lsSet(AUTHED_KEY, '1');
         localStorage.removeItem(LEGACY_TOKEN_KEY);
       })
       .catch(() => {
@@ -112,9 +113,9 @@ export function AppProvider({ children }) {
   }, []);
 
   function login(name, opts = {}) {
-    localStorage.setItem(AUTHED_KEY, '1');
-    localStorage.setItem(DISPLAY_NAME_KEY, name || '');
-    if (opts.demo) localStorage.setItem(DEMO_KEY, '1');
+    lsSet(AUTHED_KEY, '1');
+    lsSet(DISPLAY_NAME_KEY, name || '');
+    if (opts.demo) lsSet(DEMO_KEY, '1');
     else localStorage.removeItem(DEMO_KEY);
     resetJournalCache();
     setLoading(true); // prevent premature empty-portfolio modal before fetchData fires
@@ -237,7 +238,7 @@ export function AppProvider({ children }) {
   }, [rawData, authed]);
 
   function switchPortfolio(id) {
-    localStorage.setItem(ACTIVE_PORTFOLIO_KEY, id);
+    lsSet(ACTIVE_PORTFOLIO_KEY, id);
     setActivePortfolioId(id);
   }
 

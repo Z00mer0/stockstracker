@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authHeader } from '../utils/auth.js';
+import { lsSet } from '../utils/safeStorage.js';
 
 const CACHE_TTL_MS  = 6 * 60 * 60 * 1000;  // 6h dla makro
 
@@ -42,7 +43,7 @@ function fromCache(key, ttl) {
 }
 
 function toCache(key, data) {
-  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+  try { lsSet(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
 }
 
 function isoDate(str) {

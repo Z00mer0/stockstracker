@@ -6,6 +6,7 @@ import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import AddStockModal from '../AddStockModal';
 import StockDetailModal from '../StockDetailModal';
+import { lsSet } from '../../utils/safeStorage.js';
 
 function isEuropeDST() {
   const now = new Date();
@@ -92,7 +93,7 @@ function loadCache() {
 }
 
 function saveCache(tickers) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ tickers, ts: Date.now() })); } catch {}
+  try { lsSet(CACHE_KEY, JSON.stringify({ tickers, ts: Date.now() })); } catch {}
 }
 
 const FALLBACK_TICKERS = [

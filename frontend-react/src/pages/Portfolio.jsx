@@ -39,6 +39,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import AlertModal from '../components/AlertModal';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
+import { lsSet } from '../utils/safeStorage.js';
 // Ładowane dopiero przy kliknięciu „eksportuj" — samo wejście do portfela
 // nie ma po co ciągnąć generatora arkuszy.
 async function exportXlsx(headers, rows, sheetName, fileName) {
@@ -164,7 +165,7 @@ function toggleWatchlist(symbol) {
   const list = JSON.parse(localStorage.getItem(WATCH_KEY) || '[]');
   const idx = list.indexOf(symbol);
   if (idx === -1) list.push(symbol); else list.splice(idx, 1);
-  localStorage.setItem(WATCH_KEY, JSON.stringify(list));
+  lsSet(WATCH_KEY, JSON.stringify(list));
   return idx === -1;
 }
 function isWatched(symbol) {
@@ -391,7 +392,7 @@ export default function Portfolio() {
   const saveLayoutToServer = useCallback((newLayout) => {
     if (!activePortfolioId) return;
     try {
-      localStorage.setItem(layoutKey, JSON.stringify(newLayout));
+      lsSet(layoutKey, JSON.stringify(newLayout));
     } catch {}
   }, [activePortfolioId, layoutKey]);
 

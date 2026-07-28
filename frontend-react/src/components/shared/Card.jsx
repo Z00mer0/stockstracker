@@ -1,5 +1,6 @@
 // src/components/shared/Card.jsx
 import { useRef, useState } from 'react';
+import { lsSet } from '../../utils/safeStorage.js';
 
 const COLLAPSE_KEY = 'myfund_collapsed_cards';
 
@@ -39,7 +40,7 @@ export default function Card({ title, actions, children, className = '', collaps
       if (storageKey) {
         const all = loadCollapsed();
         all[storageKey] = next;
-        localStorage.setItem(COLLAPSE_KEY, JSON.stringify(all));
+        lsSet(COLLAPSE_KEY, JSON.stringify(all));
       }
       if (next) requestAnimationFrame(() => clampAncestorScroll(rootRef.current));
       return next;

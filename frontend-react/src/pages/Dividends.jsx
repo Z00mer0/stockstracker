@@ -8,6 +8,7 @@ import Chip from '../components/shared/Chip';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import AddDividendModal from '../components/AddDividendModal';
 import useDividendEvents from '../hooks/useDividendEvents';
+import { lsSet } from '../utils/safeStorage.js';
 import {
   fetchDividendHistory,
   calcAnnualDivPerShare,
@@ -76,7 +77,7 @@ export default function Dividends() {
   });
   const toggle = (key) => setCollapsed(prev => {
     const next = { ...prev, [key]: !prev[key] };
-    localStorage.setItem('myfund_div_collapsed', JSON.stringify(next));
+    lsSet('myfund_div_collapsed', JSON.stringify(next));
     return next;
   });
 
@@ -101,7 +102,7 @@ export default function Dividends() {
     if (!isNaN(v) && v > 0) {
       const pln = v * dispFx;
       setFireGoal(pln);
-      localStorage.setItem('myfund_fire_goal_monthly', String(pln));
+      lsSet('myfund_fire_goal_monthly', String(pln));
     }
     setEditingGoal(false);
   }
@@ -391,7 +392,7 @@ export default function Dividends() {
                 <SegmentedControl
                   options={[10, 20, 30].map(v => ({ value: v, label: `${v} ${t('drip_years_unit')}` }))}
                   value={dripYears}
-                  onChange={v => { setDripYears(v); localStorage.setItem('myfund_drip_years', String(v)); }}
+                  onChange={v => { setDripYears(v); lsSet('myfund_drip_years', String(v)); }}
                 />
               </div>
               <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
@@ -399,7 +400,7 @@ export default function Dividends() {
                 <SegmentedControl
                   options={[0, 3, 5, 8].map(v => ({ value: v, label: `${v}%` }))}
                   value={dripGrowth}
-                  onChange={v => { setDripGrowth(v); localStorage.setItem('myfund_drip_growth', String(v)); }}
+                  onChange={v => { setDripGrowth(v); lsSet('myfund_drip_growth', String(v)); }}
                 />
               </div>
             </div>
@@ -471,7 +472,7 @@ export default function Dividends() {
         <SegmentedControl
           options={[t('gross').toUpperCase(), t('net').toUpperCase()]}
           value={isNet ? t('net').toUpperCase() : t('gross').toUpperCase()}
-          onChange={v => { setIsNet(v === t('net').toUpperCase()); localStorage.setItem(DIV_MODE_KEY, v === t('net').toUpperCase() ? 'net' : 'gross'); }}
+          onChange={v => { setIsNet(v === t('net').toUpperCase()); lsSet(DIV_MODE_KEY, v === t('net').toUpperCase() ? 'net' : 'gross'); }}
         />
       </div>
 

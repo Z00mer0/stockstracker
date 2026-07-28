@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../hooks/useApi';
+import { lsSet } from '../utils/safeStorage.js';
 
 const TOKEN_KEY = 'myfund_auth_token';
 
@@ -25,7 +26,7 @@ export default function LoginForm({ onLogin }) {
         ? { username, password }
         : { username, display_name: displayName || username, password };
       const res = await api.post(endpoint, payload);
-      localStorage.setItem(TOKEN_KEY, res.data.token);
+      lsSet(TOKEN_KEY, res.data.token);
       onLogin(res.data.token, res.data.display_name);
     } catch (err) {
       setError(err.response?.data?.error ?? (mode === 'login' ? 'Błąd logowania' : 'Błąd rejestracji'));

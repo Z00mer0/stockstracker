@@ -1,3 +1,4 @@
+import { lsSet } from '../utils/safeStorage.js';
 const CACHE_PREFIX = 'st_div_cache_';
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
@@ -31,7 +32,7 @@ export async function fetchDividendHistory(symbol) {
     const data = Object.values(evts)
       .map(d => ({ date: new Date(d.date * 1000).toISOString().slice(0, 10), amount: d.amount }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
+    lsSet(cacheKey, JSON.stringify({ ts: Date.now(), data }));
     return data;
   } catch {
     return [];

@@ -9,6 +9,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
 import { useApp } from '../../context/AppContext';
+import { lsSet } from '../../utils/safeStorage.js';
 
 const THEME_KEY = 'myfund_theme';
 const MOBILE_BP = 768;
@@ -35,7 +36,7 @@ export default function Layout() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(THEME_KEY, theme);
+    lsSet(THEME_KEY, theme);
   }, [theme]);
 
   useEffect(() => {

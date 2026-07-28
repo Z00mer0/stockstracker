@@ -1,6 +1,7 @@
 // src/hooks/usePriceHistory.js
 import { useState, useEffect, useRef } from 'react';
 import { api } from './useApi';
+import { lsSet } from '../utils/safeStorage.js';
 
 // 1D/1W refresh frequently during session; longer periods can cache longer
 const CACHE_TTL_BY_PERIOD = { '1D': 60 * 1000, '1W': 2 * 60 * 1000 };
@@ -28,7 +29,7 @@ function getCached(key, ttl) {
 }
 
 function setCache(key, data) {
-  try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
+  try { lsSet(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
 
 function parseYF(raw, interval) {

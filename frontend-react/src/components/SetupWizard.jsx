@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { lsSet } from '../utils/safeStorage.js';
 
 const WIZARD_KEY = 'myfund_wizard_done';
 
@@ -8,7 +9,7 @@ export function shouldShowWizard(portfolio) {
 }
 
 export function dismissWizard() {
-  localStorage.setItem(WIZARD_KEY, '1');
+  lsSet(WIZARD_KEY, '1');
 }
 
 const PROFILES = [
@@ -50,8 +51,8 @@ export default function SetupWizard({ onDone }) {
   function finish() {
     dismissWizard();
     // Save profile preference to localStorage for reference
-    if (profile) localStorage.setItem('myfund_inv_profile', profile);
-    localStorage.setItem('myfund_base_currency', currency);
+    if (profile) lsSet('myfund_inv_profile', profile);
+    lsSet('myfund_base_currency', currency);
     onDone();
   }
 

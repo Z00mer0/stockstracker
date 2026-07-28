@@ -21,6 +21,13 @@ import urllib.error
 import http.cookiejar
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+# Harmonogram snapshotów liczył offset Warszawy z miesiąca (`2 if 4 <= month <= 10`).
+# Polska przestawia zegar w ostatnią niedzielę marca i października, więc dwa
+# okna w roku wychodziły o godzinę nie tak: koniec marca (naprawdę +2, wychodziło
+# +1) i koniec października (naprawdę +1, wychodziło +2).
+_WARSAW = ZoneInfo('Europe/Warsaw')
 
 BASE       = Path(__file__).parent
 REACT_DIST = BASE / 'frontend-react' / 'dist'
@@ -5852,9 +5859,7 @@ def _snapshot_scheduler():
     """
     # Catch-up: handle server restart after 22:00
     try:
-        now_utc  = datetime.datetime.now(datetime.timezone.utc)
-        offset_h = 2 if 4 <= now_utc.month <= 10 else 1
-        hour_waw = (now_utc.hour + offset_h) % 24
+        hour_waw = datetime.datetime.now(_WARSAW).hour
         if hour_waw >= 22:
             today = datetime.date.today().isoformat()
             with _conn() as conn, conn.cursor() as cur:
@@ -5870,9 +5875,7 @@ def _snapshot_scheduler():
 
     while True:
         try:
-            now_utc  = datetime.datetime.now(datetime.timezone.utc)
-            offset_h = 2 if 4 <= now_utc.month <= 10 else 1
-            now_waw  = now_utc + datetime.timedelta(hours=offset_h)
+            now_waw  = datetime.datetime.now(_WARSAW)
             target   = now_waw.replace(hour=22, minute=0, second=0, microsecond=0)
             if now_waw >= target:
                 target += datetime.timedelta(days=1)
