@@ -20,6 +20,7 @@ export function useSplitDetector(portfolio, transactions) {
 
   useEffect(() => {
     if (!symbols.length) return;
+    let cancelled = false;
     const base = import.meta.env.VITE_API_URL ?? '';
     const url = `${base}/api/splits?symbols=${encodeURIComponent(symbols.join(','))}`;
 
@@ -54,9 +55,11 @@ export function useSplitDetector(portfolio, transactions) {
           }
         }
 
-        setAlerts(found);
+        if (!cancelled) setAlerts(found);
       })
       .catch(() => {});
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbols.join(','), transactions.length]);
 

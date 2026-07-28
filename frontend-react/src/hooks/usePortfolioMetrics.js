@@ -345,6 +345,12 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
   useEffect(() => {
     if (!portfolio.length) return;
 
+    // Bez tego odpowiedź na poprzedni portfel dopisywała się do bieżącego:
+    // przełączenie A → B w trakcie lotu kończyło się tym, że .then() z A
+    // nadpisywał dane B. Okno jest szerokie — fetchAllMetrics ma timeouty
+    // 20-25 s plus 5 s pauzy przed ponowieniem.
+    let cancelled = false;
+
     const cacheKey = `${CACHE_KEY}_${symbolsKey}`;
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
@@ -363,6 +369,7 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       regularSymbols.length > 0 ? fetchAllMetrics(regularSymbols) : Promise.resolve({}),
       ...cryptoSymbols.map(s => fetchCryptoPrice(s).then(m => ({ [s]: m ?? { price: null, dailyChg: null, pe: null, peFwd: null, pb: null, sector: 'Cryptocurrency' } }))),
     ]).then(async ([regularData, ...cryptoResults]) => {
+        if (cancelled) return;
         const cryptoData = Object.assign({}, ...cryptoResults);
         const data = { ...regularData, ...cryptoData };
         setMarketData(data);
@@ -371,6 +378,7 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
         if (failed.length > 0) {
           await new Promise(r => setTimeout(r, 5000)); // 5s — enough for Render to wake
           const retry = await fetchAllMetrics(failed);
+          if (cancelled) return;
           const merged = { ...data, ...retry };
           setMarketData(merged);
           writeCache(cacheKey, merged);
@@ -380,8 +388,11 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       })
       // Without this the chain rejected unhandled: marketData stayed empty and
       // the user got a blank dashboard with no signal that anything had failed.
-      .catch((err) => console.error('[usePortfolioMetrics]', err))
-      .finally(() => setMetricsLoading(false));
+      .catch((err) => { if (!cancelled) console.error('[usePortfolioMetrics]', err); })
+      // Bez warunku porzucony przebieg gasił spinner należący już do nowego.
+      .finally(() => { if (!cancelled) setMetricsLoading(false); });
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbolsKey]);
 
