@@ -925,6 +925,8 @@ export default {
   notif_push_now_result:      'Sent {sent} of {qualifying} qualifying ({scanned} scanned).',
   notif_push_now_empty:       'No symbol in your portfolio or watchlist has a ≥ ±5% move today.',
   notif_push_now_error:       'Could not send — try again.',
+  notif_hour_label:           'Delivery hour (Warsaw)',
+  notif_hour_hint:            'Big-move notifications are only sent from this hour onward (Warsaw time).',
 
   notif_pro_bigDrop_1:        'Sharp drop today — worth checking the driver and your reaction plan.',
   notif_pro_bigDrop_2:        'Price down hard. Time to revisit the thesis.',

@@ -11,7 +11,7 @@ const SnapshotImportModal = lazy(() => import('../components/SnapshotImportModal
 import Card from '../components/shared/Card';
 import ConfirmModal from '../components/ConfirmModal';
 import NotificationCard from '../components/NotificationCard';
-import { useNotificationTone } from '../hooks/useNotificationTone';
+import { useNotificationTone, useNotificationHour } from '../hooks/useNotificationTone';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { authHeader } from '../utils/auth.js';
 import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
@@ -210,6 +210,7 @@ function ExportDataSection() {
 function NotificationToneSection() {
   const t = useT();
   const [tone, setTone] = useNotificationTone();
+  const [hour, setHour] = useNotificationHour();
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState(null);
   const options = [
@@ -268,6 +269,21 @@ function NotificationToneSection() {
         </SettingsRow>
         <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
           {t('notif_tone_hint')}
+        </p>
+        <SettingsRow label={t('notif_hour_label')}>
+          <select
+            value={hour}
+            onChange={e => setHour(e.target.value)}
+            className="field-input mono"
+            style={{ fontSize: 12, width: 100 }}
+          >
+            {Array.from({ length: 24 }, (_, i) => (
+              <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+            ))}
+          </select>
+        </SettingsRow>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
+          {t('notif_hour_hint')}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button

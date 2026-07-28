@@ -1420,6 +1420,8 @@ if DATABASE_URL:
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS us_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS gpw_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_language TEXT DEFAULT 'pl'")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_hour INT DEFAULT 16")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -2754,34 +2756,69 @@ def _cooldown_passed(last_sent):
 # ── Tekst pushy o duzym ruchu (mirror utils/notificationText.js) ─────────
 _BIG_MOVE_TEXTS = {
     'professional': {
-        'up':   ['Silny wzrost dzis — sprawdz katalizator zanim dolozysz.',
-                 'Kurs mocno w gore. Warto przejrzec plan realizacji zysku.',
-                 'Wyrazne wybicie — kandydat do rebalansu.'],
-        'down': ['Silny spadek dzis — warto sprawdzic przyczyne i plan reakcji.',
-                 'Kurs mocno w dol. Rozwaz przeglad tezy inwestycyjnej.',
-                 'Wyrazna przecena w ciagu sesji — kandydat do analizy technicznej.'],
+        'pl': {
+            'up':   ['Silny wzrost dzis — sprawdz katalizator zanim dolozysz.',
+                     'Kurs mocno w gore. Warto przejrzec plan realizacji zysku.',
+                     'Wyrazne wybicie — kandydat do rebalansu.'],
+            'down': ['Silny spadek dzis — warto sprawdzic przyczyne i plan reakcji.',
+                     'Kurs mocno w dol. Rozwaz przeglad tezy inwestycyjnej.',
+                     'Wyrazna przecena w ciagu sesji — kandydat do analizy technicznej.'],
+        },
+        'en': {
+            'up':   ['Strong rally today — verify the catalyst before adding.',
+                     'Price up hard. Worth reviewing your profit-taking plan.',
+                     'Clear breakout — candidate for a rebalance.'],
+            'down': ['Sharp drop today — worth checking the driver and your reaction plan.',
+                     'Price down hard. Time to revisit the thesis.',
+                     'Clear intraday sell-off — candidate for a technical review.'],
+        },
     },
     'funny': {
-        'up':   ['To the moon! 🚀 Sprzedawaj kto moze!',
-                 'Rakieta odpalona 🚀🚀 Bierz zyski i uciekaj.',
-                 'Zielona bestia! 💚 Dzis stawiasz kolejke.'],
-        'down': ['Dzisiaj dostaje w pizde. Laduj sie kto moze!',
-                 'Ostro leci z gorki 📉 Czas na tanie zakupy czy jeszcze noz?',
-                 'Krwawa jatka na wykresie. Kto ma jaja, ten dokupuje.'],
+        'pl': {
+            'up':   ['To the moon! 🚀 Sprzedawaj kto moze!',
+                     'Rakieta odpalona 🚀🚀 Bierz zyski i uciekaj.',
+                     'Zielona bestia! 💚 Dzis stawiasz kolejke.'],
+            'down': ['Dzisiaj dostaje w pizde. Laduj sie kto moze!',
+                     'Ostro leci z gorki 📉 Czas na tanie zakupy czy jeszcze noz?',
+                     'Krwawa jatka na wykresie. Kto ma jaja, ten dokupuje.'],
+        },
+        'en': {
+            'up':   ['To the moon! 🚀 Take profits while you can!',
+                     'Rocket launched 🚀🚀 Grab the bag and run.',
+                     'Green beast! 💚 Drinks are on you tonight.'],
+            'down': ['Getting wrecked today. Buy the dip if you dare!',
+                     'Absolutely tanking 📉 Bargain bin or falling knife?',
+                     'Bloodbath on the chart. Diamond hands, do your thing.'],
+        },
     },
 }
 
+_BIG_MOVE_TODAY = {'pl': 'dzis', 'en': 'today'}
 
-def _big_move_text(sym, changePct, tone, today_iso):
-    """Deterministyczny wybor wariantu — ten sam ticker w danym dniu i tonie
-    dostaje ten sam tekst niezaleznie od tego ile razy leci scan."""
+
+def _big_move_text(sym, changePct, tone, lang, today_iso):
+    """Deterministyczny wybor wariantu — ten sam ticker w danym dniu, tonie
+    i jezyku dostaje ten sam tekst niezaleznie od tego ile razy leci scan."""
     direction = 'up' if changePct >= 0 else 'down'
-    variants = _BIG_MOVE_TEXTS.get(tone if tone in _BIG_MOVE_TEXTS else 'professional', {}).get(direction, [])
-    if not variants:
-        variants = _BIG_MOVE_TEXTS['professional'][direction]
-    seed = hashlib.sha1(f'{sym}|{tone}|{direction}|{today_iso}'.encode()).digest()
+    tone_map = _BIG_MOVE_TEXTS.get(tone if tone in _BIG_MOVE_TEXTS else 'professional')
+    lang_map = tone_map.get(lang if lang in tone_map else 'pl')
+    variants = lang_map.get(direction) or _BIG_MOVE_TEXTS['professional']['pl'][direction]
+    seed = hashlib.sha1(f'{sym}|{tone}|{lang}|{direction}|{today_iso}'.encode()).digest()
     idx = seed[0] % len(variants)
     return variants[idx]
+
+
+def _big_move_title(sym, changePct, lang):
+    direction = 'up' if changePct >= 0 else 'down'
+    arrow = '🚀' if direction == 'up' else '📉'
+    sign = '+' if direction == 'up' else ''
+    today_word = _BIG_MOVE_TODAY.get(lang, 'dzis')
+    return f'{arrow} {sym} {sign}{changePct:.2f}% {today_word}'
+
+
+class _SkipBigMoves(Exception):
+    """Sygnal early-return z sekcji 1d bez logowania jako blad."""
+    pass
 
 
 def _run_push_checks():
@@ -2993,15 +3030,25 @@ def _run_push_checks():
         # ze zmianą dzienną |dp| >= 5% dostaje jednego pusha na sesję (per
         # kierunek), dedupowanego przez push_sent kluczem move:date:sym:dir.
         try:
-            wl_syms = {i.get('symbol', '') for i in (items or []) if i.get('symbol')}
             with _conn() as c, c.cursor() as cur:
                 cur.execute("""SELECT DISTINCT h.symbol FROM portfolio_holdings h
                                JOIN portfolio_list p ON p.id = h.portfolio_id
                                WHERE p.user_id=%s AND h.qty > 0""", (username,))
                 pf_syms = {r[0] for r in cur.fetchall() if r[0]}
-                cur.execute("SELECT notification_tone FROM portfolio_alerts WHERE username=%s", (username,))
+                cur.execute("""SELECT notification_tone, notification_language, notification_hour
+                               FROM portfolio_alerts WHERE username=%s""", (username,))
                 trow = cur.fetchone()
             tone = (trow[0] if trow and trow[0] else 'professional')
+            lang = (trow[1] if trow and trow[1] else 'pl')
+            hour_pref = int(trow[2]) if trow and trow[2] is not None else 16
+            # Gate na godzine dostawy w strefie Warsaw. Pusze o duzym ruchu
+            # dochodza dopiero po ustawionej godzinie — jesli ticker skoczyl
+            # rano, wisi az do np. 16:00. Dedupe per direction/tone/lang na
+            # dzien pilnuje zeby nie poszlo dwa razy.
+            now_warsaw = datetime.datetime.now(_WARSAW)
+            if now_warsaw.hour < hour_pref:
+                raise _SkipBigMoves()
+            wl_syms = {i.get('symbol', '') for i in (items or []) if i.get('symbol')}
             targets = sorted(wl_syms | pf_syms)
             _prefill_quotes(targets, price_cache)
             today_iso = today.isoformat()
@@ -3016,18 +3063,18 @@ def _run_push_checks():
                     if chg is None or abs(chg) < 5:
                         continue
                     direction = 'up' if chg >= 0 else 'down'
-                    key = f'move:{today_iso}:{sym}:{direction}:{tone}'
+                    key = f'move:{today_iso}:{sym}:{direction}:{tone}:{lang}'
                     if _already_sent(username, key):
                         continue
-                    arrow = '🚀' if direction == 'up' else '📉'
-                    sign = '+' if direction == 'up' else ''
-                    title = f'{arrow} {sym} {sign}{chg:.2f}% dziś'
-                    body = _big_move_text(sym, chg, tone, today_iso)
+                    title = _big_move_title(sym, chg, lang)
+                    body = _big_move_text(sym, chg, tone, lang, today_iso)
                     if _send_push(username, title, body, '/watchlist'):
                         _mark_sent(username, key)
                         stats['bigMove'] += 1
                 except Exception as e:
                     log.warning(f'[push] big move {username}/{sym}: {e}')
+        except _SkipBigMoves:
+            pass
         except Exception as e:
             log.warning(f'[push] big moves {username}: {e}')
 
@@ -3268,17 +3315,20 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            tone = 'professional'
+            tone, lang, hour = 'professional', 'pl', 16
             if DATABASE_URL:
                 try:
                     with _conn() as c, c.cursor() as cur:
-                        cur.execute("SELECT notification_tone FROM portfolio_alerts WHERE username=%s", (username,))
+                        cur.execute("""SELECT notification_tone, notification_language, notification_hour
+                                       FROM portfolio_alerts WHERE username=%s""", (username,))
                         row = cur.fetchone()
-                    if row and row[0]:
-                        tone = row[0]
+                    if row:
+                        if row[0]: tone = row[0]
+                        if row[1]: lang = row[1]
+                        if row[2] is not None: hour = int(row[2])
                 except Exception as e:
                     log.warning(f'[notif-tone] get {username}: {e}')
-            self.send_json(200, {'tone': tone}); return
+            self.send_json(200, {'tone': tone, 'language': lang, 'hour': hour}); return
 
         elif path == '/api/calendar':
             qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
@@ -5678,11 +5728,13 @@ async function doRecover() {
                                    JOIN portfolio_list p ON p.id = h.portfolio_id
                                    WHERE p.user_id=%s AND h.qty > 0""", (username,))
                     pf_syms = {r[0] for r in cur.fetchall() if r[0]}
-                    cur.execute("SELECT notification_tone FROM portfolio_alerts WHERE username=%s", (username,))
+                    cur.execute("""SELECT notification_tone, notification_language
+                                   FROM portfolio_alerts WHERE username=%s""", (username,))
                     trow = cur.fetchone()
                 wl_items = load_watchlist(username) or []
                 wl_syms = {i.get('symbol', '') for i in wl_items if i.get('symbol')}
                 tone = (trow[0] if trow and trow[0] else 'professional')
+                lang = (trow[1] if trow and trow[1] else 'pl')
                 targets = sorted(wl_syms | pf_syms)
                 today_iso = datetime.date.today().isoformat()
                 cache = {}
@@ -5700,16 +5752,13 @@ async function doRecover() {
                         if chg is None or abs(chg) < 5:
                             continue
                         qualifying += 1
-                        direction = 'up' if chg >= 0 else 'down'
-                        arrow = '🚀' if direction == 'up' else '📉'
-                        sign = '+' if direction == 'up' else ''
-                        title = f'{arrow} {sym} {sign}{chg:.2f}% dziś'
-                        body = _big_move_text(sym, chg, tone, today_iso)
+                        title = _big_move_title(sym, chg, lang)
+                        body = _big_move_text(sym, chg, tone, lang, today_iso)
                         if _send_push(username, title, body, '/watchlist'):
                             sent += 1
                     except Exception as e:
                         log.warning(f'[push] big-move-scan {username}/{sym}: {e}')
-                self.send_json(200, {'scanned': scanned, 'qualifying': qualifying, 'sent': sent, 'tone': tone})
+                self.send_json(200, {'scanned': scanned, 'qualifying': qualifying, 'sent': sent, 'tone': tone, 'language': lang})
             except Exception as e:
                 log.warning(f'[push] big-move-scan {username}: {e}')
                 self.send_json(500, {'error': 'scan failed'})
@@ -5768,17 +5817,39 @@ async function doRecover() {
                 self.send_json(200, {'ok': True}); return
             try:
                 body = self.read_json(max_size=256)
-                tone = str(body.get('tone') or 'professional')
-                if tone not in ('professional', 'funny'):
-                    self.send_json(400, {'error': 'tone must be professional|funny'}); return
+                # Wszystkie trzy pola opcjonalne — klient wysyla tylko to co
+                # sie zmienilo. Walidacja per-pole, zapis tylko dostarczonych.
+                sets, params = [], []
+                if 'tone' in body:
+                    tone = str(body.get('tone') or '')
+                    if tone not in ('professional', 'funny'):
+                        self.send_json(400, {'error': 'tone must be professional|funny'}); return
+                    sets.append('notification_tone=%s'); params.append(tone)
+                if 'language' in body:
+                    lang = str(body.get('language') or '')
+                    if lang not in ('pl', 'en'):
+                        self.send_json(400, {'error': 'language must be pl|en'}); return
+                    sets.append('notification_language=%s'); params.append(lang)
+                if 'hour' in body:
+                    try:
+                        hour = int(body.get('hour'))
+                    except (TypeError, ValueError):
+                        self.send_json(400, {'error': 'hour must be int 0-23'}); return
+                    if not 0 <= hour <= 23:
+                        self.send_json(400, {'error': 'hour must be int 0-23'}); return
+                    sets.append('notification_hour=%s'); params.append(hour)
+                if not sets:
+                    self.send_json(200, {'ok': True}); return
                 with _conn() as c, c.cursor() as cur:
+                    # Wstawiamy rekord z domyslnym threshold_pct jesli nie ma —
+                    # portfolio_alerts jest ogolnym backing-store'em prefsow pushy.
                     cur.execute("""
-                        INSERT INTO portfolio_alerts (username, threshold_pct, notification_tone)
-                        VALUES (%s, %s, %s)
-                        ON CONFLICT (username) DO UPDATE
-                        SET notification_tone = EXCLUDED.notification_tone
-                    """, (username, 10, tone))
-                self.send_json(200, {'ok': True, 'tone': tone})
+                        INSERT INTO portfolio_alerts (username, threshold_pct)
+                        VALUES (%s, 10) ON CONFLICT (username) DO NOTHING
+                    """, (username,))
+                    cur.execute(f"UPDATE portfolio_alerts SET {', '.join(sets)} WHERE username=%s",
+                                (*params, username))
+                self.send_json(200, {'ok': True})
             except Exception as e:
                 log.warning(f'[notif-tone] save {username}: {e}')
                 self.send_json(400, {'error': 'bad request'})
