@@ -31,6 +31,7 @@ export function useFxBreakdown(enrichedPositions, transactions, fxRates) {
     .join(',');
 
   useEffect(() => {
+    let cancelled = false;
     const fxPositions = enrichedPositions.filter(
       p => p.currency && p.currency !== 'PLN' && p.price != null && p.avgPrice > 0
     );
@@ -86,8 +87,11 @@ export function useFxBreakdown(enrichedPositions, transactions, fxRates) {
 
         map[pos.symbol] = { symbol: pos.symbol, currency: pos.currency, purchaseFx, currentFx, assetReturn, fxReturn, totalReturn };
       });
+      if (cancelled) return;
       setBreakdown(map);
-    }).catch(() => {}).finally(() => setFxLoading(false));
+    }).catch(() => {}).finally(() => { if (!cancelled) setFxLoading(false); });
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fxSymbols, JSON.stringify(fxRates)]);
 
