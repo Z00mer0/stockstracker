@@ -1,7 +1,9 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless — proxies Yahoo Finance chart data (no auth required)
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (rateLimited(req, res)) return;
 
   const { symbol, interval, range } = req.query;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });

@@ -2166,6 +2166,56 @@ def _send_push(username, title, body, url='/'):
 QUOTES_BASE = os.environ.get('QUOTES_URL', 'https://myfund-app.vercel.app').rstrip('/')
 
 
+def _quote_from_entry(entry):
+    """Wpis z /api/quotes?format=map → ten sam kształt, co zwraca _fetch_quote."""
+    if not isinstance(entry, dict) or entry.get('notFound'):
+        return None
+    if (entry.get('price') or 0) > 0:              # ścieżka stooq
+        return {'price': float(entry['price']), 'changePct': None, 'high52': None, 'low52': None}
+    q = entry.get('quote') or {}
+    if (q.get('regularMarketPrice') or 0) > 0:
+        return {
+            'price': float(q['regularMarketPrice']),
+            'changePct': q.get('regularMarketChangePercent'),
+            'high52': q.get('fiftyTwoWeekHigh'),
+            'low52': q.get('fiftyTwoWeekLow'),
+        }
+    return None
+
+
+_QUOTES_CHUNK = 60   # MAX_SYMBOLS po stronie api/quotes.js
+
+
+def _prefill_quotes(symbols, price_cache):
+    """Dociąga brakujące notowania paczkami zamiast po jednym symbolu.
+
+    Pętle alertów i wyceny wołały _fetch_quote per symbol, czyli jedno żądanie
+    HTTP na pozycję na portfel — przy kilku portfelach po kilkadziesiąt pozycji
+    robiła się z tego seria setek żądań z jednego adresu IP Rendera. Endpoint
+    obsługuje format=map do 60 symboli naraz i odpytuje Yahoo równolegle, więc
+    ta sama praca mieści się w kilku żądaniach.
+
+    Symbole, których paczka nie rozwiązała, zostają nietknięte — pobierze je
+    _fetch_quote pojedynczo, razem z zapasem przez Finnhuba dla spółek US.
+    """
+    missing = [s for s in dict.fromkeys(symbols) if s and s not in price_cache]
+    for i in range(0, len(missing), _QUOTES_CHUNK):
+        chunk = missing[i:i + _QUOTES_CHUNK]
+        try:
+            url = (f'{QUOTES_BASE}/api/quotes?format=map&symbols='
+                   f'{urllib.parse.quote(",".join(chunk))}')
+            req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                quotes = (json.loads(r.read()) or {}).get('quotes') or {}
+        except Exception as e:
+            print(f'[quotes] paczka {len(chunk)} symboli: {e}')
+            continue
+        for sym in chunk:
+            q = _quote_from_entry(quotes.get(sym))
+            if q is not None:
+                price_cache[sym] = q
+
+
 def _fetch_quote(symbol):
     """Bieżące notowanie przez /api/quotes (Vercel) — to samo źródło co frontend.
     Zwraca {'price','changePct','high52','low52'} lub None. Pola poza price mogą
@@ -2404,6 +2454,7 @@ def _portfolio_market_value(username, price_cache, rates):
                        WHERE p.user_id = %s GROUP BY pc.currency""", (username,))
         cash = cur.fetchall()
     total = 0.0
+    _prefill_quotes([s for s, q, _ in holdings if float(q or 0) > 0], price_cache)
     for sym, qty, curr in holdings:
         if float(qty or 0) <= 0:
             continue
@@ -2440,6 +2491,24 @@ def _share_price(symbol):
     price = q['price'] if q else None
     _share_price_cache[symbol] = (now, price)
     return price
+
+
+def _prefill_share_prices(symbols):
+    """Paczkowe dociągnięcie cen do _share_price_cache przed pętlą po pozycjach.
+
+    Bez tego publiczny link do portfela wysyłał jedno żądanie na pozycję przy
+    każdym wygaśnięciu TTL-a.
+    """
+    now = time.time()
+    stale = [s for s in dict.fromkeys(symbols)
+             if s and not (_share_price_cache.get(s)
+                           and now - _share_price_cache[s][0] < _SHARE_PRICE_TTL)]
+    if not stale:
+        return
+    fetched = {}
+    _prefill_quotes(stale, fetched)
+    for sym, q in fetched.items():
+        _share_price_cache[sym] = (now, q['price'])
 
 
 def _share_fx():
@@ -2488,6 +2557,8 @@ def _build_shared_payload(username, portfolio_id):
     transactions = data.get('transactions') or []
     fx = _share_fx()
     rows, total_val, total_cost = [], 0.0, 0.0
+    _prefill_share_prices([h.get('symbol') or '' for h in holdings
+                           if float(h.get('qty') or 0) > 0])
     for h in holdings:
         qty = float(h.get('qty') or 0)
         avg = float(h.get('avgPrice') or 0)
@@ -2682,6 +2753,7 @@ def _run_push_checks():
         dirty = False
         try:
             items = load_watchlist(username)
+            _prefill_quotes([i.get('symbol', '') for i in items], price_cache)
             for item in items:
                 sym = item.get('symbol', '')
                 for alert in item.get('alerts', []):
