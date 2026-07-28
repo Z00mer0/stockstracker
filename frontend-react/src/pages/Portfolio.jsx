@@ -31,6 +31,7 @@ import Chip from '../components/shared/Chip';
 import PortfolioPieChart from '../components/PortfolioPieChart';
 import Card from '../components/shared/Card';
 import { computePortfolioValue } from '../utils/portfolioValue.js';
+import { computeRealizedTrades } from '../utils/realizedPL.js';
 import HistoryChart from '../components/HistoryChart';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import SegmentedControl from '../components/shared/SegmentedControl';
@@ -477,21 +478,24 @@ export default function Portfolio() {
   const ytdChartData = useMemo(() => {
     const jan1 = `${new Date().getFullYear()}-01-01`;
     const dispFx = fxRates[displayCurrency] ?? 1;
-    const sells = transactions
-      .filter(tx => tx.type === 'SELL' && tx.date >= jan1 && tx.costBasis != null)
+    // Idziemy przez computeRealizedTrades bo robi backfill costBasis z historii
+    // BUY. Bez tego bezposredni filtr `tx.costBasis != null` gubil SELL-e z
+    // importu brokera — u realnego uzytkownika 636 z 640 SELL-ow ni ma
+    // costBasis, wiec karta pokazywala +114 zamiast +1927. Sortujemy
+    // rosnaco (computeRealizedTrades zwraca od najnowszych).
+    const trades = computeRealizedTrades(transactions, fxRates)
+      .filter(t => t.date >= jan1)
       .sort((a, b) => a.date.localeCompare(b.date));
     let cum = 0;
     const points = [];
-    for (const tx of sells) {
-      const plNative = tx.overridePL != null
-        ? tx.overridePL
-        : (tx.price - tx.costBasis) * (tx.qty ?? 0);
-      const plDisp = plNative * (fxRates[tx.currency] ?? 1) / dispFx;
-      cum += plDisp;
-      if (points.length && points[points.length - 1].date === tx.date) {
-        points[points.length - 1].pl = cum;
+    for (const t of trades) {
+      // plPLN jest juz przeliczone przez fxRates[currency]; do waluty
+      // wyswietlania dzielimy przez fx tej waluty.
+      cum += t.plPLN / dispFx;
+      if (points.length && points[points.length - 1].date === t.date) {
+        points[points.length - 1].pl = parseFloat(cum.toFixed(2));
       } else {
-        points.push({ date: tx.date, pl: parseFloat(cum.toFixed(2)) });
+        points.push({ date: t.date, pl: parseFloat(cum.toFixed(2)) });
       }
     }
     return points;
