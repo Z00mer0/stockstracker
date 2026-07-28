@@ -1,7 +1,7 @@
 // src/sw.js — własny service worker (strategia injectManifest)
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { NetworkFirst } from 'workbox-strategies';
+import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 
 cleanupOutdatedCaches();
@@ -11,6 +11,20 @@ precacheAndRoute(self.__WB_MANIFEST);
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
+
+// Chunki tras wyłączone z precache (globIgnores w vite.config.js) plus worker
+// pdf.js, którego rozszerzenie .mjs nigdy nie łapało się na globPatterns —
+// czyli precache trzymał 472 KB pdf.js bez workera, więc i tak nie działał
+// offline. Tutaj wpadają do cache'u przy pierwszym użyciu: offline działa dla
+// tras, które użytkownik faktycznie odwiedził, a pierwsze wejście ich nie ciągnie.
+// Trasa rejestrowana po precacheAndRoute, więc nie przechwytuje precache'owanych.
+registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin
+    && url.pathname.startsWith('/assets/')
+    && (request.destination === 'script' || url.pathname.endsWith('.mjs')),
+  new StaleWhileRevalidate({ cacheName: 'app-chunks' }),
+);
 
 // runtime cache NBP — jak dotąd w generateSW
 registerRoute(
