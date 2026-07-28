@@ -925,6 +925,8 @@ export default {
   notif_push_now_result:      'Wysłano {sent} z {qualifying} kwalifikujących się ({scanned} sprawdzonych).',
   notif_push_now_empty:       'Żaden symbol z portfela ani watchlisty nie ma dziś ruchu ≥ ±5%.',
   notif_push_now_error:       'Nie udało się wysłać — spróbuj ponownie.',
+  notif_hour_label:           'Godzina dostawy (Warszawa)',
+  notif_hour_hint:            'Powiadomienia o dużym ruchu wysyłane są dopiero od tej godziny (czas warszawski).',
 
   notif_pro_bigDrop_1:        'Silny spadek dziś — warto sprawdzić przyczynę i plan reakcji.',
   notif_pro_bigDrop_2:        'Kurs mocno w dół. Rozważ przegląd tezy inwestycyjnej.',

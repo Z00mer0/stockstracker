@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { lsSet } from '../utils/safeStorage.js';
 import { api } from './useApi.js';
 import { isAuthed } from '../utils/auth.js';
+import { useLanguage } from '../context/LanguageContext';
 
 export const TONE_KEY = 'myfund_notification_tone';
-const VALID = new Set(['professional', 'funny']);
+export const HOUR_KEY = 'myfund_notification_hour';
+const VALID_TONE = new Set(['professional', 'funny']);
+const DEFAULT_HOUR = 16;
 
 function lsRead(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -12,30 +15,36 @@ function lsRead(key) {
 
 function readTone() {
   const raw = lsRead(TONE_KEY);
-  return VALID.has(raw) ? raw : 'professional';
+  return VALID_TONE.has(raw) ? raw : 'professional';
 }
 
-// Client-side mirror onto a per-portfolio prefs blob. The backend portfolio
-// schema doesn't carry a settings field yet, so we piggy-back on
-// localStorage keyed by active portfolio id — enough for cross-tab
-// awareness without a migration.
-function mirrorToActivePortfolio(tone) {
+function readHour() {
+  const raw = parseInt(lsRead(HOUR_KEY) ?? '', 10);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 23 ? raw : DEFAULT_HOUR;
+}
+
+function mirrorToActivePortfolio(patch) {
   try {
     const activeId = lsRead('myfund_active_portfolio');
     if (!activeId) return;
     const shadowKey = `myfund_portfolio_prefs_${activeId}`;
     const raw = lsRead(shadowKey);
     const obj = raw ? JSON.parse(raw) : {};
-    obj.notificationTone = tone;
+    Object.assign(obj, patch);
     lsSet(shadowKey, JSON.stringify(obj));
   } catch {}
 }
 
+function postPrefs(patch) {
+  if (!isAuthed()) return;
+  api.post('/api/notification-tone', patch).catch(() => {});
+}
+
 export function useNotificationTone() {
   const [tone, setToneState] = useState(readTone);
+  const { language } = useLanguage();
 
-  // Pull server truth on mount if authed, so a device without local prefs
-  // still respects the tone set on another device.
+  // Pull server truth on mount if authed.
   useEffect(() => {
     if (!isAuthed()) return;
     let cancelled = false;
@@ -43,14 +52,25 @@ export function useNotificationTone() {
       .then(res => {
         if (cancelled) return;
         const t = res?.data?.tone;
-        if (VALID.has(t) && t !== readTone()) {
+        const h = res?.data?.hour;
+        if (VALID_TONE.has(t) && t !== readTone()) {
           lsSet(TONE_KEY, t);
           setToneState(t);
+        }
+        if (Number.isFinite(h) && h >= 0 && h <= 23) {
+          lsSet(HOUR_KEY, String(h));
         }
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // Whenever the app language changes, push it to the server so OS-level
+  // pushes speak the same language as the UI.
+  useEffect(() => {
+    if (!isAuthed()) return;
+    postPrefs({ language });
+  }, [language]);
 
   useEffect(() => {
     function onStorage(e) {
@@ -61,14 +81,35 @@ export function useNotificationTone() {
   }, []);
 
   const setTone = useCallback((next) => {
-    const value = VALID.has(next) ? next : 'professional';
+    const value = VALID_TONE.has(next) ? next : 'professional';
     lsSet(TONE_KEY, value);
-    mirrorToActivePortfolio(value);
+    mirrorToActivePortfolio({ notificationTone: value });
     setToneState(value);
-    if (isAuthed()) {
-      api.post('/api/notification-tone', { tone: value }).catch(() => {});
-    }
+    postPrefs({ tone: value });
   }, []);
 
   return [tone, setTone];
+}
+
+export function useNotificationHour() {
+  const [hour, setHourState] = useState(readHour);
+
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key === HOUR_KEY) setHourState(readHour());
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const setHour = useCallback((next) => {
+    const n = parseInt(next, 10);
+    const value = Number.isFinite(n) && n >= 0 && n <= 23 ? n : DEFAULT_HOUR;
+    lsSet(HOUR_KEY, String(value));
+    mirrorToActivePortfolio({ notificationHour: value });
+    setHourState(value);
+    postPrefs({ hour: value });
+  }, []);
+
+  return [hour, setHour];
 }
