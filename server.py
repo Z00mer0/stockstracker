@@ -2219,43 +2219,59 @@ def _nbp_rates():
 _FX_MISS = 0.0
 
 
-def _nbp_fetch_rate(currency, date_str):
-    """Zwraca (kurs, pudło_jednoznaczne) dla jednego dnia.
+# NBP przyjmuje maksymalnie 367 dni na jedno zapytanie zakresowe.
+_NBP_RANGE_DAYS = 366
 
-    NBP nie publikuje kursów w weekendy i święta, więc cofamy się do ośmiu dni
-    wstecz. Druga wartość mówi, czy brak kursu jest pewny: True tylko wtedy, gdy
-    na wszystkie osiem prób NBP odpowiedziało 404, czyli takich danych naprawdę
-    nie ma. Timeout albo błąd sieci daje False — przejściowej awarii nie wolno
-    zapamiętać jako trwałego braku, bo zamroziłaby błędną odpowiedź na zawsze."""
-    base = datetime.date.fromisoformat(date_str)
-    only_404 = True
-    for offset in range(8):
-        d = base - datetime.timedelta(days=offset)
+
+def _nbp_fetch_range(currency, start, end):
+    """Pobiera kursy dla całego zakresu dat. Zwraca ({'YYYY-MM-DD': kurs}, udane).
+
+    NBP oddaje wyłącznie dni notowań, więc mapa jest rzadka — dni bez notowań
+    domyka _rate_at_or_before. 404 na oknie znaczy "nic tu nie publikowano" i
+    nie jest awarią; dopiero timeout albo inny błąd daje udane=False, bo wtedy
+    nie wolno zapamiętać braku kursu jako trwałego."""
+    rates = {}
+    ok = True
+    window_start = start
+    while window_start <= end:
+        window_end = min(window_start + datetime.timedelta(days=_NBP_RANGE_DAYS), end)
         url = (f'https://api.nbp.pl/api/exchangerates/rates/A/{currency}/'
-               f'{d.isoformat()}/?format=json')
+               f'{window_start.isoformat()}/{window_end.isoformat()}/?format=json')
         try:
             req = urllib.request.Request(url, headers={'Accept': 'application/json'})
-            with urllib.request.urlopen(req, timeout=6) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode())
-            rate = data.get('rates', [{}])[0].get('mid')
-            if rate:
-                return float(rate), False
-            only_404 = False
+            for row in data.get('rates', []):
+                mid, day = row.get('mid'), row.get('effectiveDate')
+                if mid and day:
+                    rates[day] = float(mid)
         except urllib.error.HTTPError as e:
             if e.code != 404:
-                only_404 = False
+                ok = False
         except Exception:
-            only_404 = False
-    return None, only_404
+            ok = False
+        window_start = window_end + datetime.timedelta(days=1)
+    return rates, ok
+
+
+def _rate_at_or_before(published, date_str):
+    """Kurs z danego dnia albo z najbliższego wcześniejszego dnia notowań.
+    Osiem dni wstecz wystarcza na weekend plus święta."""
+    base = datetime.date.fromisoformat(date_str)
+    for offset in range(8):
+        rate = published.get((base - datetime.timedelta(days=offset)).isoformat())
+        if rate:
+            return rate
+    return None
 
 
 def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
     """Zwraca {date: {ccy: rate, ..., PLN: 1.0}} dla listy dat. Używa fx_rates_history
-    jako cache; braki pobiera z NBP (z fallbackiem 8-dniowym na weekendy).
+    jako cache; braki pobiera z NBP jednym zapytaniem na zakres.
 
     Dni, których NBP na pewno nie ma, lądują w cache'u jako _FX_MISS. Bez tego
-    każde kolejne wywołanie odpytywało je od nowa — 3 waluty po 8 prób na dzień,
-    w kółko, bo brak kursu nigdy nie był nigdzie zapisywany."""
+    każde kolejne wywołanie odpytywało je od nowa, bo brak kursu nigdy nie był
+    nigdzie zapisywany."""
     if not dates:
         return {}
     out = {d: {'PLN': 1.0} for d in dates}
@@ -2272,15 +2288,30 @@ def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
                 cached[d.isoformat()] = float(r)
         missing = [d for d in dates if d not in cached]
         if missing:
-            import concurrent.futures as _cf
-            with _cf.ThreadPoolExecutor(max_workers=4) as ex:
-                fetched = list(ex.map(lambda d: _nbp_fetch_rate(currency, d), missing))
+            # Daty z przyszłości odpadają przed zapytaniem. NBP na zakres
+            # sięgający w przyszłość oddaje 400 "Błędny zakres dat" i nie
+            # zwraca NAWET tej części, która jest z przeszłości — jeden taki
+            # snapshot zabrałby kursy wszystkim pozostałym. Pudła też im nie
+            # zapisujemy: gdy staną się przeszłością, kolejny przebieg w tle
+            # dobierze im kurs normalnie.
+            today = datetime.date.today()
+            resolvable = [d for d in missing
+                          if datetime.date.fromisoformat(d) <= today]
+            published, ok = {}, False
+            if resolvable:
+                # Jedno zapytanie na okno zamiast ośmiu na każdą datę. Zapas
+                # 10 dni przed najwcześniejszą datą, żeby i ona miała się do
+                # czego cofnąć, gdy wypada w weekend albo święto.
+                days = sorted(datetime.date.fromisoformat(d) for d in resolvable)
+                published, ok = _nbp_fetch_range(
+                    currency, days[0] - datetime.timedelta(days=10), days[-1])
             to_insert = []
-            for d, (rate, definitive_miss) in zip(missing, fetched):
+            for d in resolvable:
+                rate = _rate_at_or_before(published, d)
                 if rate is not None:
                     cached[d] = rate
                     to_insert.append((currency, d, rate))
-                elif definitive_miss:
+                elif ok:
                     cached[d] = _FX_MISS
                     to_insert.append((currency, d, _FX_MISS))
             if to_insert:

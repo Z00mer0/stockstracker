@@ -278,7 +278,12 @@ function SnapshotManagerSection() {
     if (!form.date || isNaN(total) || total < 0) return;
     setSaving(true);
     try {
-      await setSnapshot(form.date, total * dispFx, isNaN(inv) ? undefined : inv * dispFx);
+      // Zamrażamy te same kursy, którymi przeliczyliśmy wpisaną kwotę na PLN.
+      // Bez tego snapshot szedł do bazy z pustym fx_json: historia odtwarzała
+      // go wtedy po bieżącym kursie NBP, więc wpisana wartość zmieniała się z
+      // dnia na dzień, a serwer przy każdym odczycie próbował dobrać kurs z NBP.
+      await setSnapshot(form.date, total * dispFx, isNaN(inv) ? undefined : inv * dispFx,
+                        { ...fxRates });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       setEditingDate(null);
