@@ -10,6 +10,8 @@ const BrokerImportModal   = lazy(() => import('../components/BrokerImportModal')
 const SnapshotImportModal = lazy(() => import('../components/SnapshotImportModal'));
 import Card from '../components/shared/Card';
 import ConfirmModal from '../components/ConfirmModal';
+import NotificationCard from '../components/NotificationCard';
+import { useNotificationTone } from '../hooks/useNotificationTone';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { authHeader } from '../utils/auth.js';
 import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
@@ -200,6 +202,60 @@ function ExportDataSection() {
           style={{ alignSelf: 'flex-start', opacity: loading ? 0.4 : 1 }}>
           {loading ? t('saving_btn') : t('export_btn')}
         </button>
+      </div>
+    </Card>
+  );
+}
+
+function NotificationToneSection() {
+  const t = useT();
+  const [tone, setTone] = useNotificationTone();
+  const options = [
+    { value: 'professional', label: t('notif_tone_professional') },
+    { value: 'funny',        label: t('notif_tone_funny') },
+  ];
+  return (
+    <Card title={t('notif_tone_section')}>
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <SettingsRow label={t('notif_tone_label')}>
+          <div role="radiogroup" style={{ display: 'inline-flex', background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 999, padding: 3 }}>
+            {options.map(o => {
+              const active = tone === o.value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setTone(o.value)}
+                  style={{
+                    background: active ? 'var(--accent)' : 'transparent',
+                    color: active ? '#0a0b0d' : 'var(--text-dim)',
+                    border: 'none', borderRadius: 999,
+                    padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </SettingsRow>
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
+          {t('notif_tone_hint')}
+        </p>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+            {t('notif_preview_heading')}
+          </p>
+          <NotificationCard
+            ticker="AMD"
+            changePct={-7.87}
+            changeAbs={-38.96}
+            tone={tone}
+          />
+        </div>
       </div>
     </Card>
   );
@@ -680,6 +736,8 @@ export default function Settings() {
       </Card>
 
       <PortfolioAlertCard />
+
+      <NotificationToneSection />
 
       <ChangePasswordSection />
       <RecoveryCodesSection />
