@@ -32,6 +32,16 @@ export default defineConfig(({ mode }) => {
         },
         injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          // Leniwe ładowanie tras ścięło pierwsze wejście z 1953 KB do 466 KB,
+          // ale service worker i tak ściągał komplet 2,2 MB w tle — precache
+          // brał każdy chunk, także trasy, na które użytkownik nigdy nie wszedł.
+          // Te trzy to najcięższe z nich; łapie je runtime cache w sw.js dopiero
+          // przy pierwszym wejściu na daną trasę.
+          globIgnores: [
+            'assets/pdf-*.js',
+            'assets/ScenarioLab-*.js',
+            'assets/CategoricalChart-*.js',
+          ],
         },
       }),
     ],

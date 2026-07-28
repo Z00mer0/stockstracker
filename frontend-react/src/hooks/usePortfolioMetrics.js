@@ -5,6 +5,16 @@ import { authHeader } from '../utils/auth.js';
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min
 
+// The cache read below is wrapped in try/catch; the writes were not. Safari in
+// private mode throws on every setItem, and the quota fills up as the portfolio
+// grows. That throw landed inside the fetch chain and took the whole dashboard
+// down with it — the cache is an optimisation, never a reason to lose data.
+export function writeCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+  } catch { /* no cache this round — data is already in state */ }
+}
+
 // ── XIRR ────────────────────────────────────────────────────────────────────
 // cashFlows: [{ date: 'YYYY-MM-DD', amount: number }]
 // Returns annualised rate as percentage (e.g. 12.0 = 12%), or null if can't converge
@@ -363,11 +373,14 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
           const retry = await fetchAllMetrics(failed);
           const merged = { ...data, ...retry };
           setMarketData(merged);
-          localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: merged }));
+          writeCache(cacheKey, merged);
         } else {
-          localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
+          writeCache(cacheKey, data);
         }
       })
+      // Without this the chain rejected unhandled: marketData stayed empty and
+      // the user got a blank dashboard with no signal that anything had failed.
+      .catch((err) => console.error('[usePortfolioMetrics]', err))
       .finally(() => setMetricsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbolsKey]);
