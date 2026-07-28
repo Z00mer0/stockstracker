@@ -920,6 +920,11 @@ export default {
   notif_tone_funny:           'Uliczny',
   notif_tone_hint:            'Powiadomienia odpalają się przy ruchu ≥ +5% lub ≤ −5% dla spółek z portfela i watchlisty.',
   notif_preview_heading:      'Podgląd',
+  notif_push_now:             'Wyślij push teraz',
+  notif_push_now_busy:        'Skanuję…',
+  notif_push_now_result:      'Wysłano {sent} z {qualifying} kwalifikujących się ({scanned} sprawdzonych).',
+  notif_push_now_empty:       'Żaden symbol z portfela ani watchlisty nie ma dziś ruchu ≥ ±5%.',
+  notif_push_now_error:       'Nie udało się wysłać — spróbuj ponownie.',
 
   notif_pro_bigDrop_1:        'Silny spadek dziś — warto sprawdzić przyczynę i plan reakcji.',
   notif_pro_bigDrop_2:        'Kurs mocno w dół. Rozważ przegląd tezy inwestycyjnej.',

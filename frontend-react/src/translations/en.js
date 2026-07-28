@@ -920,6 +920,11 @@ export default {
   notif_tone_funny:           'Street',
   notif_tone_hint:            'Notifications fire on moves ≥ +5% or ≤ −5% for tickers in your portfolio and watchlist.',
   notif_preview_heading:      'Preview',
+  notif_push_now:             'Send push now',
+  notif_push_now_busy:        'Scanning…',
+  notif_push_now_result:      'Sent {sent} of {qualifying} qualifying ({scanned} scanned).',
+  notif_push_now_empty:       'No symbol in your portfolio or watchlist has a ≥ ±5% move today.',
+  notif_push_now_error:       'Could not send — try again.',
 
   notif_pro_bigDrop_1:        'Sharp drop today — worth checking the driver and your reaction plan.',
   notif_pro_bigDrop_2:        'Price down hard. Time to revisit the thesis.',

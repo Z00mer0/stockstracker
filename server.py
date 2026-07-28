@@ -5662,6 +5662,58 @@ async function doRecover() {
                 log.warning(f'[push] unsubscribe: {e}')
                 self.send_json(400, {'error': 'bad request'})
 
+        elif path == '/api/push/big-move-scan':
+            # Rec-check ±5% ruchow na zawolanie z Settings. Ignoruje push_sent,
+            # zeby przycisk faktycznie odpalil pusha nawet gdy dzisiejszy
+            # ping juz poszedl. Nie zapisuje niczego do push_sent — codzienny
+            # cron zachowuje swoja niezalezna deduplikacje.
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            if not DATABASE_URL:
+                self.send_json(503, {'error': 'wymaga bazy danych'}); return
+            try:
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("""SELECT DISTINCT h.symbol FROM portfolio_holdings h
+                                   JOIN portfolio_list p ON p.id = h.portfolio_id
+                                   WHERE p.user_id=%s AND h.qty > 0""", (username,))
+                    pf_syms = {r[0] for r in cur.fetchall() if r[0]}
+                    cur.execute("SELECT notification_tone FROM portfolio_alerts WHERE username=%s", (username,))
+                    trow = cur.fetchone()
+                wl_items = load_watchlist(username) or []
+                wl_syms = {i.get('symbol', '') for i in wl_items if i.get('symbol')}
+                tone = (trow[0] if trow and trow[0] else 'professional')
+                targets = sorted(wl_syms | pf_syms)
+                today_iso = datetime.date.today().isoformat()
+                cache = {}
+                _prefill_quotes(targets, cache)
+                sent, scanned, qualifying = 0, 0, 0
+                for sym in targets:
+                    scanned += 1
+                    try:
+                        if sym not in cache:
+                            cache[sym] = _fetch_quote(sym)
+                        quote = cache[sym]
+                        if quote is None:
+                            continue
+                        chg = quote.get('changePct')
+                        if chg is None or abs(chg) < 5:
+                            continue
+                        qualifying += 1
+                        direction = 'up' if chg >= 0 else 'down'
+                        arrow = '🚀' if direction == 'up' else '📉'
+                        sign = '+' if direction == 'up' else ''
+                        title = f'{arrow} {sym} {sign}{chg:.2f}% dziś'
+                        body = _big_move_text(sym, chg, tone, today_iso)
+                        if _send_push(username, title, body, '/watchlist'):
+                            sent += 1
+                    except Exception as e:
+                        log.warning(f'[push] big-move-scan {username}/{sym}: {e}')
+                self.send_json(200, {'scanned': scanned, 'qualifying': qualifying, 'sent': sent, 'tone': tone})
+            except Exception as e:
+                log.warning(f'[push] big-move-scan {username}: {e}')
+                self.send_json(500, {'error': 'scan failed'})
+
         elif path == '/api/push/test':
             username = get_username(self)
             if not username:
