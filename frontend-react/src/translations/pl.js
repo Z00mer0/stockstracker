@@ -72,6 +72,8 @@ export default {
   connection_error_hint: 'Serwer mógł się właśnie budzić (usypia po bezczynności). Spróbuj ponownie za chwilę.',
   greeting:             'Witaj',
   investor_fallback:    'Inwestorze',
+  ticker_not_found:     'Bez notowań',
+  ticker_not_found_hint: 'Ticker prawdopodobnie nieprawidłowy — sprawdź w edycji pozycji. Wycena portfela oraz snapshot dnia liczą się z ceną zakupu, nie z rynkowej.',
   market_live:          'live',
   market_closed_status: 'closed',
 

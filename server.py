@@ -5704,9 +5704,19 @@ def _run_daily_snapshots():
         fx_rates = _nbp_rates()
 
         # Compute and upsert snapshot per portfolio.
-        # WYMAGAMY pełnego pokrycia cenami — częściowy batch zaniża total.
+        # Historia: PR #4000fb3 wprowadzil twardy wymog pelnego pokrycia, bo
+        # bez tego czesciowy batch (~25% pozycji z cena) zapisywal snapshot
+        # rzedu 25% prawdziwej wartosci. Ale ten sam warunek CICHO wylaczyl
+        # snapshoty dla calego portfela, gdy tylko JEDEN ticker jest bledny
+        # (np. SMSN zamiast SMSN.IL) — u jednego z uzytkownikow snapshoty
+        # portfela stanely na 20 dni bez zadnego sygnalu.
+        # Kompromis: <=20% brakujacych to lokalny problem symbolu, uzupelniamy
+        # cena kosztu (deformacja rzedu 1-3%, do sprawdzenia w UI). Wiecej to
+        # awaria pobierania — pomijamy jak dawniej. Ostrzezenie w logu zawsze.
+        PARTIAL_TOLERANCE = 0.2
         saved = 0
         skipped = []
+        partial = []
         for pid in all_pids:
             holdings = pid_holdings.get(pid, [])
             if not holdings:
@@ -5714,10 +5724,19 @@ def _run_daily_snapshots():
                 continue
             missing = [h['symbol'] for h in holdings if h['symbol'] not in prices]
             if missing:
-                print(f'[snapshot] SKIP pid={pid}: {len(missing)}/{len(holdings)} '
-                      f'symboli bez ceny ({missing}) — brak wpisu lepszy niż zaniżony')
-                skipped.append(pid)
-                continue
+                ratio = len(missing) / len(holdings)
+                if ratio > PARTIAL_TOLERANCE:
+                    print(f'[snapshot] SKIP pid={pid}: {len(missing)}/{len(holdings)} '
+                          f'symboli bez ceny ({missing}) — wyglada na awarie batcha')
+                    skipped.append(pid)
+                    continue
+                # Fallback: uzyj avgPrice dla brakujacych. Prawdziwej ceny nie
+                # znamy, wiec deformujemy o roznice cena-koszt — zwykle drobna.
+                prices = {**prices, **{h['symbol']: float(h['avg_price'])
+                                       for h in holdings if h['symbol'] in missing}}
+                partial.append((pid, missing))
+                print(f'[snapshot] PARTIAL pid={pid}: {len(missing)}/{len(holdings)} '
+                      f'symboli bez ceny ({missing}) — fallback do avgPrice')
             # Sprawdź czy mamy fx dla WSZYSTKICH walut w portfelu (holdings + cash)
             all_currs = set([h.get('currency') or 'PLN' for h in holdings])
             all_currs.update([c.get('currency') or 'PLN' for c in pid_cash.get(pid, [])])

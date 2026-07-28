@@ -3,6 +3,11 @@
 // Mutacje (POST/PATCH/PUT/DELETE) NIE są retry'owane — ryzyko dubli.
 
 const RETRY_STATUSES = new Set([503, 504]);
+// 503 nie zawsze znaczy "poczekaj chwilę". Backend oddaje 503 też wtedy, kiedy
+// brakuje mu klucza w zmiennych środowiskowych (FINNHUB_TOKEN, GROQ_API_KEY,
+// itd.) — takiego 503 nie da się naprawić ponawianiem, a pełny backoff to
+// 87 sekund straconego czasu na każde żądanie. Rozpoznajemy je po treści.
+const PERMANENT_503_RE = /not[\s_]configured|no_groq_key/i;
 // Render hobby cold start bywa i 60-90s → retry window ~90s (2+5+10+15+25+30s).
 // Toast pokazujemy dopiero po wyczerpaniu wszystkich prób.
 const BACKOFF_MS = [2000, 5000, 10000, 15000, 25000, 30000];
@@ -93,6 +98,13 @@ export function installFetchRetry(showToast) {
           if (res.ok) lastSuccessAt = Date.now();
           return res;
         }
+        // Klon do peek — oryginał zostaje nietknięty i wywołujący dalej
+        // może wołać res.json()/text() bez "body already used".
+        try {
+          if (res.status === 503 && PERMANENT_503_RE.test(await res.clone().text())) {
+            return res;
+          }
+        } catch { /* body nieczytelne — traktujemy jak zwykłe 503 i retry */ }
         lastRes = res;
       } catch (err) {
         // AbortSignal timeout wywołanego przez caller — nie retry.

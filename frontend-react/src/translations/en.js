@@ -71,6 +71,8 @@ export default {
   connection_error:     'Could not connect to the server',
   connection_error_hint: 'The server may be waking up (it sleeps when idle). Try again in a moment.',
   greeting:             'Hello',
+  ticker_not_found:     'No quotes',
+  ticker_not_found_hint: 'Ticker likely invalid — check in position edit. Portfolio value and daily snapshot fall back to cost basis, not market price.',
   investor_fallback:    'Investor',
   market_live:          'live',
   market_closed_status: 'closed',
