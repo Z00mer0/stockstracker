@@ -1419,6 +1419,7 @@ if DATABASE_URL:
                 )""")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS us_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS gpw_summary BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -2750,6 +2751,39 @@ def _cooldown_passed(last_sent):
     return delta.total_seconds() >= ALERT_REPEAT_COOLDOWN_H * 3600
 
 
+# ── Tekst pushy o duzym ruchu (mirror utils/notificationText.js) ─────────
+_BIG_MOVE_TEXTS = {
+    'professional': {
+        'up':   ['Silny wzrost dzis — sprawdz katalizator zanim dolozysz.',
+                 'Kurs mocno w gore. Warto przejrzec plan realizacji zysku.',
+                 'Wyrazne wybicie — kandydat do rebalansu.'],
+        'down': ['Silny spadek dzis — warto sprawdzic przyczyne i plan reakcji.',
+                 'Kurs mocno w dol. Rozwaz przeglad tezy inwestycyjnej.',
+                 'Wyrazna przecena w ciagu sesji — kandydat do analizy technicznej.'],
+    },
+    'funny': {
+        'up':   ['To the moon! 🚀 Sprzedawaj kto moze!',
+                 'Rakieta odpalona 🚀🚀 Bierz zyski i uciekaj.',
+                 'Zielona bestia! 💚 Dzis stawiasz kolejke.'],
+        'down': ['Dzisiaj dostaje w pizde. Laduj sie kto moze!',
+                 'Ostro leci z gorki 📉 Czas na tanie zakupy czy jeszcze noz?',
+                 'Krwawa jatka na wykresie. Kto ma jaja, ten dokupuje.'],
+    },
+}
+
+
+def _big_move_text(sym, changePct, tone, today_iso):
+    """Deterministyczny wybor wariantu — ten sam ticker w danym dniu i tonie
+    dostaje ten sam tekst niezaleznie od tego ile razy leci scan."""
+    direction = 'up' if changePct >= 0 else 'down'
+    variants = _BIG_MOVE_TEXTS.get(tone if tone in _BIG_MOVE_TEXTS else 'professional', {}).get(direction, [])
+    if not variants:
+        variants = _BIG_MOVE_TEXTS['professional'][direction]
+    seed = hashlib.sha1(f'{sym}|{tone}|{direction}|{today_iso}'.encode()).digest()
+    idx = seed[0] % len(variants)
+    return variants[idx]
+
+
 def _run_push_checks():
     stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0}
     with _conn() as c, c.cursor() as cur:
@@ -2965,8 +2999,12 @@ def _run_push_checks():
                                JOIN portfolio_list p ON p.id = h.portfolio_id
                                WHERE p.user_id=%s AND h.qty > 0""", (username,))
                 pf_syms = {r[0] for r in cur.fetchall() if r[0]}
+                cur.execute("SELECT notification_tone FROM portfolio_alerts WHERE username=%s", (username,))
+                trow = cur.fetchone()
+            tone = (trow[0] if trow and trow[0] else 'professional')
             targets = sorted(wl_syms | pf_syms)
             _prefill_quotes(targets, price_cache)
+            today_iso = today.isoformat()
             for sym in targets:
                 try:
                     if sym not in price_cache:
@@ -2978,15 +3016,13 @@ def _run_push_checks():
                     if chg is None or abs(chg) < 5:
                         continue
                     direction = 'up' if chg >= 0 else 'down'
-                    key = f'move:{today.isoformat()}:{sym}:{direction}'
+                    key = f'move:{today_iso}:{sym}:{direction}:{tone}'
                     if _already_sent(username, key):
                         continue
-                    if direction == 'up':
-                        title = f'🚀 {sym} +{chg:.2f}% dziś'
-                        body = 'Silny wzrost — sprawdź katalizator zanim dołożysz.'
-                    else:
-                        title = f'📉 {sym} {chg:.2f}% dziś'
-                        body = 'Silny spadek — warto sprawdzić przyczynę.'
+                    arrow = '🚀' if direction == 'up' else '📉'
+                    sign = '+' if direction == 'up' else ''
+                    title = f'{arrow} {sym} {sign}{chg:.2f}% dziś'
+                    body = _big_move_text(sym, chg, tone, today_iso)
                     if _send_push(username, title, body, '/watchlist'):
                         _mark_sent(username, key)
                         stats['bigMove'] += 1
@@ -3227,6 +3263,22 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False})
             return
+
+        elif path == '/api/notification-tone':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            tone = 'professional'
+            if DATABASE_URL:
+                try:
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute("SELECT notification_tone FROM portfolio_alerts WHERE username=%s", (username,))
+                        row = cur.fetchone()
+                    if row and row[0]:
+                        tone = row[0]
+                except Exception as e:
+                    log.warning(f'[notif-tone] get {username}: {e}')
+            self.send_json(200, {'tone': tone}); return
 
         elif path == '/api/calendar':
             qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
@@ -5654,6 +5706,29 @@ async function doRecover() {
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 log.warning(f'[push] portfolio-alert save: {e}')
+                self.send_json(400, {'error': 'bad request'})
+
+        elif path == '/api/notification-tone':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            if not DATABASE_URL:
+                self.send_json(200, {'ok': True}); return
+            try:
+                body = self.read_json(max_size=256)
+                tone = str(body.get('tone') or 'professional')
+                if tone not in ('professional', 'funny'):
+                    self.send_json(400, {'error': 'tone must be professional|funny'}); return
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO portfolio_alerts (username, threshold_pct, notification_tone)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (username) DO UPDATE
+                        SET notification_tone = EXCLUDED.notification_tone
+                    """, (username, 10, tone))
+                self.send_json(200, {'ok': True, 'tone': tone})
+            except Exception as e:
+                log.warning(f'[notif-tone] save {username}: {e}')
                 self.send_json(400, {'error': 'bad request'})
 
         elif path == '/api/push/check':

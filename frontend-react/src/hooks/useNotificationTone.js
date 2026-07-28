@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lsSet } from '../utils/safeStorage.js';
+import { api } from './useApi.js';
+import { isAuthed } from '../utils/auth.js';
 
 export const TONE_KEY = 'myfund_notification_tone';
 const VALID = new Set(['professional', 'funny']);
@@ -32,6 +34,24 @@ function mirrorToActivePortfolio(tone) {
 export function useNotificationTone() {
   const [tone, setToneState] = useState(readTone);
 
+  // Pull server truth on mount if authed, so a device without local prefs
+  // still respects the tone set on another device.
+  useEffect(() => {
+    if (!isAuthed()) return;
+    let cancelled = false;
+    api.get('/api/notification-tone')
+      .then(res => {
+        if (cancelled) return;
+        const t = res?.data?.tone;
+        if (VALID.has(t) && t !== readTone()) {
+          lsSet(TONE_KEY, t);
+          setToneState(t);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     function onStorage(e) {
       if (e.key === TONE_KEY) setToneState(readTone());
@@ -45,6 +65,9 @@ export function useNotificationTone() {
     lsSet(TONE_KEY, value);
     mirrorToActivePortfolio(value);
     setToneState(value);
+    if (isAuthed()) {
+      api.post('/api/notification-tone', { tone: value }).catch(() => {});
+    }
   }, []);
 
   return [tone, setTone];
