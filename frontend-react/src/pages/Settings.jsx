@@ -210,10 +210,34 @@ function ExportDataSection() {
 function NotificationToneSection() {
   const t = useT();
   const [tone, setTone] = useNotificationTone();
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMsg, setPushMsg] = useState(null);
   const options = [
     { value: 'professional', label: t('notif_tone_professional') },
     { value: 'funny',        label: t('notif_tone_funny') },
   ];
+
+  async function pushNow() {
+    setPushBusy(true); setPushMsg(null);
+    try {
+      const { data } = await api.post('/api/push/big-move-scan');
+      if (!data || data.qualifying === 0) {
+        setPushMsg({ kind: 'info', text: t('notif_push_now_empty') });
+      } else {
+        setPushMsg({
+          kind: 'ok',
+          text: t('notif_push_now_result')
+            .replace('{sent}', data.sent)
+            .replace('{qualifying}', data.qualifying)
+            .replace('{scanned}', data.scanned),
+        });
+      }
+    } catch {
+      setPushMsg({ kind: 'err', text: t('notif_push_now_error') });
+    } finally {
+      setPushBusy(false);
+    }
+  }
   return (
     <Card title={t('notif_tone_section')}>
       <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -245,6 +269,27 @@ function NotificationToneSection() {
         <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
           {t('notif_tone_hint')}
         </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={pushNow}
+            disabled={pushBusy}
+            className="btn btn-primary"
+            style={{ fontSize: 12 }}
+          >
+            {pushBusy ? t('notif_push_now_busy') : `🔔 ${t('notif_push_now')}`}
+          </button>
+          {pushMsg && (
+            <span style={{
+              fontSize: 11,
+              color: pushMsg.kind === 'err' ? 'var(--down)'
+                   : pushMsg.kind === 'ok'  ? 'var(--up)'
+                   : 'var(--text-dim)',
+            }}>
+              {pushMsg.text}
+            </span>
+          )}
+        </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
             {t('notif_preview_heading')}
