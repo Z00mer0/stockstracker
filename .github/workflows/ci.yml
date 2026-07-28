@@ -70,3 +70,7 @@ jobs:
       # snapshoty dla calego portfela na 20 dni, bez sygnalu w UI. Test
       # pilnuje, ze <=20% brakujacych pozycji lapie fallback, wiecej pomijamy.
       - run: python test_snapshot_partial.py
+      # Uzupełnianie kursów NBP potrafiło wrócić na ścieżkę żądania i dołożyć
+      # kilka sekund do każdego odczytu portfela. Test pilnuje, że odczyt nie
+      # rusza NBP i że brak kursu jest zapamiętywany zamiast odpytywany w kółko.
+      - run: python test_fx_backfill.py

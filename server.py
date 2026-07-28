@@ -1479,12 +1479,10 @@ if DATABASE_URL:
                 except Exception:
                     pass
                 transactions.append(tx)
-            # Uzupełnij brakujące fx_json (dla snapshotów sprzed PR#15) z NBP historical.
-            # Idempotentne — noop jeśli wszystko ma już fx.
-            try:
-                _backfill_snapshot_fx(portfolio_id)
-            except Exception as _e:
-                print(f'[fx-backfill] skipped: {_e}')
+            # Uzupełnianie brakujących fx_json siedziało kiedyś tutaj i chodziło
+            # przy każdym odczycie danych. Dla dat, których NBP nie zna, kończyło
+            # się to serią zapytań do NBP przy każdym wejściu na stronę — teraz
+            # robi to _backfill_all_snapshot_fx w wątku w tle (patrz start serwera).
             cur.execute("SELECT date::text, total, invested, fx_json FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
             snaps_rows = cur.fetchall()
             snapshots = {r['date']: float(r['total']) for r in snaps_rows if r['total'] is not None}
@@ -2216,9 +2214,64 @@ def _nbp_rates():
         return {'PLN': 1.0}
 
 
+# Zapamiętane "NBP nie ma kursu na ten dzień". Prawdziwy kurs jest zawsze
+# dodatni, więc zero nie koliduje z danymi i nie wymaga zmiany schematu.
+_FX_MISS = 0.0
+
+
+# NBP przyjmuje maksymalnie 367 dni na jedno zapytanie zakresowe.
+_NBP_RANGE_DAYS = 366
+
+
+def _nbp_fetch_range(currency, start, end):
+    """Pobiera kursy dla całego zakresu dat. Zwraca ({'YYYY-MM-DD': kurs}, udane).
+
+    NBP oddaje wyłącznie dni notowań, więc mapa jest rzadka — dni bez notowań
+    domyka _rate_at_or_before. 404 na oknie znaczy "nic tu nie publikowano" i
+    nie jest awarią; dopiero timeout albo inny błąd daje udane=False, bo wtedy
+    nie wolno zapamiętać braku kursu jako trwałego."""
+    rates = {}
+    ok = True
+    window_start = start
+    while window_start <= end:
+        window_end = min(window_start + datetime.timedelta(days=_NBP_RANGE_DAYS), end)
+        url = (f'https://api.nbp.pl/api/exchangerates/rates/A/{currency}/'
+               f'{window_start.isoformat()}/{window_end.isoformat()}/?format=json')
+        try:
+            req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+            for row in data.get('rates', []):
+                mid, day = row.get('mid'), row.get('effectiveDate')
+                if mid and day:
+                    rates[day] = float(mid)
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                ok = False
+        except Exception:
+            ok = False
+        window_start = window_end + datetime.timedelta(days=1)
+    return rates, ok
+
+
+def _rate_at_or_before(published, date_str):
+    """Kurs z danego dnia albo z najbliższego wcześniejszego dnia notowań.
+    Osiem dni wstecz wystarcza na weekend plus święta."""
+    base = datetime.date.fromisoformat(date_str)
+    for offset in range(8):
+        rate = published.get((base - datetime.timedelta(days=offset)).isoformat())
+        if rate:
+            return rate
+    return None
+
+
 def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
     """Zwraca {date: {ccy: rate, ..., PLN: 1.0}} dla listy dat. Używa fx_rates_history
-    jako cache; braki pobiera z NBP (z fallbackiem 8-dniowym na weekendy)."""
+    jako cache; braki pobiera z NBP jednym zapytaniem na zakres.
+
+    Dni, których NBP na pewno nie ma, lądują w cache'u jako _FX_MISS. Bez tego
+    każde kolejne wywołanie odpytywało je od nowa, bo brak kursu nigdy nie był
+    nigdzie zapisywany."""
     if not dates:
         return {}
     out = {d: {'PLN': 1.0} for d in dates}
@@ -2235,29 +2288,32 @@ def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
                 cached[d.isoformat()] = float(r)
         missing = [d for d in dates if d not in cached]
         if missing:
-            def _fetch(date_str):
-                base = datetime.date.fromisoformat(date_str)
-                for offset in range(8):
-                    d = base - datetime.timedelta(days=offset)
-                    url = (f'https://api.nbp.pl/api/exchangerates/rates/A/{currency}/'
-                           f'{d.isoformat()}/?format=json')
-                    try:
-                        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
-                        with urllib.request.urlopen(req, timeout=6) as resp:
-                            data = json.loads(resp.read().decode())
-                        rate = data.get('rates', [{}])[0].get('mid')
-                        if rate:
-                            return date_str, float(rate)
-                    except Exception:
-                        continue
-                return date_str, None
-            import concurrent.futures as _cf
-            with _cf.ThreadPoolExecutor(max_workers=4) as ex:
-                results = list(ex.map(_fetch, missing))
-            to_insert = [(currency, d, r) for d, r in results if r is not None]
-            for d, r in results:
-                if r is not None:
-                    cached[d] = r
+            # Daty z przyszłości odpadają przed zapytaniem. NBP na zakres
+            # sięgający w przyszłość oddaje 400 "Błędny zakres dat" i nie
+            # zwraca NAWET tej części, która jest z przeszłości — jeden taki
+            # snapshot zabrałby kursy wszystkim pozostałym. Pudła też im nie
+            # zapisujemy: gdy staną się przeszłością, kolejny przebieg w tle
+            # dobierze im kurs normalnie.
+            today = datetime.date.today()
+            resolvable = [d for d in missing
+                          if datetime.date.fromisoformat(d) <= today]
+            published, ok = {}, False
+            if resolvable:
+                # Jedno zapytanie na okno zamiast ośmiu na każdą datę. Zapas
+                # 10 dni przed najwcześniejszą datą, żeby i ona miała się do
+                # czego cofnąć, gdy wypada w weekend albo święto.
+                days = sorted(datetime.date.fromisoformat(d) for d in resolvable)
+                published, ok = _nbp_fetch_range(
+                    currency, days[0] - datetime.timedelta(days=10), days[-1])
+            to_insert = []
+            for d in resolvable:
+                rate = _rate_at_or_before(published, d)
+                if rate is not None:
+                    cached[d] = rate
+                    to_insert.append((currency, d, rate))
+                elif ok:
+                    cached[d] = _FX_MISS
+                    to_insert.append((currency, d, _FX_MISS))
             if to_insert:
                 try:
                     with _conn() as conn, conn.cursor() as cur:
@@ -2269,7 +2325,7 @@ def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
                 except Exception as e:
                     print(f'[fx-hist] insert: {e}')
         for d, r in cached.items():
-            if d in out:
+            if d in out and r > _FX_MISS:
                 out[d][currency] = r
     return out
 
@@ -2304,6 +2360,27 @@ def _backfill_snapshot_fx(portfolio_id):
             print(f'[fx-backfill] {portfolio_id}: {len(updates)} snapshotów uzupełnione')
     except Exception as e:
         print(f'[fx-backfill] {portfolio_id}: {e}')
+
+
+def _backfill_all_snapshot_fx():
+    """Uzupełnia fx_json we wszystkich portfelach — jeden przebieg w tle przy
+    starcie. Wcześniej robił to load_portfolio_data przy okazji każdego odczytu,
+    czyli koszt sieciowy lądował w czasie odpowiedzi endpointu."""
+    if not DATABASE_URL:
+        return
+    try:
+        with _conn() as conn, conn.cursor() as cur:
+            cur.execute("SELECT id FROM portfolio_list")
+            pids = [r[0] for r in cur.fetchall()]
+    except Exception as e:
+        print(f'[fx-backfill] nie udało się pobrać listy portfeli: {e}')
+        return
+    for pid in pids:
+        try:
+            _backfill_snapshot_fx(pid)
+        except Exception as e:
+            print(f'[fx-backfill] {pid}: {e}')
+    print(f'[fx-backfill] przebieg zakończony — {len(pids)} portfeli')
 
 
 def _portfolio_market_value(username, price_cache, rates):
@@ -5825,6 +5902,12 @@ if __name__ == '__main__':
         _threading.Thread(
             target=_refresh_financials_background,
             daemon=True, name='financials-startup'
+        ).start()
+        # Uzupełnienie kursów historycznych dla snapshotów bez fx_json — w tle,
+        # żeby zapytania do NBP nie obciążały odczytu danych portfela.
+        _threading.Thread(
+            target=_backfill_all_snapshot_fx,
+            daemon=True, name='fx-backfill-startup'
         ).start()
 
     # ThreadingHTTPServer, nie HTTPServer: ten drugi obsługuje żądania szeregowo,
