@@ -1,49 +1,70 @@
 # Backlog — pozostałe punkty audytu
 
-Stan na 25.07.2026. Audyt obejmował 26 znalezisk: 4 krytyczne, 6 wysokich, 16 średnich.
+Stan na 28.07.2026. Audyt obejmował 26 znalezisk: 4 krytyczne, 6 wysokich, 16 średnich.
 **Zamknięte: 17 — komplet krytycznych i komplet wysokich.** Poniżej to, co zostało.
 
 Nic z tej listy nie blokuje codziennego korzystania z aplikacji.
+
+### Domknięte w sesji 28.07.2026
+
+Poza punktami audytu doszła seria napraw wydajności ładowania i kilka
+korekt samego backlogu (dwa punkty były źle policzone — patrz niżej):
+
+| Co | PR |
+|---|---|
+| Backfill kursów NBP poza ścieżką żądania + pamięć pudeł | #48 |
+| Jedno zapytanie zakresowe do NBP + ręczny snapshot z kursami | #49 |
+| Trwałe 503 nie idą w 87 s retry + snapshoty przeżywające zły ticker | #51 |
+| Pusty dashboard przy błędzie zapisu cache + precache PWA 2190→1189 KB | #52 |
+| Odpowiedź na poprzedni portfel nadpisywała bieżący (wyścig w hookach) | #53 |
+| Limiter na funkcjach Vercela + paczkowanie notowań + strefa czasowa | #54 |
+| **P3-16** · `print()` → `logging` (poziomy, znaczniki czasu, `LOG_LEVEL`) | ten PR |
 
 ---
 
 ## Dług techniczny — do wzięcia w dowolnej kolejności
 
 ### Ostrzeżenia lintera
-103 ostrzeżeń przepuszczanych przez CI: nieużywane zmienne i brakujące
+104 ostrzeżenia przepuszczane przez CI: nieużywane zmienne i brakujące
 zależności w `useEffect`. Do przerobienia stopniowo — blokowanie na nich
 od razu zablokowałoby każdy PR.
 
-### P3-16 · Diagnostyka przez `print()`
-Bez poziomów, bez znaczników czasu. Moduł `logging` sprawiłby, że logi
-Rendera dałoby się filtrować. Ma znaczenie dopiero przy szukaniu awarii.
+### P3-11 · Dostępność — praktycznie zamknięte
+Globalny `:focus-visible` dodany, więc nawigacja Tabem jest już widoczna.
 
-### P3-11 · Dostępność — częściowo
-Globalny `:focus-visible` dodany, więc nawigacja Tabem jest już widoczna
-na wszystkich 214 przyciskach naraz.
+**Korekta liczby:** backlog zakładał „~107 przycisków ikonowych bez
+`aria-label`". Po dokładnym przejściu (parsowanie granicy tagu, nie regex)
+okazało się, że na 214 przycisków tylko **4** były ikonowe bez etykiety,
+a 2 z nich miały już `title`. Aplikacja etykietuje przyciski tekstem przez
+`{t('...')}`, więc mają dostępną nazwę. Dwa realne przypadki (przełączniki
+motywu i prywatności w nagłówku) dostały `aria-label` w #54. Pozycja jest
+zamknięta — nie było 107 sztuk roboty.
 
-Zostaje etykietowanie ~107 przycisków ikonowych (`aria-label`). Świadomie
-nieruszone: to ręczna robota przycisk po przycisku, przy której łatwo
-wpisać etykietę mijającą się z faktycznym działaniem. Wymaga przejścia
-po kolei, nie automatu.
+### P3-3 · Responsywność mobilna — realna, ale większa niż zapisano
+**Korekta:** backlog mówił „tylko `Portfolio.jsx` reaguje na szerokość".
+W istocie responsywna jest *powłoka* (`Layout.jsx` przez `window.innerWidth`).
+Problem jest gdzie indziej: strony są stylowane inline (Portfolio ~230 stylów
+inline, Analysis ~116), a stylów inline nie da się objąć `@media` w CSS —
+adaptują się tylko przez detekcję szerokości w JS. **23 siatki o stałej
+liczbie kolumn** w stylach inline przelewają się na telefonie.
 
-### P3-3 · Logika mobilna tylko na jednej stronie
-Z 14 stron tylko `Portfolio.jsx` reaguje na szerokość ekranu. Wspólny hook
-`useIsMobile()` i przejście strona po stronie.
+Plan: wspólny hook `useIsMobile()` (jedno źródło zamiast logiki w `Layout`),
+potem najpierw te 23 siatki, dalej strona po stronie. Przy okazji `<main>`
+deklaruje `containerType: inline-size`, ale nie ma ani jednego `@container` —
+albo użyć, albo usunąć.
 
-Duże, ale podzielne — warto brać po jednej stronie, zaczynając od tych,
-których faktycznie używasz na telefonie.
-
-### P3-5 · ~100 zaszytych polskich napisów
-Mimo parytetu tłumaczeń 818/818 tryb angielski jest mieszany, bo część
-napisów siedzi wprost w komponentach. Do przeniesienia na klucze; przydałaby
-się reguła lintera na gołe napisy w JSX (zależy od P3-9).
+### P3-5 · Zaszyte polskie napisy — jest ich 97, nie ~51
+**Korekta:** dokładny skan (tekst w JSX + literały `{'...'}` + atrybuty
+`placeholder/title/label`, z pominięciem `t()` i komentarzy) dał **97 napisów
+w 26 plikach**, nie ~51. Najwięcej: `KeyStatsTab` (16), `FinancialsTab` (15),
+`BrokerImportModal` (9). Do przeniesienia na klucze przy zachowaniu parytetu
+`pl.js`/`en.js` (dziś 819/819).
 
 ### P3-8 · Przerośnięte pliki
-`Portfolio.jsx` — 2003 linie (zawiera `OtherAssetsSection`, `BondsSection`
-i modale), `Analysis.jsx` — 1414. Do rozbicia na osobne pliki.
-
-Czysto kosmetyczne, ale utrudnia każdą kolejną zmianę.
+`Portfolio.jsx` — 2010 linii (6 wydzielalnych wewnętrznych: `AddCryptoModal`,
+`NoteEditor`, `OtherAssetModal`, `OtherAssetsSection`, `BondsSection`,
+`BondModal`), `Analysis.jsx` — 1415 (8 samodzielnych sekcji). Do rozbicia na
+osobne pliki. Czysto kosmetyczne, ale utrudnia każdą kolejną zmianę.
 
 ---
 

@@ -9,6 +9,7 @@ import hashlib
 import bcrypt
 import datetime
 import functools
+import logging
 import mimetypes
 import re
 import secrets
@@ -28,6 +29,19 @@ from zoneinfo import ZoneInfo
 # okna w roku wychodziły o godzinę nie tak: koniec marca (naprawdę +2, wychodziło
 # +1) i koniec października (naprawdę +1, wychodziło +2).
 _WARSAW = ZoneInfo('Europe/Warsaw')
+
+# Diagnostyka szła przez print() — bez poziomów i bez znaczników czasu, więc
+# w logach Rendera nie dawało się oddzielić awarii od zwykłego postępu ani
+# przyciąć poziomu. Teraz jeden logger: postęp to info, wszystko z bloków
+# except to warning. Poziom sterowany LOG_LEVEL (domyślnie INFO). Banner
+# startowy zostaje na print() — to celowy wydruk dla człowieka odpalającego
+# serwer lokalnie, nie diagnostyka.
+logging.basicConfig(
+    level=getattr(logging, os.environ.get('LOG_LEVEL', 'INFO').upper(), logging.INFO),
+    format='%(asctime)s %(levelname)s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+log = logging.getLogger('myfund')
 
 BASE       = Path(__file__).parent
 REACT_DIST = BASE / 'frontend-react' / 'dist'
@@ -302,10 +316,10 @@ def _fetch_bench_pl(index_name):
         if not points:
             return None
         _BENCH_PL_CACHE[upper] = {'data': points, 'ts': time.time()}
-        print(f'[bench-pl] {upper}: fetched {len(points)} points from bankier.pl')
+        log.info(f'[bench-pl] {upper}: fetched {len(points)} points from bankier.pl')
         return points
     except Exception as e:
-        print(f'[bench-pl] {upper} ERROR: {e}')
+        log.warning(f'[bench-pl] {upper} ERROR: {e}')
         stale = _BENCH_PL_CACHE.get(upper, {}).get('data')
         return stale if stale is not None else None
 
@@ -334,11 +348,11 @@ def _fetch_calendar(week):
                 import gzip
                 raw = gzip.decompress(raw)
             data = json.loads(raw)
-        print(f'[calendar] {week}: fetched {len(data)} events')
+        log.info(f'[calendar] {week}: fetched {len(data)} events')
         _CAL_CACHE[week] = {'data': data, 'ts': time.time()}
         return data
     except Exception as e:
-        print(f'[calendar] {week} ERROR: {e}')
+        log.warning(f'[calendar] {week} ERROR: {e}')
         stale = _CAL_CACHE.get(week, {}).get('data')
         return stale if stale is not None else []
 
@@ -719,7 +733,7 @@ def _fetch_biznesradar_financials(symbol):
         _,    balance = _scrape('raporty-finansowe-bilans')
         _,    cashflow = _scrape('raporty-finansowe-przeplywy-pieniezne')
     except Exception as e:
-        print(f'[biznesradar] {ticker}: {e}')
+        log.warning(f'[biznesradar] {ticker}: {e}')
         return None
 
     if not years or not income:
@@ -857,7 +871,7 @@ def _sec_get_cik(symbol):
             _SEC_TICKERS_CACHE['data'] = json.loads(raw)
             _SEC_TICKERS_CACHE['ts']   = now
         except Exception as e:
-            print(f'[sec/tickers] {e}')
+            log.warning(f'[sec/tickers] {e}')
             return None
     entry = next((v for v in _SEC_TICKERS_CACHE['data'].values()
                   if v.get('ticker', '').upper() == symbol.upper()), None)
@@ -876,7 +890,7 @@ def _fetch_sec_edgar_financials(symbol, period):
             headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
         facts = json.loads(urllib.request.urlopen(req, timeout=20).read())
     except Exception as e:
-        print(f'[sec/facts] {symbol}: {e}')
+        log.warning(f'[sec/facts] {symbol}: {e}')
         return None
 
     usgaap = facts.get('facts', {}).get('us-gaap', {})
@@ -1049,7 +1063,7 @@ def _fetch_yahoo_financials(symbol, period):
             if not (data and data.get('periods')):
                 data = None
     except Exception as e:
-        print(f'[financials/yf] {symbol}/{period}: {e}')
+        log.warning(f'[financials/yf] {symbol}/{period}: {e}')
 
     # Quarterly failed for .WA — try Bankier.pl quarterly before falling back to annual
     if data is None and period == 'quarterly' and symbol.endswith('.WA'):
@@ -1058,7 +1072,7 @@ def _fetch_yahoo_financials(symbol, period):
             if not (data and data.get('periods')):
                 data = None
         except Exception as e:
-            print(f'[financials/bankier] {symbol}: {e}')
+            log.warning(f'[financials/bankier] {symbol}: {e}')
             data = None
 
     # Quarterly failed — try YF annual as intermediate fallback
@@ -1080,7 +1094,7 @@ def _fetch_yahoo_financials(symbol, period):
         try:
             data = _fetch_biznesradar_financials(symbol)
         except Exception as e:
-            print(f'[financials/br] {symbol}: {e}')
+            log.warning(f'[financials/br] {symbol}: {e}')
 
     # YF unavailable or missing revenue — use SEC EDGAR XBRL for US-listed stocks (no IP blocking)
     has_revenue = data and any(p.get('revenue') for p in data.get('periods', []))
@@ -1106,7 +1120,7 @@ def _fetch_yahoo_financials(symbol, period):
                         val['sharesOutstanding'] = sec_data['valuation']['sharesOutstanding']
                         data['valuation'] = val
         except Exception as e:
-            print(f'[financials/sec] {symbol}: {e}')
+            log.warning(f'[financials/sec] {symbol}: {e}')
 
     # For .WA stocks, fill valuation gaps (marketCap, sharesOutstanding) from Biznesradar profile
     if data and symbol.endswith('.WA'):
@@ -1120,7 +1134,7 @@ def _fetch_yahoo_financials(symbol, period):
                     val.setdefault('ev',                br_val.get('enterpriseValue'))
                     data['valuation'] = val
             except Exception as e:
-                print(f'[financials/br_val] {symbol}: {e}')
+                log.warning(f'[financials/br_val] {symbol}: {e}')
 
     return data
 
@@ -1156,17 +1170,17 @@ def _refresh_financials_background(symbols=None):
                 except Exception:
                     to_refresh.append((sym, period))
         if not to_refresh:
-            print(f'[financials/bg] All {len(symbols)} symbols up to date')
+            log.info(f'[financials/bg] All {len(symbols)} symbols up to date')
             return
         unique = list({s for s, _ in to_refresh})
-        print(f'[financials/bg] Refreshing {len(to_refresh)} entries for: {unique}')
+        log.info(f'[financials/bg] Refreshing {len(to_refresh)} entries for: {unique}')
         import concurrent.futures as _cf
         def _fetch_one(sym_period):
             sym, period = sym_period
             try:
                 data = _fetch_yahoo_financials(sym, period)
                 if not data or not data.get('periods'):
-                    print(f'[financials/bg] {sym}/{period}: no data from Yahoo Finance')
+                    log.info(f'[financials/bg] {sym}/{period}: no data from Yahoo Finance')
                     return
                 with _conn() as conn, conn.cursor() as cur:
                     cur.execute(
@@ -1178,15 +1192,15 @@ def _refresh_financials_background(symbols=None):
                                    fetched_at=NOW()""",
                         (sym, period, json.dumps(data))
                     )
-                print(f'[financials/bg] {sym}/{period}: {len(data["periods"])} periods stored')
+                log.info(f'[financials/bg] {sym}/{period}: {len(data["periods"])} periods stored')
             except Exception as e:
-                print(f'[financials/bg] {sym}/{period}: {e}')
+                log.warning(f'[financials/bg] {sym}/{period}: {e}')
         with _cf.ThreadPoolExecutor(max_workers=3) as ex:
             list(ex.map(_fetch_one, to_refresh))
-        print('[financials/bg] Done')
+        log.info('[financials/bg] Done')
     except Exception as e:
         import traceback
-        print(f'[financials/bg] Error: {e}\n{traceback.format_exc()}')
+        log.warning(f'[financials/bg] Error: {e}\n{traceback.format_exc()}')
 
 
 # Load .env file if present (for local dev — set DATABASE_URL there to share Neon.tech with Render)
@@ -1855,7 +1869,7 @@ def migrate_user_to_portfolios(username):
     pid = secrets.token_hex(12)
     create_portfolio(username, pid, 'Portfel domyślny', 'PLN')
     save_portfolio_data(pid, old)
-    print(f'[migration] {username}: migrated old blob to "Portfel domyślny" (id={pid})')
+    log.info(f'[migration] {username}: migrated old blob to "Portfel domyślny" (id={pid})')
     return list_portfolios(username)
 
 
@@ -1982,9 +1996,9 @@ def _purge_old_demo_users():
             if u in stale_set:
                 SESSIONS.pop(tok, None)
         if stale:
-            print(f'[demo] purged {len(stale)} stale demo account(s)')
+            log.info(f'[demo] purged {len(stale)} stale demo account(s)')
     except Exception as e:
-        print(f'[demo] purge failed: {e}')
+        log.warning(f'[demo] purge failed: {e}')
 
 
 def _demo_seed_data():
@@ -2069,7 +2083,7 @@ def _session_put(token, username):
             with _conn() as c, c.cursor() as cur:
                 cur.execute("INSERT INTO sessions (token, username) VALUES (%s,%s) ON CONFLICT (token) DO NOTHING", (token, username))
         except Exception as e:
-            print(f'[sessions] persist failed: {e}')
+            log.warning(f'[sessions] persist failed: {e}')
 
 
 def _session_drop(token):
@@ -2079,7 +2093,7 @@ def _session_drop(token):
             with _conn() as c, c.cursor() as cur:
                 cur.execute("DELETE FROM sessions WHERE token=%s", (token,))
         except Exception as e:
-            print(f'[sessions] delete failed: {e}')
+            log.warning(f'[sessions] delete failed: {e}')
 
 
 _SESSION_COOKIE = 'myfund_session'
@@ -2129,7 +2143,7 @@ def get_username(handler):
             SESSIONS[token] = (username, time.time() - age)
             return username
     except Exception as e:
-        print(f'[sessions] lookup failed: {e}')
+        log.warning(f'[sessions] lookup failed: {e}')
         return None
 
 
@@ -2155,11 +2169,11 @@ def _send_push(username, title, body, url='/'):
             if code in (404, 410):
                 with _conn() as c, c.cursor() as cur:
                     cur.execute("DELETE FROM push_subscriptions WHERE username=%s AND endpoint=%s", (username, endpoint))
-                print(f'[push] {username}: expired subscription removed')
+                log.info(f'[push] {username}: expired subscription removed')
             else:
-                print(f'[push] {username}: {e}')
+                log.info(f'[push] {username}: {e}')
         except Exception as e:
-            print(f'[push] {username}: {e}')
+            log.warning(f'[push] {username}: {e}')
     return sent
 
 
@@ -2208,7 +2222,7 @@ def _prefill_quotes(symbols, price_cache):
             with urllib.request.urlopen(req, timeout=20) as r:
                 quotes = (json.loads(r.read()) or {}).get('quotes') or {}
         except Exception as e:
-            print(f'[quotes] paczka {len(chunk)} symboli: {e}')
+            log.warning(f'[quotes] paczka {len(chunk)} symboli: {e}')
             continue
         for sym in chunk:
             q = _quote_from_entry(quotes.get(sym))
@@ -2239,7 +2253,7 @@ def _fetch_quote(symbol):
                         'low52': q.get('fiftyTwoWeekLow'),
                     }
     except Exception as e:
-        print(f'[push] price quotes {symbol}: {e}')
+        log.warning(f'[push] price quotes {symbol}: {e}')
     # zapas dla US — finnhub (c=cena, dp=zmiana dzienna %)
     if not symbol.endswith('.WA'):
         try:
@@ -2252,7 +2266,7 @@ def _fetch_quote(symbol):
                 if (q.get('c') or 0) > 0:
                     return {'price': float(q['c']), 'changePct': q.get('dp'), 'high52': None, 'low52': None}
         except Exception as e:
-            print(f'[push] price finnhub {symbol}: {e}')
+            log.warning(f'[push] price finnhub {symbol}: {e}')
     return None
 
 
@@ -2267,7 +2281,7 @@ def _nbp_rates():
         rates['PLN'] = 1.0
         return rates
     except Exception as e:
-        print(f'[push] nbp: {e}')
+        log.warning(f'[push] nbp: {e}')
         return {'PLN': 1.0}
 
 
@@ -2380,7 +2394,7 @@ def _nbp_historical_rates(dates, currencies=('USD', 'EUR', 'GBP')):
                             to_insert
                         )
                 except Exception as e:
-                    print(f'[fx-hist] insert: {e}')
+                    log.warning(f'[fx-hist] insert: {e}')
         for d, r in cached.items():
             if d in out and r > _FX_MISS:
                 out[d][currency] = r
@@ -2414,9 +2428,9 @@ def _backfill_snapshot_fx(portfolio_id):
                     "UPDATE portfolio_snapshots SET fx_json=%s WHERE portfolio_id=%s AND date=%s::date",
                     updates
                 )
-            print(f'[fx-backfill] {portfolio_id}: {len(updates)} snapshotów uzupełnione')
+            log.info(f'[fx-backfill] {portfolio_id}: {len(updates)} snapshotów uzupełnione')
     except Exception as e:
-        print(f'[fx-backfill] {portfolio_id}: {e}')
+        log.warning(f'[fx-backfill] {portfolio_id}: {e}')
 
 
 def _backfill_all_snapshot_fx():
@@ -2430,14 +2444,14 @@ def _backfill_all_snapshot_fx():
             cur.execute("SELECT id FROM portfolio_list")
             pids = [r[0] for r in cur.fetchall()]
     except Exception as e:
-        print(f'[fx-backfill] nie udało się pobrać listy portfeli: {e}')
+        log.warning(f'[fx-backfill] nie udało się pobrać listy portfeli: {e}')
         return
     for pid in pids:
         try:
             _backfill_snapshot_fx(pid)
         except Exception as e:
-            print(f'[fx-backfill] {pid}: {e}')
-    print(f'[fx-backfill] przebieg zakończony — {len(pids)} portfeli')
+            log.warning(f'[fx-backfill] {pid}: {e}')
+    log.info(f'[fx-backfill] przebieg zakończony — {len(pids)} portfeli')
 
 
 def _portfolio_market_value(username, price_cache, rates):
@@ -2630,7 +2644,7 @@ def _build_shared_payload(username, portfolio_id):
                 if irr is not None:
                     metrics['irrPct'] = round(irr * 100, 1)
     except Exception as e:
-        print(f'[share] IRR error: {e}')
+        log.warning(f'[share] IRR error: {e}')
 
     return {
         'name': meta.get('name') or 'Portfel',
@@ -2690,7 +2704,7 @@ def _upcoming_dividends(symbols):
                     'isManual': False,
                 })
             except Exception as e:
-                print(f'[dividends] {symbol}: {e}')
+                log.warning(f'[dividends] {symbol}: {e}')
         else:
             # US stock — Finnhub
             try:
@@ -2710,7 +2724,7 @@ def _upcoming_dividends(symbols):
                         'isManual': False,
                     })
             except Exception as e:
-                print(f'[dividends] {symbol}: {e}')
+                log.warning(f'[dividends] {symbol}: {e}')
 
     return results
 
@@ -2818,15 +2832,15 @@ def _run_push_checks():
                         dirty = True
                         stats['priceAlerts'] += 1
                     except Exception as e:
-                        print(f'[push] alert {username}/{sym}: {e}')
+                        log.warning(f'[push] alert {username}/{sym}: {e}')
         except Exception as e:
-            print(f'[push] alerts {username}: {e}')
+            log.warning(f'[push] alerts {username}: {e}')
         finally:
             if dirty and items is not None:
                 try:
                     save_watchlist(username, items)
                 except Exception as e:
-                    print(f'[push] save_watchlist {username}: {e}')
+                    log.warning(f'[push] save_watchlist {username}: {e}')
 
         # ── 1b. Alert spadku portfela (drawdown od ATH) ──────────────────
         try:
@@ -2857,7 +2871,7 @@ def _run_push_checks():
                             cur.execute(f"UPDATE portfolio_alerts SET {', '.join(sets)} WHERE username=%s",
                                         (*params, username))
         except Exception as e:
-            print(f'[push] portfolio alert {username}: {e}')
+            log.warning(f'[push] portfolio alert {username}: {e}')
 
         # ── 1c. Podsumowania sesji (USA i GPW: otwarcie / zamknięcie) ────
         try:
@@ -2892,11 +2906,11 @@ def _run_push_checks():
                         # Log które ceny/kursy brakują — najczęstszy powód
                         # cichego pomijania powiadomień w oknach sesji.
                         missing_prices = [s for s, q in price_cache.items() if q is None]
-                        print(f'[push] session summary {username}: value=None, '
+                        log.info(f'[push] session summary {username}: value=None, '
                               f'missing_prices={missing_prices or "n/a"}, '
                               f'windows_skipped={[w[0] for w in windows]}')
                     elif value <= 0:
-                        print(f'[push] session summary {username}: value={value}, skip')
+                        log.info(f'[push] session summary {username}: value={value}, skip')
                     if value is not None and value > 0:
                         # zmiana dzienna: wartość wczorajsza z changePct per pozycja
                         pct = None
@@ -2935,10 +2949,10 @@ def _run_push_checks():
                                 _mark_sent(username, key)  # dopiero po realnej wysyłce
                                 stats['usSummary'] += 1
                             else:
-                                print(f'[push] session summary {username}/{key}: '
+                                log.info(f'[push] session summary {username}/{key}: '
                                       f'_send_push zwrócił 0 (brak subskrypcji?) — retry przy następnym cyklu')
         except Exception as e:
-            print(f'[push] session summary {username}: {e}')
+            log.warning(f'[push] session summary {username}: {e}')
 
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
@@ -2947,7 +2961,7 @@ def _run_push_checks():
                 continue
             _mark_sent(username, daily_key)
         except Exception as e:
-            print(f'[push] daily {username}: {e}')
+            log.warning(f'[push] daily {username}: {e}')
             continue
 
         # 2. Dywidendy: ex-date jutro dla posiadanych spółek
@@ -2977,7 +2991,7 @@ def _run_push_checks():
                     _mark_sent(username, key)
                     stats['dividends'] += 1
         except Exception as e:
-            print(f'[push] dividends {username}: {e}')
+            log.warning(f'[push] dividends {username}: {e}')
 
         # 3. Limit IKE/IKZE: progi 80% i 100%, raz na rok
         try:
@@ -3014,7 +3028,7 @@ def _run_push_checks():
                             stats['ike'] += 1
                         break  # wyższy próg wysłany/odnotowany — niższego nie duplikujemy
         except Exception as e:
-            print(f'[push] ike {username}: {e}')
+            log.warning(f'[push] ike {username}: {e}')
 
     # Zapisz log biegu — dzięki temu można sprawdzić czy cron w ogóle uderza
     # (GET /api/push/status). Zachowujemy tylko ostatnie 100 wpisów.
@@ -3025,7 +3039,7 @@ def _run_push_checks():
             cur.execute("DELETE FROM push_runs WHERE id NOT IN "
                         "(SELECT id FROM push_runs ORDER BY id DESC LIMIT 100)")
     except Exception as e:
-        print(f'[push] run log: {e}')
+        log.warning(f'[push] run log: {e}')
     return stats
 
 
@@ -3283,7 +3297,7 @@ class Handler(SimpleHTTPRequestHandler):
                     })
                 self.send_json(200, {'results': results})
             except Exception as e:
-                print(f'[search] {q}: {e}')
+                log.warning(f'[search] {q}: {e}')
                 self.send_json(200, {'results': []})
 
         elif path == '/api/logos':
@@ -3310,7 +3324,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 _logo_cache[sym] = netloc
                                 return sym, netloc
                     except Exception as e:
-                        print(f'[logos] {sym}: {e}')
+                        log.warning(f'[logos] {sym}: {e}')
                     _logo_cache[sym] = None
                     return sym, None
                 try:
@@ -3324,7 +3338,7 @@ class Handler(SimpleHTTPRequestHandler):
                             except Exception:
                                 pass
                 except _FutTimeout:
-                    print(f'[logos] timed out waiting for {len(uncached)} symbols, returning partial results')
+                    log.warning(f'[logos] timed out waiting for {len(uncached)} symbols, returning partial results')
             for s in symbols:
                 if s in _logo_cache and _logo_cache[s]:
                     logos.setdefault(s, _logo_cache[s])
@@ -3378,7 +3392,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 body = load_data(username)
             except Exception as e:
-                print(f'[db] load_data error for {username}: {e}')
+                log.warning(f'[db] load_data error for {username}: {e}')
                 self.send_json(503, {'error': 'db_error'}); return
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -3460,7 +3474,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 data[sym]['metric'] = entry['data']
                 self.send_json(200, data)
             except Exception as e:
-                print(f'[finnhub-batch] {e}')
+                log.warning(f'[finnhub-batch] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path.startswith('/api/finnhub/'):
@@ -3488,7 +3502,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                print(f'[proxy] {e}')
+                log.warning(f'[proxy] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/alphavantage':
@@ -3510,7 +3524,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                print(f'[proxy] {e}')
+                log.warning(f'[proxy] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/proxy':
@@ -3539,7 +3553,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
-                print(f'[proxy] {e}')
+                log.warning(f'[proxy] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/financials':
@@ -3579,12 +3593,12 @@ class Handler(SimpleHTTPRequestHandler):
                         cached['fetchedAt'] = row['fetched_at'].isoformat()
                         self.send_json(200, cached); return
             except Exception as e:
-                print(f'[financials] db read error: {e}')
+                log.warning(f'[financials] db read error: {e}')
             # Cache miss → Yahoo Finance
             try:
                 data = _fetch_yahoo_financials(symbol, period)
             except Exception as e:
-                print(f'[financials] yahoo fetch error for {symbol}: {e}')
+                log.warning(f'[financials] yahoo fetch error for {symbol}: {e}')
                 self.send_json(404, {'error': 'no_data'}); return
             if not data or not data.get('periods'):
                 self.send_json(404, {'error': 'no_data'}); return
@@ -3599,7 +3613,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 fetched_at = NOW()
                     """, (symbol, data.get('period', period), json.dumps(data)))
             except Exception as e:
-                print(f'[financials] db write error: {e}')
+                log.warning(f'[financials] db write error: {e}')
             data['source']    = 'yahoo'
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
@@ -3631,7 +3645,7 @@ class Handler(SimpleHTTPRequestHandler):
                     out['dividendRate']     = fh.get('dividendPerShareAnnual')
                     out['priceToBook']      = fh.get('pbAnnual')
                 except Exception as e:
-                    print(f'[keystats/finnhub] {symbol}: {e}')
+                    log.warning(f'[keystats/finnhub] {symbol}: {e}')
                 try:
                     div_url = (f'https://finnhub.io/api/v1/stock/dividend2?symbol='
                                f'{urllib.parse.quote(symbol)}&token={fh_token}')
@@ -3652,7 +3666,7 @@ class Handler(SimpleHTTPRequestHandler):
                             break
                     out['dividendGrowthStreak'] = streak
                 except Exception as e:
-                    print(f'[keystats/finnhub/div2] {symbol}: {e}')
+                    log.warning(f'[keystats/finnhub/div2] {symbol}: {e}')
 
             # 2. Stored financials from DB → send raw TTM values for frontend to compute ratios
             try:
@@ -3707,7 +3721,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 if ttm_curr and ttm_prev:
                                     out.setdefault('revenueGrowthYoY', (ttm_curr - ttm_prev) / ttm_prev)
             except Exception as e:
-                print(f'[keystats/db] {symbol}: {e}')
+                log.warning(f'[keystats/db] {symbol}: {e}')
 
             # DCF fair value — earnings-based (net income TTM as proxy for earnings power)
             out['dcfFairValue'] = _dcf_fair_value(
@@ -3764,7 +3778,7 @@ class Handler(SimpleHTTPRequestHandler):
                         re_ = annual.get('revenueEstimate', {})
                         out.setdefault('forwardRevenueEstimate', _rv(re_, 'avg'))
             except Exception as e:
-                print(f'[keystats/yf] {symbol}: {e}')
+                log.warning(f'[keystats/yf] {symbol}: {e}')
 
             self.send_json(200, out)
 
@@ -3787,7 +3801,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if row:
                         self.send_json(200, {'summary': row[0], 'cached': True}); return
             except Exception as e:
-                print(f'[summary/cache_read] {e}')
+                log.warning(f'[summary/cache_read] {e}')
 
             # Gather metrics from DB for the prompt
             m = {}
@@ -3833,7 +3847,7 @@ class Handler(SimpleHTTPRequestHandler):
                                     m['revGrowth'] = (m['revenue'] - sum(pv)) / sum(pv)
                         break
             except Exception as e:
-                print(f'[summary/db] {e}')
+                log.warning(f'[summary/db] {e}')
 
             def _b(v):
                 if v is None: return 'N/A'
@@ -3963,10 +3977,10 @@ class Handler(SimpleHTTPRequestHandler):
                             SET summary=EXCLUDED.summary, created_at=NOW()
                         """, (symbol, text))
                 except Exception as e:
-                    print(f'[summary/cache_write] {e}')
+                    log.warning(f'[summary/cache_write] {e}')
                 self.send_json(200, {'summary': text})
             except Exception as e:
-                print(f'[summary/groq] {type(e).__name__}: {e}')
+                log.warning(f'[summary/groq] {type(e).__name__}: {e}')
                 self.send_json(502, {'error': f'AI request failed: {type(e).__name__}'})
 
         elif path == '/api/wig20-quote':
@@ -3992,7 +4006,7 @@ class Handler(SimpleHTTPRequestHandler):
                     _WIG20_QUOTE_CACHE['wig20'] = {'data': payload, 'ts': now}
                     self.send_json(200, payload)
                 except Exception as e:
-                    print(f'[wig20-quote] {e}')
+                    log.warning(f'[wig20-quote] {e}')
                     self.send_json(502, {'error': 'upstream failed'})
 
         elif path == '/api/crypto-price':
@@ -4042,7 +4056,7 @@ class Handler(SimpleHTTPRequestHandler):
                 _CRYPTO_CACHE[ids_str] = {'data': result, 'ts': time.time()}
                 self.send_json(200, result)
             except Exception as e:
-                print(f'[crypto-price] {e}')
+                log.warning(f'[crypto-price] {e}')
                 self.send_json(502, {'error': 'upstream request failed'})
 
         elif path == '/api/bench-pl':
@@ -4100,13 +4114,13 @@ class Handler(SimpleHTTPRequestHandler):
                         relevant = [h for h in all_titles if ticker_base in h.upper()]
                         return relevant[:4]
                     except Exception as e:
-                        print(f'[espi/yf_news] {sym}: {e}')
+                        log.warning(f'[espi/yf_news] {sym}: {e}')
                         return []
                 def _fetch_yf_fin(sym):
                     try:
                         return _yf_quotesummary(sym, 'financialData,defaultKeyStatistics,summaryDetail,assetProfile,earningsTrend')
                     except Exception as e:
-                        print(f'[espi/yf_fin] {sym}: {e}')
+                        log.warning(f'[espi/yf_fin] {sym}: {e}')
                         return {}
                 def _fetch_db_fin(sym):
                     """Read cached quarterly financials from DB for enriched AI context."""
@@ -4293,7 +4307,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 current_buf.append(line.strip())
                         _flush(current_sym, current_buf)
                     except Exception as _ai_e:
-                        print(f'[espi/ai] {_ai_e}')
+                        log.warning(f'[espi/ai] {_ai_e}')
                 items = [
                     {'symbol': s, 'headlines': news_map.get(s, []), 'summary': summaries.get(s)}
                     for s in wa_syms
@@ -4306,7 +4320,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(200, result)
             except Exception as _top_e:
                 import traceback
-                print(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
+                log.warning(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
                 self.send_json(500, {'error': str(_top_e)})
 
         elif path == '/api/fx-rate':
@@ -4372,7 +4386,7 @@ class Handler(SimpleHTTPRequestHandler):
 
                 self.send_json(200, {'currency': currency, 'rates': {d: rates.get(d) for d in dates}})
             except Exception as e:
-                print(f'[fx-rate] {e}')
+                log.warning(f'[fx-rate] {e}')
                 self.send_json(500, {'error': str(e)})
 
         elif path == '/api/newsfeed':
@@ -4431,7 +4445,7 @@ class Handler(SimpleHTTPRequestHandler):
                             })
                         return out
                     except Exception as e:
-                        print(f'[newsfeed/finnhub] {sym}: {e}')
+                        log.warning(f'[newsfeed/finnhub] {sym}: {e}')
                         return []
 
                 def _fetch_yahoo_news(sym):
@@ -4464,7 +4478,7 @@ class Handler(SimpleHTTPRequestHandler):
                             })
                         return out[:5]
                     except Exception as e:
-                        print(f'[newsfeed/yahoo] {sym}: {e}')
+                        log.warning(f'[newsfeed/yahoo] {sym}: {e}')
                         return []
 
                 with _cf.ThreadPoolExecutor(max_workers=10) as ex:
@@ -4530,7 +4544,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 merged[idx]['summary'] = entry.get('summary')
                                 merged[idx]['sentiment'] = entry.get('sentiment')
                     except Exception as e:
-                        print(f'[newsfeed/ai] {e}')
+                        log.warning(f'[newsfeed/ai] {e}')
 
                 items = []
                 for n in merged:
@@ -4552,7 +4566,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(200, result)
             except Exception as _top_e:
                 import traceback
-                print(f'[newsfeed/top] {_top_e}\n{traceback.format_exc()}')
+                log.warning(f'[newsfeed/top] {_top_e}\n{traceback.format_exc()}')
                 self.send_json(500, {'error': str(_top_e)})
 
         elif path in ('/', '/index.html', '/myfund.html'):
@@ -4794,7 +4808,7 @@ async function doRecover() {
                 self.send_json(200, {'ok': True, 'display_name': display_name, 'demo': True},
                                cookies=[self.session_cookie(token)])
             except Exception as e:
-                print(f'[demo] create failed: {e}')
+                log.warning(f'[demo] create failed: {e}')
                 self.send_json(500, {'ok': False, 'error': 'Nie udało się utworzyć konta demo'})
 
         elif path == '/api/session/upgrade':
@@ -4864,7 +4878,7 @@ async function doRecover() {
                         with _conn() as c, c.cursor() as cur:
                             cur.execute("DELETE FROM sessions WHERE username=%s", (username,))
                     except Exception as e:
-                        print(f'[sessions] purge failed: {e}')
+                        log.warning(f'[sessions] purge failed: {e}')
                 self.send_json(200, {'ok': True, 'remaining_codes': len(hashes)})
             except ValueError as e:
                 self.send_json(400, {'ok': False, 'error': str(e)})
@@ -5055,7 +5069,7 @@ async function doRecover() {
                     if prior_dates:
                         last_total = snaps.get(prior_dates[-1])
                         if last_total and total < last_total * 0.5:
-                            print(f'[snapshot] REJECT pid={pid} today={today} '
+                            log.info(f'[snapshot] REJECT pid={pid} today={today} '
                                   f'total={total} < 50% ostatniego {last_total}')
                             continue
                     snaps[today] = total
@@ -5199,7 +5213,7 @@ async function doRecover() {
             except json.JSONDecodeError:
                 self.send_json(422, {'error': 'parse_failed'}); return
             except Exception as e:
-                print(f'[financials/upload] vision error: {type(e).__name__}: {e}')
+                log.warning(f'[financials/upload] vision error: {type(e).__name__}: {e}')
                 self.send_json(502, {'error': str(e) or 'vision_error'}); return
             try:
                 with _conn() as conn, conn.cursor() as cur:
@@ -5212,7 +5226,7 @@ async function doRecover() {
                                 fetched_at = NOW()
                     """, (symbol, period, json.dumps(data)))
             except Exception as e:
-                print(f'[financials/upload] db write error: {e}')
+                log.warning(f'[financials/upload] db write error: {e}')
             data['source']    = 'screenshot'
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.send_json(200, data)
@@ -5245,7 +5259,7 @@ async function doRecover() {
                                 fetched_at = NOW()
                     """, (symbol, period, json.dumps(data)))
             except Exception as e:
-                print(f'[financials/manual] db error: {e}')
+                log.warning(f'[financials/manual] db error: {e}')
                 self.send_json(500, {'error': 'db_error'}); return
             data['source']    = 'manual'
             data['fetchedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -5277,7 +5291,7 @@ async function doRecover() {
                         )
                         row = cur.fetchone()
                 except Exception as e:
-                    print(f'[analyze] db error: {e}')
+                    log.warning(f'[analyze] db error: {e}')
                     self.send_json(500, {'error': 'err_db'}); return
 
             if row:
@@ -5305,7 +5319,7 @@ async function doRecover() {
                     )
                     fin_row = cur.fetchone()
             except Exception as e:
-                print(f'[analyze] db error fetching financials: {e}')
+                log.warning(f'[analyze] db error fetching financials: {e}')
                 self.send_json(500, {'error': 'err_db'}); return
 
             if not fin_row:
@@ -5372,7 +5386,7 @@ async function doRecover() {
                 from groq import RateLimitError as _RateLimitError
                 err_key = 'err_rate_limit' if isinstance(e, _RateLimitError) else 'err_groq_failed'
                 debug_info = f'{type(e).__name__}: {str(e)[:150]}'
-                print(f'[analyze] groq error: {debug_info}')
+                log.warning(f'[analyze] groq error: {debug_info}')
                 self.wfile.write(f'data: {json.dumps({"error": err_key, "debug": debug_info})}\n\n'.encode('utf-8'))
                 self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
@@ -5395,7 +5409,7 @@ async function doRecover() {
                             (symbol, period, analysis_text)
                         )
                 except Exception as e:
-                    print(f'[analyze] db cache write error: {e}')
+                    log.warning(f'[analyze] db cache write error: {e}')
 
         elif path == '/api/portfolio-review':
             username = get_username(self)
@@ -5424,7 +5438,7 @@ async function doRecover() {
                         )
                         row = cur.fetchone()
                 except Exception as e:
-                    print(f'[portfolio-review] db error: {e}')
+                    log.warning(f'[portfolio-review] db error: {e}')
 
             if row:
                 cached_text = row[0]
@@ -5496,7 +5510,7 @@ async function doRecover() {
             except Exception as e:
                 from groq import RateLimitError as _RateLimitError
                 err_key = 'err_rate_limit' if isinstance(e, _RateLimitError) else 'err_groq_failed'
-                print(f'[portfolio-review] groq error: {type(e).__name__}: {str(e)[:150]}')
+                log.warning(f'[portfolio-review] groq error: {type(e).__name__}: {str(e)[:150]}')
                 self.wfile.write(f'data: {json.dumps({"error": err_key})}\n\n'.encode('utf-8'))
                 self.wfile.flush()
                 self.wfile.write(b'data: [DONE]\n\n')
@@ -5518,7 +5532,7 @@ async function doRecover() {
                             (username, portfolio_key, review_text)
                         )
                 except Exception as e:
-                    print(f'[portfolio-review] db cache write error: {e}')
+                    log.warning(f'[portfolio-review] db cache write error: {e}')
 
         elif path == '/api/push/subscribe':
             username = get_username(self)
@@ -5538,7 +5552,7 @@ async function doRecover() {
                     """, (username, endpoint, json.dumps(sub)))
                 self.send_json(200, {'ok': True})
             except Exception as e:
-                print(f'[push] subscribe: {e}')
+                log.warning(f'[push] subscribe: {e}')
                 self.send_json(400, {'error': 'bad request'})
 
         elif path == '/api/push/unsubscribe':
@@ -5552,7 +5566,7 @@ async function doRecover() {
                     cur.execute("DELETE FROM push_subscriptions WHERE username=%s AND endpoint=%s", (username, endpoint))
                 self.send_json(200, {'ok': True})
             except Exception as e:
-                print(f'[push] unsubscribe: {e}')
+                log.warning(f'[push] unsubscribe: {e}')
                 self.send_json(400, {'error': 'bad request'})
 
         elif path == '/api/push/test':
@@ -5563,7 +5577,7 @@ async function doRecover() {
                 sent = _send_push(username, 'MyFund 🔔', 'Powiadomienia działają!', '/watchlist')
                 self.send_json(200, {'sent': sent})
             except Exception as e:
-                print(f'[push] test: {e}')
+                log.warning(f'[push] test: {e}')
                 self.send_json(500, {'error': 'push failed'})
 
         elif path == '/api/portfolio-alert':
@@ -5598,7 +5612,7 @@ async function doRecover() {
                     """, (username, threshold or 10, enabled, us_summary, gpw_summary))
                 self.send_json(200, {'ok': True})
             except Exception as e:
-                print(f'[push] portfolio-alert save: {e}')
+                log.warning(f'[push] portfolio-alert save: {e}')
                 self.send_json(400, {'error': 'bad request'})
 
         elif path == '/api/push/check':
@@ -5608,7 +5622,7 @@ async function doRecover() {
             try:
                 self.send_json(200, _run_push_checks())
             except Exception as e:
-                print(f'[push] check: {e}')
+                log.warning(f'[push] check: {e}')
                 self.send_json(500, {'error': 'check failed'})
 
         else:
@@ -5688,7 +5702,7 @@ def _fetch_prices_batch(symbols):
                 result[sym] = float(price)
         return result
     except Exception as e:
-        print(f'[snapshot] v7/quote batch error: {e}')
+        log.warning(f'[snapshot] v7/quote batch error: {e}')
         return {}
 
 
@@ -5707,7 +5721,7 @@ def _fetch_price_chart(symbol):
         price = meta.get('regularMarketPrice') or meta.get('chartPreviousClose')
         return float(price) if price else None
     except Exception as e:
-        print(f'[snapshot] chart price error {symbol}: {e}')
+        log.warning(f'[snapshot] chart price error {symbol}: {e}')
         return None
 
 
@@ -5723,7 +5737,7 @@ def _fetch_all_prices(symbols):
 
     missing = [s for s in symbols if s not in prices]
     if missing:
-        print(f'[snapshot] Chart fallback for {len(missing)} symbols: {missing}')
+        log.info(f'[snapshot] Chart fallback for {len(missing)} symbols: {missing}')
         for sym in missing:
             p = _fetch_price_chart(sym)
             if p is not None:
@@ -5737,14 +5751,14 @@ def _run_daily_snapshots():
     if not DATABASE_URL:
         return
     today = datetime.date.today().isoformat()
-    print(f'[snapshot] Starting daily snapshot job — {today}')
+    log.info(f'[snapshot] Starting daily snapshot job — {today}')
     try:
         with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT id FROM portfolio_list")
             all_pids = [r['id'] for r in cur.fetchall()]
 
         if not all_pids:
-            print('[snapshot] No portfolios — skipping')
+            log.info('[snapshot] No portfolios — skipping')
             return
 
         # Load holdings + cash for each portfolio, collect all unique symbols
@@ -5770,12 +5784,12 @@ def _run_daily_snapshots():
                 all_symbols.add(h['symbol'])
 
         if not all_symbols:
-            print('[snapshot] No holdings found — skipping')
+            log.info('[snapshot] No holdings found — skipping')
             return
 
         # Fetch prices with .WA fallback
         prices = _fetch_all_prices(list(all_symbols))
-        print(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
+        log.info(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
 
         # Kursy NBP — snapshoty ZAWSZE w PLN (spójnie z klientem Dashboard).
         # Wcześniej scheduler zapisywał w walucie natywnej bez fx — powodowało
@@ -5805,7 +5819,7 @@ def _run_daily_snapshots():
             if missing:
                 ratio = len(missing) / len(holdings)
                 if ratio > PARTIAL_TOLERANCE:
-                    print(f'[snapshot] SKIP pid={pid}: {len(missing)}/{len(holdings)} '
+                    log.info(f'[snapshot] SKIP pid={pid}: {len(missing)}/{len(holdings)} '
                           f'symboli bez ceny ({missing}) — wyglada na awarie batcha')
                     skipped.append(pid)
                     continue
@@ -5814,14 +5828,14 @@ def _run_daily_snapshots():
                 prices = {**prices, **{h['symbol']: float(h['avg_price'])
                                        for h in holdings if h['symbol'] in missing}}
                 partial.append((pid, missing))
-                print(f'[snapshot] PARTIAL pid={pid}: {len(missing)}/{len(holdings)} '
+                log.info(f'[snapshot] PARTIAL pid={pid}: {len(missing)}/{len(holdings)} '
                       f'symboli bez ceny ({missing}) — fallback do avgPrice')
             # Sprawdź czy mamy fx dla WSZYSTKICH walut w portfelu (holdings + cash)
             all_currs = set([h.get('currency') or 'PLN' for h in holdings])
             all_currs.update([c.get('currency') or 'PLN' for c in pid_cash.get(pid, [])])
             missing_fx = [c for c in all_currs if fx_rates.get(c) is None]
             if missing_fx:
-                print(f'[snapshot] SKIP pid={pid}: brak fx dla walut {missing_fx}')
+                log.info(f'[snapshot] SKIP pid={pid}: brak fx dla walut {missing_fx}')
                 skipped.append(pid)
                 continue
             # Total = holdings + cash (spójnie z Dashboard.jsx klienta,
@@ -5847,9 +5861,9 @@ def _run_daily_snapshots():
             saved += 1
 
         if skipped:
-            print(f'[snapshot] WARNING — {len(skipped)} portfolios skipped '
+            log.info(f'[snapshot] WARNING — {len(skipped)} portfolios skipped '
                   f'(no prices available): {skipped}')
-        print(f'[snapshot] Done — {saved}/{len(all_pids)} portfolios saved for {today}')
+        log.info(f'[snapshot] Done — {saved}/{len(all_pids)} portfolios saved for {today}')
 
         # Refresh stale financial data for all portfolio symbols in a background thread
         import threading as _threading
@@ -5859,11 +5873,11 @@ def _run_daily_snapshots():
             daemon=True,
             name='financials-daily-refresh'
         ).start()
-        print(f'[snapshot] Financials refresh started for {len(all_symbols)} symbols')
+        log.info(f'[snapshot] Financials refresh started for {len(all_symbols)} symbols')
 
     except Exception as e:
         import traceback
-        print(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
+        log.warning(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
 
 
 def _repair_partial_snapshots_2026_07():
@@ -5911,16 +5925,16 @@ def _repair_partial_snapshots_2026_07():
                         SET total=%s, invested=%s
                         WHERE portfolio_id=%s AND date=%s
                     """, (prev['total'], prev['invested'], pid, tgt))
-                print(f'[repair] pid={pid} {tgt}: {tgt_total:.2f} → {prev_total:.2f} '
+                log.info(f'[repair] pid={pid} {tgt}: {tgt_total:.2f} → {prev_total:.2f} '
                       f'(z {prev["date"]})')
                 fixed += 1
         if fixed:
-            print(f'[repair] naprawiono {fixed} snapshotów 19/20 lipca')
+            log.info(f'[repair] naprawiono {fixed} snapshotów 19/20 lipca')
         else:
-            print('[repair] brak snapshotów do naprawy (już czyste albo pusta baza)')
+            log.info('[repair] brak snapshotów do naprawy (już czyste albo pusta baza)')
     except Exception as e:
         import traceback
-        print(f'[repair] błąd: {e}\n{traceback.format_exc()}')
+        log.warning(f'[repair] błąd: {e}\n{traceback.format_exc()}')
 
 
 def _snapshot_scheduler():
@@ -5940,10 +5954,10 @@ def _snapshot_scheduler():
                 )
                 count = cur.fetchone()[0]
             if count == 0:
-                print('[snapshot] Catchup: restarted after 22:00, no snapshot today — running now')
+                log.info('[snapshot] Catchup: restarted after 22:00, no snapshot today — running now')
                 _run_daily_snapshots()
     except Exception as e:
-        print(f'[snapshot] catchup check error: {e}')
+        log.warning(f'[snapshot] catchup check error: {e}')
 
     while True:
         try:
@@ -5952,12 +5966,12 @@ def _snapshot_scheduler():
             if now_waw >= target:
                 target += datetime.timedelta(days=1)
             wait_s = (target - now_waw).total_seconds()
-            print(f'[snapshot] Next run in {wait_s/3600:.1f}h '
+            log.info(f'[snapshot] Next run in {wait_s/3600:.1f}h '
                   f'({target.strftime("%Y-%m-%d %H:%M")} Warsaw)')
             time.sleep(wait_s)
             _run_daily_snapshots()
         except Exception as e:
-            print(f'[snapshot] scheduler loop error: {e} — retrying in 5 min')
+            log.warning(f'[snapshot] scheduler loop error: {e} — retrying in 5 min')
             time.sleep(300)
 
 
