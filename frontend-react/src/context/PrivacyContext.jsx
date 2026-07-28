@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { lsSet } from '../utils/safeStorage.js';
 
 const PrivacyContext = createContext({ isPrivate: false, toggle: () => {} });
 
@@ -8,7 +9,7 @@ export function PrivacyProvider({ children }) {
   );
 
   useEffect(() => {
-    localStorage.setItem('privacyMode', isPrivate);
+    lsSet('privacyMode', isPrivate);
     document.body.classList.toggle('privacy-mode', isPrivate);
   }, [isPrivate]);
 

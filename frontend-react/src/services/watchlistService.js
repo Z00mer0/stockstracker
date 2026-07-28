@@ -1,6 +1,7 @@
 // Wspólna logika watchlisty (jedno źródło prawdy dla alertów).
 // Backend jest źródłem prawdy — localStorage tylko jako cache offline.
 import { authHeader, isAuthed } from '../utils/auth.js';
+import { lsSet } from '../utils/safeStorage.js';
 
 export const WATCH_KEY = 'myfund_watchlist';
 export const OLD_PORTFOLIO_ALERTS_KEY = 'myfund_price_alerts';
@@ -29,7 +30,7 @@ export function loadWatchlistLocal() {
   try { return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]'); } catch { return []; }
 }
 export function saveWatchlistLocal(items) {
-  localStorage.setItem(WATCH_KEY, JSON.stringify(items));
+  lsSet(WATCH_KEY, JSON.stringify(items));
 }
 
 // Dodaje alert do items — jeśli symbol nie istnieje, tworzy nowy watch item.
@@ -80,7 +81,7 @@ export async function migratePortfolioAlertsOnce() {
   if (!Array.isArray(oldAlerts) || oldAlerts.length === 0) {
     // Nic do migracji — po prostu ustaw flag, żebyśmy więcej nie próbowali.
     localStorage.removeItem(OLD_PORTFOLIO_ALERTS_KEY);
-    localStorage.setItem(MIGRATION_KEY, '1');
+    lsSet(MIGRATION_KEY, '1');
     return { migrated: 0, skipped: false };
   }
 
@@ -108,7 +109,7 @@ export async function migratePortfolioAlertsOnce() {
     await apiSaveWatchlist(items);
     saveWatchlistLocal(items);
     localStorage.removeItem(OLD_PORTFOLIO_ALERTS_KEY);
-    localStorage.setItem(MIGRATION_KEY, '1');
+    lsSet(MIGRATION_KEY, '1');
     return { migrated, skipped: false };
   } catch {
     return { migrated: 0, skipped: true };

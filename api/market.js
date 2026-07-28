@@ -1,3 +1,4 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless — fetches market indices + FX rates in one request
 // Cached 5 min on CDN edge; avoids 5 separate client-side calls
 
@@ -29,6 +30,7 @@ async function fetchOne(sym) {
 }
 
 export default async function handler(req, res) {
+  if (rateLimited(req, res)) return;
   res.setHeader('Access-Control-Allow-Origin', '*');
   // Cache 5 min on Vercel CDN; client gets fresh data without hammering Yahoo
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');

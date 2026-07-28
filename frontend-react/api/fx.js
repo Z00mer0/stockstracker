@@ -1,7 +1,9 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless — proxies frankfurter.app to avoid browser CORS restrictions
 // Cached 30 min on CDN edge
 
 export default async function handler(req, res) {
+  if (rateLimited(req, res)) return;
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=300');
 

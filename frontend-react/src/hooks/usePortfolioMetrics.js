@@ -1,6 +1,7 @@
 // frontend-react/src/hooks/usePortfolioMetrics.js
 import { useState, useEffect } from 'react';
 import { authHeader } from '../utils/auth.js';
+import { lsSet } from '../utils/safeStorage.js';
 
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -9,10 +10,10 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 min
 // private mode throws on every setItem, and the quota fills up as the portfolio
 // grows. That throw landed inside the fetch chain and took the whole dashboard
 // down with it — the cache is an optimisation, never a reason to lose data.
+// lsSet połyka wyjątek i zwraca false; tutaj brak cache'u nic nie zmienia,
+// bo dane i tak są już w stanie komponentu.
 export function writeCache(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
-  } catch { /* no cache this round — data is already in state */ }
+  lsSet(key, JSON.stringify({ ts: Date.now(), data }));
 }
 
 // ── XIRR ────────────────────────────────────────────────────────────────────

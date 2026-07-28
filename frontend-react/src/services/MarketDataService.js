@@ -1,3 +1,4 @@
+import { lsSet } from '../utils/safeStorage.js';
 // frontend-react/src/services/MarketDataService.js
 
 export const MD_API_KEY_LS = 'marketdata_api_key';
@@ -9,7 +10,7 @@ export function getMdApiKey() {
 }
 
 export function setMdApiKey(key) {
-  localStorage.setItem(MD_API_KEY_LS, key.trim());
+  lsSet(MD_API_KEY_LS, key.trim());
 }
 
 export function getChainFromCache(ticker) {
@@ -65,7 +66,7 @@ export async function fetchOptionChain(ticker) {
   const expirations = [...new Set(contracts.map(c => c.expiry))].sort();
   const data = { expirations, contracts };
 
-  localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
+  lsSet(cacheKey, JSON.stringify({ ts: Date.now(), data }));
   return data;
 }
 

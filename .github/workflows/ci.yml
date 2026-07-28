@@ -74,3 +74,7 @@ jobs:
       # kilka sekund do każdego odczytu portfela. Test pilnuje, że odczyt nie
       # rusza NBP i że brak kursu jest zapamiętywany zamiast odpytywany w kółko.
       - run: python test_fx_backfill.py
+      # Petle po pozycjach wysylaly jedno zadanie HTTP na symbol, czyli setki
+      # zadan z jednego IP Rendera — dokladnie ten ruch, ktory limiter po
+      # stronie Vercela ucina. Test pilnuje, ze notowania ida paczkami po 60.
+      - run: python test_quotes_batch.py

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { lsSet } from '../utils/safeStorage.js';
 
 const DISMISS_KEY = 'myfund_dismissed_splits';
 
@@ -10,7 +11,7 @@ function getDismissed() {
 function dismiss(key) {
   const s = getDismissed();
   s.add(key);
-  localStorage.setItem(DISMISS_KEY, JSON.stringify([...s]));
+  lsSet(DISMISS_KEY, JSON.stringify([...s]));
 }
 
 export function useSplitDetector(portfolio, transactions) {

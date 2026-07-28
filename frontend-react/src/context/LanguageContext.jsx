@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from 'react';
 import pl from '../translations/pl';
 import en from '../translations/en';
+import { lsSet } from '../utils/safeStorage.js';
 
 const LANG_KEY = 'myfund_language';
 const LanguageContext = createContext(null);
@@ -13,7 +14,7 @@ export function LanguageProvider({ children }) {
   const locale = language === 'en' ? 'en-US' : 'pl-PL';
 
   function changeLanguage(lang) {
-    localStorage.setItem(LANG_KEY, lang);
+    lsSet(LANG_KEY, lang);
     setLanguage(lang);
   }
 

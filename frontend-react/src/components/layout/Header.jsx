@@ -6,6 +6,7 @@ import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import AddStockModal from '../AddStockModal';
 import StockDetailModal from '../StockDetailModal';
+import { lsSet } from '../../utils/safeStorage.js';
 
 function isEuropeDST() {
   const now = new Date();
@@ -92,7 +93,7 @@ function loadCache() {
 }
 
 function saveCache(tickers) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ tickers, ts: Date.now() })); } catch {}
+  try { lsSet(CACHE_KEY, JSON.stringify({ tickers, ts: Date.now() })); } catch {}
 }
 
 const FALLBACK_TICKERS = [
@@ -414,12 +415,18 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         style={iconBtn}
         onClick={onThemeToggle}
         title={theme === 'dark' ? t('light_theme') : t('dark_theme')}
+        aria-label={theme === 'dark' ? t('light_theme') : t('dark_theme')}
       >
         {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
       </button>
 
       {/* Privacy toggle */}
-      <button style={iconBtn} onClick={togglePrivacy} title={isPrivate ? t('show_values') : t('hide_values')}>
+      <button
+        style={iconBtn}
+        onClick={togglePrivacy}
+        title={isPrivate ? t('show_values') : t('hide_values')}
+        aria-label={isPrivate ? t('show_values') : t('hide_values')}
+      >
         <EyeIcon closed={isPrivate} />
       </button>
 

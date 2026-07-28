@@ -1,3 +1,4 @@
+import { rateLimited } from './_rateLimit.js';
 const COINGECKO_IDS = {
   BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
   XRP: 'ripple', ADA: 'cardano', DOGE: 'dogecoin', MATIC: 'matic-network',
@@ -9,6 +10,7 @@ const COINGECKO_IDS = {
 };
 
 export default async function handler(req, res) {
+  if (rateLimited(req, res)) return;
   const rawSyms = (req.query.symbols || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   const symToId = Object.fromEntries(rawSyms.filter(s => COINGECKO_IDS[s]).map(s => [s, COINGECKO_IDS[s]]));
 

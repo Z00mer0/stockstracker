@@ -1,3 +1,4 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless function — fetches stock quotes server-side (different IP than Render)
 // No auth required — stock prices are public data
 //
@@ -57,6 +58,7 @@ async function fetchOne(sym) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (rateLimited(req, res)) return;
 
   const { symbols, format } = req.query;
   if (!symbols || symbols.length > 1000) {

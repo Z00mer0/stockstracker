@@ -13,6 +13,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { authHeader } from '../utils/auth.js';
 import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
+import { lsSet } from '../utils/safeStorage.js';
 
 function SettingsRow({ label, value, children }) {
   return (
@@ -207,7 +208,7 @@ function ExportDataSection() {
 function DividendTaxSection() {
   const t = useT();
   const [usTax, setUsTax] = useState(() => localStorage.getItem(US_TAX_KEY) || '15');
-  function save(val) { setUsTax(val); localStorage.setItem(US_TAX_KEY, val); }
+  function save(val) { setUsTax(val); lsSet(US_TAX_KEY, val); }
 
   return (
     <Card title={t('dividend_tax')}>

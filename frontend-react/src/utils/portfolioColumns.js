@@ -1,3 +1,4 @@
+import { lsSet } from './safeStorage.js';
 // frontend-react/src/utils/portfolioColumns.js
 
 // `private: true` marks columns whose value reveals holdings, cost basis
@@ -43,7 +44,7 @@ export function loadColumnConfig() {
 }
 
 export function saveColumnConfig(cols) {
-  localStorage.setItem(LS_KEY, JSON.stringify(cols));
+  lsSet(LS_KEY, JSON.stringify(cols));
 }
 
 // Maps column key → function extracting a numeric sort value from an enriched position

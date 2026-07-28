@@ -1,3 +1,4 @@
+import { lsSet } from './safeStorage.js';
 const NOTES_KEY = 'myfund_position_notes';
 
 export function loadPositionNotes() {
@@ -5,7 +6,7 @@ export function loadPositionNotes() {
 }
 
 export function savePositionNotes(data) {
-  localStorage.setItem(NOTES_KEY, JSON.stringify(data));
+  lsSet(NOTES_KEY, JSON.stringify(data));
 }
 
 export function getPositionNote(symbol) {

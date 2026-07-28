@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { lsSet } from '../utils/safeStorage.js';
 
 const STORAGE_KEY = 'myfund_manual_dividends';
 
@@ -14,7 +15,7 @@ function loadManual() {
 // Zapisz ręczne dywidendy do localStorage
 function saveManual(list) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    lsSet(STORAGE_KEY, JSON.stringify(list));
   } catch {}
 }
 

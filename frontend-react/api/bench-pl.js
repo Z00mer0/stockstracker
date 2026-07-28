@@ -1,3 +1,4 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless function — Polish index historical data via Bankier.pl public API.
 // Uses api.bankier.pl which returns daily data from 1994 to today (no auth required).
 
@@ -7,6 +8,7 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (rateLimited(req, res)) return;
 
   const sym = (req.query.s || '').toUpperCase();
   if (!SYMBOLS[sym]) {
