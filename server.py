@@ -2751,7 +2751,7 @@ def _cooldown_passed(last_sent):
 
 
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -2953,6 +2953,47 @@ def _run_push_checks():
                                       f'_send_push zwrócił 0 (brak subskrypcji?) — retry przy następnym cyklu')
         except Exception as e:
             log.warning(f'[push] session summary {username}: {e}')
+
+        # ── 1d. Auto ±5% ruch (portfel + watchlista) ────────────────────
+        # Odpala się bez konfiguracji: dowolny symbol z portfela lub watchlisty
+        # ze zmianą dzienną |dp| >= 5% dostaje jednego pusha na sesję (per
+        # kierunek), dedupowanego przez push_sent kluczem move:date:sym:dir.
+        try:
+            wl_syms = {i.get('symbol', '') for i in (items or []) if i.get('symbol')}
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("""SELECT DISTINCT h.symbol FROM portfolio_holdings h
+                               JOIN portfolio_list p ON p.id = h.portfolio_id
+                               WHERE p.user_id=%s AND h.qty > 0""", (username,))
+                pf_syms = {r[0] for r in cur.fetchall() if r[0]}
+            targets = sorted(wl_syms | pf_syms)
+            _prefill_quotes(targets, price_cache)
+            for sym in targets:
+                try:
+                    if sym not in price_cache:
+                        price_cache[sym] = _fetch_quote(sym)
+                    quote = price_cache[sym]
+                    if quote is None:
+                        continue
+                    chg = quote.get('changePct')
+                    if chg is None or abs(chg) < 5:
+                        continue
+                    direction = 'up' if chg >= 0 else 'down'
+                    key = f'move:{today.isoformat()}:{sym}:{direction}'
+                    if _already_sent(username, key):
+                        continue
+                    if direction == 'up':
+                        title = f'🚀 {sym} +{chg:.2f}% dziś'
+                        body = 'Silny wzrost — sprawdź katalizator zanim dołożysz.'
+                    else:
+                        title = f'📉 {sym} {chg:.2f}% dziś'
+                        body = 'Silny spadek — warto sprawdzić przyczynę.'
+                    if _send_push(username, title, body, '/watchlist'):
+                        _mark_sent(username, key)
+                        stats['bigMove'] += 1
+                except Exception as e:
+                    log.warning(f'[push] big move {username}/{sym}: {e}')
+        except Exception as e:
+            log.warning(f'[push] big moves {username}: {e}')
 
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
