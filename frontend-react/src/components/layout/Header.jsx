@@ -415,12 +415,18 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         style={iconBtn}
         onClick={onThemeToggle}
         title={theme === 'dark' ? t('light_theme') : t('dark_theme')}
+        aria-label={theme === 'dark' ? t('light_theme') : t('dark_theme')}
       >
         {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
       </button>
 
       {/* Privacy toggle */}
-      <button style={iconBtn} onClick={togglePrivacy} title={isPrivate ? t('show_values') : t('hide_values')}>
+      <button
+        style={iconBtn}
+        onClick={togglePrivacy}
+        title={isPrivate ? t('show_values') : t('hide_values')}
+        aria-label={isPrivate ? t('show_values') : t('hide_values')}
+      >
         <EyeIcon closed={isPrivate} />
       </button>
 

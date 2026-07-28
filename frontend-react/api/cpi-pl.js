@@ -1,3 +1,4 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless function — Polish CPI (HICP) monthly index from Eurostat.
 // Returns { date: 'YYYY-MM-01', price: index_value (2015=100) } sorted oldest-first.
 // Extends to current month using YoY estimates when Eurostat has a lag.
@@ -17,6 +18,7 @@ const EUROSTAT_URL = 'https://ec.europa.eu/eurostat/api/dissemination/statistics
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (rateLimited(req, res)) return;
 
   try {
     const r = await fetch(EUROSTAT_URL, {

@@ -1,7 +1,9 @@
+import { rateLimited } from './_rateLimit.js';
 // Vercel serverless — proxy Yahoo Finance symbol search to avoid CORS
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (rateLimited(req, res)) return;
 
   const { q } = req.query;
   if (!q || q.length < 1) return res.status(400).json({ error: 'q required' });

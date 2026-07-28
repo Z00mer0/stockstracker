@@ -1,4 +1,6 @@
+import { rateLimited } from './_rateLimit.js';
 export default async function handler(req, res) {
+  if (rateLimited(req, res)) return;
   const symbols = (req.query.symbols || '')
     .split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
   if (!symbols.length) { res.status(200).json({}); return; }
