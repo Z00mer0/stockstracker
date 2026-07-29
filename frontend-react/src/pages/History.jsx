@@ -8,7 +8,7 @@ import RollingReturnsChart from '../components/RollingReturnsChart';
 import Spinner from '../components/shared/Spinner';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Card from '../components/shared/Card';
-import { investedInDisplayAt } from '../utils/investedAtDate.js';
+import { investedInDisplayAt, investedPlnAt, fxForSnapshot } from '../utils/investedAtDate.js';
 import { formatPercent } from '../utils/format.js';
 
 function fmt(n, decimals = 0, locale = 'pl-PL') {
@@ -113,11 +113,18 @@ function generateSynthBench(key, startDate, endDate) {
 
 export default function History() {
   const { snapshots, loading, invested, displayCurrency, fxRates, transactions } = useApp();
-  // Per-date fx: dla snapshotu z zapisanym fx używamy jego wtedy-aktualnego
-  // kursu (wartość historyczna zamrożona). Fallback do dzisiejszego kursu
-  // dla starych wpisów bez fx — inaczej wartości "oddychają" z kursem NBP.
+  // Snapshoty rosnąco — potrzebne, żeby dla wpisu bez zapisanych kursów sięgnąć
+  // po kursy najbliższego wcześniejszego snapshotu zamiast po dzisiejsze.
+  const snapshotsAsc = useMemo(
+    () => [...snapshots].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+    [snapshots]
+  );
+  // Per-date fx: własne kursy snapshotu, inaczej kursy z jego epoki. Dzisiejsze
+  // dopiero gdy w bazie nie ma ani jednego snapshotu z kursami — wtedy i tak
+  // nie ma z czego wybierać.
+  const fxFor = (snap) => fxForSnapshot(snap, snapshotsAsc) || fxRates;
   const displayFxFor = (snap) => {
-    const dayFx = snap?.fx?.[displayCurrency];
+    const dayFx = fxFor(snap)?.[displayCurrency];
     return (dayFx && dayFx > 0) ? dayFx : (fxRates[displayCurrency] ?? 1);
   };
   const toDispAt = (v, snap) => v == null ? null : v / displayFxFor(snap);
@@ -128,8 +135,7 @@ export default function History() {
   // Fallback do replay transakcji dla starych snapshotów bez `invested`.
   const investedAt = (snap) => {
     if (snap?.invested != null) return toDispAt(snap.invested, snap);
-    const fxForDate = snap?.fx || fxRates;
-    return investedInDisplayAt(transactions, snap.date, displayCurrency, fxForDate);
+    return investedInDisplayAt(transactions, snap.date, displayCurrency, fxFor(snap));
   };
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
@@ -195,9 +201,22 @@ export default function History() {
     return unlock.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
   })() : null;
 
+  // Snapshot bez zapisanego `invested` (stare wpisy) dostaje wartość z replay
+  // transakcji do TEJ daty, przeliczoną kursami z tej epoki. Wcześniej wchodził
+  // tu `invested` z kontekstu — czyli DZISIEJSZY koszt po DZISIEJSZYCH kursach,
+  // wstawiony w historyczny wiersz i dzielony przez stary kurs w wykresie.
+  // Taki wiersz zmieniał się codziennie mimo braku transakcji.
+  // `fx` też normalizujemy, żeby wykres liczył tymi samymi kursami co tabela —
+  // HistoryChart ma własny fallback do dzisiejszego kursu i bez tego rysowałby
+  // inne wartości niż wiersze pod spodem.
   const filteredWithInvested = useMemo(
-    () => filtered.map(s => ({ ...s, invested: s.invested ?? (invested > 0 ? invested : null) })),
-    [filtered, invested]
+    () => filtered.map(s => ({
+      ...s,
+      fx: fxFor(s),
+      invested: s.invested ?? investedPlnAt(transactions, s.date, fxFor(s)),
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, transactions, snapshotsAsc, fxRates]
   );
 
   const ath = useMemo(
