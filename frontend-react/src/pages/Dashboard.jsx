@@ -21,6 +21,7 @@ import SegmentedControl from '../components/shared/SegmentedControl';
 import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue } from '../utils/portfolioValue.js';
+import { computeRealizedTrades } from '../utils/realizedPL.js';
 
 function xirr(cashflows) {
   if (cashflows.length < 2) return null;
@@ -153,15 +154,18 @@ export default function Dashboard() {
   // ── KPI — real-time values from live positions, not stale snapshots ────────
   const kpi = useMemo(() => {
     // Transaction-derived (no live price needed)
-    const realizedPLN = transactions
-      .filter(t => t.type === 'SELL')
-      .reduce((sum, tx) => {
-        const rate = toPlnRate(tx.currency, fxRates);
-        const pl   = tx.overridePL != null
-          ? tx.overridePL
-          : (tx.price - (tx.costBasis ?? tx.avgPrice ?? tx.price)) * tx.qty;
-        return sum + pl * rate;
-      }, 0);
+    // Ta sama sciezka co Portfel, Analiza i Zamkniete pozycje. Wlasne liczenie,
+    // ktore tu bylo, brało costBasis wprost z transakcji — a SELL-e z importu
+    // brokera go nie maja. Fallback na `tx.price` dawal wtedy
+    // (price - price) * qty = 0, wiec kazda taka sprzedaz liczyla sie jako zero
+    // zysku. Na koncie uzytkownika 636 z 640 SELL-ow nie ma costBasis, stad
+    // kafel pokazywal +114 zamiast pelnej kwoty.
+    //
+    // computeRealizedTrades odtwarza koszt nabycia z historii BUY (ta sama
+    // srednia wazona co avgPrice w portfelu) i pomija tylko te sprzedaze,
+    // dla ktorych naprawde nie ma pokrycia w zakupach.
+    const realizedPLN = computeRealizedTrades(transactions, fxRates)
+      .reduce((sum, t) => sum + t.plPLN, 0);
 
     const dividendsPLN = transactions
       .filter(t => t.type === 'DIV')
