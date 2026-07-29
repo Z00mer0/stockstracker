@@ -55,11 +55,42 @@ export function investedByCurrencyAt(transactions, date) {
 // z snapshotu (frozen) albo bieżących fxRates). Dla portfela w tej samej walucie co
 // displayCurrency (i tylko tej), fx = 1 i wynik jest dokładnie constant.
 export function investedInDisplayAt(transactions, date, displayCurrency, fxRatesForDate) {
+  const sumPLN = investedPlnAt(transactions, date, fxRatesForDate);
+  const dispFx = fxRatesForDate?.[displayCurrency] ?? 1;
+  return (sumPLN ?? 0) / dispFx;
+}
+
+// Invested w PLN na dany dzień — kursy per waluta z `fxRatesForDate`.
+// Zwraca null gdy w tej dacie nie było jeszcze żadnej pozycji: wykres traktuje
+// null jako "brak danych" i nie rysuje punktu, zero rysowałoby fałszywą linię.
+export function investedPlnAt(transactions, date, fxRatesForDate) {
   const byCur = investedByCurrencyAt(transactions, date);
   let sumPLN = 0;
   for (const [ccy, amount] of Object.entries(byCur)) {
     sumPLN += amount * (fxRatesForDate?.[ccy] ?? 1);
   }
-  const dispFx = fxRatesForDate?.[displayCurrency] ?? 1;
-  return sumPLN / dispFx;
+  return sumPLN > 0 ? sumPLN : null;
+}
+
+// Kursy dla snapshotu: własne > najbliższy WCZEŚNIEJSZY snapshot z kursami >
+// najwcześniejszy jaki mamy. Dzisiejszych kursów celowo tu nie ma.
+//
+// Dlaczego to ma znaczenie: `invested` jest zapisany w PLN, przeliczony kursem
+// z dnia zapisu. Podzielenie go przez DZISIEJSZY kurs daje liczbę, która zmienia
+// się codziennie razem z NBP — czyli "zainwestowane" rośnie i maleje mimo braku
+// transakcji. Historyczny wiersz musi być przeliczany kursem ze swojej epoki.
+//
+// snapshotsAsc: lista snapshotów posortowana rosnąco po dacie.
+export function fxForSnapshot(snap, snapshotsAsc) {
+  if (snap?.fx) return snap.fx;
+  if (!Array.isArray(snapshotsAsc) || !snap?.date) return null;
+  let earlier = null;
+  let firstWithFx = null;
+  for (const s of snapshotsAsc) {
+    if (!s?.fx || !s.date) continue;
+    if (firstWithFx === null) firstWithFx = s.fx;
+    if (s.date <= snap.date) earlier = s.fx;
+    else break;
+  }
+  return earlier ?? firstWithFx;
 }
