@@ -1422,6 +1422,17 @@ if DATABASE_URL:
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_language TEXT DEFAULT 'pl'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_hour INT DEFAULT 16")
+            # Cache ostatniej znanej ceny per symbol. Fallback dla schedulera
+            # snapshotów, gdy pojedynczy batch Yahoo wraca bez części pozycji:
+            # zamiast podstawiać avgPrice (koszt), bierzemy tu ostatnie zdrowe
+            # notowanie. Deformacja spada z „różnica cena–koszt" (np. 40% dla
+            # spółki z dużym zyskiem) do „ruch jednego dnia" (zwykle <2%).
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS symbol_price_cache (
+                    symbol     TEXT PRIMARY KEY,
+                    price      NUMERIC NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )""")
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -5985,6 +5996,41 @@ def _fetch_all_prices(symbols):
     return prices
 
 
+def _update_symbol_price_cache(prices):
+    """Upsert swiezych cen do cache — sluza za fallback przy niepelnym batchu."""
+    if not prices or not DATABASE_URL:
+        return
+    try:
+        with _conn() as conn, conn.cursor() as cur:
+            for sym, price in prices.items():
+                if price is None or float(price) <= 0:
+                    continue
+                cur.execute("""
+                    INSERT INTO symbol_price_cache (symbol, price, updated_at)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (symbol) DO UPDATE
+                        SET price=EXCLUDED.price, updated_at=EXCLUDED.updated_at
+                """, (sym, float(price)))
+    except Exception as e:
+        log.warning(f'[snapshot] symbol_price_cache upsert error: {e}')
+
+
+def _load_symbol_price_cache(max_age_days=14):
+    """Zwraca {symbol: price} dla wpisow nie starszych niz max_age_days."""
+    if not DATABASE_URL:
+        return {}
+    try:
+        with _conn() as conn, conn.cursor() as cur:
+            cur.execute("""
+                SELECT symbol, price FROM symbol_price_cache
+                WHERE updated_at > CURRENT_TIMESTAMP - INTERVAL '%s days'
+            """ % int(max_age_days))
+            return {row[0]: float(row[1]) for row in cur.fetchall()}
+    except Exception as e:
+        log.warning(f'[snapshot] symbol_price_cache read error: {e}')
+        return {}
+
+
 def _run_daily_snapshots():
     """Compute and save today's portfolio snapshots for ALL portfolios in the DB."""
     if not DATABASE_URL:
@@ -6030,6 +6076,11 @@ def _run_daily_snapshots():
         prices = _fetch_all_prices(list(all_symbols))
         log.info(f'[snapshot] Prices fetched: {len(prices)}/{len(all_symbols)} symbols')
 
+        # Zapisz swiezo pobrane ceny do cache — sluza jako fallback nastepnym
+        # razem, gdy Yahoo nie zwroci wszystkiego (patrz komentarz przy tabeli).
+        _update_symbol_price_cache(prices)
+        cached_prices = _load_symbol_price_cache(max_age_days=14)
+
         # Kursy NBP — snapshoty ZAWSZE w PLN (spójnie z klientem Dashboard).
         # Wcześniej scheduler zapisywał w walucie natywnej bez fx — powodowało
         # rozjazd jednostek między dniami zapisanymi przez klienta a scheduler.
@@ -6042,9 +6093,11 @@ def _run_daily_snapshots():
         # snapshoty dla calego portfela, gdy tylko JEDEN ticker jest bledny
         # (np. SMSN zamiast SMSN.IL) — u jednego z uzytkownikow snapshoty
         # portfela stanely na 20 dni bez zadnego sygnalu.
-        # Kompromis: <=20% brakujacych to lokalny problem symbolu, uzupelniamy
-        # cena kosztu (deformacja rzedu 1-3%, do sprawdzenia w UI). Wiecej to
-        # awaria pobierania — pomijamy jak dawniej. Ostrzezenie w logu zawsze.
+        # Fallback dla <=20% brakujacych: (1) ostatnia znana cena z cache
+        # (deformacja ~ruch jednego dnia), (2) avgPrice gdy cache pusty
+        # (regresja 29.07.2026: PARTIAL na kilkunastu symbolach ze srednim
+        # +40% zyskiem zjadl ~18% wartosci portfela). Wiecej niz 20% =
+        # awaria batcha, pomijamy jak dawniej.
         PARTIAL_TOLERANCE = 0.2
         saved = 0
         skipped = []
@@ -6062,13 +6115,25 @@ def _run_daily_snapshots():
                           f'symboli bez ceny ({missing}) — wyglada na awarie batcha')
                     skipped.append(pid)
                     continue
-                # Fallback: uzyj avgPrice dla brakujacych. Prawdziwej ceny nie
-                # znamy, wiec deformujemy o roznice cena-koszt — zwykle drobna.
-                prices = {**prices, **{h['symbol']: float(h['avg_price'])
-                                       for h in holdings if h['symbol'] in missing}}
+                # Fallback dwustopniowy: najpierw cache ostatniej znanej ceny
+                # (deformacja ~ ruch jednego dnia), pozniej avgPrice gdy cache
+                # nie ma wpisu (deformacja = cena vs koszt).
+                fill = {}
+                from_cache, from_cost = [], []
+                for h in holdings:
+                    sym = h['symbol']
+                    if sym not in missing:
+                        continue
+                    if sym in cached_prices:
+                        fill[sym] = cached_prices[sym]
+                        from_cache.append(sym)
+                    else:
+                        fill[sym] = float(h['avg_price'])
+                        from_cost.append(sym)
+                prices = {**prices, **fill}
                 partial.append((pid, missing))
                 log.info(f'[snapshot] PARTIAL pid={pid}: {len(missing)}/{len(holdings)} '
-                      f'symboli bez ceny ({missing}) — fallback do avgPrice')
+                      f'symboli bez ceny — cache: {from_cache}, avgPrice: {from_cost}')
             # Sprawdź czy mamy fx dla WSZYSTKICH walut w portfelu (holdings + cash)
             all_currs = set([h.get('currency') or 'PLN' for h in holdings])
             all_currs.update([c.get('currency') or 'PLN' for c in pid_cash.get(pid, [])])
@@ -6119,14 +6184,25 @@ def _run_daily_snapshots():
         log.warning(f'[snapshot] Error: {e}\n{traceback.format_exc()}')
 
 
-def _repair_partial_snapshots_2026_07():
-    """One-shot: nadpisz snapshoty z 2026-07-19 i 2026-07-20 wartościami
-    z dnia poprzedniego. Backfill po bugu, gdzie _run_daily_snapshots
-    zapisywał total z podpróby wycenionych symboli.
-    Idempotentna: rusza wpis tylko jeśli total < 50% ostatniego zdrowego."""
+def _repair_partial_snapshots_2026():
+    """One-shot: nadpisz uszkodzone snapshoty z lipca 2026 wartościami z dnia
+    poprzedniego. Backfill po dwóch bugach schedulera:
+
+    * 19-20 lipca (PR #4000fb3): podproba wycenionych symboli — snapshot ~25%.
+    * 29 lipca (PR #51 + Yahoo z niepelnym batchem): PARTIAL fallback zamienil
+      ~18% wartosci portfela (kilkanascie pozycji ze srednim +40% zyskiem) na
+      koszt. Deflacja ~18% (13927 zamiast ~17000 USD w portfelu przykladowym).
+
+    Idempotentna. Prog wspolny 90% — 19/20 lipca sa ~25% (lapie sie), 29 lipca
+    to ~82% (tez sie lapie), a normalny ruch dnia zwykle ~2-3%. Uzytkownik
+    ktory zaliczyl przez ten czas realny -15% jednego dnia (crash) nie zostanie
+    tknięty — takie zjazdy zdarzaja sie kilka razy na dekade i lepiej zostawic
+    zdrowy pomiar niz nadpisac. Alternatywnie ograniczyloby to sie tylko do
+    dat z TARGETS."""
     if not DATABASE_URL:
         return
-    TARGETS = ('2026-07-19', '2026-07-20')
+    TARGETS = ('2026-07-19', '2026-07-20', '2026-07-29')
+    HEALTHY_MIN_RATIO = 0.9  # tgt < prev*0.9 -> podejrzane, nadpisz
     try:
         with _conn() as conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT id FROM portfolio_list")
@@ -6156,7 +6232,7 @@ def _repair_partial_snapshots_2026_07():
                 if not prev:
                     continue
                 prev_total = float(prev['total'])
-                if prev_total <= 0 or tgt_total >= prev_total * 0.5:
+                if prev_total <= 0 or tgt_total >= prev_total * HEALTHY_MIN_RATIO:
                     continue  # albo brak zdrowego pkt odniesienia, albo już naprawione
                 with _conn() as conn, conn.cursor() as cur:
                     cur.execute("""
@@ -6168,7 +6244,7 @@ def _repair_partial_snapshots_2026_07():
                       f'(z {prev["date"]})')
                 fixed += 1
         if fixed:
-            log.info(f'[repair] naprawiono {fixed} snapshotów 19/20 lipca')
+            log.info(f'[repair] naprawiono {fixed} snapshotów lipca (19/20/29)')
         else:
             log.info('[repair] brak snapshotów do naprawy (już czyste albo pusta baza)')
     except Exception as e:
@@ -6217,9 +6293,9 @@ def _snapshot_scheduler():
 if __name__ == '__main__':
     if DATABASE_URL:
         import threading as _threading
-        # Jednorazowa naprawa uszkodzonych snapshotów 2026-07-19/20
+        # Jednorazowa naprawa uszkodzonych snapshotów lipca 2026 (19/20/29)
         _threading.Thread(
-            target=_repair_partial_snapshots_2026_07,
+            target=_repair_partial_snapshots_2026,
             daemon=True, name='repair-snapshots-2026-07'
         ).start()
         _snap_thread = _threading.Thread(
