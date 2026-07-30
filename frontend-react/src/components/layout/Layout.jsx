@@ -8,7 +8,6 @@ import { useT } from '../../context/LanguageContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
-import NotificationsTray from '../NotificationsTray.jsx';
 import { useApp } from '../../context/AppContext';
 import { lsSet } from '../../utils/safeStorage.js';
 
@@ -97,7 +96,6 @@ export default function Layout() {
         </main>
       </div>
       {showNewPortfolio && <NewPortfolioModal onClose={() => setShowNewPortfolio(false)} />}
-      <NotificationsTray />
     </div>
   );
 }
