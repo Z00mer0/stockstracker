@@ -1,11 +1,12 @@
 // src/components/layout/Header.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import AddStockModal from '../AddStockModal';
 import StockDetailModal from '../StockDetailModal';
+import NotificationBell from '../NotificationBell';
 import { lsSet } from '../../utils/safeStorage.js';
 
 function isEuropeDST() {
@@ -139,6 +140,9 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
   const { language, locale, toggle: toggleLanguage } = useLanguage();
   const t = useT();
   const navigate = useNavigate();
+  // Dodawanie transakcji ma sens tylko na Portfelu — na pozostałych stronach
+  // miejsce po prawej zajmuje dzwonek powiadomień.
+  const isPortfolioPage = useLocation().pathname.startsWith('/portfolio');
   const [markets, setMarkets] = useState(getMarketStatuses);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
@@ -458,10 +462,16 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         </button>
       )}
 
-      {/* Add transaction CTA */}
-      <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-        {isMobile ? '+' : t('add_transaction')}
-      </button>
+      {/* Powiadomienia rynkowe — karty czekają za dzwonkiem zamiast zasłaniać
+          zawartość strony od razu po wejściu. */}
+      <NotificationBell buttonStyle={iconBtn} />
+
+      {/* Add transaction CTA — tylko na Portfelu */}
+      {isPortfolioPage && (
+        <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+          {isMobile ? '+' : t('add_transaction')}
+        </button>
+      )}
 
       {showAdd && (
         <AddStockModal
