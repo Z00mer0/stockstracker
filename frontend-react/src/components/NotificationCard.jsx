@@ -113,6 +113,7 @@ export default function NotificationCard({
       }}>
         <button
           type="button"
+          className="notif-action notif-action-primary"
           onClick={onInterested}
           style={{
             flex: '1 1 auto', minWidth: 140,
@@ -126,6 +127,7 @@ export default function NotificationCard({
         </button>
         <button
           type="button"
+          className="notif-action"
           onClick={onNotInterested}
           style={{
             flex: '1 1 auto', minWidth: 140,

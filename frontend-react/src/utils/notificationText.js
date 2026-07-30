@@ -37,13 +37,27 @@ function hashStr(s) {
   return h >>> 0;
 }
 
-export const VARIANTS_PER_BUCKET = 3;
+// Liczba wariantów per kubełek. bigDrop/bigGain to jedyne, które trafiają do
+// dzwonka, więc tam siedzi cała różnorodność — reszta istnieje na zapas dla
+// przyszłego UI i trzymanie tam ośmiu nieoglądanych tekstów byłoby balastem.
+// Klucze muszą istnieć w obu tonach i obu językach, bo indeks jest wspólny.
+const VARIANT_COUNTS = {
+  bigDrop:   8,
+  smallDrop: 3,
+  flat:      3,
+  smallGain: 3,
+  bigGain:   8,
+};
+
+export function variantCount(bucket) {
+  return VARIANT_COUNTS[bucket] ?? 3;
+}
 
 // Returns a i18n key that the caller resolves via useT(). Keys look like
 // `notif_pro_bigDrop_2` or `notif_fun_bigGain_1`.
 export function pickVariantKey({ ticker, tone, bucket, dateKey }) {
   const seed = `${ticker}|${tone}|${bucket}|${dateKey}`;
-  const idx = hashStr(seed) % VARIANTS_PER_BUCKET;
+  const idx = hashStr(seed) % variantCount(bucket);
   const toneKey = tone === 'funny' ? 'fun' : 'pro';
   return `notif_${toneKey}_${bucket}_${idx + 1}`;
 }
