@@ -271,31 +271,27 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
     transition: 'background 0.1s, color 0.1s',
   };
 
-  return (
-    <header style={{
-      height: 56, flexShrink: 0,
-      display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12,
-      padding: isMobile ? '0 12px' : '0 20px',
-      background: 'var(--bg-2)',
-      borderBottom: '1px solid var(--border)',
-      position: 'sticky', top: 0, zIndex: 10,
-    }}>
-      {/* Hamburger — mobile only */}
-      {isMobile && (
-        <button
-          onClick={onMenuToggle}
-          style={{ ...iconBtn, flexShrink: 0 }}
-          aria-label="Menu"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </button>
-      )}
-      {/* Search */}
-      <div ref={searchRef} style={{ position: 'relative', maxWidth: 200, flex: '0 1 200px' }}>
+  // Hamburger — mobile only
+  const hamburger = (
+    <button
+      onClick={onMenuToggle}
+      style={{ ...iconBtn, flexShrink: 0 }}
+      aria-label="Menu"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+  );
+
+  // Na mobile pasek szukania jedzie do własnego rzędu i bierze całą
+  // szerokość — w jednym rzędzie ścisnął taśmę notowań do jednej litery.
+  const searchBlock = (
+    <div ref={searchRef} style={isMobile
+      ? { position: 'relative', flex: 1, minWidth: 0 }
+      : { position: 'relative', maxWidth: 200, flex: '0 1 200px' }}>
         <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none', zIndex: 1 }}
           width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -303,7 +299,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         <input
           ref={inputRef}
           className="field-input"
-          style={{ paddingLeft: 32, paddingRight: 44, height: 34, fontSize: 12, color: 'var(--text-dim)' }}
+          style={{ paddingLeft: 32, paddingRight: isMobile ? 12 : 44, height: 34, fontSize: 12, color: 'var(--text-dim)' }}
           placeholder={t('search_placeholder')}
           value={query}
           onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
@@ -365,9 +361,11 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
             )}
           </div>
         )}
-      </div>
+    </div>
+  );
 
-      {/* Ticker strip — auto-scrolling, pauseable, draggable */}
+  // Ticker strip — auto-scrolling, pauseable, draggable
+  const tickerStrip = (
       <div
         ref={tickerRef}
         className="no-scrollbar"
@@ -401,10 +399,11 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
           </div>
         ))}
       </div>
+  );
 
-      {/* Market status dots — hidden on mobile */}
-      {!isMobile && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+  // Market status dots — na desktopie w głównym rzędzie, na mobile obok szukajki
+  const marketDots = (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {markets.map(m => (
             <span key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-faint)' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.open ? 'var(--up)' : 'var(--text-faint)', display: 'inline-block' }} />
@@ -412,8 +411,10 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
             </span>
           ))}
         </div>
-      )}
+  );
 
+  const actions = (
+    <>
       {/* Theme toggle */}
       <button
         style={iconBtn}
@@ -468,9 +469,43 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
 
       {/* Add transaction CTA — tylko na Portfelu */}
       {isPortfolioPage && (
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+        <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
           {isMobile ? '+' : t('add_transaction')}
         </button>
+      )}
+    </>
+  );
+
+  return (
+    <header style={{
+      flexShrink: 0,
+      display: 'flex', flexDirection: 'column',
+      background: 'var(--bg-2)',
+      borderBottom: '1px solid var(--border)',
+      position: 'sticky', top: 0, zIndex: 10,
+    }}>
+      <div style={{
+        height: 56, display: 'flex', alignItems: 'center',
+        gap: isMobile ? 8 : 12,
+        padding: isMobile ? '0 12px' : '0 20px',
+      }}>
+        {isMobile && hamburger}
+        {!isMobile && searchBlock}
+        {tickerStrip}
+        {!isMobile && marketDots}
+        {actions}
+      </div>
+
+      {/* Mobile: drugi rząd — szukajka pełnej szerokości + status giełd,
+          który wcześniej był na mobile całkiem ukryty. */}
+      {isMobile && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '0 12px 10px',
+        }}>
+          {searchBlock}
+          {marketDots}
+        </div>
       )}
 
       {showAdd && (
