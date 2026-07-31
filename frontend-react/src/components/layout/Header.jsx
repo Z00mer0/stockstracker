@@ -134,7 +134,7 @@ const EyeIcon = ({ closed }) => closed ? (
   </svg>
 );
 
-export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle }) {
+export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, compact = false }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
   const { isPrivate, toggle: togglePrivacy } = usePrivacy();
   const { language, locale, toggle: toggleLanguage } = useLanguage();
@@ -154,21 +154,41 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
   const tickerRef = useRef(null);
   const tickerPaused = useRef(false);
   const dragRef = useRef({ active: false, startX: 0, scrollLeft: 0 });
+  const offsetRef = useRef(0);
 
-  // Auto-scroll RAF loop
+  // Auto-scroll RAF loop.
+  //
+  // Pozycję trzyma osobny akumulator zamiast czytać scrollLeft z DOM-u.
+  // `el.scrollLeft += 0.6` działało na desktopie, ale na iOS Safari
+  // scrollLeft potrafi wrócić zaokrąglony do liczby całkowitej — 0 + 0.6
+  // czytane z powrotem jako 0 i taśma stała w miejscu. Akumulator jest
+  // floatem po naszej stronie, więc każda klatka realnie posuwa pozycję
+  // niezależnie od tego, co DOM zaokrągli.
   useEffect(() => {
     let frameId;
     function tick() {
       const el = tickerRef.current;
       if (el && !tickerPaused.current && !dragRef.current.active) {
-        el.scrollLeft += 0.6;
-        if (el.scrollLeft >= el.scrollWidth / 2) el.scrollLeft = 0;
+        const half = el.scrollWidth / 2;
+        if (half > 0) {
+          offsetRef.current += 0.6;
+          if (offsetRef.current >= half) offsetRef.current -= half;
+          el.scrollLeft = offsetRef.current;
+        }
       }
       frameId = requestAnimationFrame(tick);
     }
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
   }, []);
+
+  // Po ręcznym przewinięciu (mysz albo natywny scroll palcem) akumulator
+  // musi dogonić realną pozycję, inaczej pierwsza klatka po wznowieniu
+  // szarpnęłaby taśmę z powrotem tam, gdzie była przed przeciągnięciem.
+  function syncOffsetFromDom() {
+    const el = tickerRef.current;
+    if (el) offsetRef.current = el.scrollLeft;
+  }
 
   function handleTickerMouseDown(e) {
     const el = tickerRef.current;
@@ -183,6 +203,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
   }
   function handleTickerMouseUp() {
     dragRef.current.active = false;
+    syncOffsetFromDom();
     if (tickerRef.current) tickerRef.current.style.cursor = 'grab';
   }
 
@@ -262,6 +283,8 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
     setSearchOpen(false); setQuery(''); setExternalResults([]);
     setSelectedStock({ symbol: item.symbol, name: item.name, qty: 0, currency: item.exchange?.includes('Warsaw') || item.symbol.endsWith('.WA') ? 'PLN' : 'USD' });
   }
+
+  const collapsed = compact && !searchOpen;
 
   const iconBtn = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -375,7 +398,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
         onMouseMove={handleTickerMouseMove}
         onMouseUp={handleTickerMouseUp}
         onTouchStart={() => { tickerPaused.current = true; }}
-        onTouchEnd={() => { setTimeout(() => { tickerPaused.current = false; }, 2000); }}
+        onTouchEnd={() => { setTimeout(() => { syncOffsetFromDom(); tickerPaused.current = false; }, 2000); }}
         style={{
           flex: 1,
           display: 'flex',
@@ -497,11 +520,20 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle })
       </div>
 
       {/* Mobile: drugi rząd — szukajka pełnej szerokości + status giełd,
-          który wcześniej był na mobile całkiem ukryty. */}
+          który wcześniej był na mobile całkiem ukryty. Chowa się przy
+          przewijaniu w dół, ale nigdy gdy lista podpowiedzi jest otwarta —
+          zwinięcie w trakcie pisania zabrałoby wyniki sprzed sekundy.
+          overflow tylko w stanie zwiniętym, bo rozwinięty musi wypuścić
+          dropdown szukajki poza swoje granice. */}
       {isMobile && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '0 12px 10px',
+          padding: collapsed ? '0 12px' : '0 12px 10px',
+          maxHeight: collapsed ? 0 : 60,
+          opacity: collapsed ? 0 : 1,
+          overflow: collapsed ? 'hidden' : 'visible',
+          pointerEvents: collapsed ? 'none' : 'auto',
+          transition: 'max-height 0.22s ease, opacity 0.16s ease, padding 0.22s ease',
         }}>
           {searchBlock}
           {marketDots}
