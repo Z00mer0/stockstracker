@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import NotificationCard from './NotificationCard';
+import StockDetailModal from './StockDetailModal';
 import { useMarketNotifications } from '../hooks/useMarketNotifications';
 import { useNotificationTone } from '../hooks/useNotificationTone';
 import { useT } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
 
 function BellIcon() {
   return (
@@ -18,8 +20,23 @@ export default function NotificationBell({ buttonStyle }) {
   const t = useT();
   const [tone] = useNotificationTone();
   const { notifications, dismiss } = useMarketNotifications();
+  const { portfolio, addPosition, refresh } = useApp();
   const [open, setOpen] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
   const wrapRef = useRef(null);
+
+  // „Interesuje mnie to" prowadzi do szczegółów spółki. Powiadomienia lecą
+  // z portfela i z watchlisty — dla tych pierwszych podajemy modalowi
+  // prawdziwą pozycję (ilość, cena zakupu), dla drugich zaślepkę z qty 0.
+  function openDetails(notification) {
+    const held = (portfolio ?? []).find(p => p.symbol === notification.symbol);
+    setSelectedStock(held ?? {
+      symbol: notification.symbol,
+      qty: 0,
+      currency: notification.symbol.endsWith('.WA') ? 'PLN' : 'USD',
+    });
+    setOpen(false);
+  }
 
   // Zamknięcie po kliknięciu poza panelem i po Escape — tak samo jak
   // wyszukiwarka w nagłówku, żeby zachowanie było spójne.
@@ -97,11 +114,20 @@ export default function NotificationBell({ buttonStyle }) {
               changePct={n.changePct}
               changeAbs={n.changeAbs}
               tone={tone}
-              onInterested={() => dismiss(n.dedupeKey, { mute: true })}
+              onInterested={() => { openDetails(n); dismiss(n.dedupeKey, { mute: true }); }}
               onNotInterested={() => dismiss(n.dedupeKey, { mute: true })}
             />
           ))}
         </div>
+      )}
+
+      {selectedStock && (
+        <StockDetailModal
+          item={selectedStock}
+          existingPortfolio={portfolio}
+          onSave={async (data) => { await addPosition(data); refresh(); }}
+          onClose={() => setSelectedStock(null)}
+        />
       )}
     </div>
   );

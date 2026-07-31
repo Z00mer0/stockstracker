@@ -178,6 +178,25 @@ body.privacy-mode .lg-pct {
 .btn-danger { color: var(--down); }
 .btn-danger:hover { background: var(--down-soft); border-color: var(--down); }
 
+/* ── Akcje na karcie powiadomienia ──────────────────────────────────────────
+   Przyciski w karcie z dzwonka nie mialy zadnego hoveru ani stanu wcisniecia,
+   przez co czytaly sie jak etykiety, a nie jak cos klikalnego. Fokus
+   klawiatury obsluguje globalna regula :focus-visible nizej. */
+.notif-action {
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.06s;
+}
+.notif-action:hover {
+  background: var(--panel-hover);
+  border-color: var(--border-strong);
+}
+.notif-action:active { transform: scale(0.97); }
+/* „Interesuje mnie to" prowadzi do szczegolow spolki — akcent podpowiada,
+   ze to glowna akcja, a nie blizniak przycisku obok. */
+.notif-action-primary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ── Chip ── */
 .chip {
   display: inline-flex;
