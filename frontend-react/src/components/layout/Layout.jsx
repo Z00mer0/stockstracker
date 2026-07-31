@@ -1,5 +1,5 @@
 // src/components/layout/Layout.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
 import RouteFallback from '../RouteFallback';
@@ -19,6 +19,12 @@ export default function Layout() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BP);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewPortfolio, setShowNewPortfolio] = useState(false);
+  // Drugi rząd nagłówka (szukajka + status giełd) chowa się przy przewijaniu
+  // w dół i wraca przy pierwszym ruchu w górę — na telefonie zjadał 45 px
+  // ekranu przez cały czas czytania strony.
+  const [headerCompact, setHeaderCompact] = useState(false);
+  const mainRef = useRef(null);
+  const lastScrollY = useRef(0);
 
   const { portfolios, isAuthenticated, loading, error } = useApp();
   const location = useLocation();
@@ -38,6 +44,28 @@ export default function Layout() {
     document.documentElement.setAttribute('data-theme', theme);
     lsSet(THEME_KEY, theme);
   }, [theme]);
+
+  // Scroll obserwujemy na <main>, nie na oknie — to on jest kontenerem
+  // przewijania (okno stoi, bo html/body mają overflow: hidden).
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el || !isMobile) { setHeaderCompact(false); return; }
+    lastScrollY.current = el.scrollTop;
+    function onScroll() {
+      const y = el.scrollTop;
+      const prev = lastScrollY.current;
+      // Próg 4 px tłumi drgania z bounce'u i z reflowu po zwinięciu rzędu.
+      if (y < 24) setHeaderCompact(false);
+      else if (y > prev + 4) setHeaderCompact(true);
+      else if (y < prev - 4) setHeaderCompact(false);
+      lastScrollY.current = y;
+    }
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [isMobile]);
+
+  // Zmiana strony wraca do pełnego nagłówka — nowa treść startuje od góry.
+  useEffect(() => { setHeaderCompact(false); }, [location.pathname]);
 
   useEffect(() => {
     function onResize() {
@@ -75,9 +103,10 @@ export default function Layout() {
             onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
             isMobile={isMobile}
             onMenuToggle={() => setSidebarOpen(o => !o)}
+            compact={headerCompact}
           />
         </ErrorBoundary>
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto', containerType: 'inline-size', containerName: 'app' }}>
+        <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: isMobile ? '16px 16px 60px' : '24px 28px 60px', maxWidth: '1640px', width: '100%', margin: '0 auto', containerType: 'inline-size', containerName: 'app' }}>
           {/* Suspense tutaj, a nie wokół <Routes> — dzięki temu przy przejściu
               między stronami menu i nagłówek zostają na miejscu, a wymienia się
               tylko obszar treści. Granica błędu w tym samym miejscu i z tego
