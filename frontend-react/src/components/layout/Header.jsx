@@ -155,42 +155,52 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
   const searchRef = useRef(null);
   const inputRef = useRef(null);
   const tickerRef = useRef(null);
+  const trackRef = useRef(null);
   const tickerPaused = useRef(false);
-  const dragRef = useRef({ active: false, startX: 0, scrollLeft: 0 });
+  const dragRef = useRef({ active: false, startX: 0, startOffset: 0 });
   const offsetRef = useRef(0);
   const periodRef = useRef(0);
   const [copies, setCopies] = useState(2);
 
+  // Taśma jedzie transformem, nie scrollem.
+  //
+  // scrollLeft jest kwantowany — przeglądarka zapisuje go z dokładnością do
+  // piksela (na iOS do pełnego), więc przy cyklu 410.77 px zawinięcie siadało
+  // na 411 i zostawała resztka, którą widać jako drgnięcie. Do tego kontener
+  // miał -webkit-overflow-scrolling: touch, gdzie programowy zapis scrollLeft
+  // miesza się z inercją iOS-a. translate3d przyjmuje wartości ułamkowe co do
+  // subpiksela, leci na kompozytorze i nie ma z inercją nic wspólnego, więc
+  // zawinięcie jest dokładnie o jeden cykl — bez reszty.
+  const setTrackOffset = useCallback((value) => {
+    const track = trackRef.current;
+    if (track) track.style.transform = `translate3d(${-value}px, 0, 0)`;
+  }, []);
+
   // Długość jednego pełnego cyklu taśmy, mierzona z DOM-u.
   //
-  // Kusi wziąć scrollWidth / 2 (treść jest zdublowana), ale kontener ma
-  // flexowy `gap`: przy 2N elementach jest 2N-1 przerw, więc połowa
-  // szerokości to N elementów i N-0.5 przerwy, a pełny cykl to N elementów
-  // i N przerw. Różnica to pół przerwy — 7 px na mobile, 8.5 px na
-  // desktopie — i dokładnie o tyle taśma podskakiwała wstecz przy każdym
-  // zawinięciu. Pozycja pierwszego elementu drugiej kopii daje cykl co do
-  // piksela, niezależnie od gapu i szerokości tekstów.
+  // Kusi wziąć szerokość / 2 (treść jest zdublowana), ale kontener ma flexowy
+  // `gap`: przy 2N elementach jest 2N-1 przerw, więc połowa szerokości to N
+  // elementów i N-0.5 przerwy, a pełny cykl to N elementów i N przerw.
+  // Pozycja pierwszego elementu drugiej kopii daje cykl co do subpiksela,
+  // niezależnie od gapu i szerokości tekstów.
   const measurePeriod = useCallback(() => {
-    const el = tickerRef.current;
-    const kids = el?.children;
+    const track = trackRef.current;
+    const box = tickerRef.current;
+    const kids = track?.children;
     const per = tickers.length;
-    if (!kids || !per || kids.length < per * 2) return;
+    if (!box || !kids || !per || kids.length < per * 2) return;
     // getBoundingClientRect, nie offsetLeft: offsetLeft zaokrągla do pełnych
-    // pikseli, a ułamkowa reszta wystarczy, żeby po zawinięciu tekst usiadł
-    // na innym subpikselu i cała taśma leciutko mrugnęła.
+    // pikseli, a ułamkowa reszta wystarczy, żeby tekst usiadł po zawinięciu
+    // na innym subpikselu.
     const period = kids[per].getBoundingClientRect().left - kids[0].getBoundingClientRect().left;
     if (period <= 0) return;
     periodRef.current = period;
-    // Dwie kopie wystarczą tylko wtedy, gdy zakres przewijania
-    // (scrollWidth - clientWidth) jest nie krótszy niż cykl. Na desktopie
-    // cykl ma ~438 px przy zakresie ~422 px, więc taśma dojeżdżała do końca,
-    // stała tam kilkanaście sekund i dopiero potem skakała na początek.
-    //
+    // Treść musi starczyć na całą szerokość paska nawet przy offsecie tuż
+    // przed zawinięciem, inaczej z prawej strony wyjrzałaby dziura.
     // Ostatnia kopia nie ma za sobą przerwy, więc treść jest o jeden gap
-    // węższa niż copies * period — stąd gap wyliczony z pomiaru, zamiast
-    // czytania go ze stylów.
-    const gap = copies * period - el.scrollWidth;
-    const needed = Math.max(2, Math.ceil((el.clientWidth + gap) / period) + 1);
+    // węższa niż copies * period — stąd gap wyliczony z pomiaru.
+    const gap = copies * period - track.scrollWidth;
+    const needed = Math.max(2, Math.ceil((box.clientWidth + gap) / period) + 1);
     setCopies(c => (c === needed ? c : needed));
   }, [tickers.length, copies]);
 
@@ -202,15 +212,6 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
     return () => window.removeEventListener('resize', measurePeriod);
   }, [measurePeriod, tickers, isMobile, locale, copies]);
 
-  // Auto-scroll RAF loop.
-  //
-  // Pozycję trzyma osobny akumulator zamiast czytać scrollLeft z DOM-u.
-  // `el.scrollLeft += 0.6` działało na desktopie, ale na iOS Safari
-  // scrollLeft potrafi wrócić zaokrąglony do liczby całkowitej — 0 + 0.6
-  // czytane z powrotem jako 0 i taśma stała w miejscu. Akumulator jest
-  // floatem po naszej stronie, więc każda klatka realnie posuwa pozycję
-  // niezależnie od tego, co DOM zaokrągli.
-  //
   // Prędkość liczona w pikselach na sekundę, nie na klatkę: iPhone z
   // ProMotion renderuje 120 Hz, więc stałe „+0.6 na klatkę" jechało tam
   // dwa razy szybciej niż na 60 Hz desktopie.
@@ -222,44 +223,45 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
       // i taśma przeskoczyłaby kawał drogi jednym susem.
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      const el = tickerRef.current;
-      if (el && !tickerPaused.current && !dragRef.current.active) {
-        const period = periodRef.current || el.scrollWidth / 2;
-        if (period > 0) {
-          offsetRef.current += TICKER_SPEED_PX_S * dt;
-          if (offsetRef.current >= period) offsetRef.current -= period;
-          el.scrollLeft = offsetRef.current;
-        }
+      const period = periodRef.current;
+      if (period > 0 && !tickerPaused.current && !dragRef.current.active) {
+        let next = offsetRef.current + TICKER_SPEED_PX_S * dt;
+        if (next >= period) next -= period;
+        offsetRef.current = next;
+        setTrackOffset(next);
       }
       frameId = requestAnimationFrame(tick);
     }
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, []);
+  }, [setTrackOffset]);
 
-  // Po ręcznym przewinięciu (mysz albo natywny scroll palcem) akumulator
-  // musi dogonić realną pozycję, inaczej pierwsza klatka po wznowieniu
-  // szarpnęłaby taśmę z powrotem tam, gdzie była przed przeciągnięciem.
-  function syncOffsetFromDom() {
-    const el = tickerRef.current;
-    if (el) offsetRef.current = el.scrollLeft;
+  // Przeciąganie na Pointer Events — jeden zestaw handlerów dla myszy i
+  // palca. Natywnego scrolla już nie ma (kontener jest overflow: hidden),
+  // więc pozycję przy przeciąganiu ustawiamy sami, w tej samej jednostce
+  // co animacja. touchAction: 'pan-y' zostawia pionowe przewijanie strony.
+  function normalizeOffset(value) {
+    const period = periodRef.current;
+    if (!(period > 0)) return 0;
+    return ((value % period) + period) % period;
   }
-
-  function handleTickerMouseDown(e) {
-    const el = tickerRef.current;
-    dragRef.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
-    el.style.cursor = 'grabbing';
+  function handleTickerPointerDown(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    dragRef.current = { active: true, startX: e.clientX, startOffset: offsetRef.current };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.currentTarget.style.cursor = 'grabbing';
   }
-  function handleTickerMouseMove(e) {
+  function handleTickerPointerMove(e) {
     if (!dragRef.current.active) return;
-    e.preventDefault();
-    const el = tickerRef.current;
-    el.scrollLeft = dragRef.current.scrollLeft - (e.pageX - el.offsetLeft - dragRef.current.startX);
+    const next = normalizeOffset(dragRef.current.startOffset - (e.clientX - dragRef.current.startX));
+    offsetRef.current = next;
+    setTrackOffset(next);
   }
-  function handleTickerMouseUp() {
+  function handleTickerPointerUp(e) {
+    if (!dragRef.current.active) return;
     dragRef.current.active = false;
-    syncOffsetFromDom();
-    if (tickerRef.current) tickerRef.current.style.cursor = 'grab';
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    e.currentTarget.style.cursor = 'grab';
   }
 
   useEffect(() => {
@@ -442,40 +444,47 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
     </div>
   );
 
-  // Ticker strip — auto-scrolling, pauseable, draggable
+  // Ticker strip — pudełko przycina, wewnętrzny tor jedzie transformem.
   const tickerStrip = (
       <div
         ref={tickerRef}
-        className="no-scrollbar"
         onMouseEnter={() => { tickerPaused.current = true; }}
-        onMouseLeave={() => { tickerPaused.current = false; handleTickerMouseUp(); }}
-        onMouseDown={handleTickerMouseDown}
-        onMouseMove={handleTickerMouseMove}
-        onMouseUp={handleTickerMouseUp}
-        onTouchStart={() => { tickerPaused.current = true; }}
-        onTouchEnd={() => { setTimeout(() => { syncOffsetFromDom(); tickerPaused.current = false; }, 2000); }}
+        onMouseLeave={() => { tickerPaused.current = false; }}
+        onPointerDown={handleTickerPointerDown}
+        onPointerMove={handleTickerPointerMove}
+        onPointerUp={handleTickerPointerUp}
+        onPointerCancel={handleTickerPointerUp}
         style={{
           flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: isMobile ? 14 : 18,
-          overflowX: 'auto',
+          minWidth: 0,
+          overflow: 'hidden',
           cursor: 'grab',
           userSelect: 'none',
-          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
         }}
       >
-        {Array.from({ length: copies }, () => tickers).flat().map((tick, i) => (
-          <div key={`${tick.key}-${i}`} aria-hidden={i >= tickers.length || undefined} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
-            <span className="mono" style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
-            {tick.delta != null && (
-              <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%
-              </span>
-            )}
-          </div>
-        ))}
+        <div
+          ref={trackRef}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 14 : 18,
+            width: 'max-content',
+            willChange: 'transform',
+          }}
+        >
+          {Array.from({ length: copies }, () => tickers).flat().map((tick, i) => (
+            <div key={`${tick.key}-${i}`} aria-hidden={i >= tickers.length || undefined} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.04em' }}>{tick.key}</span>
+              <span className="mono" style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
+              {tick.delta != null && (
+                <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                  {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
   );
 
