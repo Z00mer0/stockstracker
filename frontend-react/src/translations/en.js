@@ -930,7 +930,7 @@ export default {
   notif_push_now_empty:       'No symbol in your portfolio or watchlist has a ≥ ±5% move today.',
   notif_push_now_error:       'Could not send — try again.',
   notif_hour_label:           'Delivery hour (Warsaw)',
-  notif_hour_hint:            'Push is only sent from this hour onward (Warsaw time). Cards in the bell appear right away, regardless of this setting.',
+  notif_hour_hint:            'Notifications — both push and the cards in the bell — only appear from this hour onward (Warsaw time).',
   notif_pro_smallDrop_1:      'Slight drop today — within normal volatility.',
   notif_pro_smallDrop_2:      'Price a touch lower.',
   notif_pro_smallDrop_3:      'Minor intraday pullback.',

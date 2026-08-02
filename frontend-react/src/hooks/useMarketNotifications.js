@@ -4,6 +4,8 @@ import { apiLoadWatchlist, loadWatchlistLocal } from '../services/watchlistServi
 import { isAuthed } from '../utils/auth.js';
 import { shouldNotify, getPriceChangeBucket, todayKey } from '../utils/notificationText.js';
 import { lsSet } from '../utils/safeStorage.js';
+import { beforeDeliveryHour } from '../utils/warsawTime.js';
+import { useNotificationHour } from './useNotificationTone.js';
 
 const POLL_MS = 5 * 60 * 1000;
 const SEEN_KEY = 'myfund_notif_seen';
@@ -132,6 +134,7 @@ export function writeScanCache(sig, quotes, now = Date.now()) {
 
 export function useMarketNotifications() {
   const { portfolio } = useApp();
+  const [deliveryHour] = useNotificationHour();
   const [watchSymbols, setWatchSymbols] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const seenRef = useRef(readStamps(SEEN_KEY));
@@ -160,6 +163,16 @@ export function useMarketNotifications() {
   }, [portfolio, watchSymbols]);
 
   const scan = useCallback(async () => {
+    // Godzina dostawy obowiazuje tez dzwonek, nie tylko pusha — jedno
+    // ustawienie, jedno zachowanie. Liczona w strefie warszawskiej, tak jak
+    // po stronie serwera, zeby telefon w innej strefie nie rozjechal sie
+    // z powiadomieniem systemowym.
+    //
+    // Przed godzina nie odpytujemy notowan wcale: i tak nie byloby czego
+    // pokazac, a push liczy sie osobno po stronie serwera. Dzieki temu
+    // „wiek" karty znaczy to samo co przy pushu — od kiedy zauwazylismy ruch,
+    // a nie od kiedy trwa.
+    if (beforeDeliveryHour(deliveryHour)) { setNotifications([]); return; }
     if (!targets.length) { setNotifications([]); return; }
     const today = todayKey();
     seenRef.current = pruneStaleStamps(seenRef.current, today);
@@ -185,7 +198,7 @@ export function useMarketNotifications() {
     }
     writeStamps(SEEN_KEY, seenRef.current);
     setNotifications(fresh);
-  }, [targets]);
+  }, [targets, deliveryHour]);
 
   // Karta w tle nie ma komu pokazac dzwonka, a odpytywanie leci z kazdej
   // otwartej zakladki — wiec w tle nie skanujemy, a po powrocie doganiamy.

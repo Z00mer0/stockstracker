@@ -930,7 +930,7 @@ export default {
   notif_push_now_empty:       'Żaden symbol z portfela ani watchlisty nie ma dziś ruchu ≥ ±5%.',
   notif_push_now_error:       'Nie udało się wysłać — spróbuj ponownie.',
   notif_hour_label:           'Godzina dostawy (Warszawa)',
-  notif_hour_hint:            'Push wysyłany jest dopiero od tej godziny (czas warszawski). Karty w dzwonku pojawiają się od razu, niezależnie od tego ustawienia.',
+  notif_hour_hint:            'Powiadomienia — push i karty w dzwonku — pojawiają się dopiero od tej godziny (czas warszawski).',
   notif_pro_smallDrop_1:      'Lekki spadek dziś — w granicach normalnej zmienności.',
   notif_pro_smallDrop_2:      'Kurs nieznacznie w dół.',
   notif_pro_smallDrop_3:      'Niewielka korekta w trakcie sesji.',
