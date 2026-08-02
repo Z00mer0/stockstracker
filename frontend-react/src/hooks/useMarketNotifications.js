@@ -8,6 +8,7 @@ import { lsSet } from '../utils/safeStorage.js';
 const POLL_MS = 5 * 60 * 1000;
 const SEEN_KEY = 'myfund_notif_seen';
 const MUTED_KEY = 'myfund_notif_muted';
+const SCAN_KEY = 'myfund_notif_scan';
 
 function lsRead(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -97,6 +98,38 @@ export async function fetchQuotes(symbols) {
   return out;
 }
 
+// Wynik skanu wspoldzielony miedzy zakladkami.
+//
+// Paczkowanie zbilo jedno zadanie na symbol do dwoch na skan, ale kazda
+// otwarta zakladka nadal odpytywala osobno — trzy zakladki to trzy razy
+// tyle. Skan trafia wiec do localStorage ze znacznikiem czasu i podpisem
+// listy symboli; zakladka, ktora zastanie swiezy wynik, nie rusza sieci.
+// Efekt: ruch nie zalezy od liczby otwartych kart.
+//
+// Podpis jest potrzebny, bo dwie zakladki moga patrzec na rozne portfele —
+// wynik dla innego zestawu symboli nie moze sie przekleic.
+export function scanSignature(symbols) {
+  return [...symbols].sort().join(',');
+}
+
+export function readScanCache(sig, maxAgeMs, now = Date.now()) {
+  try {
+    const parsed = JSON.parse(lsRead(SCAN_KEY));
+    if (!parsed || !Array.isArray(parsed.quotes)) return null;
+    if (!Number.isFinite(parsed.ts)) return null;
+    if (parsed.sig !== sig) return null;
+    // Zegar potrafi sie cofnac (synchronizacja, strefa) — wpis z przyszlosci
+    // traktujemy jak nieswiezy, zeby nie zamrozic skanu na dlugo.
+    if (parsed.ts > now) return null;
+    if (now - parsed.ts > maxAgeMs) return null;
+    return parsed.quotes;
+  } catch { return null; }
+}
+
+export function writeScanCache(sig, quotes, now = Date.now()) {
+  lsSet(SCAN_KEY, JSON.stringify({ ts: now, sig, quotes }));
+}
+
 export function useMarketNotifications() {
   const { portfolio } = useApp();
   const [watchSymbols, setWatchSymbols] = useState([]);
@@ -132,7 +165,13 @@ export function useMarketNotifications() {
     seenRef.current = pruneStaleStamps(seenRef.current, today);
     mutedRef.current = pruneStale(mutedRef.current, today);
 
-    const quotes = await fetchQuotes(targets);
+    // Swiezy wynik z innej zakladki oszczedza cale zapytanie.
+    const sig = scanSignature(targets);
+    let quotes = readScanCache(sig, POLL_MS);
+    if (!quotes) {
+      quotes = await fetchQuotes(targets);
+      writeScanCache(sig, quotes);
+    }
     const fresh = [];
     for (const q of quotes) {
       if (!shouldNotify(q.changePct)) continue;
@@ -161,9 +200,17 @@ export function useMarketNotifications() {
       if (document.hidden) stop();
       else if (!id) start();
     }
+    // Skan w innej zakladce = gotowy wynik tutaj; scan() trafi w swiezy
+    // cache i przeliczy karty bez ruszania sieci.
+    function onStorage(e) { if (e.key === SCAN_KEY) scan(); }
     if (!document.hidden) start();
     document.addEventListener('visibilitychange', onVisibility);
-    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('storage', onStorage);
+    };
   }, [scan]);
 
   const dismiss = useCallback((dedupeKey, { mute = false } = {}) => {
