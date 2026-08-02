@@ -15,9 +15,14 @@
 // miały własne listy: klient 8 wariantów, serwer 3 — ten sam ruch dawał
 // inny tekst w karcie i w powiadomieniu systemowym. Jedno źródło plus ten
 // sam hash i ten sam seed po obu stronach = zawsze ten sam wariant.
-import BIG_MOVE_TEXTS from '../translations/bigMoveTexts.json';
+import BIG_MOVE_CONFIG from '../translations/bigMoveTexts.json';
 
-export const NOTIFY_THRESHOLD = 5;
+const BIG_MOVE_TEXTS = BIG_MOVE_CONFIG.texts;
+
+// Prog siedzi w tym samym pliku co teksty, bo server.py czyta go stamtad tez.
+// Wczesniej byl stala tutaj i gola piatka w dwoch miejscach server.py —
+// podniesienie po jednej stronie rozjechaloby dzwonek z pushem po cichu.
+export const NOTIFY_THRESHOLD = BIG_MOVE_CONFIG.thresholdPct;
 
 // Kierunek ruchu — klucz w bigMoveTexts.json po stronie klienta i serwera.
 export function moveDirection(changePct) {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiLoadWatchlist, loadWatchlistLocal } from '../services/watchlistService';
 import { isAuthed } from '../utils/auth.js';
-import { NOTIFY_THRESHOLD, getPriceChangeBucket, todayKey } from '../utils/notificationText.js';
+import { shouldNotify, getPriceChangeBucket, todayKey } from '../utils/notificationText.js';
 import { lsSet } from '../utils/safeStorage.js';
 
 const POLL_MS = 5 * 60 * 1000;
@@ -51,21 +51,50 @@ function pruneStaleStamps(stamps, today) {
   return kept;
 }
 
-async function fetchQuote(sym) {
-  try {
-    const r = await fetch(`/api/finnhub/v1/quote?symbol=${encodeURIComponent(sym)}`, {
-      signal: AbortSignal.timeout(8000),
-    });
-    const q = await r.json();
-    if (q?.c > 0 && q?.dp != null) {
-      const dp = Number(q.dp);
-      const priceNow = Number(q.c);
-      const prev = priceNow / (1 + dp / 100);
-      const abs = priceNow - prev;
-      return { symbol: sym, price: priceNow, changePct: dp, changeAbs: abs };
-    }
-  } catch {}
-  return null;
+// Notowania paczkami, nie po jednym symbolu.
+//
+// Wczesniej bylo jedno zadanie na symbol do /api/finnhub/v1/quote — przy
+// portfelu i watchliscie na kilkadziesiat pozycji to kilkadziesiat zadan co
+// piec minut z kazdej otwartej karty. Ten sam blad naprawiono juz kiedys po
+// stronie serwera (patrz test_quotes_batch.py). /api/quotes?format=map bierze
+// do 60 symboli naraz i odpytuje je rownolegle.
+const QUOTES_CHUNK = 60;
+
+function chunk(list, size) {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+// Wpis z ?format=map -> ksztalt, ktorego uzywa reszta hooka. Sciezka stooq
+// oddaje sama cene bez zmiany dziennej — bez niej nie da sie ocenic progu,
+// wiec taki symbol pomijamy (serwer robi to samo).
+export function quoteFromEntry(symbol, entry) {
+  if (!entry || entry.notFound) return null;
+  const q = entry.quote || {};
+  const price = Number(q.regularMarketPrice);
+  const changePct = q.regularMarketChangePercent;
+  if (!(price > 0) || changePct == null) return null;
+  const dp = Number(changePct);
+  const prev = price / (1 + dp / 100);
+  return { symbol, price, changePct: dp, changeAbs: price - prev };
+}
+
+export async function fetchQuotes(symbols) {
+  const out = [];
+  for (const part of chunk(symbols, QUOTES_CHUNK)) {
+    try {
+      const url = `/api/quotes?format=map&symbols=${encodeURIComponent(part.join(','))}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) continue;
+      const { quotes } = await r.json();
+      for (const sym of part) {
+        const q = quoteFromEntry(sym, quotes?.[sym]);
+        if (q) out.push(q);
+      }
+    } catch {}
+  }
+  return out;
 }
 
 export function useMarketNotifications() {
@@ -103,12 +132,10 @@ export function useMarketNotifications() {
     seenRef.current = pruneStaleStamps(seenRef.current, today);
     mutedRef.current = pruneStale(mutedRef.current, today);
 
-    const results = await Promise.allSettled(targets.map(fetchQuote));
+    const quotes = await fetchQuotes(targets);
     const fresh = [];
-    for (const r of results) {
-      if (r.status !== 'fulfilled' || !r.value) continue;
-      const q = r.value;
-      if (Math.abs(q.changePct) < NOTIFY_THRESHOLD) continue;
+    for (const q of quotes) {
+      if (!shouldNotify(q.changePct)) continue;
       const bucket = getPriceChangeBucket(q.changePct);
       const dedupeKey = `${today}:${q.symbol}:${bucket}`;
       if (mutedRef.current.has(dedupeKey)) continue;
@@ -121,10 +148,22 @@ export function useMarketNotifications() {
     setNotifications(fresh);
   }, [targets]);
 
+  // Karta w tle nie ma komu pokazac dzwonka, a odpytywanie leci z kazdej
+  // otwartej zakladki — wiec w tle nie skanujemy, a po powrocie doganiamy.
   useEffect(() => {
-    scan();
-    const id = setInterval(scan, POLL_MS);
-    return () => clearInterval(id);
+    let id;
+    function start() {
+      scan();
+      id = setInterval(scan, POLL_MS);
+    }
+    function stop() { clearInterval(id); id = undefined; }
+    function onVisibility() {
+      if (document.hidden) stop();
+      else if (!id) start();
+    }
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
   }, [scan]);
 
   const dismiss = useCallback((dedupeKey, { mute = false } = {}) => {
