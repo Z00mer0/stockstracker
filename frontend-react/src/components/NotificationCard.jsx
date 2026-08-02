@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useT, useLanguage } from '../context/LanguageContext';
 import { getNotificationText } from '../utils/notificationText.js';
+import { formatRelative } from '../utils/relativeTime.js';
 
 function ChevronIcon({ up }) {
   return (
@@ -36,12 +37,22 @@ export default function NotificationCard({
   changePct,
   changeAbs,
   tone = 'professional',
+  detectedAt,
   timestampLabel,
   onInterested,
   onNotInterested,
 }) {
   const t = useT();
-  const { locale } = useLanguage();
+  const { locale, language } = useLanguage();
+
+  // Karta potrafi wisiec w dzwonku dluzej niz minute, wiec sam znacznik musi
+  // sie starzec — bez tego „przed chwilą" zostawaloby na ekranie godzinami.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!detectedAt) return undefined;
+    const id = setInterval(() => forceTick(n => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, [detectedAt]);
   const up = Number(changePct) >= 0;
   const color = up ? 'var(--up)' : 'var(--down)';
 
@@ -54,7 +65,10 @@ export default function NotificationCard({
         minimumFractionDigits: 2, maximumFractionDigits: 2,
       })})`;
 
-  const body = getNotificationText({ ticker, changePct, tone, t });
+  const body = getNotificationText({ ticker, changePct, tone, t, lang: language });
+  // timestampLabel zostaje dla podgladu w Ustawieniach, ktory nie ma realnego
+  // znacznika czasu i pokazuje przykladowa karte.
+  const stamp = detectedAt ? formatRelative(detectedAt, locale, t) : timestampLabel;
 
   return (
     <div
@@ -104,7 +118,7 @@ export default function NotificationCard({
         display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
         gap: 8, color: 'var(--text-dim)', fontSize: 12,
       }}>
-        <span>{timestampLabel || t('notif_minute_ago')}</span>
+        <span>{stamp}</span>
         <GoogleFinanceMark />
       </div>
 

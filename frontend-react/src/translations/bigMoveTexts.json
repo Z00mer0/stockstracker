@@ -1,0 +1,94 @@
+{
+  "professional": {
+    "pl": {
+      "down": [
+        "Silny spadek dziś — warto sprawdzić przyczynę i plan reakcji.",
+        "Kurs mocno w dół. Rozważ przegląd tezy inwestycyjnej.",
+        "Wyraźna przecena w ciągu sesji — kandydat do analizy technicznej.",
+        "Mocna przecena — sprawdź, czy to spółka, czy cały sektor.",
+        "Spadek powyżej 5% — warto zweryfikować ostatnie komunikaty spółki.",
+        "Kurs kilka procent pod wczorajszym zamknięciem. Sprawdź wolumen.",
+        "Wyraźna korekta — okazja do uśrednienia albo sygnał do wyjścia.",
+        "Silna zniżka w trakcie sesji — rozważ zlecenie obronne."
+      ],
+      "up": [
+        "Silny wzrost dziś — sprawdź katalizator zanim dołożysz.",
+        "Kurs mocno w górę. Warto przejrzeć plan realizacji zysku.",
+        "Wyraźne wybicie — kandydat do rebalansu.",
+        "Mocny wzrost — sprawdź, czy to spółka, czy szerszy rynek.",
+        "Zwyżka powyżej 5% — warto zweryfikować ostatnie komunikaty spółki.",
+        "Kurs wyraźnie nad wczorajszym zamknięciem. Sprawdź wolumen.",
+        "Dynamiczne wybicie — rozważ realizację części zysku.",
+        "Silna zwyżka w trakcie sesji — sprawdź, czy to nie reakcja jednodniowa."
+      ]
+    },
+    "en": {
+      "down": [
+        "Sharp drop today — worth checking the driver and your reaction plan.",
+        "Price down hard. Time to revisit the thesis.",
+        "Clear intraday sell-off — candidate for a technical review.",
+        "Sharp sell-off — check whether it is the company or the whole sector.",
+        "Down more than 5% — worth checking the latest company filings.",
+        "Trading several percent below yesterday's close. Check the volume.",
+        "Clear pullback — a chance to average down, or a signal to exit.",
+        "Steep intraday decline — consider a protective order."
+      ],
+      "up": [
+        "Strong rally today — verify the catalyst before adding.",
+        "Price up hard. Worth reviewing your profit-taking plan.",
+        "Clear breakout — candidate for a rebalance.",
+        "Strong move up — check whether it is the company or the broader market.",
+        "Up more than 5% — worth checking the latest company filings.",
+        "Trading well above yesterday's close. Check the volume.",
+        "Sharp breakout — consider taking part of the profit.",
+        "Steep intraday rally — check whether it is a one-day reaction."
+      ]
+    }
+  },
+  "funny": {
+    "pl": {
+      "down": [
+        "Dzisiaj dostaje w pizdę.\nŁaduj się kto może!",
+        "Ostro leci z górki 📉\nCzas na tanie zakupy czy jeszcze nóż?",
+        "Krwawa jatka na wykresie.\nKto ma jaja, ten dokupuje.",
+        "Czerwono jak w rzeźni 🥩\nPortfel dziś na diecie.",
+        "Ktoś tu sprzedaje jak podpalony 🔥\nPanika czy okazja?",
+        "Wykres kopie dołek 🕳️\nŁapiesz spadający nóż?",
+        "Dziś boli 🩹\nOddychaj, to tylko liczby.",
+        "Zjazd na pysku ⛷️\nTrzymasz czy uciekasz?"
+      ],
+      "up": [
+        "To the moon! 🚀\nSprzedawaj kto może!",
+        "Rakieta odpalona 🚀🚀\nBierz zyski i uciekaj.",
+        "Zielona bestia! 💚\nDziś stawiasz kolejkę.",
+        "Portfel dziś tłuściutki 🐷\nNie zapeszaj.",
+        "Kurs poszedł w kosmos 🛸\nKto trzymał, ten wygrał.",
+        "Zielono aż piszczy 🟢\nDziś jesteś geniuszem inwestycji.",
+        "Świeca jak maszt ⛵\nByle nie zjechać z powrotem.",
+        "Ktoś tu mocno kupuje 🛒\nZysk na papierze to jeszcze nie zysk."
+      ]
+    },
+    "en": {
+      "down": [
+        "Getting wrecked today.\nBuy the dip if you dare!",
+        "Absolutely tanking 📉\nBargain bin or falling knife?",
+        "Bloodbath on the chart.\nDiamond hands, do your thing.",
+        "Red like a butcher shop 🥩\nPortfolio is on a diet today.",
+        "Someone is selling like their hair is on fire 🔥\nPanic or bargain?",
+        "Chart is digging a hole 🕳️\nCatching the falling knife?",
+        "This one stings 🩹\nBreathe. They are just numbers.",
+        "Straight down the slope ⛷️\nHolding or bailing?"
+      ],
+      "up": [
+        "To the moon! 🚀\nTake profits while you can!",
+        "Rocket launched 🚀🚀\nGrab the bag and run.",
+        "Green beast! 💚\nDrinks are on you tonight.",
+        "Portfolio looking chunky today 🐷\nDo not jinx it.",
+        "Price went to orbit 🛸\nWhoever held, won.",
+        "So green it squeaks 🟢\nToday you are an investing genius.",
+        "Candle like a mast ⛵\nJust do not sail back down.",
+        "Someone is buying hard 🛒\nPaper profit is not profit yet."
+      ]
+    }
+  }
+}

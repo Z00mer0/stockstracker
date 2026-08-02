@@ -9,8 +9,20 @@
 //
 // Only bigDrop / bigGain are surfaced by the tray — the others exist so the
 // same generator can be reused for inline UI later.
+//
+// Teksty bigDrop/bigGain leżą w bigMoveTexts.json, nie w słownikach i18n,
+// bo czyta je również server.py przy wysyłce pusha. Wcześniej obie strony
+// miały własne listy: klient 8 wariantów, serwer 3 — ten sam ruch dawał
+// inny tekst w karcie i w powiadomieniu systemowym. Jedno źródło plus ten
+// sam hash i ten sam seed po obu stronach = zawsze ten sam wariant.
+import BIG_MOVE_TEXTS from '../translations/bigMoveTexts.json';
 
 export const NOTIFY_THRESHOLD = 5;
+
+// Kierunek ruchu — klucz w bigMoveTexts.json po stronie klienta i serwera.
+export function moveDirection(changePct) {
+  return Number(changePct) >= 0 ? 'up' : 'down';
+}
 
 export function getPriceChangeBucket(changePct) {
   if (changePct == null || Number.isNaN(changePct)) return 'flat';
@@ -27,8 +39,10 @@ export function shouldNotify(changePct) {
 }
 
 // FNV-1a — deterministic hash so the same ticker on the same day picks the
-// same variant across renders and page reloads.
-function hashStr(s) {
+// same variant across renders and page reloads. Eksportowany, bo server.py
+// ma bliźniaczą implementację i testy po obu stronach pilnują zgodności na
+// tych samych wektorach.
+export function hashStr(s) {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
@@ -37,16 +51,14 @@ function hashStr(s) {
   return h >>> 0;
 }
 
-// Liczba wariantów per kubełek. bigDrop/bigGain to jedyne, które trafiają do
-// dzwonka, więc tam siedzi cała różnorodność — reszta istnieje na zapas dla
-// przyszłego UI i trzymanie tam ośmiu nieoglądanych tekstów byłoby balastem.
+// Liczba wariantów per kubełek — tylko dla kubełków trzymanych w słownikach
+// i18n. bigDrop/bigGain tu nie ma, bo ich teksty idą z bigMoveTexts.json
+// (współdzielonego z serwerem), a nie z kluczy tłumaczeń.
 // Klucze muszą istnieć w obu tonach i obu językach, bo indeks jest wspólny.
 const VARIANT_COUNTS = {
-  bigDrop:   8,
   smallDrop: 3,
   flat:      3,
   smallGain: 3,
-  bigGain:   8,
 };
 
 export function variantCount(bucket) {
@@ -69,14 +81,35 @@ export function todayKey(now = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+// Lista wariantów dla dużego ruchu, z fallbackiem na 'professional'/'pl',
+// żeby nieznany ton albo język nie zwrócił pustej karty.
+export function bigMoveVariants(tone, lang, direction) {
+  const byTone = BIG_MOVE_TEXTS[tone] ? BIG_MOVE_TEXTS[tone] : BIG_MOVE_TEXTS.professional;
+  const byLang = byTone[lang] ? byTone[lang] : byTone.pl;
+  return byLang[direction] || [];
+}
+
+// Seed musi być identyczny co do znaku z tym w server.py — inaczej karta w
+// aplikacji i push systemowy wylosowałyby różne zdania o tym samym ruchu.
+export function bigMoveSeed({ ticker, tone, lang, direction, dateKey }) {
+  return `${ticker}|${tone}|${lang}|${direction}|${dateKey}`;
+}
+
+export function pickBigMoveText({ ticker, tone, lang, changePct, dateKey }) {
+  const direction = moveDirection(changePct);
+  const variants = bigMoveVariants(tone, lang, direction);
+  if (!variants.length) return '';
+  const idx = hashStr(bigMoveSeed({ ticker, tone, lang, direction, dateKey })) % variants.length;
+  return variants[idx];
+}
+
 // t: function from useT(). Returns the resolved notification body string.
-export function getNotificationText({ ticker, changePct, tone, t, now }) {
+export function getNotificationText({ ticker, changePct, tone, t, lang = 'pl', now }) {
   const bucket = getPriceChangeBucket(changePct);
-  const key = pickVariantKey({
-    ticker,
-    tone: tone === 'funny' ? 'funny' : 'professional',
-    bucket,
-    dateKey: todayKey(now),
-  });
-  return t(key);
+  const safeTone = tone === 'funny' ? 'funny' : 'professional';
+  const dateKey = todayKey(now);
+  if (bucket === 'bigDrop' || bucket === 'bigGain') {
+    return pickBigMoveText({ ticker, tone: safeTone, lang, changePct, dateKey });
+  }
+  return t(pickVariantKey({ ticker, tone: safeTone, bucket, dateKey }));
 }

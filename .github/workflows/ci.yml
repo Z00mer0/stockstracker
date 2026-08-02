@@ -78,3 +78,8 @@ jobs:
       # zadan z jednego IP Rendera — dokladnie ten ruch, ktory limiter po
       # stronie Vercela ucina. Test pilnuje, ze notowania ida paczkami po 60.
       - run: python test_quotes_batch.py
+      # Teksty duzego ruchu byly wpisane osobno po obu stronach (klient 8
+      # wariantow, serwer 3), wiec ten sam skok kursu dawal inne zdanie w
+      # karcie i w pushu. Test pilnuje wspolnego pliku i tego, ze _fnv1a
+      # zgadza sie z hashStr() z notificationText.js na tych samych wektorach.
+      - run: python test_big_move_text.py
