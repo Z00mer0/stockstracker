@@ -1,5 +1,11 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { fetchQuotes, quoteFromEntry } from './useMarketNotifications.js';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import {
+  fetchQuotes,
+  quoteFromEntry,
+  scanSignature,
+  readScanCache,
+  writeScanCache,
+} from './useMarketNotifications.js';
 
 // Skan dzwonka wysylal jedno zadanie na symbol. Przy portfelu i watchliscie
 // na kilkadziesiat pozycji to kilkadziesiat zadan co piec minut z KAZDEJ
@@ -68,5 +74,59 @@ describe('quoteFromEntry', () => {
     expect(quoteFromEntry('X', { notFound: true })).toBeNull();
     expect(quoteFromEntry('X', null)).toBeNull();
     expect(quoteFromEntry('X', { quote: { regularMarketPrice: 0, regularMarketChangePercent: 5 } })).toBeNull();
+  });
+});
+
+// Paczkowanie zbilo liczbe zadan na skan, ale kazda otwarta zakladka nadal
+// odpytywala osobno — trzy zakladki to trzy razy tyle ruchu. Wynik skanu
+// idzie wiec do localStorage; zakladka, ktora zastanie swiezy, nie rusza
+// sieci. Podpis listy symboli pilnuje, zeby wynik dla innego portfela
+// (druga zakladka, inny portfel) nie przeklein sie na ten.
+describe('wspoldzielony cache skanu', () => {
+  const store = {};
+  beforeEach(() => {
+    for (const k of Object.keys(store)) delete store[k];
+    vi.stubGlobal('localStorage', {
+      getItem: k => (k in store ? store[k] : null),
+      setItem: (k, v) => { store[k] = String(v); },
+    });
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  const quotes = [{ symbol: 'AMD', price: 100, changePct: -7.8, changeAbs: -8 }];
+
+  it('swiezy wpis tej samej listy symboli jest uzywany', () => {
+    const sig = scanSignature(['AMD', 'NVDA']);
+    writeScanCache(sig, quotes, 1_000_000);
+    expect(readScanCache(sig, 300_000, 1_060_000)).toEqual(quotes);
+  });
+
+  it('kolejnosc symboli nie ma znaczenia', () => {
+    writeScanCache(scanSignature(['NVDA', 'AMD']), quotes, 1_000_000);
+    expect(readScanCache(scanSignature(['AMD', 'NVDA']), 300_000, 1_000_100)).toEqual(quotes);
+  });
+
+  it('inna lista symboli nie odczytuje cudzego wyniku', () => {
+    writeScanCache(scanSignature(['AMD']), quotes, 1_000_000);
+    expect(readScanCache(scanSignature(['AMD', 'TSLA']), 300_000, 1_000_100)).toBeNull();
+  });
+
+  it('przeterminowany wpis jest ignorowany', () => {
+    const sig = scanSignature(['AMD']);
+    writeScanCache(sig, quotes, 1_000_000);
+    expect(readScanCache(sig, 300_000, 1_400_000)).toBeNull();
+  });
+
+  it('wpis z przyszlosci (cofniety zegar) nie zamraza skanu', () => {
+    const sig = scanSignature(['AMD']);
+    writeScanCache(sig, quotes, 5_000_000);
+    expect(readScanCache(sig, 300_000, 1_000_000)).toBeNull();
+  });
+
+  it('smieci w localStorage nie wywracaja skanu', () => {
+    store['myfund_notif_scan'] = 'nie-json';
+    expect(readScanCache(scanSignature(['AMD']), 300_000, 1_000_000)).toBeNull();
+    store['myfund_notif_scan'] = JSON.stringify({ ts: 1, sig: 'AMD' });
+    expect(readScanCache('AMD', 300_000, 100)).toBeNull();
   });
 });
