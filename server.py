@@ -2764,59 +2764,60 @@ def _cooldown_passed(last_sent):
     return delta.total_seconds() >= ALERT_REPEAT_COOLDOWN_H * 3600
 
 
-# ── Tekst pushy o duzym ruchu (mirror utils/notificationText.js) ─────────
-_BIG_MOVE_TEXTS = {
-    'professional': {
-        'pl': {
-            'up':   ['Silny wzrost dzis — sprawdz katalizator zanim dolozysz.',
-                     'Kurs mocno w gore. Warto przejrzec plan realizacji zysku.',
-                     'Wyrazne wybicie — kandydat do rebalansu.'],
-            'down': ['Silny spadek dzis — warto sprawdzic przyczyne i plan reakcji.',
-                     'Kurs mocno w dol. Rozwaz przeglad tezy inwestycyjnej.',
-                     'Wyrazna przecena w ciagu sesji — kandydat do analizy technicznej.'],
-        },
-        'en': {
-            'up':   ['Strong rally today — verify the catalyst before adding.',
-                     'Price up hard. Worth reviewing your profit-taking plan.',
-                     'Clear breakout — candidate for a rebalance.'],
-            'down': ['Sharp drop today — worth checking the driver and your reaction plan.',
-                     'Price down hard. Time to revisit the thesis.',
-                     'Clear intraday sell-off — candidate for a technical review.'],
-        },
-    },
-    'funny': {
-        'pl': {
-            'up':   ['To the moon! 🚀 Sprzedawaj kto moze!',
-                     'Rakieta odpalona 🚀🚀 Bierz zyski i uciekaj.',
-                     'Zielona bestia! 💚 Dzis stawiasz kolejke.'],
-            'down': ['Dzisiaj dostaje w pizde. Laduj sie kto moze!',
-                     'Ostro leci z gorki 📉 Czas na tanie zakupy czy jeszcze noz?',
-                     'Krwawa jatka na wykresie. Kto ma jaja, ten dokupuje.'],
-        },
-        'en': {
-            'up':   ['To the moon! 🚀 Take profits while you can!',
-                     'Rocket launched 🚀🚀 Grab the bag and run.',
-                     'Green beast! 💚 Drinks are on you tonight.'],
-            'down': ['Getting wrecked today. Buy the dip if you dare!',
-                     'Absolutely tanking 📉 Bargain bin or falling knife?',
-                     'Bloodbath on the chart. Diamond hands, do your thing.'],
-        },
-    },
-}
+# ── Tekst pushy o duzym ruchu ────────────────────────────────────────────
+#
+# Warianty czytamy z bigMoveTexts.json wspoldzielonego z frontendem. Wczesniej
+# obie strony mialy wlasne listy: klient 8 wariantow, serwer 3 — ten sam ruch
+# dawal inny tekst w karcie w aplikacji i w powiadomieniu systemowym. Jedno
+# zrodlo plus identyczny hash i seed = zawsze ten sam wariant po obu stronach.
+_BIG_MOVE_TEXTS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'frontend-react', 'src', 'translations', 'bigMoveTexts.json')
 
-_BIG_MOVE_TODAY = {'pl': 'dzis', 'en': 'today'}
+_BIG_MOVE_FALLBACK = {'up': ['Silny wzrost dzis.'], 'down': ['Silny spadek dzis.']}
+
+
+@functools.lru_cache(maxsize=1)
+def _big_move_texts():
+    """Plik lezy w repo obok frontendu i Render wdraza calosc, ale gdyby
+    kiedys backend jechal sam — brak pliku ma degradowac tekst, nie wywalac
+    wysylke pushy."""
+    try:
+        with open(_BIG_MOVE_TEXTS_PATH, encoding='utf-8') as fh:
+            return json.load(fh)
+    except Exception as e:
+        log.warning(f'[push] bigMoveTexts.json niedostepny ({e}) — fallback')
+        return {}
+
+
+def _fnv1a(s):
+    """FNV-1a 32-bit — blizniacza implementacja hashStr() z
+    utils/notificationText.js. Testy po obu stronach sprawdzaja te same
+    wektory, zeby wybor wariantu nie rozjechal sie miedzy karta a pushem."""
+    h = 0x811c9dc5
+    for ch in s:
+        h ^= ord(ch)
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) & 0xFFFFFFFF
+    return h
+
+
+def _big_move_variants(tone, lang, direction):
+    texts = _big_move_texts()
+    by_tone = texts.get(tone) or texts.get('professional') or {}
+    by_lang = by_tone.get(lang) or by_tone.get('pl') or {}
+    return by_lang.get(direction) or _BIG_MOVE_FALLBACK[direction]
 
 
 def _big_move_text(sym, changePct, tone, lang, today_iso):
     """Deterministyczny wybor wariantu — ten sam ticker w danym dniu, tonie
     i jezyku dostaje ten sam tekst niezaleznie od tego ile razy leci scan."""
     direction = 'up' if changePct >= 0 else 'down'
-    tone_map = _BIG_MOVE_TEXTS.get(tone if tone in _BIG_MOVE_TEXTS else 'professional')
-    lang_map = tone_map.get(lang if lang in tone_map else 'pl')
-    variants = lang_map.get(direction) or _BIG_MOVE_TEXTS['professional']['pl'][direction]
-    seed = hashlib.sha1(f'{sym}|{tone}|{lang}|{direction}|{today_iso}'.encode()).digest()
-    idx = seed[0] % len(variants)
-    return variants[idx]
+    variants = _big_move_variants(tone, lang, direction)
+    seed = f'{sym}|{tone}|{lang}|{direction}|{today_iso}'
+    return variants[_fnv1a(seed) % len(variants)]
+
+
+_BIG_MOVE_TODAY = {'pl': 'dzis', 'en': 'today'}
 
 
 def _big_move_title(sym, changePct, lang):

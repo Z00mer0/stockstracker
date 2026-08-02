@@ -21,10 +21,33 @@ function writeSet(key, set) {
   lsSet(key, JSON.stringify([...set]));
 }
 
+// Kiedy dane powiadomienie zobaczylismy pierwszy raz: { dedupeKey: ms }.
+// Wczesniej to byla zwykla lista kluczy, ktora nikt nigdy nie czytal — sam
+// zapis, bez czytelnika. Teraz z niej leci wiek karty, wiec „1 minutę temu"
+// przestaje byc napisem na sztywno. Stary format (tablica) po prostu
+// odrzucamy — jednorazowo, w granicach jednego dnia.
+function readStamps(key) {
+  try {
+    const parsed = JSON.parse(lsRead(key));
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+function writeStamps(key, stamps) {
+  lsSet(key, JSON.stringify(stamps));
+}
+
 // Prune keys whose date prefix isn't today — one line per read keeps LS small.
 function pruneStale(set, today) {
   const kept = new Set();
   for (const k of set) if (k.startsWith(`${today}:`)) kept.add(k);
+  return kept;
+}
+
+function pruneStaleStamps(stamps, today) {
+  const kept = {};
+  for (const [k, v] of Object.entries(stamps)) if (k.startsWith(`${today}:`)) kept[k] = v;
   return kept;
 }
 
@@ -49,7 +72,7 @@ export function useMarketNotifications() {
   const { portfolio } = useApp();
   const [watchSymbols, setWatchSymbols] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const seenRef = useRef(readSet(SEEN_KEY));
+  const seenRef = useRef(readStamps(SEEN_KEY));
   const mutedRef = useRef(readSet(MUTED_KEY));
 
   useEffect(() => {
@@ -77,7 +100,7 @@ export function useMarketNotifications() {
   const scan = useCallback(async () => {
     if (!targets.length) { setNotifications([]); return; }
     const today = todayKey();
-    seenRef.current = pruneStale(seenRef.current, today);
+    seenRef.current = pruneStaleStamps(seenRef.current, today);
     mutedRef.current = pruneStale(mutedRef.current, today);
 
     const results = await Promise.allSettled(targets.map(fetchQuote));
@@ -89,10 +112,12 @@ export function useMarketNotifications() {
       const bucket = getPriceChangeBucket(q.changePct);
       const dedupeKey = `${today}:${q.symbol}:${bucket}`;
       if (mutedRef.current.has(dedupeKey)) continue;
-      fresh.push({ ...q, bucket, dedupeKey });
-      seenRef.current.add(dedupeKey);
+      // Pierwsze wykrycie ustala wiek karty i przezywa przeladowanie strony;
+      // kolejne skany tego samego ruchu go nie odswiezaja.
+      if (!seenRef.current[dedupeKey]) seenRef.current[dedupeKey] = Date.now();
+      fresh.push({ ...q, bucket, dedupeKey, detectedAt: seenRef.current[dedupeKey] });
     }
-    writeSet(SEEN_KEY, seenRef.current);
+    writeStamps(SEEN_KEY, seenRef.current);
     setNotifications(fresh);
   }, [targets]);
 

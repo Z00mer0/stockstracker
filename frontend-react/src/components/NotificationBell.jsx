@@ -113,6 +113,7 @@ export default function NotificationBell({ buttonStyle }) {
               ticker={n.symbol}
               changePct={n.changePct}
               changeAbs={n.changeAbs}
+              detectedAt={n.detectedAt}
               tone={tone}
               onInterested={() => { openDetails(n); dismiss(n.dedupeKey, { mute: true }); }}
               onNotInterested={() => dismiss(n.dedupeKey, { mute: true })}

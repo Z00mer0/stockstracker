@@ -314,6 +314,7 @@ function NotificationToneSection() {
             ticker="AMD"
             changePct={-7.87}
             changeAbs={-38.96}
+            timestampLabel={t('notif_minute_ago')}
             tone={tone}
           />
         </div>
