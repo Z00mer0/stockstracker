@@ -2777,8 +2777,11 @@ _BIG_MOVE_TEXTS_PATH = os.path.join(
 _BIG_MOVE_FALLBACK = {'up': ['Silny wzrost dzis.'], 'down': ['Silny spadek dzis.']}
 
 
+_BIG_MOVE_FALLBACK_THRESHOLD = 5
+
+
 @functools.lru_cache(maxsize=1)
-def _big_move_texts():
+def _big_move_config():
     """Plik lezy w repo obok frontendu i Render wdraza calosc, ale gdyby
     kiedys backend jechal sam — brak pliku ma degradowac tekst, nie wywalac
     wysylke pushy."""
@@ -2788,6 +2791,18 @@ def _big_move_texts():
     except Exception as e:
         log.warning(f'[push] bigMoveTexts.json niedostepny ({e}) — fallback')
         return {}
+
+
+def _big_move_texts():
+    return _big_move_config().get('texts') or {}
+
+
+def _big_move_threshold():
+    """Prog |zmiana dzienna| w procentach. Wspolny z klientem, zeby dzwonek
+    w aplikacji i push nie odpalaly sie przy roznych ruchach."""
+    value = _big_move_config().get('thresholdPct')
+    return float(value) if isinstance(value, (int, float)) and value > 0 \
+        else _BIG_MOVE_FALLBACK_THRESHOLD
 
 
 def _fnv1a(s):
@@ -3072,7 +3087,7 @@ def _run_push_checks():
                     if quote is None:
                         continue
                     chg = quote.get('changePct')
-                    if chg is None or abs(chg) < 5:
+                    if chg is None or abs(chg) < _big_move_threshold():
                         continue
                     direction = 'up' if chg >= 0 else 'down'
                     key = f'move:{today_iso}:{sym}:{direction}:{tone}:{lang}'
@@ -5761,7 +5776,7 @@ async function doRecover() {
                         if quote is None:
                             continue
                         chg = quote.get('changePct')
-                        if chg is None or abs(chg) < 5:
+                        if chg is None or abs(chg) < _big_move_threshold():
                             continue
                         qualifying += 1
                         title = _big_move_title(sym, chg, lang)

@@ -23,18 +23,11 @@ function readHour() {
   return Number.isFinite(raw) && raw >= 0 && raw <= 23 ? raw : DEFAULT_HOUR;
 }
 
-function mirrorToActivePortfolio(patch) {
-  try {
-    const activeId = lsRead('myfund_active_portfolio');
-    if (!activeId) return;
-    const shadowKey = `myfund_portfolio_prefs_${activeId}`;
-    const raw = lsRead(shadowKey);
-    const obj = raw ? JSON.parse(raw) : {};
-    Object.assign(obj, patch);
-    lsSet(shadowKey, JSON.stringify(obj));
-  } catch {}
-}
-
+// Byl tu jeszcze zapis kopii ustawien pod myfund_portfolio_prefs_<id>,
+// opisany jako „swiadomosc miedzy kartami". Nic go nigdy nie czytalo —
+// sam zapis do localStorage przy kazdej zmianie tonu i godziny. Zrodlem
+// prawdy jest serwer (/api/notification-tone), a localStorage trzyma tylko
+// ostatnia znana wartosc na czas offline'u.
 function postPrefs(patch) {
   if (!isAuthed()) return;
   api.post('/api/notification-tone', patch).catch(() => {});
@@ -83,7 +76,6 @@ export function useNotificationTone() {
   const setTone = useCallback((next) => {
     const value = VALID_TONE.has(next) ? next : 'professional';
     lsSet(TONE_KEY, value);
-    mirrorToActivePortfolio({ notificationTone: value });
     setToneState(value);
     postPrefs({ tone: value });
   }, []);
@@ -106,7 +98,6 @@ export function useNotificationHour() {
     const n = parseInt(next, 10);
     const value = Number.isFinite(n) && n >= 0 && n <= 23 ? n : DEFAULT_HOUR;
     lsSet(HOUR_KEY, String(value));
-    mirrorToActivePortfolio({ notificationHour: value });
     setHourState(value);
     postPrefs({ hour: value });
   }, []);

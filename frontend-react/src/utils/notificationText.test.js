@@ -8,8 +8,10 @@ import {
   bigMoveVariants,
   pickBigMoveText,
   getNotificationText,
+  NOTIFY_THRESHOLD,
 } from './notificationText.js';
-import bigMoveTexts from '../translations/bigMoveTexts.json';
+import bigMoveConfig from '../translations/bigMoveTexts.json';
+const bigMoveTexts = bigMoveConfig.texts;
 import pl from '../translations/pl.js';
 import en from '../translations/en.js';
 
@@ -96,6 +98,12 @@ describe('teksty duzego ruchu wspoldzielone z serwerem', () => {
   const TONES = ['professional', 'funny'];
   const LANGS = ['pl', 'en'];
   const DIRECTIONS = ['up', 'down'];
+
+  it('prog jest liczba dodatnia i to z niego leci NOTIFY_THRESHOLD', () => {
+    expect(typeof bigMoveConfig.thresholdPct).toBe('number');
+    expect(bigMoveConfig.thresholdPct).toBeGreaterThan(0);
+    expect(NOTIFY_THRESHOLD).toBe(bigMoveConfig.thresholdPct);
+  });
 
   it('kazdy ton x jezyk x kierunek ma niepuste warianty', () => {
     for (const tone of TONES) {

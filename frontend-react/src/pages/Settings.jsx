@@ -12,6 +12,7 @@ import Card from '../components/shared/Card';
 import ConfirmModal from '../components/ConfirmModal';
 import NotificationCard from '../components/NotificationCard';
 import { useNotificationTone, useNotificationHour } from '../hooks/useNotificationTone';
+import { NOTIFY_THRESHOLD } from '../utils/notificationText.js';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { authHeader } from '../utils/auth.js';
 import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
@@ -268,7 +269,7 @@ function NotificationToneSection() {
           </div>
         </SettingsRow>
         <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
-          {t('notif_tone_hint')}
+          {t('notif_tone_hint').replaceAll('{n}', NOTIFY_THRESHOLD)}
         </p>
         <SettingsRow label={t('notif_hour_label')}>
           <select
