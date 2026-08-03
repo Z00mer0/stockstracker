@@ -10,13 +10,13 @@ import Header from './Header';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
 import { useApp } from '../../context/AppContext';
 import { lsSet } from '../../utils/safeStorage.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const THEME_KEY = 'myfund_theme';
-const MOBILE_BP = 768;
 
 export default function Layout() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'dark');
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BP);
+  const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewPortfolio, setShowNewPortfolio] = useState(false);
   // Drugi rząd nagłówka (szukajka + status giełd) chowa się przy przewijaniu
@@ -67,15 +67,11 @@ export default function Layout() {
   // Zmiana strony wraca do pełnego nagłówka — nowa treść startuje od góry.
   useEffect(() => { setHeaderCompact(false); }, [location.pathname]);
 
+  // Szerokosc czyta teraz useIsMobile (jedno zrodlo dla calej aplikacji);
+  // tutaj zostaje tylko skutek uboczny: wyjscie z mobile zamyka szuflade.
   useEffect(() => {
-    function onResize() {
-      const mobile = window.innerWidth < MOBILE_BP;
-      setIsMobile(mobile);
-      if (!mobile) setSidebarOpen(false); // auto-close drawer when going desktop
-    }
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+    if (!isMobile) setSidebarOpen(false);
+  }, [isMobile]);
 
   return (
     <div style={{

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 
 function fmtM(val, locale = 'pl-PL') {
@@ -121,16 +122,26 @@ function RevenueChart({ periods, currency }) {
 }
 
 const COL_W = '110px';
+// Na telefonie kolumna etykiet oddaje ~36 px liczbom — inaczej zostaje im
+// po ~60 px i wartosci sie lamia. Docelowo ta tabela chce poziomego
+// przewijania, nie sciskania; to jest zwezenie, nie rozwiazanie.
+const COL_W_MOBILE = '74px';
 const NUM_COLS = 4;
+
+function useFinancialsGrid() {
+  const isMobile = useIsMobile();
+  return `${isMobile ? COL_W_MOBILE : COL_W} repeat(${NUM_COLS}, 1fr)`;
+}
 
 function TableRow({ label, values, fmt, locale = 'pl-PL' }) {
   const fmtFn = fmt ?? ((v) => fmtM(v, locale));
+  const gridCols = useFinancialsGrid();
   const cols = values.slice(0, NUM_COLS);
   const allEmpty = cols.every(v => v == null);
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: `${COL_W} repeat(${NUM_COLS}, 1fr)`,
+      gridTemplateColumns: gridCols,
       gap: 2,
       padding: '4px 10px',
       fontSize: 12,
@@ -152,11 +163,12 @@ function TableRow({ label, values, fmt, locale = 'pl-PL' }) {
 
 function SubRow({ label, values, fmt = fmtPct }) {
   const cols = values.slice(0, NUM_COLS);
+  const gridCols = useFinancialsGrid();
   const allEmpty = cols.every(v => v == null);
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: `${COL_W} repeat(${NUM_COLS}, 1fr)`,
+      gridTemplateColumns: gridCols,
       gap: 2,
       padding: '2px 10px 3px',
       fontSize: 10,
@@ -178,10 +190,11 @@ function SubRow({ label, values, fmt = fmtPct }) {
 
 function ColumnHeaders({ periods }) {
   const cols = periods.slice(0, NUM_COLS);
+  const gridCols = useFinancialsGrid();
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: `${COL_W} repeat(${NUM_COLS}, 1fr)`,
+      gridTemplateColumns: gridCols,
       gap: 2,
       padding: '5px 10px',
       fontSize: 10,
@@ -242,6 +255,7 @@ function ValuationCard({ label, value, sub }) {
 }
 
 export default function FinancialsTab({ symbol, livePrice, companyName }) {
+  const isMobile = useIsMobile();
   const { locale } = useLanguage();
   const t = useT();
   const fmtL = (val) => fmtLarge(val, locale);
@@ -796,7 +810,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
 
           {/* Wycena */}
           <Accordion title="Wycena" defaultOpen={true}>
-            <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
               <ValuationCard
                 label="P/E (trailing)"
                 value={fmtX(val.peRatio)}

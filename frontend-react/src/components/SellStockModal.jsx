@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { getThesis } from '../services/journalService';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
@@ -19,6 +20,7 @@ const card = {
 };
 
 export default function SellStockModal({ holding, onSave, onClose }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const { locale } = useLanguage();
   const [qty, setQty]           = useState('');
@@ -94,7 +96,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
           {t('already_own_prefix')} {holding?.qty} {t('already_own_suffix')} {holding?.avgPrice} {holding?.currency}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('sell_qty_label')}</label>
             <input
@@ -117,7 +119,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('currency_label')}</label>
             <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>

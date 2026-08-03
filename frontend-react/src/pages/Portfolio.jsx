@@ -41,6 +41,7 @@ import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import AlertModal from '../components/AlertModal';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
 import { lsSet } from '../utils/safeStorage.js';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 // Ładowane dopiero przy kliknięciu „eksportuj" — samo wejście do portfela
 // nie ma po co ciągnąć generatora arkuszy.
 async function exportXlsx(headers, rows, sheetName, fileName) {
@@ -87,6 +88,7 @@ const CRYPTO_OPTIONS = [
 ];
 
 function AddCryptoModal({ onSave, onClose }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const [symbol, setSymbol] = useState('BTC');
   const [customSym, setCustomSym] = useState('');
@@ -127,7 +129,7 @@ function AddCryptoModal({ onSave, onClose }) {
             <input className="field-input" style={{ marginTop: 8 }} placeholder="np. PEPE" value={customSym} onChange={e => setCustomSym(e.target.value.toUpperCase())} />
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('qty_short')}</label>
             <input type="number" min="0" step="any" className="field-input" value={qty} onChange={e => setQty(e.target.value)} autoFocus />
@@ -137,7 +139,7 @@ function AddCryptoModal({ onSave, onClose }) {
             <input type="number" min="0" step="any" className="field-input" value={price} onChange={e => setPrice(e.target.value)} />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <div>
             <label className="field-label">{t('currency_label')}</label>
             <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
@@ -1639,6 +1641,7 @@ function getAssetCategories(t) {
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
 function OtherAssetModal({ initial, onSave, onClose }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const { locale } = useLanguage();
   const ASSET_CATEGORIES = getAssetCategories(t);
@@ -1681,7 +1684,7 @@ function OtherAssetModal({ initial, onSave, onClose }) {
             ))}
           </select>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('asset_value_label')}</label>
             <input type="number" min="0" step="any" className="field-input" value={value} onChange={e => setValue(e.target.value)} />
@@ -1935,6 +1938,7 @@ function BondsSection() {
 }
 
 function BondModal({ initial, onSave, onClose }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const [type, setType]     = useState(initial?.type ?? 'EDO');
   const [name, setName]     = useState(initial?.name ?? '');
@@ -1967,7 +1971,7 @@ function BondModal({ initial, onSave, onClose }) {
         <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
           {initial ? t('bond_edit_title') : t('bond_add_title')}
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('bond_type')}</label>
             <select className="field-input" value={type} onChange={e => setType(e.target.value)}>
@@ -1980,7 +1984,7 @@ function BondModal({ initial, onSave, onClose }) {
             <input className="field-input" placeholder={t('bond_series_ph')} value={name} onChange={e => setName(e.target.value)} autoFocus />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('bond_purchase_date')}</label>
             <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
@@ -1990,7 +1994,7 @@ function BondModal({ initial, onSave, onClose }) {
             <input type="number" min="1" step="1" className="field-input" value={count} onChange={e => setCount(e.target.value)} placeholder="np. 50" />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 8 }}>
           <div>
             <label className="field-label">{t('bond_first_rate')}</label>
             <input type="number" min="0" step="0.01" className="field-input" value={rate1} onChange={e => setRate1(e.target.value)} placeholder="np. 6.55" />

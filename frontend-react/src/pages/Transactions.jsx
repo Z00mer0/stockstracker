@@ -8,6 +8,7 @@ import Chip from '../components/shared/Chip';
 import TickerLogo from '../components/shared/TickerLogo';
 import SegmentedControl from '../components/shared/SegmentedControl';
 import Spinner from '../components/shared/Spinner';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 const TAG_CLASS  = { BUY: 'tag-buy', SELL: 'tag-sell', DIV: 'tag-div', DIVIDEND: 'tag-div', CASH: 'tag-fee' };
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
@@ -27,6 +28,7 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 }
 
 function AddTransactionModal({ onSave, onClose }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const [form, setForm] = useState({
     type: 'BUY',
@@ -105,7 +107,7 @@ function AddTransactionModal({ onSave, onClose }) {
           </div>
 
           {/* Qty + Price */}
-          <div style={{ display: 'grid', gridTemplateColumns: showQty ? '1fr 1fr' : '1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: (showQty && !isMobile) ? '1fr 1fr' : '1fr', gap: 12 }}>
             {showQty && (
               <div>
                 <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('qty_short')}</label>
@@ -127,7 +129,7 @@ function AddTransactionModal({ onSave, onClose }) {
           </div>
 
           {/* Currency + Date */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('currency_label')}</label>
               <select value={form.currency} onChange={e => set('currency', e.target.value)}

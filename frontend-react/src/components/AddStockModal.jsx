@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useT } from '../context/LanguageContext';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
@@ -42,6 +43,7 @@ function ToggleGroup({ options, value, onChange }) {
 }
 
 export default function AddStockModal({ existingPortfolio, onSave, onClose, initialSymbol = '' }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const [symbol, setSymbol]    = useState(initialSymbol);
   const [mode, setMode]        = useState('qty');
@@ -173,7 +175,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         </div>
 
         {/* Qty + Price */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{mode === 'qty' ? t('qty_label') : t('value_label')}</label>
             <input
@@ -197,7 +199,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         </div>
 
         {/* Currency + Date */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label className="field-label">{t('currency_label')}</label>
             <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { lsSet } from '../utils/safeStorage.js';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 const WIZARD_KEY = 'myfund_wizard_done';
 
@@ -44,6 +45,7 @@ const CURRENCIES = [
 ];
 
 export default function SetupWizard({ onDone }) {
+  const isMobile = useIsMobile();
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState(null);
   const [currency, setCurrency] = useState('PLN');
@@ -130,7 +132,7 @@ export default function SetupWizard({ onDone }) {
         <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 24 }}>
           Wszystkie wartości portfela będą przeliczane do tej waluty.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 24 }}>
           {CURRENCIES.map(c => (
             <button key={c.key} onClick={() => setCurrency(c.key)}
               style={{
