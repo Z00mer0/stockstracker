@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePrivacy } from '../context/PrivacyContext';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 const COLORS = ['#60a5fa', '#34d399', '#f59e0b', '#f87171', '#a78bfa', '#64748b'];
 const CX = 110, CY = 110, R = 90, INNER_R = 58;
@@ -25,6 +26,7 @@ function fmtPLN(val) {
 }
 
 export default function PortfolioPieChart({ positions, totalValue, currency = 'PLN', fxRate = 1 }) {
+  const isMobile = useIsMobile();
   const [tooltip, setTooltip] = useState(null);
   const { isPrivate } = usePrivacy();
   const blur = isPrivate ? ' privacy-blur' : '';
@@ -100,7 +102,7 @@ export default function PortfolioPieChart({ positions, totalValue, currency = 'P
       </svg>
 
       {/* Legend */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', marginTop: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '4px 12px', marginTop: 8 }}>
         {arcs.map((arc) => (
           <div key={arc.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: arc.color, flexShrink: 0 }} />

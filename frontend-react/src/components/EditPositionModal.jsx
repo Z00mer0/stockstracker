@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useT } from '../context/LanguageContext';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 const overlay = {
   position: 'fixed', inset: 0,
@@ -16,6 +17,7 @@ const card = {
 };
 
 export default function EditPositionModal({ holding, onSave, onClose }) {
+  const isMobile = useIsMobile();
   const t = useT();
   const [qty, setQty]           = useState(String(holding?.qty ?? ''));
   const [avgPrice, setAvgPrice] = useState(String(holding?.avgPrice ?? ''));
@@ -48,7 +50,7 @@ export default function EditPositionModal({ holding, onSave, onClose }) {
           {t('edit_pos_hint')}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <div>
             <label className="field-label">{t('sell_qty_label')}</label>
             <input

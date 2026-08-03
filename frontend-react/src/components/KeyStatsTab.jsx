@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 function fmt(val, opts = {}) {
   if (val == null || (typeof val === 'number' && !isFinite(val))) return '—';
@@ -156,6 +157,7 @@ function cashFlowScore(m) {
 
 // ─── Growth Drivers ───────────────────────────────────────────────────────────
 function GrowthDrivers({ symbol, roic }) {
+  const isMobile = useIsMobile();
   const drivers = GROWTH_DRIVERS[symbol];
   if (!drivers) return null;
   const items = [
@@ -165,7 +167,7 @@ function GrowthDrivers({ symbol, roic }) {
   ];
   return (
     <Section title="Dynamika Rozwoju">
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 6 }}>
         {items.map(({ label, value, highlight }) => (
           <div key={label} style={{ background: 'var(--panel-2)', borderRadius: 8, padding: '8px 10px' }}>
             <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>

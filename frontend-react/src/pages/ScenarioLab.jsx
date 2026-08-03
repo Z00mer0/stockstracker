@@ -9,6 +9,7 @@ import {
   calcSigma, makePrices, calcPayoff, calcKPIs, calcGreeks,
 } from '../utils/scenarioLab';
 import Card from '../components/shared/Card';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 function dteToDateStr(days) {
   const d = new Date();
@@ -103,6 +104,7 @@ function Field({ label, children }) {
 }
 
 export default function ScenarioLab() {
+  const isMobile = useIsMobile();
   const { portfolio } = useApp();
   const t = useT();
   const canvasRef = useRef(null);
@@ -561,7 +563,7 @@ export default function ScenarioLab() {
       </div>
 
       {/* Form grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
         {/* Left panel */}
         <Card title={t('scenario_basic_params')}>
           <div className="flex flex-col gap-3">
@@ -635,7 +637,7 @@ export default function ScenarioLab() {
 
       {/* KPI cards */}
       {kpis && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12 }}>
           {kpis.breakevens.length === 1 ? (
             <StatCard label="Break-even" value={fmtDollar(kpis.breakevens[0])} color="blue" />
           ) : (
@@ -682,7 +684,7 @@ export default function ScenarioLab() {
 
       {/* Greeks */}
       {greeks && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
           <Card>
             <div className="kpi-label">Δ Delta</div>
             <div className="kpi-value" style={{ fontSize: 20, color: greeks.posDelta >= 0 ? 'var(--up)' : 'var(--down)' }}>
@@ -706,6 +708,7 @@ export default function ScenarioLab() {
 }
 
 function RunwayCalculator() {
+  const isMobile = useIsMobile();
   const t = useT();
   const { locale } = useLanguage();
   const [capital,    setCapital]    = useState(500000);
@@ -762,7 +765,7 @@ function RunwayCalculator() {
       </div>
 
       {/* Inputs 2x2 grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
         <div className="flex flex-col gap-1">
           <label className="field-label">{t('runway_capital')}</label>
           <input
