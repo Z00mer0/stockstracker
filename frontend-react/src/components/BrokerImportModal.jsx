@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { readSheets, excelSerialToISO } from '../utils/spreadsheet.js';
 import { dedupeBatch, dedupeAgainstExisting } from '../utils/brokerDedupe';
 import { useApp } from '../context/AppContext';
+import { useT } from '../context/LanguageContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function genId() { return Math.random().toString(36).slice(2, 10); }
 // ── Core parser ───────────────────────────────────────────────────────────────
 
 function parseBrokerRows(rows) {
-  if (rows.length < 5) return { type: 'unknown', transactions: [], error: 'Za mało wierszy.' };
+  if (rows.length < 5) return { type: 'unknown', transactions: [], error: 'bi_too_few_rows' };
 
   const fileTypeLine = String(rows[1]?.[0] ?? '').toLowerCase();
   const isClosedPositions = fileTypeLine.includes('closed');
@@ -175,7 +176,7 @@ function parseBrokerRows(rows) {
 
 function parseBrokerCsv(text) {
   const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 5) return { type: 'unknown', transactions: [], error: 'Za mało wierszy.' };
+  if (lines.length < 5) return { type: 'unknown', transactions: [], error: 'bi_too_few_rows' };
   const sep = detectSep(lines[4]);
   const rows = lines.map(l => splitRow(l, sep));
   return parseBrokerRows(rows);
@@ -190,7 +191,7 @@ async function parseBrokerXlsx(file) {
       allResults.push({ sheetName, ...result });
     }
   }
-  if (!allResults.length) return [{ type: 'unknown', transactions: [], errors: [], error: 'Nie znaleziono arkuszy z danymi.' }];
+  if (!allResults.length) return [{ type: 'unknown', transactions: [], errors: [], error: 'bi_no_data_sheets' }];
   return allResults;
 }
 
@@ -277,6 +278,7 @@ const card = {
 };
 
 export default function BrokerImportModal({ existingTransactions, existingPortfolio = [], existingCash = {}, onSave, onClose }) {
+  const t = useT();
   const [results, setResults] = useState([]);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
@@ -296,13 +298,13 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
         // wymieniliśmy z powodu podatności — lepiej powiedzieć wprost niż
         // pozwolić, żeby import po cichu nic nie znalazł.
         return [Promise.resolve([{ name: file.name, type: 'unknown', transactions: [], errors: [],
-          error: 'Format .xls nie jest obsługiwany. Zapisz plik jako .xlsx lub .csv i wgraj ponownie.' }])];
+          error: 'bi_xls_unsupported' }])];
       }
       if (ext === 'xlsx') {
         return [parseBrokerXlsx(file)
           .then(rs => rs.map(r => ({ name: `${file.name} [${r.sheetName ?? ''}]`, ...r })))
           .catch(err => [{ name: file.name, type: 'unknown', transactions: [], errors: [],
-            error: `Nie udało się odczytać pliku: ${err.message}` }])];
+            error: 'bi_read_failed', errorDetail: err.message }])];
       }
       {
         return [new Promise(resolve => {
@@ -334,7 +336,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
       await onSave(deduped);
       setSaved(true);
     } catch (e) {
-      setError(e.response?.data?.error ?? e.message ?? 'Błąd zapisu');
+      setError(e.response?.data?.error ?? e.message ?? t('save_error'));
     } finally {
       setSaving(false);
     }
@@ -342,7 +344,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
 
   const typeLabel = t =>
     t === 'closed_positions' ? 'Closed Positions' :
-    t === 'cash_operations'  ? 'Cash Operations'  : 'Nieznany';
+    t === 'cash_operations'  ? 'Cash Operations'  : t('bi_type_unknown');
 
   return (
     <div style={overlay}>
@@ -351,7 +353,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
           Import danych brokera
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20 }}>
-          Obsługuje <strong style={{ color: 'var(--text-dim)' }}>CSV</strong> i <strong style={{ color: 'var(--text-dim)' }}>XLSX</strong>: pliki Closed Positions i Cash Operations. Format wykrywany automatycznie.
+          {t('bi_supports_pre')} <strong style={{ color: 'var(--text-dim)' }}>CSV</strong> {t('bi_supports_and')} <strong style={{ color: 'var(--text-dim)' }}>XLSX</strong>{t('bi_supports_post')}
         </p>
 
         {/* Dropzone */}
@@ -368,19 +370,18 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
           onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
         >
           <input ref={inputRef} type="file" accept=".csv,.xlsx" multiple className="hidden" onChange={e => handleFiles(e.target.files)} style={{ display: 'none' }} />
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 4px' }}>
-            Przeciągnij pliki lub <span style={{ color: 'var(--accent)' }}>kliknij aby wybrać</span>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('bi_drag_files')}{' '}<span style={{ color: 'var(--accent)' }}>{t('imp_click_to_pick')}</span>
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>CSV, XLSX — można wybrać kilka naraz</p>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>{t('bi_accepted_formats')}</p>
         </div>
 
         {/* Results per file */}
         {results.map((r, i) => (
           <div key={i} style={{ marginBottom: 10, background: 'var(--panel-2)', borderRadius: 8, padding: '10px 14px' }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📄 {r.name}</p>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '2px 0' }}>Typ: <span style={{ color: 'var(--text-dim)' }}>{typeLabel(r.type)}</span></p>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '2px 0' }}>Znalezione transakcje: <span style={{ color: 'var(--text-dim)' }}>{r.transactions.length}</span></p>
-            {r.error && <p style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>{r.error}</p>}
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '2px 0' }}>{t('bi_type_label')}<span style={{ color: 'var(--text-dim)' }}>{typeLabel(r.type)}</span></p>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '2px 0' }}>{t('bi_found_tx')}<span style={{ color: 'var(--text-dim)' }}>{r.transactions.length}</span></p>
+            {r.error && <p style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>{t(r.error)}{r.errorDetail ? `: ${r.errorDetail}` : ''}</p>}
             {r.errors?.length > 0 && <p style={{ fontSize: 11, color: 'var(--warn)', marginTop: 4 }}>{r.errors.length} wierszy z błędami (pominięte)</p>}
           </div>
         ))}
@@ -403,9 +404,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
               ))}
             </select>
             {isAggregate && (
-              <p style={{ fontSize: 11, color: 'var(--warn)', marginTop: 6, marginBottom: 0 }}>
-                Masz aktywny widok „Wszystkie" — transakcje muszą trafić do konkretnego portfela. Wybierz go powyżej.
-              </p>
+              <p style={{ fontSize: 11, color: 'var(--warn)', marginTop: 6, marginBottom: 0 }}>{t('bi_pick_specific_portfolio')}</p>
             )}
           </div>
         )}
@@ -422,7 +421,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
                 ✓ {deduped.length} nowych transakcji dla {instruments.size} instrumentów
               </p>
             ) : (
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Wszystkie transakcje już istnieją (duplikaty pominięte).</p>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{t('bi_all_duplicates')}</p>
             )}
             {(allNewTxs.length - deduped.length) > 0 && (
               <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>Pominięto {allNewTxs.length - deduped.length} duplikatów</p>
@@ -437,13 +436,9 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
             + Object.keys(cashAdded).length + Object.keys(cashRemoved).length > 0;
           return (
             <div style={{ borderRadius: 8, padding: '10px 14px', marginBottom: 16, background: 'var(--panel-2)', border: '1px solid var(--border)' }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: hasChanges ? 6 : 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Podgląd zmian w portfelu
-              </p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: hasChanges ? 6 : 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('bi_preview_changes')}</p>
               {!hasChanges && (
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>
-                  Pozycje już zamknięte — transakcje trafią tylko do historii (brak zmian w portfelu i gotówce).
-                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>{t('bi_closed_only_history')}</p>
               )}
               {added.map(x => (
                 <p key={x.symbol} style={{ fontSize: 11, color: 'var(--up)', margin: '2px 0' }}>
@@ -474,18 +469,18 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
           );
         })()}
 
-        {saved && <p style={{ fontSize: 13, color: 'var(--up)', marginBottom: 12 }}>✓ Zaimportowano pomyślnie!</p>}
+        {saved && <p style={{ fontSize: 13, color: 'var(--up)', marginBottom: 12 }}>{t('bi_imported_ok')}</p>}
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{saved ? 'Zamknij' : 'Anuluj'}</button>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{saved ? t('close_btn') : t('cancel_btn')}</button>
           {!saved && (
             <button
               className="btn btn-primary" style={{ flex: 1 }} onClick={handleImport}
               disabled={saving || deduped.length === 0 || isAggregate || loading}
-              title={isAggregate ? 'Wybierz portfel docelowy powyżej' : undefined}
+              title={isAggregate ? t('bi_pick_portfolio') : undefined}
             >
-              {saving ? 'Importowanie…' : loading ? 'Ładowanie portfela…' : `Importuj (${deduped.length})`}
+              {saving ? t('imp_importing') : loading ? t('bi_loading_portfolio') : `Importuj (${deduped.length})`}
             </button>
           )}
         </div>
