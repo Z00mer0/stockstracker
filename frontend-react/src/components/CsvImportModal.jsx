@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { readSheets, excelSerialToISO } from '../utils/spreadsheet.js';
+import { useT } from '../context/LanguageContext';
 
-const CSV_EXAMPLE = `Symbol,Ilość,Cena,Waluta,Data
+// Przyklad formatu pokazywany uzytkownikowi. Naglowek idzie przez klucze
+// kolumn, bo parseCsv czyta kolumny po POZYCJI, nie po nazwie (i pomija
+// pierwszy wiersz heurystyka) — nazwy naglowka nie wplywaja na import,
+// wiec moga byc w jezyku interfejsu.
+const csvExample = t => `${t('col_symbol')},${t('col_qty')},${t('col_price')},${t('col_currency')},${t('col_date')}
 AAPL,10,185.50,USD,2024-01-15
 CDR.WA,100,88.20,PLN,2024-03-01`;
 
@@ -133,6 +138,7 @@ const card = {
 };
 
 export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
+  const t = useT();
   const [text, setText]         = useState('');
   const [mode, setMode]         = useState('replace');
   const [saving, setSaving]     = useState(false);
@@ -177,12 +183,12 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
     setError(''); setFileName(file.name);
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'xls') {
-      setError('Format .xls nie jest obsługiwany. Zapisz plik jako .xlsx i wgraj ponownie.'); return;
+      setError(t('ci_xls_unsupported')); return;
     }
-    if (ext !== 'xlsx') { setError('Plik musi być w formacie XLSX (eksport XTB).'); return; }
+    if (ext !== 'xlsx') { setError(t('ci_must_be_xlsx')); return; }
     parseXtbExcel(file)
       .then(parsed => {
-        if (!parsed.length) setError('Nie znaleziono pozycji w pliku. Upewnij się że plik zawiera zakładkę "OPEN POSITION…".');
+        if (!parsed.length) setError(t('ci_no_positions'));
         setFilePreview(parsed);
       })
       .catch(err => setError(`Nie udało się odczytać pliku: ${err.message}`));
@@ -205,7 +211,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
       await onSave(newHoldings, rawRows);
       onClose();
     } catch (e) {
-      setError(e.message || 'Błąd zapisu');
+      setError(e.message || t('save_error'));
     } finally {
       setSaving(false);
     }
@@ -214,9 +220,9 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   return (
     <div style={overlay}>
       <div style={card} onClick={e => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Import pozycji</h2>
+        <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{t('ci_title')}</h2>
         <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>
-          Wrzuć plik XLSX z XTB <em style={{ color: 'var(--text-dim)' }}>(Open Position)</em> lub wklej CSV poniżej.
+          {t('ci_drop_xtb_pre')} <em style={{ color: 'var(--text-dim)' }}>(Open Position)</em> {t('ci_drop_xtb_post')}
         </p>
 
         {/* File drop zone */}
@@ -241,10 +247,9 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
             <p style={{ fontSize: 12, color: 'var(--accent)', margin: 0, fontWeight: 600 }}>📄 {fileName}</p>
           ) : (
             <>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 2px' }}>
-                Przeciągnij plik lub <span style={{ color: 'var(--accent)' }}>kliknij aby wybrać</span>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('ci_drag_file')}{' '}<span style={{ color: 'var(--accent)' }}>{t('imp_click_to_pick')}</span>
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>XLSX — eksport XTB Open Position</p>
+              <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>{t('ci_xlsx_hint')}</p>
             </>
           )}
         </div>
@@ -252,7 +257,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>lub wklej CSV</span>
+          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('ci_or_paste_csv_short')}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
@@ -261,7 +266,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
           background: 'var(--panel-2)', borderRadius: 8, padding: '8px 12px', marginBottom: 10,
           fontSize: 11, color: 'var(--text-faint)', fontFamily: 'JetBrains Mono, monospace',
           whiteSpace: 'pre', overflowX: 'auto',
-        }}>{CSV_EXAMPLE}</pre>
+        }}>{csvExample(t)}</pre>
 
         <textarea
           style={{
@@ -273,7 +278,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
             outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: 12,
             opacity: filePreview ? 0.4 : 1,
           }}
-          placeholder="Wklej dane CSV tutaj…"
+          placeholder={t('ci_paste_csv')}
           value={text}
           disabled={!!filePreview}
           onChange={e => { setText(e.target.value); setError(''); }}
@@ -285,14 +290,12 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
           <button
             style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 12, padding: 0 }}
             onClick={() => { setFilePreview(null); setFileName(''); setError(''); }}
-          >
-            × Usuń plik i wróć do CSV
-          </button>
+          >{t('ci_remove_file')}</button>
         )}
 
         {/* Mode selector */}
         <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--panel-2)', borderRadius: 8, marginBottom: 16 }}>
-          {[['replace', 'Zastąp portfel'], ['merge', 'Dodaj / aktualizuj']].map(([k, lbl]) => (
+          {[['replace', t('ci_mode_replace')], ['merge', t('ci_mode_merge')]].map(([k, lbl]) => (
             <button
               key={k} type="button" onClick={() => setMode(k)}
               style={{
@@ -317,8 +320,8 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ color: 'var(--text-faint)' }}>
-                    {['Symbol', 'Ilość', 'Cena', 'Waluta', 'Data'].map(h => (
-                      <th key={h} style={{ textAlign: h === 'Symbol' ? 'left' : 'right', padding: '6px 10px', fontWeight: 500, position: 'sticky', top: 0, background: 'var(--panel-2)' }}>{h}</th>
+                    {[t('col_symbol'), t('col_qty'), t('col_price'), t('col_currency'), t('col_date')].map(h => (
+                      <th key={h} style={{ textAlign: h === t('col_symbol') ? 'left' : 'right', padding: '6px 10px', fontWeight: 500, position: 'sticky', top: 0, background: 'var(--panel-2)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -330,7 +333,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
                         <td style={{ padding: '5px 10px', fontWeight: 700, color: bad ? 'var(--down)' : 'var(--accent)', whiteSpace: 'nowrap' }}>
                           {p.symbol}
                           {bad && (
-                            <span title="Nie znaleziono kursu — symbol może być nieprawidłowy lub zmieniony" style={{ marginLeft: 6, cursor: 'default' }}>⚠</span>
+                            <span title={t('ci_no_quote')} style={{ marginLeft: 6, cursor: 'default' }}>⚠</span>
                           )}
                         </td>
                         <td style={{ padding: '5px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>{p.qty}</td>
@@ -349,9 +352,9 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
         {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Anuluj</button>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel_btn')}</button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleImport} disabled={saving || !preview.length}>
-            {saving ? 'Importowanie…' : `Importuj${preview.length > 0 ? ` (${preview.length})` : ''}`}
+            {saving ? t('imp_importing') : `Importuj${preview.length > 0 ? ` (${preview.length})` : ''}`}
           </button>
         </div>
       </div>
