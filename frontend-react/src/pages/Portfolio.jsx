@@ -72,7 +72,10 @@ const DASH_DEFAULT_LAYOUT = [
   // renderowanie czcionek. Przy h: 8 (324) karta ucinała czubek wykresu
   // i dwa ostatnie wiersze legendy.
   { i: 'pie',     x: 0, y: 11, w: 6,  h: 10, minW: 3, minH: 9, maxH: 20 },
-  { i: 'alloc',   x: 6, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
+  // minH 4 (132 px karty → ~84 px na treść) było gwarantem suwaka — nie zmieści
+  // się nawet nagłówek + pasek + jeden wiersz legendy. 7 sektorów potrzebuje
+  // ~250 px na treść, czyli 8 wierszy siatki (300 px).
+  { i: 'alloc',   x: 6, y: 11, w: 6,  h: 8,  minW: 3, minH: 8, maxH: 20 },
   { i: 'realytd', x: 0, y: 19, w: 12, h: 8,  minW: 4, minH: 5, maxH: 20 },
 ];
 // Poniżej tej szerokości grid zwija się do jednej kolumny (karty na całą
@@ -83,8 +86,8 @@ const DASH_MOBILE_LAYOUT = [
   { i: 'chart',   x: 0, y: 0,  w: 12, h: 10, minW: 12, minH: 7, maxH: 20 },
   { i: 'stats',   x: 0, y: 10, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
   { i: 'pie',     x: 0, y: 18, w: 12, h: 10, minW: 12, minH: 9, maxH: 20 },
-  { i: 'alloc',   x: 0, y: 28, w: 12, h: 7,  minW: 12, minH: 4, maxH: 20 },
-  { i: 'realytd', x: 0, y: 35, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
+  { i: 'alloc',   x: 0, y: 28, w: 12, h: 8,  minW: 12, minH: 8, maxH: 20 },
+  { i: 'realytd', x: 0, y: 36, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
 ];
 
 // Zapisany układ z localStorage wygrywa z domyślnym, więc samo podniesienie
@@ -1106,7 +1109,13 @@ export default function Portfolio() {
               <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined }}>
                 <div className="card-title">{t('alloc_section')}</div>
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 20px 16px', overflow: 'auto' }}>
+              {/* Ta sama historia co przy „Składzie portfela": overflow: auto
+                  wyciągał wąski suwak, kiedy treść przelewała się o kilka
+                  pikseli — a bez tego wszystko już się mieści. Suwak nic nie
+                  robił, tylko zajmował miejsce w kadrze. Idziemy na hidden +
+                  safe center, żeby przy zbyt niskiej karcie ucinał się ogon
+                  legendy, a nie pasek u góry. */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'safe center', padding: '8px 20px 16px', overflow: 'hidden' }}>
                 {enriched.length > 0
                   ? <StackedAllocation positions={enriched} totalValue={positionsValuePLN} currency={displayCurrency} fxRate={portFx} />
                   : <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Brak danych</div>
