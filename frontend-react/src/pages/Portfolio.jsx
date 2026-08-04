@@ -66,7 +66,12 @@ const DASH_MARGIN = [12, 12];
 const DASH_DEFAULT_LAYOUT = [
   { i: 'chart',   x: 0, y: 0,  w: 8,  h: 11, minW: 4, minH: 8, maxH: 20 },
   { i: 'stats',   x: 8, y: 0,  w: 4,  h: 11, minW: 2, minH: 4, maxH: 20 },
-  { i: 'pie',     x: 0, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
+  // h/minH pierścienia liczone z treści, nie na oko: nagłówek 48 + wykres 220
+  // + legenda w dwóch kolumnach 70 + odstępy 32 ≈ 370 px. 9 wierszy (366) to
+  // absolutne minimum, więc domyślnie dajemy 10 (408) na zapas na inne
+  // renderowanie czcionek. Przy h: 8 (324) karta ucinała czubek wykresu
+  // i dwa ostatnie wiersze legendy.
+  { i: 'pie',     x: 0, y: 11, w: 6,  h: 10, minW: 3, minH: 9, maxH: 20 },
   { i: 'alloc',   x: 6, y: 11, w: 6,  h: 8,  minW: 3, minH: 4, maxH: 20 },
   { i: 'realytd', x: 0, y: 19, w: 12, h: 8,  minW: 4, minH: 5, maxH: 20 },
 ];
@@ -77,10 +82,23 @@ const DASH_MOBILE_BREAKPOINT = 640;
 const DASH_MOBILE_LAYOUT = [
   { i: 'chart',   x: 0, y: 0,  w: 12, h: 10, minW: 12, minH: 7, maxH: 20 },
   { i: 'stats',   x: 0, y: 10, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
-  { i: 'pie',     x: 0, y: 18, w: 12, h: 8,  minW: 12, minH: 4, maxH: 20 },
-  { i: 'alloc',   x: 0, y: 26, w: 12, h: 7,  minW: 12, minH: 4, maxH: 20 },
-  { i: 'realytd', x: 0, y: 33, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
+  { i: 'pie',     x: 0, y: 18, w: 12, h: 10, minW: 12, minH: 9, maxH: 20 },
+  { i: 'alloc',   x: 0, y: 28, w: 12, h: 7,  minW: 12, minH: 4, maxH: 20 },
+  { i: 'realytd', x: 0, y: 35, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
 ];
+
+// Zapisany układ z localStorage wygrywa z domyślnym, więc samo podniesienie
+// minH w stałych nie naprawiłoby kart u nikogo, kto kiedykolwiek przestawił
+// kafelki — zostaliby ze starą, za niską kartą i uciętym wykresem. Przy
+// wczytywaniu podciągamy więc każdą kartę do aktualnego minimum; szerokości
+// i pozycje zostają nietknięte.
+function clampToMinH(saved, defaults) {
+  const minH = new Map(defaults.map(d => [d.i, d.minH ?? 1]));
+  return saved.map(item => {
+    const floor = minH.get(item.i);
+    return floor && item.h < floor ? { ...item, h: floor } : item;
+  });
+}
 
 const CRYPTO_OPTIONS = [
   'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','AVAX',
@@ -382,7 +400,7 @@ export default function Portfolio() {
       if (saved) {
         const parsed = JSON.parse(saved);
         const valid = Array.isArray(parsed) && parsed.every(item => item.h <= 20 && item.w <= 12 && item.h >= 1);
-        setDashLayout(valid ? parsed : defaultLayout);
+        setDashLayout(valid ? clampToMinH(parsed, defaultLayout) : defaultLayout);
       } else {
         setDashLayout(defaultLayout);
       }
@@ -1066,9 +1084,15 @@ export default function Portfolio() {
           <div key="pie">
             <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <div className="card-head" style={{ cursor: editMode ? 'grab' : undefined }}>
-                <div className="card-title">Skład portfela</div>
+                <div className="card-title">{t('pie_section')}</div>
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '8px 20px 16px', overflow: 'hidden' }}>
+              {/* „safe center", nie samo „center": zwykłe wyśrodkowanie przy
+                  za niskiej karcie ucinało tyle samo u góry co u dołu, czyli
+                  ścinało czubek pierścienia razem z etykietą największej
+                  pozycji. Wariant safe centruje, dopóki treść się mieści, a gdy
+                  się nie mieści — wraca do wyrównania od góry, więc znika
+                  najwyżej ogon legendy. */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'safe center', alignItems: 'center', padding: '8px 20px 16px', overflow: 'hidden' }}>
                 {enriched.length > 0
                   ? <PortfolioPieChart positions={enriched} totalValue={positionsValuePLN} currency={displayCurrency} fxRate={portFx} />
                   : <div style={{ color: 'var(--text-faint)', fontSize: 13 }}>Brak danych</div>
