@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 
 function fmt(val, opts = {}) {
@@ -25,12 +25,14 @@ function fmtDate(ts, locale = 'pl-PL') {
   return new Date(ts * 1000).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+// Stale modulowe trzymaja klucze i18n, nie gotowy tekst — t() zyje w
+// komponencie, a te obiekty powstaja raz przy imporcie modulu.
 const REC_LABEL = {
-  'strong_buy':   ['Silny kupno',    '#10b981'],
-  'buy':          ['Kupno',          '#34d399'],
-  'hold':         ['Trzymaj',        '#f59e0b'],
-  'underperform': ['Sprzedaj',       '#f43f5e'],
-  'sell':         ['Silna sprzedaż', '#ef4444'],
+  'strong_buy':   ['ks_rec_strong_buy',   '#10b981'],
+  'buy':          ['ks_rec_buy',          '#34d399'],
+  'hold':         ['ks_rec_hold',         '#f59e0b'],
+  'underperform': ['ks_rec_underperform', '#f43f5e'],
+  'sell':         ['ks_rec_sell',         '#ef4444'],
 };
 
 // Hardcoded per-symbol overrides for metrics unavailable via keystats API
@@ -46,12 +48,12 @@ const HARDCODED_METRICS = {
 
 const GROWTH_DRIVERS = {
   'DNP.WA': {
-    openings:     '~300 sklepów / rok',
+    openings:     'ks_openings_dnp',
     reinvestment: '~100% OCF',
   },
 };
 
-const COMPOUNDER_TOOLTIP = 'Niski wskaźnik wynika z 100% reinwestycji gotówki operacyjnej w budowę nowych marketów i centrów logistycznych (model compoundera). Spółka nie akumuluje gotówki — natychmiast alokuje ją z wysoką stopą zwrotu (ROIC ~20%).';
+const COMPOUNDER_TOOLTIP_KEY = 'ks_compounder_tooltip';
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 function Tooltip({ text, children }) {
@@ -157,11 +159,12 @@ function cashFlowScore(m) {
 
 // ─── Growth Drivers ───────────────────────────────────────────────────────────
 function GrowthDrivers({ symbol, roic }) {
+  const t = useT();
   const isMobile = useIsMobile();
   const drivers = GROWTH_DRIVERS[symbol];
   if (!drivers) return null;
   const items = [
-    { label: 'Otwarcia sklepów',   value: drivers.openings },
+    { label: t('ks_openings_label'),   value: drivers.openings },
     { label: 'Stopa reinwestycji', value: drivers.reinvestment },
     { label: 'ROIC',               value: roic != null ? `${roic.toFixed(1)}%` : '—', highlight: true },
   ];
@@ -181,27 +184,28 @@ function GrowthDrivers({ symbol, roic }) {
 
 // ─── DuPont Analysis ─────────────────────────────────────────────────────────
 function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
+  const t = useT();
   if (netMargin == null && roe == null) return null;
   const fmtM = v => v != null ? `${(v * 100).toFixed(1)}%` : '—';
   const fmtX = v => v != null ? `${v.toFixed(1)}x` : '—';
   const boxes = [
     {
-      label: 'Marża netto',
+      label: t('ks_net_margin'),
       value: fmtM(netMargin),
       color: '#10b981',
-      tooltip: 'Zysk netto / Przychody. Efektywność operacyjna po wszystkich kosztach.',
+      tooltip: t('ks_net_margin_tip'),
     },
     {
-      label: 'Obrót aktywami',
+      label: t('ks_asset_turnover'),
       value: fmtX(assetTurnover),
       color: 'var(--accent)',
-      tooltip: 'Przychody / Aktywa ogółem. Jak efektywnie spółka obraca majątkiem by generować sprzedaż.',
+      tooltip: t('ks_asset_turnover_tip'),
     },
     {
-      label: 'Dźwignia fin.',
+      label: t('ks_leverage'),
       value: fmtX(leverage),
       color: '#f59e0b',
-      tooltip: 'Aktywa ogółem / Kapitał własny. Poziom finansowania długiem. Niska dźwignia = bezpieczny bilans.',
+      tooltip: t('ks_leverage_tip'),
     },
   ];
   return (
@@ -231,7 +235,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 9, color: 'var(--text-faint)' }}>Model DuPont (3-czynnikowy) · ROE = Marża × Obrót × Dźwignia</div>
+      <div style={{ fontSize: 9, color: 'var(--text-faint)' }}>{t('ks_dupont_title')}</div>
     </Section>
   );
 }
@@ -436,6 +440,7 @@ const PEERS_BY_SYMBOL = {
 };
 
 function PeerComparison({ symbol, pe, netMargin }) {
+  const t = useT();
   const [tip, setTip] = useState(false);
   const peers = PEERS_BY_SYMBOL[symbol];
   if (!peers || (pe == null && netMargin == null)) return null;
@@ -450,7 +455,7 @@ function PeerComparison({ symbol, pe, netMargin }) {
   return (
     <Section title={
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        Porównanie sektorowe
+        {t('ks_peer_title')}
         <span
           style={{ fontSize: 11, color: 'var(--text-faint)', cursor: 'help', position: 'relative' }}
           onMouseEnter={() => setTip(true)}
@@ -464,7 +469,7 @@ function PeerComparison({ symbol, pe, netMargin }) {
               padding: '6px 10px', borderRadius: 6, width: 240, zIndex: 200,
               border: '1px solid #334155', boxShadow: '0 4px 16px rgba(0,0,0,0.35)', pointerEvents: 'none',
             }}>
-              Porównanie kluczowych wskaźników wyceny i rentowności z bezpośrednimi konkurentami branżowymi. Dane szacunkowe.
+              {t('ks_peer_intro')}
             </div>
           )}
         </span>
@@ -473,9 +478,9 @@ function PeerComparison({ symbol, pe, netMargin }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left',  color: 'var(--text-faint)', fontWeight: 500, padding: '3px 0 5px', borderBottom: '1px solid var(--border)' }}>Spółka</th>
+            <th style={{ textAlign: 'left',  color: 'var(--text-faint)', fontWeight: 500, padding: '3px 0 5px', borderBottom: '1px solid var(--border)' }}>{t('ks_company')}</th>
             <th style={{ textAlign: 'right', color: 'var(--text-faint)', fontWeight: 500, padding: '3px 8px 5px', borderBottom: '1px solid var(--border)' }}>C/Z</th>
-            <th style={{ textAlign: 'right', color: 'var(--text-faint)', fontWeight: 500, padding: '3px 0 5px', borderBottom: '1px solid var(--border)' }}>Marża netto</th>
+            <th style={{ textAlign: 'right', color: 'var(--text-faint)', fontWeight: 500, padding: '3px 0 5px', borderBottom: '1px solid var(--border)' }}>{t('ks_net_margin')}</th>
           </tr>
         </thead>
         <tbody>
@@ -538,24 +543,25 @@ function CheckItem({ label, pass, value, tooltip }) {
 }
 
 function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
+  const t = useT();
   const checks = [
     {
       label: 'C/P < 1,0',
       pass: psRatio != null ? psRatio < 1.0 : null,
       value: psRatio != null ? `${psRatio.toFixed(2)}x` : null,
-      tooltip: 'Cena/Przychody (Price/Sales). C/P < 1 oznacza że płacisz mniej niż 1 PLN za każdy 1 PLN przychodów. Dla spółek wzrostowych wyższe wartości są normą — sprawdź tempo wzrostu.',
+      tooltip: t('ks_ps_tip'),
     },
     {
       label: 'ROIC > 20%',
       pass: roic != null ? roic > 20 : null,
       value: roic != null ? `${roic.toFixed(1)}%` : null,
-      tooltip: 'Return on Invested Capital — zwrot z zainwestowanego kapitału. Obliczany jako Zysk netto / (Kapitał własny + Dług netto). ROIC > 15% to oznaka przewagi konkurencyjnej.',
+      tooltip: t('ks_roic_tip'),
     },
     {
-      label: 'Dług netto / EBITDA < 2,0',
+      label: t('ks_netdebt_label'),
       pass: netDebtEbitda != null ? netDebtEbitda < 2.0 : null,
       value: netDebtEbitda != null ? `${netDebtEbitda.toFixed(2)}x` : null,
-      tooltip: 'Ile lat potrzeba na spłatę długu z zysku operacyjnego (EBITDA). Poniżej 2x — komfortowe. Powyżej 4x — sygnał ostrzegawczy. Wartość ujemna = gotówka netto.',
+      tooltip: t('ks_netdebt_tip'),
     },
   ];
 
@@ -571,6 +577,7 @@ function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
+  const t = useT();
   const { locale } = useLanguage();
   const fmtL      = (val, opts = {}) => fmt(val, { ...opts, locale });
   const fmtLargeL = (val) => fmtLarge(val, locale);
@@ -593,7 +600,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   }, [symbol]);
 
   if (loading) return (
-    <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>Ładowanie wskaźników…</div>
+    <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>{t('ks_loading')}</div>
   );
 
   const hm = HARDCODED_METRICS[symbol] ?? {};
@@ -663,8 +670,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
     return (
       <div style={{ padding: '24px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>
         {loadErr
-          ? 'Dane fundamentalne chwilowo niedostępne (błąd źródła danych) — spróbuj ponownie za chwilę.'
-          : 'Brak danych — załaduj dane finansowe w zakładce Finanse'}
+          ? t('ks_source_error')
+          : t('ks_no_data')}
       </div>
     );
   }
@@ -674,26 +681,26 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasValuation && (
         <Section title="Wycena">
-          {peRatio        != null && <Row label="C/Z (TTM)"     value={fmtL(peRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Zysk (P/E). Ile płacisz za 1 PLN zysku netto. Mediana historyczna ~15x. Wysokie P/E = oczekiwania wzrostu lub przeszacowanie." />}
-          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmtL(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip="Cena do prognozowanego zysku na następne 12 miesięcy. Niższy od TTM = oczekiwany wzrost zysku." />}
-          {psRatio        != null && <Row label="C/P"           value={fmtL(psRatio,  { decimals: 1, suffix: 'x' })} tooltip="Cena/Przychody (Price/Sales). Ile płacisz za 1 PLN przychodów. C/P < 1 = tanie, ale sprawdź marże. Dla retailerów typowe 0,3–1,5x." />}
-          {evEbitda       != null && <Row label="EV/EBITDA"     value={fmtL(evEbitda, { decimals: 1, suffix: 'x' })} tooltip="Wartość przedsiębiorstwa / EBITDA. Neutralny wobec struktury kapitału — porównywalny między spółkami z różnym poziomem długu. < 10x = tanie." />}
-          {pfcf           != null && <Row label="C/FCF"         value={fmtL(pfcf,     { decimals: 1, suffix: 'x' })} tooltip="Cena/Wolne Przepływy Pieniężne. FCF = gotówka po capexie. Dla spółek z wysokim capexem (jak Dino) może być wysoki — sprawdź C/Z jako alternatywę." />}
-          {fcfYield       != null && <Row label="FCF Yield"     value={fmtL(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip="FCF / Kapitalizacja rynkowa. Odwrotność C/FCF. Powyżej 5% = atrakcyjne. To ile gotówki spółka generuje na każde 100 PLN kapitalizacji." />}
-          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmtL(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip="Cena/Wartość księgowa. P/B < 1 = akcja tańsza niż wartość aktywów netto. Wysoki P/B = silna marka lub dźwignia operacyjna." />}
-          {raw?.pegRatio    != null && <Row label="PEG"          value={fmtL(raw.pegRatio,    { decimals: 2 })} tooltip="PEG = C/Z ÷ stopa wzrostu EPS. PEG < 1 = akcja tania względem wzrostu. Uwzględnia przyszły wzrost przy wycenie." />}
+          {peRatio        != null && <Row label="C/Z (TTM)"     value={fmtL(peRatio,  { decimals: 1, suffix: 'x' })} tooltip={t('ks_pe_tip')} />}
+          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmtL(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip={t('ks_fpe_tip')} />}
+          {psRatio        != null && <Row label="C/P"           value={fmtL(psRatio,  { decimals: 1, suffix: 'x' })} tooltip={t('ks_ps_tip2')} />}
+          {evEbitda       != null && <Row label="EV/EBITDA"     value={fmtL(evEbitda, { decimals: 1, suffix: 'x' })} tooltip={t('ks_evebitda_tip')} />}
+          {pfcf           != null && <Row label="C/FCF"         value={fmtL(pfcf,     { decimals: 1, suffix: 'x' })} tooltip={t('ks_pfcf_tip')} />}
+          {fcfYield       != null && <Row label="FCF Yield"     value={fmtL(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip={t('ks_fcfyield_tip')} />}
+          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmtL(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip={t('ks_pb_tip')} />}
+          {raw?.pegRatio    != null && <Row label="PEG"          value={fmtL(raw.pegRatio,    { decimals: 2 })} tooltip={t('ks_peg_tip')} />}
           {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLargeL(liveMarketCap)} />}
-          {liveEV           != null && <Row label="EV"           value={fmtLargeL(liveEV)} tooltip="Enterprise Value = Kapitalizacja + Dług netto. Pełna cena przejęcia spółki. Używany w EV/EBITDA." />}
+          {liveEV           != null && <Row label="EV"           value={fmtLargeL(liveEV)} tooltip={t('ks_ev_tip')} />}
           {(raw?.epsRevisionsUp30d != null || raw?.epsRevisionsDown30d != null) && (
             <Row
               label="Rewizje EPS (30d)"
               value={`↑${raw.epsRevisionsUp30d ?? 0} ↓${raw.epsRevisionsDown30d ?? 0}`}
               color={(raw.epsRevisionsUp30d ?? 0) > (raw.epsRevisionsDown30d ?? 0) ? '#10b981' : (raw.epsRevisionsDown30d ?? 0) > (raw.epsRevisionsUp30d ?? 0) ? '#f43f5e' : undefined}
-              tooltip="Ile analityków podwyższyło (↑) lub obniżyło (↓) prognozy EPS w ostatnich 30 dniach. Pozytywny sygnał gdy wzrostów jest więcej."
+              tooltip={t('ks_revisions_tip')}
             />
           )}
           {raw?.forwardRevenueEstimate != null && (
-            <Row label="Prognoza przychodów (nast. rok)" value={fmtLargeL(raw.forwardRevenueEstimate)} />
+            <Row label={t('ks_rev_forecast')} value={fmtLargeL(raw.forwardRevenueEstimate)} />
           )}
         </Section>
       )}
@@ -709,8 +716,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
               color={raw?.revenueGrowthYoY != null ? (raw.revenueGrowthYoY >= 0 ? '#10b981' : '#f43f5e') : undefined}
             />
           )}
-          {raw?.bookPerShare != null && <Row label="Wartość księgowa/akcję" value={fmtL(raw.bookPerShare, { decimals: 2 })} />}
-          {netMargin != null && <Row label="Marża netto" value={fmtL(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip="Zysk netto / Przychody. Ile zostaje po wszystkich kosztach z każdego 1 PLN sprzedaży. Dla retailerów typowe 1–5%." />}
+          {raw?.bookPerShare != null && <Row label={t('ks_book_per_share')} value={fmtL(raw.bookPerShare, { decimals: 2 })} />}
+          {netMargin != null && <Row label={t('ks_net_margin')} value={fmtL(netMargin * 100, { decimals: 1, suffix: '%' })} color={netMargin > 0 ? '#10b981' : '#f43f5e'} tooltip={t('ks_netmargin_tip2')} />}
         </Section>
       )}
 
@@ -718,9 +725,9 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {(hasProfit || raw?.beta != null || yearChangePct != null) && (
         <Section title="Zysk / Ryzyko">
-          {epsTtm          != null && <Row label="EPS (TTM)"     value={fmtL(epsTtm, { decimals: 2 })} tooltip="Zysk na akcję za ostatnie 12 miesięcy. Używany do obliczenia C/Z. Rosnący EPS = dobry znak." />}
-          {raw?.forwardEps != null && <Row label="EPS (forward)" value={fmtL(raw.forwardEps, { decimals: 2 })} tooltip="Prognozowany zysk na akcję na następne 12 miesięcy (konsensus analityków)." />}
-          {raw?.beta       != null && <Row label="Beta"          value={fmtL(raw.beta, { decimals: 2 })} tooltip="Zmienność akcji względem rynku. Beta = 1 = ruch jak rynek. Beta > 1 = bardziej zmienne. Beta < 1 = defensywna." />}
+          {epsTtm          != null && <Row label="EPS (TTM)"     value={fmtL(epsTtm, { decimals: 2 })} tooltip={t('ks_eps_tip')} />}
+          {raw?.forwardEps != null && <Row label="EPS (forward)" value={fmtL(raw.forwardEps, { decimals: 2 })} tooltip={t('ks_feps_tip')} />}
+          {raw?.beta       != null && <Row label="Beta"          value={fmtL(raw.beta, { decimals: 2 })} tooltip={t('ks_beta_tip')} />}
           {yearChangePct   != null && (
             <Row
               label="Zmiana 1 rok"
@@ -733,26 +740,26 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasDividend && (
         <Section title="Dywidenda">
-          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmtL(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip="Roczna dywidenda / cena akcji. Dochód pasywny z akcji. Powyżej 4% = atrakcyjne, ale sprawdź czy spółka nie płaci więcej niż zarabia." />
-          {raw.dividendRate != null && <Row label="DPS" value={fmtL(raw.dividendRate)} tooltip="Dywidenda na akcję (Dividend Per Share) za ostatnie 12 miesięcy." />}
+          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmtL(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip={t('ks_divyield_tip')} />
+          {raw.dividendRate != null && <Row label="DPS" value={fmtL(raw.dividendRate)} tooltip={t('ks_dps_tip')} />}
           {raw?.payoutRatio != null && (
             <Row
               label="Payout Ratio"
               value={`${(raw.payoutRatio * 100).toFixed(0)}%`}
               color={raw.payoutRatio > 1 ? '#f43f5e' : raw.payoutRatio > 0.7 ? '#f59e0b' : '#10b981'}
-              tooltip="Udział dywidendy w zysku netto. > 100% = spółka płaci więcej niż zarabia (niezrównoważone). < 70% = bezpieczny poziom."
+              tooltip={t('ks_payout_tip')}
             />
           )}
           {raw?.exDividendDate && (
             <Row
               label="Data ex-dividend"
               value={new Date(raw.exDividendDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
-              tooltip="Ostatni dzień, w którym trzeba posiadać akcje, aby otrzymać kolejną dywidendę."
+              tooltip={t('ks_exdate_tip')}
             />
           )}
           {raw?.dividendGrowthStreak != null && raw?.dividendRate != null && (
             <Row
-              label="Wzrost dywidendy z rzędu"
+              label={t('ks_div_growth')}
               value={raw.dividendGrowthStreak > 0 ? `${raw.dividendGrowthStreak} lat` : '0 lat'}
               color={raw.dividendGrowthStreak >= 5 ? '#10b981' : raw.dividendGrowthStreak >= 1 ? '#f59e0b' : undefined}
             />
@@ -783,11 +790,11 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
 
       {hasAnalysts && (
         <Section title="Analitycy">
-          {raw.targetMeanPrice != null && <Row label="Cel (średni)" value={fmtL(raw.targetMeanPrice, { decimals: 2 })} />}
+          {raw.targetMeanPrice != null && <Row label={t('ks_target_avg')} value={fmtL(raw.targetMeanPrice, { decimals: 2 })} />}
           {raw.targetLowPrice  != null && raw.targetHighPrice != null && (
             <Row label="Cel (min–maks)" value={`${fmtL(raw.targetLowPrice, { decimals: 2 })} – ${fmtL(raw.targetHighPrice, { decimals: 2 })}`} />
           )}
-          {raw.numberOfAnalystOpinions != null && <Row label="Analityków" value={String(raw.numberOfAnalystOpinions)} />}
+          {raw.numberOfAnalystOpinions != null && <Row label={t('ks_analysts')} value={String(raw.numberOfAnalystOpinions)} />}
           {rec && <Row label="Rekomendacja" value={rec[0]} color={rec[1]} />}
           {raw.nextEarningsDate != null && <Row label="Nast. wyniki" value={fmtDateL(raw.nextEarningsDate)} />}
         </Section>
@@ -802,7 +809,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           />
           {analystUpside != null && (
             <Row
-              label="Cel analityków (śr.)"
+              label={t('ks_analyst_target')}
               value={`${fmtL(raw.targetMeanPrice, { decimals: 2 })}  ${analystUpside >= 0 ? '+' : ''}${analystUpside.toFixed(1)}% ${analystUpside >= 0 ? '▲' : '▼'}`}
               color={analystUpside >= 0 ? '#10b981' : '#f43f5e'}
             />
@@ -835,8 +842,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       {hasHealth && (
         <Section title="Kondycja finansowa">
           {gScore  != null && <HealthBar label="Wzrost"        score={gScore} />}
-          {pScore  != null && <HealthBar label="Rentowność"    score={pScore}  tooltip={isCompounder ? COMPOUNDER_TOOLTIP : undefined} />}
-          {cfScore != null && <HealthBar label="Przepływy FCF" score={cfScore} tooltip={isCompounder ? COMPOUNDER_TOOLTIP : undefined} />}
+          {pScore  != null && <HealthBar label={t('ks_profitability')}    score={pScore}  tooltip={isCompounder ? t(COMPOUNDER_TOOLTIP_KEY) : undefined} />}
+          {cfScore != null && <HealthBar label={t('ks_fcf_flows')} score={cfScore} tooltip={isCompounder ? t(COMPOUNDER_TOOLTIP_KEY) : undefined} />}
         </Section>
       )}
 
