@@ -361,7 +361,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
 
   function parseCsvToData(text) {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) throw new Error('Za mało wierszy w CSV');
+    if (lines.length < 2) throw new Error(t('fin_csv_too_few_rows'));
     const header = parseCsvLine(lines[0]);
     const labels = header.slice(1).map(l => l.trim()).filter(Boolean);
     if (!labels.length) throw new Error('Brak kolumn z danymi');
@@ -471,7 +471,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
       setData(d);
       setUploadOpen(false);
     } catch (e) {
-      if (e.message === 'parse_failed') setUploadError('Nie udało się odczytać tabeli — spróbuj z wyraźniejszym screenshotem');
+      if (e.message === 'parse_failed') setUploadError(t('fin_ocr_failed'));
       else if (e.message === 'api_key_missing') setUploadError('Brak klucza API na serwerze');
       else setUploadError(`Błąd: ${e.message}`);
     } finally {
@@ -618,7 +618,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
   if (loading) {
     return (
       <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-        <span style={{ fontSize: 13, color: 'var(--text-faint)' }}>Ładowanie danych finansowych…</span>
+        <span style={{ fontSize: 13, color: 'var(--text-faint)' }}>{t('fin_loading')}</span>
       </div>
     );
   }
@@ -676,7 +676,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
         }}>
           {/* CSV — primary (free) */}
           <div style={{ marginBottom: 10 }}>
-            <div style={{ color: 'var(--info)', fontWeight: 600, marginBottom: 4 }}>📄 Import CSV (bezpłatnie)</div>
+            <div style={{ color: 'var(--info)', fontWeight: 600, marginBottom: 4 }}>{t('fin_import_csv_free')}</div>
             <div style={{ color: 'var(--text-faint)', lineHeight: 1.5, marginBottom: 6 }}>
               Format: pierwsza kolumna = nazwa wskaźnika, kolejne = lata/kwartały. Wartości w milionach.{' '}
               <a
@@ -690,7 +690,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
                 onClick={() => csvRef.current?.click()}
                 disabled={uploading}
                 style={{ background: 'var(--info)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 11, fontWeight: 600, cursor: uploading ? 'wait' : 'pointer' }}
-              >{uploading ? 'Wczytuję…' : 'Wrzuć CSV'}</button>
+              >{uploading ? t('fin_reading') : t('fin_drop_csv')}</button>
               <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Waluta:</span>
               <select
                 value={csvCurrency}
@@ -711,7 +711,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
                 style={{ background: 'var(--panel-2)', color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', fontSize: 11, cursor: uploading ? 'wait' : 'pointer' }}
-              >Wrzuć obraz</button>
+              >{t('fin_drop_image')}</button>
               <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>lub Ctrl+V</span>
             </div>
           </div>
@@ -743,7 +743,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
 
       {error === 'fetch_error' && (
         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
-          Błąd pobierania danych. Spróbuj ponownie później.
+          {t('fin_fetch_error')}
         </div>
       )}
 
@@ -764,7 +764,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
           )}
 
           {/* RZiS */}
-          <Accordion title="Rachunek Zysków i Strat" unit={`mln ${currency}`} defaultOpen={true}>
+          <Accordion title={t('fin_income_statement')} unit={`mln ${currency}`} defaultOpen={true}>
             <ColumnHeaders periods={displayPeriods} />
             <TableRow label="Przychody" values={displayPeriods.map(p => p.revenue)} locale={locale} />
             <SubRow label="Wzrost r/r" values={displayPeriods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
@@ -772,29 +772,29 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
               <SubRow label="Wzrost LFL (r/r)" values={displayPeriods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
             )}
             <TableRow label="Zysk brutto" values={displayPeriods.map(p => p.grossProfit)} locale={locale} />
-            <SubRow label="Marża brutto" values={displayPeriods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
+            <SubRow label={t('fin_gross_margin')} values={displayPeriods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
             <TableRow label="Koszty oper." values={displayPeriods.map(p => p.operatingCost)} locale={locale} />
             <TableRow label="Zysk oper." values={displayPeriods.map(p => p.operatingIncome)} locale={locale} />
             <TableRow label="EBITDA" values={displayPeriods.map(p => p.ebitda)} locale={locale} />
-            <SubRow label="Marża EBITDA" values={displayPeriods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
+            <SubRow label={t('fin_ebitda_margin')} values={displayPeriods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
             <TableRow label="Zysk netto" values={displayPeriods.map(p => p.netIncome)} locale={locale} />
-            <TableRow label="Dług netto" values={displayPeriods.map(p => p.netDebt)} locale={locale} />
+            <TableRow label={t('fin_net_debt')} values={displayPeriods.map(p => p.netDebt)} locale={locale} />
           </Accordion>
 
           {/* Bilans */}
           <Accordion title="Bilans" unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={displayPeriods} />
             <TableRow label="Aktywa obrotowe" values={displayPeriods.map(p => p.totalCurrentAssets)} locale={locale} />
-            <TableRow label="Aktywa ogółem" values={displayPeriods.map(p => p.totalAssets)} locale={locale} />
-            <TableRow label="Zob. bieżące" values={displayPeriods.map(p => p.totalCurrentLiabilities)} locale={locale} />
-            <TableRow label="Zobowiązania" values={displayPeriods.map(p => p.totalLiabilities)} locale={locale} />
-            <TableRow label="Kapitał własny" values={displayPeriods.map(p => p.equity)} locale={locale} />
-            <TableRow label="Gotówka" values={displayPeriods.map(p => p.cashAndEquivalents)} locale={locale} />
-            <TableRow label="Dług całkowity" values={displayPeriods.map(p => p.totalDebt)} locale={locale} />
+            <TableRow label={t('fin_total_assets')} values={displayPeriods.map(p => p.totalAssets)} locale={locale} />
+            <TableRow label={t('fin_current_liabilities')} values={displayPeriods.map(p => p.totalCurrentLiabilities)} locale={locale} />
+            <TableRow label={t('fin_liabilities')} values={displayPeriods.map(p => p.totalLiabilities)} locale={locale} />
+            <TableRow label={t('fin_equity')} values={displayPeriods.map(p => p.equity)} locale={locale} />
+            <TableRow label={t('fin_cash')} values={displayPeriods.map(p => p.cashAndEquivalents)} locale={locale} />
+            <TableRow label={t('fin_total_debt')} values={displayPeriods.map(p => p.totalDebt)} locale={locale} />
           </Accordion>
 
           {/* Przepływy */}
-          <Accordion title="Przepływy pieniężne" unit={`mln ${currency}`} defaultOpen={false}>
+          <Accordion title={t('fin_cash_flow')} unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={displayPeriods} />
             <TableRow label="CFO (oper.)" values={displayPeriods.map(p => p.operatingCashFlow)} locale={locale} />
             <TableRow label="CAPEX / Inwest." values={displayPeriods.map(p => p.capex)} locale={locale} />
