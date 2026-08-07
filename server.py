@@ -1422,6 +1422,7 @@ if DATABASE_URL:
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_language TEXT DEFAULT 'pl'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_hour INT DEFAULT 16")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_minute INT DEFAULT 0")
             # Cache ostatniej znanej ceny per symbol. Fallback dla schedulera
             # snapshotów, gdy pojedynczy batch Yahoo wraca bez części pozycji:
             # zamiast podstawiać avgPrice (koszt), bierzemy tu ostatnie zdrowe
@@ -3062,18 +3063,20 @@ def _run_push_checks():
                                JOIN portfolio_list p ON p.id = h.portfolio_id
                                WHERE p.user_id=%s AND h.qty > 0""", (username,))
                 pf_syms = {r[0] for r in cur.fetchall() if r[0]}
-                cur.execute("""SELECT notification_tone, notification_language, notification_hour
+                cur.execute("""SELECT notification_tone, notification_language,
+                                      notification_hour, notification_minute
                                FROM portfolio_alerts WHERE username=%s""", (username,))
                 trow = cur.fetchone()
             tone = (trow[0] if trow and trow[0] else 'professional')
             lang = (trow[1] if trow and trow[1] else 'pl')
             hour_pref = int(trow[2]) if trow and trow[2] is not None else 16
+            minute_pref = int(trow[3]) if trow and trow[3] is not None else 0
             # Gate na godzine dostawy w strefie Warsaw. Pusze o duzym ruchu
             # dochodza dopiero po ustawionej godzinie — jesli ticker skoczyl
-            # rano, wisi az do np. 16:00. Dedupe per direction/tone/lang na
+            # rano, wisi az do np. 16:30. Dedupe per direction/tone/lang na
             # dzien pilnuje zeby nie poszlo dwa razy.
             now_warsaw = datetime.datetime.now(_WARSAW)
-            if now_warsaw.hour < hour_pref:
+            if (now_warsaw.hour, now_warsaw.minute) < (hour_pref, minute_pref):
                 raise _SkipBigMoves()
             wl_syms = {i.get('symbol', '') for i in (items or []) if i.get('symbol')}
             targets = sorted(wl_syms | pf_syms)
@@ -3342,20 +3345,22 @@ class Handler(SimpleHTTPRequestHandler):
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
-            tone, lang, hour = 'professional', 'pl', 16
+            tone, lang, hour, minute = 'professional', 'pl', 16, 0
             if DATABASE_URL:
                 try:
                     with _conn() as c, c.cursor() as cur:
-                        cur.execute("""SELECT notification_tone, notification_language, notification_hour
+                        cur.execute("""SELECT notification_tone, notification_language,
+                                              notification_hour, notification_minute
                                        FROM portfolio_alerts WHERE username=%s""", (username,))
                         row = cur.fetchone()
                     if row:
                         if row[0]: tone = row[0]
                         if row[1]: lang = row[1]
                         if row[2] is not None: hour = int(row[2])
+                        if row[3] is not None: minute = int(row[3])
                 except Exception as e:
                     log.warning(f'[notif-tone] get {username}: {e}')
-            self.send_json(200, {'tone': tone, 'language': lang, 'hour': hour}); return
+            self.send_json(200, {'tone': tone, 'language': lang, 'hour': hour, 'minute': minute}); return
 
         elif path == '/api/calendar':
             qs   = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
@@ -5865,6 +5870,14 @@ async function doRecover() {
                     if not 0 <= hour <= 23:
                         self.send_json(400, {'error': 'hour must be int 0-23'}); return
                     sets.append('notification_hour=%s'); params.append(hour)
+                if 'minute' in body:
+                    try:
+                        minute = int(body.get('minute'))
+                    except (TypeError, ValueError):
+                        self.send_json(400, {'error': 'minute must be 0 or 30'}); return
+                    if minute not in (0, 30):
+                        self.send_json(400, {'error': 'minute must be 0 or 30'}); return
+                    sets.append('notification_minute=%s'); params.append(minute)
                 if not sets:
                     self.send_json(200, {'ok': True}); return
                 with _conn() as c, c.cursor() as cur:

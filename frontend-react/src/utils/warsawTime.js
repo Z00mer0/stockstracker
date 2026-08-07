@@ -9,24 +9,35 @@
 // i przeliczanie tego z reki to najkrotsza droga do bledu dwa razy w roku.
 const WARSAW_TZ = 'Europe/Warsaw';
 
-let formatter = null;
+let hourFormatter = null;
+let minuteFormatter = null;
 
-function warsawFormatter() {
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat('en-GB', {
+function warsawHourFormatter() {
+  if (!hourFormatter) {
+    hourFormatter = new Intl.DateTimeFormat('en-GB', {
       timeZone: WARSAW_TZ,
       hour: 'numeric',
       hour12: false,
     });
   }
-  return formatter;
+  return hourFormatter;
+}
+
+function warsawMinuteFormatter() {
+  if (!minuteFormatter) {
+    minuteFormatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: WARSAW_TZ,
+      minute: 'numeric',
+    });
+  }
+  return minuteFormatter;
 }
 
 // 0-23 wedlug zegara w Warszawie, niezaleznie od strefy urzadzenia.
 export function warsawHour(now = new Date()) {
   try {
     // 'en-GB' + hour12:false potrafi zwrocic '24' dla polnocy — normalizujemy.
-    const hour = Number(warsawFormatter().format(now));
+    const hour = Number(warsawHourFormatter().format(now));
     return Number.isFinite(hour) ? hour % 24 : now.getHours();
   } catch {
     // Gdyby srodowisko nie znalo strefy — lepiej pokazac karty wedlug
@@ -35,9 +46,25 @@ export function warsawHour(now = new Date()) {
   }
 }
 
+export function warsawMinute(now = new Date()) {
+  try {
+    const m = Number(warsawMinuteFormatter().format(now));
+    return Number.isFinite(m) ? m : now.getMinutes();
+  } catch {
+    return now.getMinutes();
+  }
+}
+
 // Czy jestesmy przed ustawiona godzina dostawy. Ta sama nierownosc, co
-// w server.py: o pelnej godzinie powiadomienia juz ida.
-export function beforeDeliveryHour(deliveryHour, now = new Date()) {
+// w server.py: o pelnej godzinie powiadomienia juz ida. Minuta opcjonalna
+// (domyslnie 0) — przy 15:30 karty ida od 15:30, nie od 16:00.
+export function beforeDeliveryHour(deliveryHour, deliveryMinute = 0, now = new Date()) {
+  // Poprzednia sygnatura: beforeDeliveryHour(hour, now) — zeby stare wywolania
+  // nie eksplodowaly, gdy zamiast liczby dostaniemy Date, traktujemy je jak
+  // now bez minuty.
+  if (deliveryMinute instanceof Date) { now = deliveryMinute; deliveryMinute = 0; }
   if (!Number.isFinite(deliveryHour)) return false;
-  return warsawHour(now) < deliveryHour;
+  const nowMin = warsawHour(now) * 60 + warsawMinute(now);
+  const dhMin = deliveryHour * 60 + (Number.isFinite(deliveryMinute) ? deliveryMinute : 0);
+  return nowMin < dhMin;
 }

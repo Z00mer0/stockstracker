@@ -134,7 +134,7 @@ export function writeScanCache(sig, quotes, now = Date.now()) {
 
 export function useMarketNotifications() {
   const { portfolio } = useApp();
-  const [deliveryHour] = useNotificationHour();
+  const [deliveryHour, deliveryMinute] = useNotificationHour();
   const [watchSymbols, setWatchSymbols] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const seenRef = useRef(readStamps(SEEN_KEY));
@@ -172,7 +172,7 @@ export function useMarketNotifications() {
     // pokazac, a push liczy sie osobno po stronie serwera. Dzieki temu
     // „wiek" karty znaczy to samo co przy pushu — od kiedy zauwazylismy ruch,
     // a nie od kiedy trwa.
-    if (beforeDeliveryHour(deliveryHour)) { setNotifications([]); return; }
+    if (beforeDeliveryHour(deliveryHour, deliveryMinute)) { setNotifications([]); return; }
     if (!targets.length) { setNotifications([]); return; }
     const today = todayKey();
     seenRef.current = pruneStaleStamps(seenRef.current, today);
