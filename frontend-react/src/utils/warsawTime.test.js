@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { warsawHour, beforeDeliveryHour } from './warsawTime.js';
+import { warsawHour, warsawMinute, beforeDeliveryHour } from './warsawTime.js';
 
 // Bramka godzinowa musi liczyc sie tak samo po obu stronach: server.py
 // sprawdza `datetime.now(_WARSAW).hour < hour_pref`. Gdyby klient patrzyl
@@ -33,29 +33,56 @@ describe('warsawHour', () => {
   });
 });
 
+describe('warsawMinute', () => {
+  it('czyta minuty warszawskie', () => {
+    expect(warsawMinute(new Date('2026-07-15T12:23:00Z'))).toBe(23);
+    expect(warsawMinute(new Date('2026-07-15T12:00:00Z'))).toBe(0);
+    expect(warsawMinute(new Date('2026-07-15T12:59:00Z'))).toBe(59);
+  });
+});
+
 describe('beforeDeliveryHour', () => {
   // 12:00 UTC w lipcu = 14:00 w Warszawie
   const at14 = new Date('2026-07-15T12:00:00Z');
+  const at1430 = new Date('2026-07-15T12:30:00Z');
+  const at1429 = new Date('2026-07-15T12:29:00Z');
 
   it('przed godzina dostawy blokuje', () => {
-    expect(beforeDeliveryHour(16, at14)).toBe(true);
+    expect(beforeDeliveryHour(16, 0, at14)).toBe(true);
   });
 
   it('o pelnej godzinie juz przepuszcza — ta sama nierownosc co server.py', () => {
-    expect(beforeDeliveryHour(14, at14)).toBe(false);
+    expect(beforeDeliveryHour(14, 0, at14)).toBe(false);
   });
 
   it('po godzinie przepuszcza', () => {
-    expect(beforeDeliveryHour(9, at14)).toBe(false);
+    expect(beforeDeliveryHour(9, 0, at14)).toBe(false);
+  });
+
+  it('minuta liczy sie w porownaniu', () => {
+    // 14:29 vs proba dostawy 14:30 — jeszcze blokuje
+    expect(beforeDeliveryHour(14, 30, at1429)).toBe(true);
+    // 14:30 vs 14:30 — juz przepuszcza (rowne = po)
+    expect(beforeDeliveryHour(14, 30, at1430)).toBe(false);
+    // 14:00 vs 14:30 — blokuje
+    expect(beforeDeliveryHour(14, 30, at14)).toBe(true);
+    // 14:30 vs 14:00 — przepuszcza
+    expect(beforeDeliveryHour(14, 0, at1430)).toBe(false);
   });
 
   it('godzina 0 nigdy nie blokuje', () => {
-    expect(beforeDeliveryHour(0, at14)).toBe(false);
-    expect(beforeDeliveryHour(0, new Date('2026-07-15T22:30:00Z'))).toBe(false);
+    expect(beforeDeliveryHour(0, 0, at14)).toBe(false);
+    expect(beforeDeliveryHour(0, 0, new Date('2026-07-15T22:30:00Z'))).toBe(false);
   });
 
   it('brak ustawienia nie blokuje niczego', () => {
-    expect(beforeDeliveryHour(undefined, at14)).toBe(false);
-    expect(beforeDeliveryHour(NaN, at14)).toBe(false);
+    expect(beforeDeliveryHour(undefined, 0, at14)).toBe(false);
+    expect(beforeDeliveryHour(NaN, 0, at14)).toBe(false);
+  });
+
+  it('stara sygnatura (hour, Date) nadal dziala', () => {
+    // Backward-compat: gdy druga pozycja to Date, traktujemy jak now
+    expect(beforeDeliveryHour(16, at14)).toBe(true);
+    expect(beforeDeliveryHour(14, at14)).toBe(false);
   });
 });

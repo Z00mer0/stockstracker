@@ -211,7 +211,7 @@ function ExportDataSection() {
 function NotificationToneSection() {
   const t = useT();
   const [tone, setTone] = useNotificationTone();
-  const [hour, setHour] = useNotificationHour();
+  const [hour, minute, setTime] = useNotificationHour();
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState(null);
   const options = [
@@ -273,14 +273,23 @@ function NotificationToneSection() {
         </p>
         <SettingsRow label={t('notif_hour_label')}>
           <select
-            value={hour}
-            onChange={e => setHour(e.target.value)}
+            value={hour * 60 + minute}
+            onChange={e => {
+              const v = parseInt(e.target.value, 10);
+              setTime(Math.floor(v / 60), v % 60);
+            }}
             className="field-input mono"
             style={{ fontSize: 12, width: 100 }}
           >
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-            ))}
+            {Array.from({ length: 48 }, (_, i) => {
+              const h = Math.floor(i / 2);
+              const m = (i % 2) * 30;
+              return (
+                <option key={i} value={h * 60 + m}>
+                  {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+                </option>
+              );
+            })}
           </select>
         </SettingsRow>
         <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>

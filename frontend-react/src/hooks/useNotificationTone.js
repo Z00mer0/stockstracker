@@ -6,8 +6,11 @@ import { useLanguage } from '../context/LanguageContext';
 
 export const TONE_KEY = 'myfund_notification_tone';
 export const HOUR_KEY = 'myfund_notification_hour';
+export const MINUTE_KEY = 'myfund_notification_minute';
 const VALID_TONE = new Set(['professional', 'funny']);
+const VALID_MINUTES = new Set([0, 30]);
 const DEFAULT_HOUR = 16;
+const DEFAULT_MINUTE = 0;
 
 function lsRead(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -21,6 +24,11 @@ function readTone() {
 function readHour() {
   const raw = parseInt(lsRead(HOUR_KEY) ?? '', 10);
   return Number.isFinite(raw) && raw >= 0 && raw <= 23 ? raw : DEFAULT_HOUR;
+}
+
+function readMinute() {
+  const raw = parseInt(lsRead(MINUTE_KEY) ?? '', 10);
+  return VALID_MINUTES.has(raw) ? raw : DEFAULT_MINUTE;
 }
 
 // Byl tu jeszcze zapis kopii ustawien pod myfund_portfolio_prefs_<id>,
@@ -50,6 +58,7 @@ function postPrefs(patch) {
 // wszystkie zamontowane instancje.
 const toneListeners = new Set();
 const hourListeners = new Set();
+const minuteListeners = new Set();
 
 function writeTone(value) {
   lsSet(TONE_KEY, value);
@@ -61,6 +70,12 @@ function writeHour(value) {
   lsSet(HOUR_KEY, String(value));
   const fresh = readHour();
   hourListeners.forEach(fn => fn(fresh));
+}
+
+function writeMinute(value) {
+  lsSet(MINUTE_KEY, String(value));
+  const fresh = readMinute();
+  minuteListeners.forEach(fn => fn(fresh));
 }
 
 function subscribe(listeners, fn) {
@@ -81,8 +96,10 @@ export function useNotificationTone() {
         if (cancelled) return;
         const t = res?.data?.tone;
         const h = res?.data?.hour;
+        const m = res?.data?.minute;
         if (VALID_TONE.has(t) && t !== readTone()) writeTone(t);
         if (Number.isFinite(h) && h >= 0 && h <= 23) writeHour(h);
+        if (VALID_MINUTES.has(m)) writeMinute(m);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -113,30 +130,48 @@ export function useNotificationTone() {
   return [tone, setTone];
 }
 
+// Zwraca [hour, minute, setTime]. `setTime(hour, minute)` zapisuje obie
+// wartosci lokalnie i wysyla je do serwera jedna paczka — bez wyscigu miedzy
+// dwoma requestami. Minuta ograniczona do 0/30, bo tak ustala UI (co pol
+// godziny). Godzina 0-23 jak dotad.
 export function useNotificationHour() {
   const [hour, setHourState] = useState(readHour);
+  const [minute, setMinuteState] = useState(readMinute);
 
   useEffect(() => {
     function onStorage(e) {
       if (e.key === HOUR_KEY) setHourState(readHour());
+      if (e.key === MINUTE_KEY) setMinuteState(readMinute());
     }
     window.addEventListener('storage', onStorage);
-    const unsubscribe = subscribe(hourListeners, setHourState);
-    // Godzina mogla przyjsc z serwera zanim ten hook sie zamontowal.
+    const unsubHour = subscribe(hourListeners, setHourState);
+    const unsubMin = subscribe(minuteListeners, setMinuteState);
+    // Wartosci mogly przyjsc z serwera zanim ten hook sie zamontowal.
     setHourState(readHour());
-    return () => { window.removeEventListener('storage', onStorage); unsubscribe(); };
+    setMinuteState(readMinute());
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      unsubHour(); unsubMin();
+    };
   }, []);
 
-  const setHour = useCallback((next) => {
-    const n = parseInt(next, 10);
-    const value = Number.isFinite(n) && n >= 0 && n <= 23 ? n : DEFAULT_HOUR;
-    writeHour(value);
-    postPrefs({ hour: value });
+  const setTime = useCallback((nextHour, nextMinute) => {
+    const h = parseInt(nextHour, 10);
+    const hValue = Number.isFinite(h) && h >= 0 && h <= 23 ? h : DEFAULT_HOUR;
+    const m = parseInt(nextMinute, 10);
+    const mValue = VALID_MINUTES.has(m) ? m : DEFAULT_MINUTE;
+    writeHour(hValue);
+    writeMinute(mValue);
+    postPrefs({ hour: hValue, minute: mValue });
   }, []);
 
-  return [hour, setHour];
+  return [hour, minute, setTime];
 }
 
 // Tylko dla testow — pozwala sprawdzic, ze zapis odswieza zamontowane
 // instancje bez przeladowania strony.
-export const __internals = { writeTone, writeHour, toneListeners, hourListeners, readTone, readHour };
+export const __internals = {
+  writeTone, writeHour, writeMinute,
+  toneListeners, hourListeners, minuteListeners,
+  readTone, readHour, readMinute,
+};
