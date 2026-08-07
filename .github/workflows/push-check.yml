@@ -7,6 +7,13 @@ on:
     - cron: '10 20 * * 1-5'   # zamknięcie USA ~16:10 EDT
     - cron: '10 7 * * 1-5'    # otwarcie GPW ~9:10 CEST
     - cron: '15 15 * * 1-5'   # zamknięcie GPW ~17:15 CEST
+    # Gęste próby w oknie godziny dostawy dziennych pushy (default hour_pref=16
+    # Warsaw). GHA drift *na */10* potrafi być 20-40 min — te wpisy są
+    # zarejestrowane osobno, więc scheduler traktuje je jak niezależne szanse.
+    # Dedupe po stronie serwera (_already_sent + daily_key) sprawia, że
+    # nadmiarowe strzały to no-op. Pokrywamy CEST (14 UTC) i CET (15 UTC).
+    - cron: '*/2 14 * * *'    # 16:00-16:59 Warsaw CEST (lato)
+    - cron: '*/2 15 * * *'    # 16:00-16:59 Warsaw CET (zima) / 17 CEST
   workflow_dispatch: {}
 jobs:
   check:
