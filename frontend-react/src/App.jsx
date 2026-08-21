@@ -22,6 +22,7 @@ const Calendar        = React.lazy(() => import('./pages/Calendar'));
 const Watchlist       = React.lazy(() => import('./pages/Watchlist'));
 const Alerts          = React.lazy(() => import('./pages/Alerts'));
 const ScenarioLab     = React.lazy(() => import('./pages/ScenarioLab'));
+const OkiCalculator   = React.lazy(() => import('./pages/OkiCalculator'));
 const Analysis        = React.lazy(() => import('./pages/Analysis'));
 const AiInsights      = React.lazy(() => import('./pages/AiInsights'));
 const News            = React.lazy(() => import('./pages/News'));
@@ -69,6 +70,7 @@ function AppRoutes() {
           <Route path="watchlist"   element={<Watchlist />} />
           <Route path="alerts"      element={<Alerts />} />
           <Route path="scenario"    element={<ScenarioLab />} />
+          <Route path="oki"         element={<OkiCalculator />} />
           <Route path="analysis"    element={<Analysis />} />
           <Route path="ai"          element={<AiInsights />} />
           <Route path="news"        element={<News />} />
