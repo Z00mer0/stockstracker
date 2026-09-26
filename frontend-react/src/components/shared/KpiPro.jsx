@@ -11,8 +11,16 @@ function MiniSparkline({ data, width = 62, height = 24, up = true }) {
     return `${x},${y}`;
   });
   const color = up ? 'var(--up)' : 'var(--down)';
+  const gid = up ? 'kp-spark-up' : 'kp-spark-down';
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
+    <svg className="kp-spark" width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0, overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,${height} ${pts.join(' ')} ${width},${height}`} fill={`url(#${gid})`} />
       <polyline
         points={pts.join(' ')}
         fill="none"

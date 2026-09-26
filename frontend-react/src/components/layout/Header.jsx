@@ -461,6 +461,10 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
           cursor: 'grab',
           userSelect: 'none',
           touchAction: 'pan-y',
+          // Wygaszenie brzegów — bez niego pasek ucinał nazwy w pół litery
+          // („&P500"), co wyglądało jak błąd, a nie jak przewijanie.
+          maskImage: 'linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent)',
         }}
       >
         <div

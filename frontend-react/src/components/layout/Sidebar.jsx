@@ -12,12 +12,15 @@ const BrandIcon = () => (
   </svg>
 );
 
+const NAV_GROUPS = ['portfolio', 'market', 'tools'];
+
 function NavItem({ to, icon, label, onClick }) {
   return (
     <NavLink
       to={to}
       end={to === '/'}
       onClick={onClick}
+      className="nav-item"
       style={({ isActive }) => ({
         display: 'flex',
         alignItems: 'center',
@@ -159,10 +162,16 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           </div>
         )}
         <div style={{ height: 8 }} />
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
-          {t('nav_section_main')}
-        </div>
-        {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
+        {/* Czternaście pozycji w jednej kolumnie czytało się jak spis treści —
+            grupy pozwalają trafić wzrokiem w sekcję, zanim w pozycję. */}
+        {NAV_GROUPS.map(group => (
+          <React.Fragment key={group}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '12px 10px 4px' }}>
+              {t(`nav_section_${group}`)}
+            </div>
+            {NAV_ITEMS.filter(item => item.group === group).map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
+          </React.Fragment>
+        ))}
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '12px 10px 4px' }}>
           {t('nav_section_account')}
         </div>
@@ -185,9 +194,14 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
         </div>
         <button
           onClick={logout}
-          style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+          className="btn-ghost"
+          aria-label={t('logout_btn')}
+          title={t('logout_btn')}
+          style={{ display: 'flex', color: 'var(--text-faint)', background: 'none', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', padding: 6 }}
         >
-          ↪
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
         </button>
       </div>
     </aside>

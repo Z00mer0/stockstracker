@@ -118,6 +118,16 @@
   border-color: color-mix(in oklab, var(--accent), transparent 70%);
 }
 
+/* Na telefonie karta KPI ma ~170 px — wykres nachodził na podpis i ucinał
+   go w pół słowa. Liczba jest tu ważniejsza niż ozdobnik. */
+@container app (max-width: 600px) {
+  .kpi-pro .kp-spark { display: none; }
+  .kpi-pro .kp-sub { white-space: normal; }
+  .kpi-pro .kp-foot .kp-sub { flex-direction: column; align-items: flex-start !important; }
+  .kpi-pro .kp-value { font-size: 21px; }
+  .kpi-pro .kp-label { letter-spacing: 0.06em; }
+}
+
 /* chip-sm */
 .chip-sm {
   display: inline-flex;

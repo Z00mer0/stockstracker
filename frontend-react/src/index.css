@@ -23,6 +23,8 @@
   --accent:        #00d97e;
   --warn:          #ffb020;
   --info:          #7c9eff;
+  --shadow-card:   inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-pop:    0 12px 32px rgba(0,0,0,0.45);
   --radius:        10px;
   --radius-sm:     6px;
   --radius-lg:     14px;
@@ -46,6 +48,8 @@
   --down:          #d92d4e;
   --down-soft:     rgba(217, 45, 78, 0.12);
   --accent:        #009d5a;
+  --shadow-card:   0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.04);
+  --shadow-pop:    0 12px 32px rgba(16,24,40,0.12);
 }
 
 /* ── Reset ── */
@@ -123,6 +127,7 @@ body.privacy-mode .lg-pct {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 .card-head {
@@ -135,11 +140,12 @@ body.privacy-mode .lg-pct {
   border-bottom: 1px solid var(--border);
 }
 .card-title {
-  font-size: 13px;
+  /* Wersaliki na każdym nagłówku karty krzyczały jednakowo głośno i spłaszczały
+     hierarchię — zostają tylko na drobnych etykietach (KPI, kolumny tabel). */
+  font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--text-dim);
+  letter-spacing: -0.005em;
+  color: var(--text);
 }
 .card-body {
   padding: 16px;
@@ -169,7 +175,7 @@ body.privacy-mode .lg-pct {
   color: #051a10;
   font-weight: 600;
 }
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary:hover { opacity: 0.92; box-shadow: 0 4px 14px color-mix(in oklab, var(--accent), transparent 70%); }
 .btn-ghost {
   background: transparent;
   border-color: transparent;
@@ -243,7 +249,12 @@ body.privacy-mode .lg-pct {
   border-radius: 8px;
   padding: 2px;
   gap: 2px;
+  /* Na wąskim ekranie 6 zakresów (1T…MAX) wystawało poza kartę. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.seg::-webkit-scrollbar { display: none; }
 .seg button {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11.5px;
@@ -320,7 +331,24 @@ body.privacy-mode .lg-pct {
 .data-table tbody td.right { text-align: right; white-space: nowrap; }
 .data-table tbody td.mono  { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr { transition: background 0.1s; }
 .data-table tbody tr:hover  { background: var(--panel-hover); cursor: pointer; }
+
+/* ── Sidebar nav hover ── (styl bazowy jest inline, stąd !important) */
+.nav-item:not(.active):hover {
+  background: var(--panel-hover) !important;
+  color: var(--text) !important;
+}
+
+/* Łagodne wejście treści przy zmianie strony — skok z pustego ekranu
+   (Suspense) na gotową stronę był odczuwalny jako mignięcie. */
+@media (prefers-reduced-motion: no-preference) {
+  main > * { animation: page-in 0.22s ease-out; }
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
 
 /* ── KPI card ── */
 .kpi-card {
@@ -361,9 +389,10 @@ body.privacy-mode .lg-pct {
   margin-bottom: 20px;
 }
 .page-title {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--text);
 }
 .page-sub {

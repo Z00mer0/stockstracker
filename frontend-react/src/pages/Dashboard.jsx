@@ -467,8 +467,6 @@ export default function Dashboard() {
                   {t('paper_short')}: <span style={{ color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN)}</span>
                 </span>
               }
-              spark={kpi.sparkValues.slice(-24)}
-              sparkUp={gainUp}
               icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
               onClick={() => navigate('/closed')}
             />
@@ -478,7 +476,6 @@ export default function Dashboard() {
           label={t('dividends_ytd')}
           value={`${fmtDisp(kpi.annualDivPLN)} ${currLabel}`}
           sub={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
-          spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>}
           onClick={() => navigate('/dividends')}
         />
@@ -488,7 +485,6 @@ export default function Dashboard() {
           chip={irrChipVal}
           chipUp={portfolioIrr != null && portfolioIrr >= 0}
           sub={`${t('account_label')} · ${displayCurrency}`}
-          spark={kpi.sparkValues.slice(-24)}
           icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>}
           onClick={() => { setCashEdit({ ...cash }); setShowCashModal(true); }}
         />
@@ -497,7 +493,7 @@ export default function Dashboard() {
       {/* Chart + Top movers */}
       <div className="detail-grid" style={{ gap: 16, marginBottom: 18 }}>
         <div className="card chart-card">
-          <div style={{ padding: '18px 20px 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+          <div style={{ padding: '18px 20px 4px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
             <div>
               <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
                 {t('portfolio_value_tf')} · {tf}

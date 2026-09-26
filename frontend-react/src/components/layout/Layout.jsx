@@ -14,6 +14,21 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const THEME_KEY = 'myfund_theme';
 
+// Strony, które same nie mają nagłówka — bez tego po przejściu z menu nie było
+// widać, gdzie się jest. Strony z własnym tytułem (Dashboard, AI, Newsy,
+// Zamknięte, OKI, Scenario Lab) celowo tu nie występują.
+const PAGE_HEADINGS = {
+  '/portfolio':    ['nav_portfolio',    'page_sub_portfolio'],
+  '/history':      ['nav_history',      'page_sub_history'],
+  '/transactions': ['nav_transactions', 'page_sub_transactions'],
+  '/dividends':    ['nav_dividends',    'page_sub_dividends'],
+  '/calendar':     ['nav_calendar',     'page_sub_calendar'],
+  '/watchlist':    ['nav_watchlist',    'page_sub_watchlist'],
+  '/alerts':       ['nav_alerts',       'page_sub_alerts'],
+  '/analysis':     ['nav_analysis',     'page_sub_analysis'],
+  '/settings':     ['nav_settings',     'page_sub_settings'],
+};
+
 export default function Layout() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'dark');
   const isMobile = useIsMobile();
@@ -29,6 +44,7 @@ export default function Layout() {
   const { portfolios, isAuthenticated, loading, error } = useApp();
   const location = useLocation();
   const t = useT();
+  const heading = PAGE_HEADINGS[location.pathname.replace(/\/$/, '')];
 
   // Auto-open new portfolio modal only for genuinely new users (after data loads).
   // Guard against backend errors (503/timeouts): portfolios stays [] on a failed
@@ -115,6 +131,14 @@ export default function Layout() {
             hint={t('page_error_hint')}
           >
             <Suspense fallback={<RouteFallback />}>
+              {heading && (
+                <div className="page-header">
+                  <div>
+                    <h1 className="page-title">{t(heading[0])}</h1>
+                    <p className="page-sub">{t(heading[1])}</p>
+                  </div>
+                </div>
+              )}
               <Outlet />
             </Suspense>
           </ErrorBoundary>
