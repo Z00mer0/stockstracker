@@ -708,7 +708,7 @@ export default function Portfolio() {
                         style={{
                           width: 90, padding: '2px 6px', fontSize: 12,
                           background: 'var(--panel-2)', border: '1px solid var(--accent)',
-                          borderRadius: 5, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace',
+                          borderRadius: 5, color: 'var(--text)', fontFamily: 'var(--font-mono)',
                           outline: 'none',
                         }}
                       />

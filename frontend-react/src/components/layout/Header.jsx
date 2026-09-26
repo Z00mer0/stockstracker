@@ -360,7 +360,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
             position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
             fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
             border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
-            fontFamily: 'JetBrains Mono, monospace', pointerEvents: 'none',
+            fontFamily: 'var(--font-mono)', pointerEvents: 'none',
           }}>⌘K</kbd>
         )}
         {searchOpen && (searchResults.length > 0 || showExternal) && (

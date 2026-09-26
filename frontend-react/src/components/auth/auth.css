@@ -94,7 +94,7 @@
   border-radius: 10px;
   background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent), #000 28%));
   display: grid; place-items: center;
-  color: #051a10;
+  color: var(--accent-fg);
   flex-shrink: 0;
 }
 .auth-brand .name {
@@ -352,7 +352,7 @@
   border: 1px solid var(--border-strong);
   background: var(--panel-2);
   display: grid; place-items: center;
-  color: #051a10;
+  color: var(--accent-fg);
   transition: background 0.12s, border-color 0.12s;
   flex-shrink: 0;
 }
@@ -371,7 +371,7 @@
   border: none;
   border-radius: var(--radius);
   background: var(--accent);
-  color: #051a10;
+  color: var(--accent-fg);
   font-family: var(--font-sans);
   font-size: 14.5px;
   font-weight: 600;

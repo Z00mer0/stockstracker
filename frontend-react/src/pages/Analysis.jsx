@@ -926,7 +926,7 @@ function SectorAnalysisSection({ enriched, totalValue }) {
               <div key={g.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>{label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{fmtSec(pct, 1)}%</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{fmtSec(pct, 1)}%</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />

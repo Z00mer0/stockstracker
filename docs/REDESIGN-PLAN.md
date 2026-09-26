@@ -1,7 +1,20 @@
 # Redesign plan — myfund
 
-Approved 26.09.2026. Direction: **keep the dark, terminal-style identity and
-refine it** (light theme stays as the alternative).
+Approved 26.09.2026.
+
+**Visual direction (decided 26.09.2026 after rendering three variants on the
+same screens — pure black terminal, soft dark, soft light):**
+- **Dark (default): soft graphite-navy** (`#0f1420` background) instead of
+  pure black. Pure black with green everywhere read as dated and harsh.
+- **Light: soft white** with shadows doing the work of borders.
+- **Numbers in Inter with tabular digits**, not JetBrains Mono. The mono font
+  spread amounts out and rendered "zł" awkwardly; tabular Inter still lines
+  up columns.
+- **Indigo accent for interaction** (buttons, active nav, focus). Green and
+  red are reserved for gain and loss, so a button never looks like a profit.
+  The code already assumed an indigo accent in several places (white text on
+  accent buttons, `#818cf8` gradients).
+- **Rounder shapes:** cards 16 px, small elements 10 px.
 
 ## Principle: rebuild in place, not rewrite
 

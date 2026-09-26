@@ -25,7 +25,7 @@ function UpsideCard({ label, value, upside, note }) {
         {note && <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{note}</div>}
       </div>
       <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
           {fmt(value, 2, locale)}
         </div>
         <div style={{ fontSize: 12, color, fontWeight: 500 }}>

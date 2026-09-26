@@ -153,7 +153,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
               <line x1={CM.left} y1={y} x2={CM.left + chartW} y2={y}
                     stroke="#1f2937" strokeOpacity={0.5} strokeWidth={1} />
               <text x={CM.left - 6} y={y + 3} fill="#64748b" fontSize={9}
-                    textAnchor="end" fontFamily="JetBrains Mono, monospace">
+                    textAnchor="end" style={{ fontFamily: 'var(--font-mono)' }}>
                 {showBench
                   ? `${v >= 0 ? '+' : ''}${v.toFixed(yDecimals)}%`
                   : v.toLocaleString(locale, { minimumFractionDigits: yDecimals, maximumFractionDigits: yDecimals })}
@@ -221,7 +221,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
             <div style={{ color: 'var(--text-faint)', marginBottom: 3 }}>
               {d.date.slice(5).split('-').reverse().join('.')}{d.time ? ` ${d.time}` : ''}
             </div>
-            <div style={{ color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+            <div style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               {showBench
                 ? (stockValues[hoverIdx] >= 0 ? '+' : '') + stockValues[hoverIdx].toFixed(2) + '%'
                 : d.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (currency ? ` ${currency}` : '')}
@@ -418,7 +418,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
             {currentPrice != null && (
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '-0.01em' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.01em' }}>
                   {currentPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
                 </div>
                 {dayChangePct != null && (

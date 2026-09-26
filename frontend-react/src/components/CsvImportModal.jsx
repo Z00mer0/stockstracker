@@ -264,7 +264,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
         {/* CSV example */}
         <pre style={{
           background: 'var(--panel-2)', borderRadius: 8, padding: '8px 12px', marginBottom: 10,
-          fontSize: 11, color: 'var(--text-faint)', fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)',
           whiteSpace: 'pre', overflowX: 'auto',
         }}>{csvExample(t)}</pre>
 
@@ -274,7 +274,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
             background: 'var(--panel-2)', border: '1px solid var(--border)',
             borderRadius: 8, padding: '8px 12px',
             fontSize: 12, color: 'var(--text)',
-            fontFamily: 'JetBrains Mono, monospace',
+            fontFamily: 'var(--font-mono)',
             outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: 12,
             opacity: filePreview ? 0.4 : 1,
           }}

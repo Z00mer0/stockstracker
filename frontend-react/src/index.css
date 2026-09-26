@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -10,44 +10,52 @@
    Motyw przełącza data-theme, więc wariantów dark: nie potrzeba.
    Odstępy: skala Tailwinda (4 px), celowo bez własnych zmiennych. */
 :root {
+  /* Kierunek wybrany 26.09.2026 po porównaniu wariantów na zrzutach:
+     grafitowo-granatowy zamiast czystej czerni, liczby w Inter zamiast
+     kroju maszynowego, akcent indygo dla interakcji — zieleń i czerwień
+     zostają wyłącznie dla zysku i straty. */
+
   /* Powierzchnie */
-  --bg:            #0a0b0d;
-  --bg-2:          #0f1115;
-  --panel:         #13161b;
-  --panel-2:       #181c22;
-  --panel-hover:   #1c2028;
-  --border:        #20252d;
-  --border-strong: #2a313b;
+  --bg:            #0f1420;
+  --bg-2:          #121826;
+  --panel:         #171e2e;
+  --panel-2:       #1c2436;
+  --panel-hover:   #212a3e;
+  --border:        #252f44;
+  --border-strong: #303b53;
 
   /* Tekst */
-  --text:          #e8ebef;
-  --text-dim:      #8a929d;
-  --text-faint:    #5a626c;
+  --text:          #eef1f7;
+  --text-dim:      #98a2b8;
+  --text-faint:    #6f7a93;
 
   /* Znaczenie */
-  --up:            #00d97e;
-  --up-soft:       rgba(0, 217, 126, 0.12);
-  --down:          #ff4d6d;
-  --down-soft:     rgba(255, 77, 109, 0.12);
-  --warn:          #ffb020;
-  --warn-soft:     rgba(255, 176, 32, 0.12);
+  --up:            #34d399;
+  --up-soft:       rgba(52, 211, 153, 0.14);
+  --down:          #f87171;
+  --down-soft:     rgba(248, 113, 113, 0.14);
+  --warn:          #fbbf24;
+  --warn-soft:     rgba(251, 191, 36, 0.13);
   --info:          #7c9eff;
-  --info-soft:     rgba(124, 158, 255, 0.12);
-  --accent:        #00d97e;
-  --accent-fg:     #051a10;   /* tekst na tle akcentu */
+  --info-soft:     rgba(124, 158, 255, 0.13);
+  --accent:        #6366f1;
+  --accent-fg:     #ffffff;   /* tekst na tle akcentu */
 
   /* Głębia */
-  --shadow-card:   inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-pop:    0 12px 32px rgba(0,0,0,0.45);
+  --shadow-card:   inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.25);
+  --shadow-pop:    0 16px 40px rgba(0,0,0,0.45);
 
   /* Zaokrąglenia */
-  --radius-sm:     6px;
-  --radius:        10px;
-  --radius-lg:     14px;
+  --radius-sm:     10px;
+  --radius:        16px;
+  --radius-lg:     20px;
 
-  /* Typografia */
+  /* Typografia. --font-mono to krój dla LICZB, nie kod: Inter z cyframi
+     tabelarycznymi (body ma tabular-nums), więc kolumny kwot się równają,
+     a „zł" nie rozjeżdża się jak w kroju maszynowym. Nazwa została, bo
+     używa jej ~80 miejsc w kodzie. */
   --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:     'JetBrains Mono', 'Fira Mono', monospace;
+  --font-mono:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --fs-label:      11px;     /* etykiety wersalikami: KPI, kolumny tabel */
   --fs-small:      12px;     /* podpisy, pomocnicze */
   --fs-body:       13.5px;   /* treść, komórki tabel */
@@ -68,28 +76,27 @@
 }
 
 [data-theme="light"] {
-  --bg:            #f6f7f9;
+  --bg:            #f4f5f8;
   --bg-2:          #ffffff;
   --panel:         #ffffff;
-  --panel-2:       #fafbfc;
-  --panel-hover:   #f1f3f6;
-  --border:        #e6e9ed;
-  --border-strong: #d1d6dc;
-  --text:          #0e1116;
-  --text-dim:      #5a626c;
-  --text-faint:    #8a929d;
-  --up:            #009d5a;
-  --up-soft:       rgba(0, 157, 90, 0.12);
-  --down:          #d92d4e;
-  --down-soft:     rgba(217, 45, 78, 0.12);
-  /* Ciemny żółty/niebieski z motywu ciemnego ginął na białym tle. */
-  --warn:          #b76e00;
-  --warn-soft:     rgba(183, 110, 0, 0.12);
+  --panel-2:       #f7f8fb;
+  --panel-hover:   #f0f2f7;
+  --border:        #e6e9ef;
+  --border-strong: #d7dce5;
+  --text:          #111827;
+  --text-dim:      #5b6475;
+  --text-faint:    #858e9e;
+  --up:            #047857;
+  --up-soft:       rgba(4, 120, 87, 0.10);
+  --down:          #dc2626;
+  --down-soft:     rgba(220, 38, 38, 0.09);
+  --warn:          #b45309;
+  --warn-soft:     rgba(180, 83, 9, 0.10);
   --info:          #3d63dd;
   --info-soft:     rgba(61, 99, 221, 0.10);
-  --accent:        #009d5a;
-  --shadow-card:   0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.04);
-  --shadow-pop:    0 12px 32px rgba(16,24,40,0.12);
+  --accent:        #4f46e5;
+  --shadow-card:   0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(16,24,40,0.06);
+  --shadow-pop:    0 16px 40px rgba(16,24,40,0.14);
 }
 
 /* ── Reset ── */
@@ -103,6 +110,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Scrollbar ── */
@@ -116,7 +124,7 @@ body {
 
 /* ── Typography helpers ── */
 .mono {
-  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -247,7 +255,7 @@ body.privacy-mode .lg-pct {
 .chip {
   display: inline-flex;
   align-items: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 11.5px;
   font-weight: 600;
@@ -264,7 +272,7 @@ body.privacy-mode .lg-pct {
 .tag {
   display: inline-flex;
   align-items: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
@@ -296,7 +304,7 @@ body.privacy-mode .lg-pct {
 }
 .seg::-webkit-scrollbar { display: none; }
 .seg button {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px;
   font-weight: 600;
   text-transform: uppercase;
@@ -327,7 +335,7 @@ body.privacy-mode .lg-pct {
   border-radius: 8px;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   color: var(--text-dim);
@@ -369,7 +377,7 @@ body.privacy-mode .lg-pct {
   font-size: 13.5px;
 }
 .data-table tbody td.right { text-align: right; white-space: nowrap; }
-.data-table tbody td.mono  { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.data-table tbody td.mono  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr { transition: background 0.1s; }
 .data-table tbody tr:hover  { background: var(--panel-hover); cursor: pointer; }
@@ -408,7 +416,7 @@ body.privacy-mode .lg-pct {
   color: var(--text-faint);
 }
 .kpi-value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 600;

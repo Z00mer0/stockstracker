@@ -262,7 +262,7 @@ export default function ClosedPositions() {
                     style={{
                       padding: '4px 10px', fontSize: 11, border: 'none', cursor: 'pointer',
                       background: view === v ? 'var(--accent)' : 'transparent',
-                      color: view === v ? '#051a10' : 'var(--text-dim)',
+                      color: view === v ? 'var(--accent-fg)' : 'var(--text-dim)',
                       fontWeight: view === v ? 700 : 400,
                     }}
                   >

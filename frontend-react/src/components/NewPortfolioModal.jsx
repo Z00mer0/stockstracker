@@ -80,7 +80,7 @@ export default function NewPortfolioModal({ onClose }) {
                 border: `1px solid ${currency === c ? 'var(--accent)' : 'var(--border)'}`,
                 borderRadius: 7, cursor: 'pointer',
                 background: currency === c ? 'var(--accent)' : 'var(--panel-2)',
-                color: currency === c ? '#051a10' : 'var(--text-dim)',
+                color: currency === c ? 'var(--accent-fg)' : 'var(--text-dim)',
                 transition: 'all 0.1s',
               }}
             >{c}</button>
@@ -100,7 +100,7 @@ export default function NewPortfolioModal({ onClose }) {
                 border: `1px solid ${accountType === at ? 'var(--accent)' : 'var(--border)'}`,
                 borderRadius: 7, cursor: 'pointer',
                 background: accountType === at ? 'var(--accent)' : 'var(--panel-2)',
-                color: accountType === at ? '#051a10' : 'var(--text-dim)',
+                color: accountType === at ? 'var(--accent-fg)' : 'var(--text-dim)',
                 transition: 'all 0.1s',
               }}
             >{at || t('account_type_standard')}</button>

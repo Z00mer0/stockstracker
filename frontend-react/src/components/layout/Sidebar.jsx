@@ -86,9 +86,9 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
       <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div style={{
           width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-          background: 'linear-gradient(135deg, var(--accent), #00a863)',
+          background: 'linear-gradient(135deg, var(--accent), #8b5cf6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#051a10',
+          color: 'var(--accent-fg)',
         }}>
           <TrendingUp size={16} strokeWidth={2.5} aria-hidden />
         </div>
@@ -178,7 +178,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
           background: 'var(--panel-2)', border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)',
         }}>
           {(displayName || 'U').slice(0, 2).toUpperCase()}
         </div>
