@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
 import RouteFallback from '../RouteFallback';
+import PageHeader from '../ui/PageHeader.jsx';
 import ErrorBoundary from '../ErrorBoundary';
 import { useT } from '../../context/LanguageContext';
 import Sidebar from './Sidebar';
@@ -131,14 +132,7 @@ export default function Layout() {
             hint={t('page_error_hint')}
           >
             <Suspense fallback={<RouteFallback />}>
-              {heading && (
-                <div className="page-header">
-                  <div>
-                    <h1 className="page-title">{t(heading[0])}</h1>
-                    <p className="page-sub">{t(heading[1])}</p>
-                  </div>
-                </div>
-              )}
+              {heading && <PageHeader title={t(heading[0])} subtitle={t(heading[1])} />}
               <Outlet />
             </Suspense>
           </ErrorBoundary>

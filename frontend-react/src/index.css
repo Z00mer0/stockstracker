@@ -40,6 +40,7 @@
   --info-soft:     rgba(124, 158, 255, 0.13);
   --accent:        #6366f1;
   --accent-fg:     #ffffff;   /* tekst na tle akcentu */
+  --accent-text:   #818cf8;   /* akcent jako KOLOR TEKSTU — #6366f1 miał na panelu kontrast 3,5 */
 
   /* Głębia */
   --shadow-card:   inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.25);
@@ -95,6 +96,7 @@
   --info:          #3d63dd;
   --info-soft:     rgba(61, 99, 221, 0.10);
   --accent:        #4f46e5;
+  --accent-text:   #4f46e5;
   --shadow-card:   0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(16,24,40,0.06);
   --shadow-pop:    0 16px 40px rgba(16,24,40,0.14);
 }
@@ -381,6 +383,18 @@ body.privacy-mode .lg-pct {
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr { transition: background 0.1s; }
 .data-table tbody tr:hover  { background: var(--panel-hover); cursor: pointer; }
+
+/* ── Modal (components/ui/Modal.jsx) ── */
+@media (prefers-reduced-motion: no-preference) {
+  .ui-overlay { animation: ui-fade 0.15s ease-out; }
+  .ui-sheet   { animation: ui-sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  @media (min-width: 768px) {
+    .ui-sheet { animation: ui-pop 0.16s ease-out; }
+  }
+  @keyframes ui-fade     { from { opacity: 0; } }
+  @keyframes ui-sheet-up { from { transform: translateY(24px); opacity: 0; } }
+  @keyframes ui-pop      { from { transform: translateY(6px) scale(0.98); opacity: 0; } }
+}
 
 /* ── Sidebar nav hover ── (styl bazowy jest inline, stąd !important) */
 .nav-item:not(.active):hover {

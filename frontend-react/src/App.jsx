@@ -29,6 +29,9 @@ const News            = React.lazy(() => import('./pages/News'));
 const ClosedPositions = React.lazy(() => import('./pages/ClosedPositions'));
 const Settings        = React.lazy(() => import('./pages/Settings'));
 const SharedPortfolio = React.lazy(() => import('./pages/SharedPortfolio'));
+// Przegląd komponentów — tylko w `vite dev`. W buildzie warunek jest stałym
+// false, więc import (i cały plik) wypada z paczki.
+const UiKit = import.meta.env.DEV ? React.lazy(() => import('./pages/UiKit')) : null;
 
 function AppRoutes() {
   const { isAuthenticated, login, portfolio } = useApp();
@@ -75,6 +78,7 @@ function AppRoutes() {
           <Route path="ai"          element={<AiInsights />} />
           <Route path="news"        element={<News />} />
           <Route path="settings"    element={<Settings />} />
+          {UiKit && <Route path="dev/ui" element={<UiKit />} />}
           <Route path="*"           element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

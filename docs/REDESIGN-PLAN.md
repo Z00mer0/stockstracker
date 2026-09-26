@@ -46,15 +46,22 @@ coexist until a page is migrated.
 - [x] `lucide-react` as the icon set (app shell first; page emoji move in Phase 3).
 
 ### Phase 1 — Component kit (`components/ui/`)
-- [ ] Button, IconButton
-- [ ] Card, PageHeader
-- [ ] **Modal** — one implementation: Esc, focus trap, bottom sheet on mobile
-- [ ] Field / Input / Select
-- [ ] Tabs
-- [ ] **Table** — sortable, sticky header, rows become cards on mobile
-- [ ] Stat (KPI), Badge
-- [ ] EmptyState (with action), Skeleton, Toast, Tooltip
-- [ ] Hidden `/dev/ui` page showing every component
+- [x] Button, IconButton
+- [x] Card (existing `shared/Card`, re-exported), PageHeader (used by Layout)
+- [x] **Modal** — one implementation: Esc, focus trap, focus restore,
+      bottom sheet on mobile, nested-safe. `ConfirmModal` migrated as proof.
+- [x] Field / Input / Select
+- [x] Tabs (+ TabPanel, arrow-key navigation)
+- [x] **Table** — sortable (empty values always last), sticky header, rows
+      become cards on mobile
+- [x] Stat (KPI), Badge
+- [x] EmptyState, Skeleton, Spinner, Tooltip; the existing toast system
+      upgraded (icons, success/warn types, action button for "Undo", dismiss)
+- [x] `/dev/ui` page showing every component (dev server only, not in the
+      production bundle)
+
+Import from the barrel: `import { Button, Modal, Table } from '../components/ui'`.
+Logic is unit-tested (`focus.test.js`, `tabsNav.test.js`, `tableSort.test.js`).
 
 ### Phase 2 — App shell
 - [ ] Desktop sidebar collapsible to an icon rail
@@ -112,7 +119,7 @@ are needed.
 | Text | `text-fg`, `text-dim`, `text-faint` | `--text`, `--text-dim`, `--text-faint` |
 | Borders | `border-line`, `border-line-strong` | `--border`, `--border-strong` |
 | Meaning | `text-up`, `bg-up-soft`, `text-down`, `bg-down-soft`, `text-warn`, `bg-warn-soft`, `text-info`, `bg-info-soft` | `--up`, `--up-soft`… |
-| Accent | `bg-accent`, `text-accent-fg` (text on accent) | `--accent`, `--accent-fg` |
+| Accent | `bg-accent`, `text-accent-fg` (text on accent), `text-accent-text` (accent-coloured text/links) | `--accent`, `--accent-fg`, `--accent-text` |
 | Corners | `rounded-card-sm`, `rounded-card`, `rounded-card-lg` | `--radius-sm`, `--radius`, `--radius-lg` |
 | Elevation | `shadow-card`, `shadow-pop` | `--shadow-card`, `--shadow-pop` |
 | Type | `text-label` (uppercase labels), `text-small`, `text-body`, `text-card-title`, `text-h1`, `text-kpi` | `--fs-*` |

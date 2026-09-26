@@ -25,7 +25,7 @@ export default {
         down:          { DEFAULT: v('down'), soft: v('down-soft') },
         warn:          { DEFAULT: v('warn'), soft: v('warn-soft') },
         info:          { DEFAULT: v('info'), soft: v('info-soft') },
-        accent:        { DEFAULT: v('accent'), fg: v('accent-fg') },
+        accent:        { DEFAULT: v('accent'), fg: v('accent-fg'), text: v('accent-text') },
       },
       // Nowe nazwy zamiast nadpisywania rounded-sm/-lg — te domyślne są już
       // używane w kodzie i zmiana ich wartości przesunęłaby istniejące ekrany.

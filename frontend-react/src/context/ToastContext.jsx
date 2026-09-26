@@ -1,53 +1,73 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { CircleCheck, CircleAlert, TriangleAlert, Info, X } from 'lucide-react';
+import { useT } from './LanguageContext';
 
 const ToastContext = createContext({ showToast: () => {} });
+
+// type: 'info' | 'success' | 'warn' | 'error'
+// action: { label, onClick } — np. „Cofnij" po usunięciu (faza 5 redesignu).
+const TONE = {
+  info:    { Icon: Info,          color: 'var(--info)' },
+  success: { Icon: CircleCheck,   color: 'var(--up)' },
+  warn:    { Icon: TriangleAlert, color: 'var(--warn)' },
+  error:   { Icon: CircleAlert,   color: 'var(--down)' },
+};
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const idRef = useRef(0);
 
+  const dismiss = useCallback(id => setToasts(ts => ts.filter(t => t.id !== id)), []);
+
   const showToast = useCallback((message, opts = {}) => {
-    const { type = 'info', duration = 4000 } = opts;
+    const { type = 'info', duration = 4000, action } = opts;
     const id = ++idRef.current;
-    setToasts(ts => [...ts, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(ts => ts.filter(t => t.id !== id));
-    }, duration);
-  }, []);
+    setToasts(ts => [...ts, { id, message, type, action }]);
+    setTimeout(() => dismiss(id), duration);
+    return id;
+  }, [dismiss]);
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, dismissToast: dismiss }}>
       {children}
       <div
         aria-live="polite"
-        style={{
-          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', flexDirection: 'column', gap: 8, zIndex: 9999,
-          pointerEvents: 'none', maxWidth: 'calc(100vw - 32px)',
-        }}
+        className="pointer-events-none fixed bottom-6 left-1/2 z-[9999] flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col items-center gap-2"
       >
-        {toasts.map(t => (
-          <div
-            key={t.id}
-            style={{
-              background: t.type === 'error'
-                ? 'color-mix(in srgb, var(--down, #dc2626) 92%, black)'
-                : 'var(--panel-2, #1f2937)',
-              color: 'var(--text, #fff)',
-              fontSize: 14,
-              padding: '10px 20px',
-              borderRadius: 12,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-              border: t.type === 'error'
-                ? '1px solid color-mix(in srgb, var(--down, #dc2626) 60%, transparent)'
-                : '1px solid var(--border, transparent)',
-            }}
-          >
-            {t.message}
-          </div>
-        ))}
+        {toasts.map(t => <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />)}
       </div>
     </ToastContext.Provider>
+  );
+}
+
+function ToastItem({ toast, onDismiss }) {
+  const t = useT();
+  const { Icon, color } = TONE[toast.type] ?? TONE.info;
+  return (
+    <div
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      className="ui-sheet pointer-events-auto flex items-center gap-3 rounded-card border border-line bg-panel-2 py-2.5 pl-3.5 pr-2 text-sm text-fg shadow-pop"
+    >
+      <Icon size={17} aria-hidden style={{ color, flexShrink: 0 }} />
+      <span className="min-w-0">{toast.message}</span>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => { toast.action.onClick(); onDismiss(); }}
+          className="ml-1 shrink-0 rounded-card-sm px-2 py-1 text-[13px] font-semibold text-accent-text hover:bg-panel-hover"
+        >
+          {toast.action.label}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label={t('close_btn')}
+        className="shrink-0 rounded-card-sm p-1 text-faint hover:bg-panel-hover hover:text-fg"
+      >
+        <X size={14} aria-hidden />
+      </button>
+    </div>
   );
 }
 
