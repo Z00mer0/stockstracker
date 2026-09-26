@@ -4,8 +4,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design tokens ── */
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   Jedno źródło wyglądu. Nowy kod sięga po nie przez klasy Tailwinda
+   (tailwind.config.js mapuje je 1:1) — mapa klas w docs/REDESIGN-PLAN.md.
+   Motyw przełącza data-theme, więc wariantów dark: nie potrzeba.
+   Odstępy: skala Tailwinda (4 px), celowo bez własnych zmiennych. */
 :root {
+  /* Powierzchnie */
   --bg:            #0a0b0d;
   --bg-2:          #0f1115;
   --panel:         #13161b;
@@ -13,23 +18,53 @@
   --panel-hover:   #1c2028;
   --border:        #20252d;
   --border-strong: #2a313b;
+
+  /* Tekst */
   --text:          #e8ebef;
   --text-dim:      #8a929d;
   --text-faint:    #5a626c;
+
+  /* Znaczenie */
   --up:            #00d97e;
   --up-soft:       rgba(0, 217, 126, 0.12);
   --down:          #ff4d6d;
   --down-soft:     rgba(255, 77, 109, 0.12);
-  --accent:        #00d97e;
   --warn:          #ffb020;
+  --warn-soft:     rgba(255, 176, 32, 0.12);
   --info:          #7c9eff;
+  --info-soft:     rgba(124, 158, 255, 0.12);
+  --accent:        #00d97e;
+  --accent-fg:     #051a10;   /* tekst na tle akcentu */
+
+  /* Głębia */
   --shadow-card:   inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.3);
   --shadow-pop:    0 12px 32px rgba(0,0,0,0.45);
-  --radius:        10px;
+
+  /* Zaokrąglenia */
   --radius-sm:     6px;
+  --radius:        10px;
   --radius-lg:     14px;
+
+  /* Typografia */
   --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono:     'JetBrains Mono', 'Fira Mono', monospace;
+  --fs-label:      11px;     /* etykiety wersalikami: KPI, kolumny tabel */
+  --fs-small:      12px;     /* podpisy, pomocnicze */
+  --fs-body:       13.5px;   /* treść, komórki tabel */
+  --fs-title:      14px;     /* nagłówek karty */
+  --fs-h1:         24px;     /* tytuł strony */
+  --fs-kpi:        25px;     /* duże liczby */
+
+  /* Aliasy dla nazw, których kod używał, a które nigdy nie były
+     zdefiniowane — elementy wychodziły przez to przezroczyste
+     (SellStockModal, ErrorBoundary, FinancialsTab, PortfolioPieChart,
+     ostrzeżenie o tickerach na dashboardzie). Do usunięcia w fazie 3,
+     gdy te miejsca przejdą na właściwe tokeny. */
+  --bg-3:          var(--panel-2);
+  --surface:       var(--panel);
+  --card:          var(--panel);
+  --text-muted:    var(--text-dim);
+  --warn-bg:       var(--warn-soft);
 }
 
 [data-theme="light"] {
@@ -47,6 +82,11 @@
   --up-soft:       rgba(0, 157, 90, 0.12);
   --down:          #d92d4e;
   --down-soft:     rgba(217, 45, 78, 0.12);
+  /* Ciemny żółty/niebieski z motywu ciemnego ginął na białym tle. */
+  --warn:          #b76e00;
+  --warn-soft:     rgba(183, 110, 0, 0.12);
+  --info:          #3d63dd;
+  --info-soft:     rgba(61, 99, 221, 0.10);
   --accent:        #009d5a;
   --shadow-card:   0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.04);
   --shadow-pop:    0 12px 32px rgba(16,24,40,0.12);
@@ -172,7 +212,7 @@ body.privacy-mode .lg-pct {
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #051a10;
+  color: var(--accent-fg);
   font-weight: 600;
 }
 .btn-primary:hover { opacity: 0.92; box-shadow: 0 4px 14px color-mix(in oklab, var(--accent), transparent 70%); }
@@ -217,8 +257,8 @@ body.privacy-mode .lg-pct {
 }
 .chip-up   { background: var(--up-soft);   color: var(--up);   }
 .chip-down { background: var(--down-soft); color: var(--down); }
-.chip-warn { background: rgba(255,176,32,0.12); color: var(--warn); }
-.chip-info { background: rgba(124,158,255,0.12); color: var(--info); }
+.chip-warn { background: var(--warn-soft); color: var(--warn); }
+.chip-info { background: var(--info-soft); color: var(--info); }
 
 /* ── Tag ── */
 .tag {
@@ -237,8 +277,8 @@ body.privacy-mode .lg-pct {
 }
 .tag-buy  { color: var(--up);   background: var(--up-soft);   border-color: transparent; }
 .tag-sell { color: var(--down); background: var(--down-soft); border-color: transparent; }
-.tag-div  { color: var(--info); background: rgba(124,158,255,0.12); border-color: transparent; }
-.tag-fee  { color: var(--warn); background: rgba(255,176,32,0.12); border-color: transparent; }
+.tag-div  { color: var(--info); background: var(--info-soft); border-color: transparent; }
+.tag-fee  { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
 
 /* ── Segmented control ── */
 .seg {

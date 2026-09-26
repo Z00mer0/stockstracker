@@ -4,13 +4,7 @@ import { NavLink } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useT } from '../../context/LanguageContext';
 import { getNavItems, getNavBottom } from './navItems.jsx';
-
-const BrandIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-    <polyline points="17 6 23 6 23 12"/>
-  </svg>
-);
+import { TrendingUp, LogOut } from 'lucide-react';
 
 const NAV_GROUPS = ['portfolio', 'market', 'tools'];
 
@@ -96,7 +90,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#051a10',
         }}>
-          <BrandIcon />
+          <TrendingUp size={16} strokeWidth={2.5} aria-hidden />
         </div>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
           myfund<span style={{ color: 'var(--accent)' }}>.</span>
@@ -199,9 +193,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
           title={t('logout_btn')}
           style={{ display: 'flex', color: 'var(--text-faint)', background: 'none', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', padding: 6 }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
+          <LogOut size={15} aria-hidden />
         </button>
       </div>
     </aside>

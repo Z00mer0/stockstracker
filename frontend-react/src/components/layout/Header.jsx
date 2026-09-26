@@ -7,6 +7,7 @@ import { useLanguage, useT } from '../../context/LanguageContext';
 import AddStockModal from '../AddStockModal';
 import StockDetailModal from '../StockDetailModal';
 import NotificationBell from '../NotificationBell';
+import { Sun, Moon, Eye, EyeOff, Menu, Search, CalendarDays } from 'lucide-react';
 import { lsSet } from '../../utils/safeStorage.js';
 
 function isEuropeDST() {
@@ -109,33 +110,9 @@ const FALLBACK_TICKERS = [
   { key: 'USD/PLN', price: null, delta: null },
 ];
 
-const SunIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-  </svg>
-);
-
-const MoonIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-  </svg>
-);
-
-const EyeIcon = ({ closed }) => closed ? (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-    <line x1="1" y1="1" x2="23" y2="23"/>
-  </svg>
-) : (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>
-);
+const SunIcon  = () => <Sun size={15} aria-hidden />;
+const MoonIcon = () => <Moon size={15} aria-hidden />;
+const EyeIcon  = ({ closed }) => closed ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />;
 
 export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, compact = false }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
@@ -358,11 +335,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
       style={{ ...iconBtn, flexShrink: 0 }}
       aria-label="Menu"
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
+      <Menu size={18} aria-hidden />
     </button>
   );
 
@@ -372,10 +345,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
     <div ref={searchRef} style={isMobile
       ? { position: 'relative', flex: 1, minWidth: 0 }
       : { position: 'relative', maxWidth: 200, flex: '0 1 200px' }}>
-        <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none', zIndex: 1 }}
-          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
+        <Search size={14} aria-hidden style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none', zIndex: 1 }} />
         <input
           ref={inputRef}
           className="field-input"
@@ -545,12 +515,7 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
           title={t('earnings_calendar')}
           aria-label={t('earnings_calendar')}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
+          <CalendarDays size={15} aria-hidden />
         </button>
       )}
 
