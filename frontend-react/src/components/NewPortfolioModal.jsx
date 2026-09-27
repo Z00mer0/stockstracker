@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useT } from '../context/LanguageContext';
 import { Button, Field, Input, Modal, SegmentedControl } from './ui';
+import { BASE_CURRENCY_KEY } from './SetupWizard.jsx';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 const ACCOUNT_TYPES = ['', 'IKE', 'IKZE'];
@@ -10,7 +11,10 @@ export default function NewPortfolioModal({ onClose }) {
   const { createPortfolio } = useApp();
   const t = useT();
   const [name, setName]         = useState('');
-  const [currency, setCurrency] = useState('PLN');
+  // Domyślnie waluta wybrana w kreatorze powitalnym (jeśli był).
+  const [currency, setCurrency] = useState(() => {
+    try { const c = localStorage.getItem(BASE_CURRENCY_KEY); return CURRENCIES.includes(c) ? c : 'PLN'; } catch { return 'PLN'; }
+  });
   const [accountType, setAccountType] = useState('');
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');

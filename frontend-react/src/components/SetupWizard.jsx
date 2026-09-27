@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { ArrowLeft, ArrowRight, PartyPopper, Rocket, Scale, Shield } from 'lucide-react';
 import { lsSet } from '../utils/safeStorage.js';
-import { useIsMobile } from '../hooks/useIsMobile.js';
+import { useApp } from '../context/AppContext';
+import { useT } from '../context/LanguageContext';
+import { Button, Modal } from './ui';
+import { cx } from './ui/cx.js';
 
 const WIZARD_KEY = 'myfund_wizard_done';
 
@@ -13,172 +17,140 @@ export function dismissWizard() {
   lsSet(WIZARD_KEY, '1');
 }
 
+// Czy kreator jest jeszcze przed użytkownikiem — okno „Nowy portfel" czeka
+// na jego koniec (wcześniej oba otwierały się naraz, jedno na drugim).
+export function wizardPending() {
+  try { return !localStorage.getItem(WIZARD_KEY); } catch { return false; }
+}
+export const WIZARD_DONE_EVENT = 'myfund-wizard-done';
+export const BASE_CURRENCY_KEY = 'myfund_base_currency';
+
 const PROFILES = [
-  {
-    key: 'conservative',
-    label: 'Konserwatywny',
-    icon: '🛡️',
-    desc: 'Niskie ryzyko. Obligacje, lokaty, dywidendy.',
-    alloc: '70% obligacje / 30% akcje',
-  },
-  {
-    key: 'balanced',
-    label: 'Zrównoważony',
-    icon: '⚖️',
-    desc: 'Umiarkowane ryzyko. Mix akcji i obligacji.',
-    alloc: '50% akcje / 50% obligacje',
-  },
-  {
-    key: 'aggressive',
-    label: 'Agresywny',
-    icon: '🚀',
-    desc: 'Wysokie ryzyko. Akcje wzrostowe, crypto.',
-    alloc: '90% akcje / 10% inne',
-  },
+  { key: 'conservative', icon: Shield },
+  { key: 'balanced', icon: Scale },
+  { key: 'aggressive', icon: Rocket },
 ];
 
 const CURRENCIES = [
-  { key: 'PLN', label: 'Złoty polski', symbol: 'zł', flag: '🇵🇱' },
-  { key: 'USD', label: 'Dolar amerykański', symbol: '$', flag: '🇺🇸' },
-  { key: 'EUR', label: 'Euro', symbol: '€', flag: '🇪🇺' },
-  { key: 'GBP', label: 'Funt brytyjski', symbol: '£', flag: '🇬🇧' },
+  { key: 'PLN', flag: '🇵🇱' },
+  { key: 'USD', flag: '🇺🇸' },
+  { key: 'EUR', flag: '🇪🇺' },
+  { key: 'GBP', flag: '🇬🇧' },
 ];
 
+function Choice({ selected, onClick, children, className }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cx(
+        'rounded-card-sm border-2 px-4 py-3 text-left transition',
+        selected ? 'border-accent bg-panel-hover' : 'border-line bg-panel-2 hover:border-line-strong',
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function SetupWizard({ onDone }) {
-  const isMobile = useIsMobile();
+  const t = useT();
+  const { portfolios, updatePortfolio } = useApp();
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState(null);
-  const [currency, setCurrency] = useState('PLN');
+  // Domyślnie waluta istniejącego portfela — to ona decyduje o wyświetlaniu.
+  const only = portfolios.length === 1 ? portfolios[0] : null;
+  const [currency, setCurrency] = useState(only?.currency || 'PLN');
+  const [saving, setSaving] = useState(false);
 
-  function finish() {
+  async function finish() {
     dismissWizard();
-    // Save profile preference to localStorage for reference
     if (profile) lsSet('myfund_inv_profile', profile);
-    lsSet('myfund_base_currency', currency);
+    // Nowe konto nie ma jeszcze portfela — waluta trafia jako domyślna do
+    // okna „Nowy portfel", które otwiera się zaraz po kreatorze.
+    lsSet(BASE_CURRENCY_KEY, currency);
+    // Wybrana waluta naprawdę ustawia walutę portfela. Wcześniej trafiała do
+    // klucza, którego nic nie czytało — kreator obiecywał przeliczanie, a
+    // wszystko zostawało w walucie portfela. Portfel jest tu jeszcze pusty,
+    // więc zmiana waluty niczego nie przelicza wstecz.
+    if (only && only.currency !== currency) {
+      setSaving(true);
+      try { await updatePortfolio(only.id, only.name, currency, only.accountType ?? only.account_type ?? ''); }
+      catch { /* zostaje dotychczasowa waluta; można ją zmienić później */ }
+      finally { setSaving(false); }
+    }
+    window.dispatchEvent(new Event(WIZARD_DONE_EVENT));
     onDone();
   }
 
-  const overlayStyle = {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
-    backdropFilter: 'blur(6px)', zIndex: 100,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-  };
-  const boxStyle = {
-    background: 'var(--bg-2, #161b22)', border: '1px solid var(--border)',
-    borderRadius: 16, padding: 32, width: '100%', maxWidth: 480,
-    boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-  };
-  const stepDots = (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 24 }}>
+  const dots = (
+    <div className="flex justify-center gap-1.5" aria-label={t('wiz_step').replace('{n}', step)}>
       {[1, 2, 3].map(s => (
-        <div key={s} style={{
-          width: s === step ? 20 : 8, height: 8, borderRadius: 4, transition: 'all 0.3s',
-          background: s <= step ? 'var(--accent)' : 'var(--border)',
-        }} />
+        <span key={s} className={cx('h-2 rounded-full transition-all', s === step ? 'w-5 bg-accent' : s < step ? 'w-2 bg-accent' : 'w-2 bg-line')} />
       ))}
     </div>
   );
 
-  if (step === 1) return (
-    <div style={overlayStyle}>
-      <div style={boxStyle}>
-        {stepDots}
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-          Witaj w MyFund! 👋
-        </h2>
-        <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 24 }}>
-          Skonfigurujmy Twój portfel w 2 minuty. Najpierw — jaki masz profil inwestora?
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          {PROFILES.map(p => (
-            <button key={p.key} onClick={() => setProfile(p.key)}
-              style={{
-                padding: '14px 16px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                border: `2px solid ${profile === p.key ? 'var(--accent)' : 'var(--border)'}`,
-                background: profile === p.key ? 'rgba(99,102,241,0.08)' : 'var(--panel)',
-                transition: 'all 0.15s',
-              }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{p.icon}</span>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{p.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>{p.desc}</div>
-                  <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 3, fontWeight: 600 }}>{p.alloc}</div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={finish} style={{ flex: 1, padding: '10px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>
-            Pomiń
-          </button>
-          <button onClick={() => setStep(2)} disabled={!profile}
-            style={{ flex: 2, padding: '10px 0', borderRadius: 8, background: profile ? 'var(--accent)' : 'var(--border)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: profile ? 'pointer' : 'not-allowed', opacity: profile ? 1 : 0.5 }}>
-            Dalej →
-          </button>
-        </div>
-      </div>
-    </div>
+  const footer = step === 1 ? (
+    <>
+      <Button variant="ghost" onClick={finish}>{t('wiz_skip')}</Button>
+      <Button variant="primary" icon={ArrowRight} disabled={!profile} onClick={() => setStep(2)}>{t('wiz_next')}</Button>
+    </>
+  ) : step === 2 ? (
+    <>
+      <Button variant="ghost" icon={ArrowLeft} onClick={() => setStep(1)}>{t('wiz_back')}</Button>
+      <Button variant="primary" icon={ArrowRight} onClick={() => setStep(3)}>{t('wiz_next')}</Button>
+    </>
+  ) : (
+    <Button variant="primary" loading={saving} onClick={finish}>{t('wiz_start')}</Button>
   );
 
-  if (step === 2) return (
-    <div style={overlayStyle}>
-      <div style={boxStyle}>
-        {stepDots}
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-          Waluta bazowa
-        </h2>
-        <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 24 }}>
-          Wszystkie wartości portfela będą przeliczane do tej waluty.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 24 }}>
-          {CURRENCIES.map(c => (
-            <button key={c.key} onClick={() => setCurrency(c.key)}
-              style={{
-                padding: '14px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'center',
-                border: `2px solid ${currency === c.key ? 'var(--accent)' : 'var(--border)'}`,
-                background: currency === c.key ? 'rgba(99,102,241,0.08)' : 'var(--panel)',
-                transition: 'all 0.15s',
-              }}>
-              <div style={{ fontSize: 26, marginBottom: 6 }}>{c.flag}</div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{c.key}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 3 }}>{c.label}</div>
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setStep(1)} style={{ flex: 1, padding: '10px 0', borderRadius: 8, background: 'var(--border)', color: 'var(--text-dim)', fontSize: 13, border: 'none', cursor: 'pointer' }}>
-            ← Wstecz
-          </button>
-          <button onClick={() => setStep(3)}
-            style={{ flex: 2, padding: '10px 0', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-            Dalej →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const title = step === 1 ? t('wiz_welcome') : step === 2 ? t('wiz_currency_title') : t('wiz_done_title');
+  const description = step === 1 ? t('wiz_welcome_sub') : step === 2 ? t('wiz_currency_sub') : undefined;
 
   return (
-    <div style={overlayStyle}>
-      <div style={{ ...boxStyle, textAlign: 'center' }}>
-        {stepDots}
-        <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
-          Gotowe!
-        </h2>
-        <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 8 }}>
-          Profil: <strong style={{ color: 'var(--text)' }}>{PROFILES.find(p => p.key === profile)?.label}</strong> · Waluta: <strong style={{ color: 'var(--text)' }}>{currency}</strong>
-        </p>
-        <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 28 }}>
-          Możesz teraz dodać swoje pierwsze spółki do portfela.
-        </p>
-        <button onClick={finish}
-          style={{ padding: '12px 32px', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
-          Zacznij dodawać spółki →
-        </button>
+    <Modal size="md" title={title} description={description} onClose={finish} footer={footer}>
+      <div className="grid gap-4">
+        {dots}
+        {step === 1 && (
+          <div className="grid gap-2.5">
+            {PROFILES.map(({ key, icon: Icon }) => (
+              <Choice key={key} selected={profile === key} onClick={() => setProfile(key)}>
+                <span className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-card-sm border border-line bg-panel text-accent-text"><Icon size={18} aria-hidden /></span>
+                  <span>
+                    <span className="block text-[14px] font-bold text-fg">{t(`wiz_p_${key}`)}</span>
+                    <span className="block text-[12px] text-faint">{t(`wiz_p_${key}_desc`)}</span>
+                    <span className="mt-0.5 block text-[11px] font-semibold text-accent-text">{t(`wiz_p_${key}_alloc`)}</span>
+                  </span>
+                </span>
+              </Choice>
+            ))}
+          </div>
+        )}
+        {step === 2 && (
+          <div className="grid grid-cols-2 gap-2.5">
+            {CURRENCIES.map(c => (
+              <Choice key={c.key} selected={currency === c.key} onClick={() => setCurrency(c.key)} className="text-center">
+                <span className="block text-[24px]" aria-hidden>{c.flag}</span>
+                <span className="block text-[15px] font-bold text-fg">{c.key}</span>
+                <span className="block text-[11px] text-faint">{t(`wiz_cur_${c.key}`)}</span>
+              </Choice>
+            ))}
+          </div>
+        )}
+        {step === 3 && (
+          <div className="grid justify-items-center gap-2 py-2 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full border border-line bg-panel-2 text-accent-text"><PartyPopper size={26} aria-hidden /></span>
+            <p className="text-small text-faint">
+              {t('wiz_summary_profile')} <b className="text-fg">{profile ? t(`wiz_p_${profile}`) : '—'}</b> · {t('wiz_summary_currency')} <b className="text-fg">{currency}</b>
+            </p>
+            <p className="text-small text-faint">{t('wiz_done_sub')}</p>
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
