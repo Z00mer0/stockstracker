@@ -1,13 +1,18 @@
-// Eksport pozycji, transakcji i historii wartości do CSV / Excel.
-// Wcześniej trzy prawie identyczne bloki pobierania CSV siedziały w
-// Portfolio.jsx — tu jest jeden, a wiersze budują osobne funkcje.
+// Eksport pozycji, transakcji i historii wartości do CSV / Excel — wspólny
+// dla Portfela i Transakcji. Wcześniej prawie identyczne bloki pobierania
+// CSV siedziały osobno w obu stronach; tu jest jeden.
 
 const stamp = () => new Date().toISOString().slice(0, 10);
 
+// Tekst CSV: każda komórka w cudzysłowie, cudzysłowy w treści podwojone.
+export function toCsv(headers, rows) {
+  return [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+}
+
 function downloadCsv(headers, rows, fileName) {
-  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const csv = toCsv(headers, rows);
   // BOM na początku, żeby Excel otworzył polskie znaki poprawnie.
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = fileName; a.click();
@@ -54,14 +59,21 @@ export function exportPositions(positions, t, format) {
   return save(format, headers, rows, 'Portfel', 'portfel');
 }
 
-export function exportTransactions(transactions, t, format) {
-  const headers = [t('col_date'), t('col_type'), 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
-  const rows = transactions.map(tx => [
+// Nagłówki i wiersze transakcji osobno od pobierania — test sprawdza, że
+// to, co eksportujemy, da się z powrotem zaimportować (utils/transactionsCsv).
+export function transactionHeaders(t) {
+  return [t('col_date'), t('col_type'), 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
+}
+export function transactionRows(transactions) {
+  return transactions.map(tx => [
     tx.date ?? '', tx.type ?? '', tx.symbol ?? '',
     tx.qty != null ? tx.qty : '', tx.price != null ? tx.price : '',
     tx.currency ?? '', tx.note ?? '',
   ]);
-  return save(format, headers, rows, 'Transakcje', 'transakcje');
+}
+
+export function exportTransactions(transactions, t, format) {
+  return save(format, transactionHeaders(t), transactionRows(transactions), 'Transakcje', 'transakcje');
 }
 
 export function exportSnapshots(snapshots, t, format) {

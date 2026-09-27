@@ -3,6 +3,8 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { cx } from './cx.js';
 import { sortRows, nextSort } from './tableSort.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useT } from '../../context/LanguageContext';
+import Button from './Button.jsx';
 
 // Tabela z sortowaniem po kliknięciu nagłówka, przyklejonym nagłówkiem
 // (style .data-table) i — na telefonie — wierszami zamienionymi w karty,
@@ -16,13 +18,20 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 //   mobile?: 'title' | 'aside' | 'hide'  — na karcie: tytuł po lewej,
 //            wartość po prawej, reszta w siatce „etykieta: wartość"
 // }
+// pageSize — pokazuj tyle wierszy (po sortowaniu) i przycisk „Pokaż kolejne";
+//            przy setkach transakcji cała lista na raz mieliła telefon.
 
 const valueOf = (col, row) => (col.value ? col.value(row) : row[col.key]);
 const cellOf = (col, row) => (col.render ? col.render(row) : valueOf(col, row));
 
-export default function Table({ columns, rows, rowKey, onRowClick, defaultSort = null, empty, className }) {
+export default function Table({ columns, rows, rowKey, onRowClick, defaultSort = null, empty, pageSize, className }) {
+  const t = useT();
   const isMobile = useIsMobile();
   const [sort, setSort] = useState(defaultSort);
+  const [shown, setShown] = useState(pageSize ?? Infinity);
+  // Nowe dane (np. inny filtr) → znowu od pierwszej strony.
+  const [prevRows, setPrevRows] = useState(rows);
+  if (rows !== prevRows) { setPrevRows(rows); setShown(pageSize ?? Infinity); }
 
   const sorted = useMemo(() => {
     const col = sort && columns.find(c => c.key === sort.key);
@@ -30,6 +39,16 @@ export default function Table({ columns, rows, rowKey, onRowClick, defaultSort =
   }, [rows, columns, sort]);
 
   if (rows.length === 0 && empty) return empty;
+
+  const visible = sorted.slice(0, shown);
+  const left = sorted.length - visible.length;
+  const more = left > 0 && (
+    <div className="border-t border-line p-2 text-center">
+      <Button size="sm" variant="ghost" onClick={() => setShown(s => s + pageSize)}>
+        {t('show_more').replace('{n}', Math.min(pageSize, left)).replace('{left}', left)}
+      </Button>
+    </div>
+  );
 
   const rowProps = row => onRowClick ? {
     onClick: () => onRowClick(row),
@@ -42,8 +61,9 @@ export default function Table({ columns, rows, rowKey, onRowClick, defaultSort =
     const aside = columns.find(c => c.mobile === 'aside');
     const rest = columns.filter(c => c !== title && c !== aside && c.mobile !== 'hide');
     return (
+      <>
       <ul className={cx('divide-y divide-line', className)}>
-        {sorted.map(row => (
+        {visible.map(row => (
           <li
             key={rowKey(row)}
             className={cx('px-4 py-3', onRowClick && 'cursor-pointer active:bg-panel-hover')}
@@ -66,6 +86,8 @@ export default function Table({ columns, rows, rowKey, onRowClick, defaultSort =
           </li>
         ))}
       </ul>
+      {more}
+      </>
     );
   }
 
@@ -99,7 +121,7 @@ export default function Table({ columns, rows, rowKey, onRowClick, defaultSort =
           </tr>
         </thead>
         <tbody>
-          {sorted.map(row => (
+          {visible.map(row => (
             <tr key={rowKey(row)} {...rowProps(row)} style={onRowClick ? undefined : { cursor: 'default' }}>
               {columns.map(col => (
                 <td key={col.key} className={col.align === 'right' ? 'right' : undefined}>{cellOf(col, row)}</td>
@@ -108,6 +130,7 @@ export default function Table({ columns, rows, rowKey, onRowClick, defaultSort =
           ))}
         </tbody>
       </table>
+      {more}
     </div>
   );
 }

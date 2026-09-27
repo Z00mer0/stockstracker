@@ -3,7 +3,7 @@
 // Strona Portfela: dane i okna. Poszczególne części żyją w pages/portfolio/:
 //   PortfolioOverview  — karty na górze (wykres, statystyki, skład, alokacja, YTD)
 //   PositionsTable     — tabela pozycji (telefon: karty) z paskiem narzędzi
-//   OtherAssetsSection, BondsSection, AddCryptoModal, exporters
+//   OtherAssetsSection, BondsSection, AddCryptoModal (eksport: utils/exporters)
 // Wcześniej wszystko było w jednym pliku na ~2050 linii.
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Briefcase, Plus, Upload, TriangleAlert, WifiOff, RefreshCw } from 'lucide-react';
@@ -34,7 +34,7 @@ import OtherAssetsSection from './portfolio/OtherAssetsSection.jsx';
 import BondsSection from './portfolio/BondsSection.jsx';
 import AddCryptoModal from './portfolio/AddCryptoModal.jsx';
 import { toggleWatchlist } from './portfolio/watchlistLocal.js';
-import { exportPositions, exportTransactions, exportSnapshots } from './portfolio/exporters.js';
+import { exportPositions, exportTransactions, exportSnapshots } from '../utils/exporters.js';
 
 // Modal importu ciągnie za sobą parser xlsx — ładujemy go dopiero po otwarciu.
 const CsvImportModal = lazy(() => import('../components/CsvImportModal'));

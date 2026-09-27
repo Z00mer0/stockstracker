@@ -94,7 +94,11 @@ before/after screenshots.
       exporters); 230 inline styles → 2; positions as cards on mobile with a
       sort selector; all 4 dropdowns on the new kit `Menu`; 3 entry forms on
       Modal (Esc works now); ~45 hardcoded strings translated.
-- [ ] Transactions
+- [x] Transactions — kit Stat/Tabs/Table (sort, mobile cards, 50 per page),
+      add + CSV import windows on Modal (drag & drop). Fixed: 30-day tiles
+      mixed currencies; `DIVIDEND` missing from the dividends filter; PL
+      export → import lost notes and cash rows; trailing quote cut from notes.
+      Export/import round trip covered by a test.
 - [ ] Dividends
 - [ ] History
 - [ ] Analysis — 11 accordions → tabs (Risk / Allocation / Tax / FIRE)
