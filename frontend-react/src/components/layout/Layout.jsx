@@ -27,6 +27,7 @@ const PAGE_HEADINGS = {
   '/transactions': ['nav_transactions', 'page_sub_transactions'],
   '/dividends':    ['nav_dividends',    'page_sub_dividends'],
   '/news':         ['news_title',       'news_subtitle'],
+  '/oki':          ['nav_oki',          'oki_title'],
   '/calendar':     ['nav_calendar',     'page_sub_calendar'],
   '/watchlist':    ['nav_watchlist',    'page_sub_watchlist'],
   '/alerts':       ['nav_alerts',       'page_sub_alerts'],
