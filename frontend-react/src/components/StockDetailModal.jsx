@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Maximize2, Minimize2, StickyNote, X } from 'lucide-react';
 import FinancialsTab from './FinancialsTab';
 import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
@@ -6,6 +7,9 @@ import TickerLogo from './shared/TickerLogo';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { getThesis, setThesis } from '../services/journalService';
+import { alignBenchmark } from '../utils/benchmark.js';
+import { Button, IconButton, Modal, SegmentedControl, Spinner, Tabs, TabPanel } from './ui';
+import { cx } from './ui/cx.js';
 
 const PERIODS_BASE = [
   { key: '1W', pl: '1T', en: '1W', days: 7 },
@@ -22,9 +26,9 @@ const BENCH_OPTS = [
   { key: '^WIG20',   label: 'WIG20' },
 ];
 const CM = { top: 8, right: 8, bottom: 22, left: 56 };
-const CHART_H = 200;
+const DEFAULT_CHART_H = 200;
 
-function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '', isIntraday = false }) {
+function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', currency = '', isIntraday = false, height: CHART_H = DEFAULT_CHART_H }) {
   const { locale } = useLanguage();
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
@@ -36,7 +40,7 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
     return () => obs.disconnect();
   }, []);
 
-  const filtered = useMemo(() => {
+  const periodData = useMemo(() => {
     if (isIntraday) return data;
     const p = PERIODS_BASE.find(x => x.key === period);
     if (!p) return data;
@@ -46,32 +50,26 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
     return data.filter(d => d.date >= cutStr);
   }, [data, period, isIntraday]);
 
-  const filteredBench = useMemo(() => {
-    if (!benchData.length) return [];
-    const p = PERIODS_BASE.find(x => x.key === period);
-    if (!p) return benchData;
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - p.days);
-    const cutStr = cutoff.toISOString().slice(0, 10);
-    return benchData.filter(d => d.date >= cutStr);
-  }, [benchData, period]);
+  // Indeks dopasowany po dacie (utils/benchmark.js); wykres zaczyna się od
+  // pierwszego dnia, dla którego są oba notowania.
+  const aligned = useMemo(
+    () => (benchData.length ? alignBenchmark(periodData, benchData) : null),
+    [periodData, benchData],
+  );
+  const start = aligned ? Math.max(0, aligned.stockPct.findIndex(v => v != null)) : 0;
+  const showBench = !!aligned && aligned.stockPct.length - start >= 2;
+  const filtered = showBench ? periodData.slice(start) : periodData;
 
   if (filtered.length < 2) return <div ref={containerRef} style={{ height: CHART_H + CM.top + CM.bottom }} />;
 
-  const showBench = filteredBench.length >= 2;
   const chartW = width - CM.left - CM.right;
   const VOL_H = 22;
   const volData = filtered.map(d => d.volume ?? 0);
   const hasVol = !showBench && volData.some(v => v > 0);
   const totalH = CHART_H + CM.top + (hasVol ? VOL_H + 4 : 0) + CM.bottom;
 
-  // In benchmark mode, work with % returns normalized to start=0
-  const stockBase = filtered[0].price;
-  const benchBase = showBench ? filteredBench[0].price : 1;
-  const stockValues = showBench
-    ? filtered.map(d => ((d.price - stockBase) / stockBase) * 100)
-    : filtered.map(d => d.price);
-  const benchValues = showBench ? filteredBench.map(d => ((d.price - benchBase) / benchBase) * 100) : [];
+  const stockValues = showBench ? aligned.stockPct.slice(start) : filtered.map(d => d.price);
+  const benchValues = showBench ? aligned.benchPct.slice(start) : [];
 
   const allValues = showBench ? [...stockValues, ...benchValues] : stockValues;
   const minP = Math.min(...allValues);
@@ -93,18 +91,17 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
   const xScale = i => CM.left + (i / (filtered.length - 1)) * chartW;
   const yScale = v => CM.top + CHART_H - ((v - yMin) / (yMax - yMin)) * CHART_H;
 
-  const linePath = filtered.map((_, i) =>
-    `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(stockValues[i]).toFixed(1)}`
+  const pathOf = values => values.map((v, i) =>
+    `${i === 0 ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`
   ).join(' ');
+  const linePath = pathOf(stockValues);
   const areaPath = showBench ? null : `${linePath} L${xScale(filtered.length - 1).toFixed(1)},${(CM.top + CHART_H).toFixed(1)} L${CM.left.toFixed(1)},${(CM.top + CHART_H).toFixed(1)} Z`;
+  const benchPath = showBench ? pathOf(benchValues) : null;
 
+  // Kolory z tokenów motywu (wcześniej na sztywno — siatka ginęła w jasnym).
   const isUp = stockValues[stockValues.length - 1] >= stockValues[0];
-  const lineColor = isUp ? '#10b981' : '#f43f5e';
-
-  const benchXScale = showBench ? (i => CM.left + (i / (filteredBench.length - 1)) * chartW) : null;
-  const benchPath = showBench ? filteredBench.map((_, i) =>
-    `${i === 0 ? 'M' : 'L'}${benchXScale(i).toFixed(1)},${yScale(benchValues[i]).toFixed(1)}`
-  ).join(' ') : null;
+  const lineColor = isUp ? 'var(--up)' : 'var(--down)';
+  const muted = 'var(--text-faint)';
 
   const labelStep = Math.max(1, Math.floor(filtered.length / 5));
   const MIN_LABEL_GAP = 36;
@@ -124,36 +121,36 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
     if (relX < 0 || relX > chartW) { setHoverIdx(null); return; }
     setHoverIdx(Math.max(0, Math.min(filtered.length - 1, Math.round((relX / chartW) * (filtered.length - 1)))));
   };
+  const fmtDay = d => d.slice(5).split('-').reverse().join('.');
+  const signedPct = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative' }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
+    <div ref={containerRef} className="relative w-full min-w-0 overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
       {showBench && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 4, paddingLeft: CM.left, fontSize: 10 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width={16} height={2}><line x1={0} y1={1} x2={16} y2={1} stroke={lineColor} strokeWidth={2} /></svg>
-            <span style={{ color: 'var(--text-dim)' }}>{data[0]?.symbol ?? 'Spółka'}</span>
+        <div className="mb-1 flex gap-3 text-[10px]" style={{ paddingLeft: CM.left }}>
+          <span className="flex items-center gap-1">
+            <svg width={16} height={2} aria-hidden><line x1={0} y1={1} x2={16} y2={1} style={{ stroke: lineColor }} strokeWidth={2} /></svg>
+            <span className="text-dim">{symbol}</span>
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width={16} height={2}><line x1={0} y1={1} x2={16} y2={1} stroke="#64748b" strokeWidth={1.5} strokeDasharray="3,2" /></svg>
-            <span style={{ color: 'var(--text-faint)' }}>{benchLabel}</span>
+          <span className="flex items-center gap-1">
+            <svg width={16} height={2} aria-hidden><line x1={0} y1={1} x2={16} y2={1} style={{ stroke: muted }} strokeWidth={1.5} strokeDasharray="3,2" /></svg>
+            <span className="text-faint">{benchLabel}</span>
           </span>
         </div>
       )}
-      <svg width={width} height={totalH}>
+      <svg width={width} height={totalH} role="img" aria-label={`${symbol} ${showBench ? `vs ${benchLabel}` : ''}`}>
         <defs>
           <linearGradient id="sdm-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+            <stop offset="0%" style={{ stopColor: lineColor, stopOpacity: 0.2 }} />
+            <stop offset="100%" style={{ stopColor: lineColor, stopOpacity: 0.02 }} />
           </linearGradient>
         </defs>
         {yTicks.map((v, i) => {
           const y = yScale(v);
           return (
             <g key={i}>
-              <line x1={CM.left} y1={y} x2={CM.left + chartW} y2={y}
-                    stroke="#1f2937" strokeOpacity={0.5} strokeWidth={1} />
-              <text x={CM.left - 6} y={y + 3} fill="#64748b" fontSize={9}
-                    textAnchor="end" style={{ fontFamily: 'var(--font-mono)' }}>
+              <line x1={CM.left} y1={y} x2={CM.left + chartW} y2={y} style={{ stroke: 'var(--border)' }} strokeWidth={1} />
+              <text x={CM.left - 6} y={y + 3} style={{ fill: muted, fontFamily: 'var(--font-mono)' }} fontSize={9} textAnchor="end">
                 {showBench
                   ? `${v >= 0 ? '+' : ''}${v.toFixed(yDecimals)}%`
                   : v.toLocaleString(locale, { minimumFractionDigits: yDecimals, maximumFractionDigits: yDecimals })}
@@ -162,77 +159,45 @@ function MiniChart({ data, period, benchData = [], benchLabel = '', currency = '
           );
         })}
         {areaPath && <path d={areaPath} fill="url(#sdm-area)" />}
-        {benchPath && <path d={benchPath} fill="none" stroke="#64748b" strokeWidth={1.5} strokeDasharray="4,3" strokeLinejoin="round" />}
-        <path d={linePath} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinejoin="round" />
-        {(() => {
-          const lx = xScale(filtered.length - 1);
-          const ly = yScale(stockValues[stockValues.length - 1]);
-          return <circle cx={lx} cy={ly} r={3} fill={lineColor} />;
-        })()}
+        {benchPath && <path d={benchPath} fill="none" style={{ stroke: muted }} strokeWidth={1.5} strokeDasharray="4,3" strokeLinejoin="round" />}
+        <path d={linePath} fill="none" style={{ stroke: lineColor }} strokeWidth={1.5} strokeLinejoin="round" />
+        <circle cx={xScale(filtered.length - 1)} cy={yScale(stockValues[stockValues.length - 1])} r={3} style={{ fill: lineColor }} />
         {hasVol && (() => {
           const maxVol = Math.max(...volData, 1);
           const barW = Math.max(1, chartW / filtered.length * 0.7);
           const volY0 = CM.top + CHART_H + 4;
           return volData.map((v, i) => {
             const bh = Math.max(1, (v / maxVol) * (VOL_H - 2));
-            return (
-              <rect key={i}
-                x={xScale(i) - barW / 2}
-                y={volY0 + (VOL_H - 2) - bh}
-                width={barW}
-                height={bh}
-                fill={lineColor}
-                fillOpacity={0.25}
-              />
-            );
+            return <rect key={i} x={xScale(i) - barW / 2} y={volY0 + (VOL_H - 2) - bh} width={barW} height={bh} style={{ fill: lineColor }} fillOpacity={0.25} />;
           });
         })()}
         {dateLabels.map(({ i, date }, li) => {
           const anchor = li === 0 ? 'start' : li === dateLabels.length - 1 ? 'end' : 'middle';
-          return (
-            <text key={i} x={xScale(i)} y={totalH - 4} fill="#64748b" fontSize={9} textAnchor={anchor}>
-              {date.slice(5).split('-').reverse().join('.')}
-            </text>
-          );
+          return <text key={i} x={xScale(i)} y={totalH - 4} style={{ fill: muted }} fontSize={9} textAnchor={anchor}>{fmtDay(date)}</text>;
         })}
         {hoverIdx !== null && (
-          <line
-            x1={xScale(hoverIdx)} y1={CM.top}
-            x2={xScale(hoverIdx)} y2={CM.top + CHART_H}
-            stroke="var(--border)" strokeWidth={1} strokeDasharray="3,2"
-          />
-        )}
-        {hoverIdx !== null && (
-          <circle cx={xScale(hoverIdx)} cy={yScale(stockValues[hoverIdx])} r={4} fill={lineColor} stroke="var(--bg-2)" strokeWidth={2} />
+          <>
+            <line x1={xScale(hoverIdx)} y1={CM.top} x2={xScale(hoverIdx)} y2={CM.top + CHART_H} style={{ stroke: 'var(--border-strong, var(--border))' }} strokeWidth={1} strokeDasharray="3,2" />
+            <circle cx={xScale(hoverIdx)} cy={yScale(stockValues[hoverIdx])} r={4} style={{ fill: lineColor, stroke: 'var(--panel)' }} strokeWidth={2} />
+          </>
         )}
       </svg>
       {hoverIdx !== null && (() => {
         const d = filtered[hoverIdx];
         const x = xScale(hoverIdx);
-        const tooltipLeft = x + 10 + 110 < width ? x + 10 : x - 120;
+        const tooltipLeft = x + 10 + 120 < width ? x + 10 : x - 130;
         return (
-          <div style={{
-            position: 'absolute', top: CM.top + 4, left: tooltipLeft,
-            background: 'var(--bg-2)', border: '1px solid var(--border)',
-            borderRadius: 6, padding: '6px 10px', fontSize: 11,
-            pointerEvents: 'none', zIndex: 10, minWidth: 100,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          }}>
-            <div style={{ color: 'var(--text-faint)', marginBottom: 3 }}>
-              {d.date.slice(5).split('-').reverse().join('.')}{d.time ? ` ${d.time}` : ''}
-            </div>
-            <div style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+          <div className="pointer-events-none absolute z-10 min-w-[100px] rounded-card-sm border border-line bg-panel px-2.5 py-1.5 text-[11px] shadow-pop" style={{ top: CM.top + 4, left: tooltipLeft }}>
+            <div className="mb-0.5 text-faint">{fmtDay(d.date)}{d.time ? ` ${d.time}` : ''}</div>
+            <div className="font-mono font-semibold text-fg">
               {showBench
-                ? (stockValues[hoverIdx] >= 0 ? '+' : '') + stockValues[hoverIdx].toFixed(2) + '%'
+                ? signedPct(stockValues[hoverIdx])
                 : d.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (currency ? ` ${currency}` : '')}
             </div>
+            {showBench && <div className="font-mono text-faint">{benchLabel} {signedPct(benchValues[hoverIdx])}</div>}
             {hasVol && d.volume > 0 && (
-              <div style={{ color: 'var(--text-faint)', marginTop: 2 }}>
-                {d.volume >= 1_000_000
-                  ? (d.volume / 1_000_000).toFixed(1) + 'M'
-                  : d.volume >= 1000
-                  ? Math.round(d.volume / 1000) + 'K'
-                  : String(d.volume)}
+              <div className="mt-0.5 text-faint">
+                {d.volume >= 1_000_000 ? (d.volume / 1_000_000).toFixed(1) + 'M' : d.volume >= 1000 ? Math.round(d.volume / 1000) + 'K' : String(d.volume)}
               </div>
             )}
           </div>
@@ -265,15 +230,26 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const [summaryMounted, setSummaryMounted] = useState(false);
   const [note, setNote] = useState('');
   const noteTimer = useRef(null);
+  const pendingNote = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Zapis tezy na serwer z opóźnieniem, żeby nie POST-ować przy każdej literze
   function updateNote(text) {
     setNote(text);
     clearTimeout(noteTimer.current);
-    noteTimer.current = setTimeout(() => { setThesis(item.symbol, text).catch(() => {}); }, 800);
+    pendingNote.current = { symbol: item.symbol, text };
+    noteTimer.current = setTimeout(() => {
+      pendingNote.current = null;
+      setThesis(item.symbol, text).catch(() => {});
+    }, 800);
   }
-  useEffect(() => () => clearTimeout(noteTimer.current), []);
+  // Zamknięcie okna w trakcie odliczania zapisuje od razu — wcześniej timer
+  // był tylko kasowany i ostatnie słowa notatki przepadały.
+  useEffect(() => () => {
+    clearTimeout(noteTimer.current);
+    const p = pendingNote.current;
+    if (p) setThesis(p.symbol, p.text).catch(() => {});
+  }, []);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -338,14 +314,14 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
         const pts = timestamps.map((ts, i) => {
           const dt = new Date(ts * 1000);
           const date = dt.toISOString().slice(0, 10);
-          const time = dt.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+          const time = dt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: tz });
           return { date, time, price: closes[i], volume: volumes[i] ?? null };
         }).filter(p => p.price != null);
         setIntradayData(pts);
       })
       .catch(() => setIntradayData([]))
       .finally(() => setIntradayLoading(false));
-  }, [prePost, chartPeriod, item.symbol]);
+  }, [prePost, chartPeriod, item.symbol, locale]);
 
   useEffect(() => {
     if (!benchSymbol) { setBenchData([]); return; }
@@ -384,253 +360,159 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const yearChangePct = currentPrice != null && firstPrice != null && firstPrice > 0
     ? ((currentPrice - firstPrice) / firstPrice) * 100 : null;
 
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
-        backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-        zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: isFullscreen ? 0 : 16,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--bg-2)', border: '1px solid var(--border)',
-          borderRadius: isFullscreen ? 0 : 14, width: '100%',
-          maxWidth: isFullscreen ? '100%' : 620,
-          boxShadow: isFullscreen ? 'none' : '0 24px 64px rgba(0,0,0,0.5)',
-          maxHeight: isFullscreen ? '100vh' : '92vh',
-          height: isFullscreen ? '100vh' : undefined,
-          overflowY: 'auto',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Stock header */}
-        <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-            <TickerLogo symbol={item.symbol} size={44} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{item.symbol}</div>
-              {item.name && <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-            {currentPrice != null && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.01em' }}>
-                  {currentPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
-                </div>
-                {dayChangePct != null && (
-                  <div style={{ fontSize: 13, fontWeight: 600, color: dayChangePct >= 0 ? 'var(--up)' : 'var(--down)', marginTop: 2, textAlign: 'right' }}>
-                    {dayChangePct >= 0 ? '▲' : '▼'} {Math.abs(dayChangePct).toFixed(2)}%
-                  </div>
-                )}
-              </div>
-            )}
-            <button
-              onClick={() => setIsFullscreen(f => !f)}
-              title={isFullscreen ? 'Zmniejsz' : 'Pełny ekran'}
-              style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-dim)', padding: '6px 8px', lineHeight: 1, flexShrink: 0, borderRadius: 8, display: 'flex', alignItems: 'center' }}
-            >
-              {isFullscreen
-                ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
-                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-              }
-            </button>
-            <button
-              onClick={onClose}
-              style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14, padding: '6px 8px', lineHeight: 1, flexShrink: 0, borderRadius: 8 }}
-            >✕</button>
-          </div>
-        </div>
+  const shortPeriod = chartPeriod === '1W' || chartPeriod === '1M';
+  const isIntraday = prePost && shortPeriod;
+  const activeData = isIntraday ? intradayData : chartData;
+  const fmt2 = n => n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const plPct = item.costPLN > 0 && item.plPLN != null ? (item.plPLN / item.costPLN) * 100 : null;
 
-        {/* Position context strip — only for portfolio positions */}
+  const header = (
+    <span className="flex items-center gap-3">
+      <TickerLogo symbol={item.symbol} size={40} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] font-bold text-fg">{item.symbol}</span>
+        {item.name && <span className="block truncate text-[12px] font-normal text-faint">{item.name}</span>}
+      </span>
+      {currentPrice != null && (
+        <span className="shrink-0 text-right">
+          <span className="block font-mono text-[18px] font-bold tracking-tight text-fg">{fmt2(currentPrice)} {currency}</span>
+          {dayChangePct != null && (
+            <span className={cx('block text-[13px] font-semibold', dayChangePct >= 0 ? 'text-up' : 'text-down')}>
+              {dayChangePct >= 0 ? '▲' : '▼'} {Math.abs(dayChangePct).toFixed(2)}%
+            </span>
+          )}
+        </span>
+      )}
+      <IconButton
+        icon={isFullscreen ? Minimize2 : Maximize2}
+        label={isFullscreen ? t('sd_exit_fullscreen') : t('sd_fullscreen')}
+        size="sm"
+        className="max-md:hidden"
+        onClick={() => setIsFullscreen(f => !f)}
+      />
+    </span>
+  );
+
+  const chartLoadingBox = (
+    <div className="grid place-items-center" style={{ height: DEFAULT_CHART_H + CM.top + CM.bottom }}>
+      <Spinner size="sm" label={t('loading')} />
+    </div>
+  );
+
+  return (
+    <Modal size={isFullscreen ? 'full' : 'lg'} title={header} onClose={onClose}>
+      {/* minmax(0,1fr): bez tego szeroki wykres (svg) i paski wyboru
+          rozpychały kolumnę poza arkusz na telefonie. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
         {item.qty != null && (
-          <div style={{ margin: '12px 22px 0', padding: '10px 14px', background: 'var(--panel)', borderRadius: 10, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-card-sm bg-panel-2 px-3 py-2 text-[12px] text-dim">
+            <span>
               {item.qty.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} {t('shares')}
-              {item.avgPrice != null && (
-                <> · {t('avg_abbr')} {item.avgPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}</>
-              )}
+              {item.avgPrice != null && <> · {t('avg_abbr')} {fmt2(item.avgPrice)} {currency}</>}
               {item.valuePLN != null && totalPortfolioValue > 0 && (
                 <> · {((item.valuePLN / totalPortfolioValue) * 100).toFixed(1)}% {t('of_portfolio')}</>
               )}
             </span>
             {item.plPLN != null && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: item.plPLN >= 0 ? 'var(--up)' : 'var(--down)', marginLeft: 'auto' }}>
-                {item.plPLN >= 0 ? '+' : ''}{(item.plPLN / dispFx).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {dispCurrLabel}
-                {item.costPLN > 0 && (
-                  <span style={{ fontWeight: 400, opacity: 0.8 }}>
-                    {' '}({((item.plPLN / item.costPLN) * 100) >= 0 ? '+' : ''}{((item.plPLN / item.costPLN) * 100).toFixed(1)}%)
-                  </span>
-                )}
+              <span className={cx('ml-auto font-semibold tabular-nums', item.plPLN >= 0 ? 'text-up' : 'text-down')}>
+                {item.plPLN >= 0 ? '+' : ''}{fmt2(item.plPLN / dispFx)} {dispCurrLabel}
+                {plPct != null && <span className="font-normal opacity-80"> ({plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%)</span>}
               </span>
             )}
           </div>
         )}
 
-        {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 0, margin: '14px 22px 0', borderBottom: '1px solid var(--border)' }}>
-          {[['wykres', t('tab_chart')], ['wskazniki', t('tab_indicators')], ['finanse', t('tab_financials')], ['ai', 'AI'], ['notatki', note ? `📝 ${t('tab_notes')}` : t('tab_notes')]].map(([k, l]) => (
-            <button
-              key={k}
-              onClick={() => switchTab(k)}
-              style={{
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === k ? '2px solid var(--accent)' : '2px solid transparent',
-                padding: '9px 16px',
-                fontSize: 12,
-                fontWeight: activeTab === k ? 600 : 400,
-                color: activeTab === k ? 'var(--text)' : 'var(--text-dim)',
-                cursor: 'pointer',
-                marginBottom: -1,
-                transition: 'color 0.15s',
-              }}
-            >{l}</button>
-          ))}
-        </div>
+        <Tabs
+          id="sd"
+          value={activeTab}
+          onChange={switchTab}
+          tabs={[
+            { value: 'wykres', label: t('tab_chart') },
+            { value: 'wskazniki', label: t('tab_indicators') },
+            { value: 'finanse', label: t('tab_financials') },
+            { value: 'ai', label: 'AI' },
+            { value: 'notatki', label: t('tab_notes'), icon: note ? StickyNote : undefined },
+          ]}
+        />
 
-        {/* Wykres tab */}
-        {activeTab === 'wykres' && (
-        <div style={{ padding: '10px 22px 22px' }}>
-          {chartLoading ? (
-            <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('loading')}</span>
-            </div>
-          ) : chartData.length >= 2 ? (
-            <>
-              {(() => {
-                const shortPeriod = chartPeriod === '1W' || chartPeriod === '1M';
-                const isIntraday  = prePost && shortPeriod;
-                const activeData  = isIntraday ? intradayData : chartData;
-                const loading     = isIntraday ? intradayLoading : false;
-                return (
-                  <>
-                    {loading
-                      ? <div style={{ height: CHART_H + CM.top + CM.bottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('loading')}</span>
-                        </div>
-                      : <MiniChart
-                          data={activeData}
-                          period={chartPeriod}
-                          benchData={benchData}
-                          benchLabel={benchSymbol === null ? '' : (BENCH_OPTS.find(b => b.key === benchSymbol)?.label ?? '')}
-                          currency={currency}
-                          isIntraday={isIntraday}
-                        />
-                    }
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {PERIODS.map(p => (
-                          <button
-                            key={p.key}
-                            onClick={() => setChartPeriod(p.key)}
-                            style={{
-                              fontSize: 11, padding: '2px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                              background: chartPeriod === p.key ? 'var(--accent)' : 'var(--panel-2)',
-                              color: chartPeriod === p.key ? '#fff' : 'var(--text-dim)',
-                              fontWeight: chartPeriod === p.key ? 600 : 400,
-                              transition: 'background 0.15s',
-                            }}
-                          >{p.label}</button>
-                        ))}
-                        {shortPeriod && (
-                          <button
-                            onClick={() => setPrePost(v => !v)}
-                            title="Dane po godzinach i przed otwarciem (pre/post market)"
-                            style={{
-                              fontSize: 10, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer',
-                              background: prePost ? 'rgba(99,102,241,0.15)' : 'transparent',
-                              color: prePost ? 'var(--accent)' : 'var(--text-faint)',
-                              fontWeight: prePost ? 600 : 400,
-                              transition: 'all 0.15s',
-                              marginLeft: 4,
-                            }}
-                          >po godz.</button>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                        {BENCH_OPTS.map(b => (
-                          <button
-                            key={b.key ?? 'none'}
-                            onClick={() => setBenchSymbol(b.key)}
-                            style={{
-                              fontSize: 10, padding: '2px 7px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                              background: benchSymbol === b.key ? 'var(--panel-2)' : 'transparent',
-                              color: benchSymbol === b.key ? 'var(--text)' : 'var(--text-faint)',
-                              fontWeight: benchSymbol === b.key ? 600 : 400,
-                              transition: 'background 0.15s, color 0.15s',
-                              outline: benchSymbol === b.key ? '1px solid var(--border)' : 'none',
-                            }}
-                          >{b.key === null ? t('none_label') : b.label}{benchLoading && benchSymbol === b.key ? ' …' : ''}</button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </>
-          ) : (
-            <div style={{ height: 36, display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('no_chart_data')}</span>
+        <TabPanel tabsId="sd" value={activeTab}>
+          {activeTab === 'wykres' && (
+            chartLoading ? chartLoadingBox : chartData.length >= 2 ? (
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
+                {isIntraday && intradayLoading
+                  ? chartLoadingBox
+                  : (
+                    <MiniChart
+                      data={activeData}
+                      symbol={item.symbol}
+                      period={chartPeriod}
+                      benchData={benchData}
+                      benchLabel={BENCH_OPTS.find(b => b.key === benchSymbol)?.label ?? ''}
+                      currency={currency}
+                      isIntraday={isIntraday}
+                      height={isFullscreen ? 440 : DEFAULT_CHART_H}
+                    />
+                  )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <SegmentedControl
+                    aria-label={t('sd_period')}
+                    options={PERIODS.map(p => ({ value: p.key, label: p.label }))}
+                    value={chartPeriod}
+                    onChange={setChartPeriod}
+                  />
+                  {shortPeriod && (
+                    <Button size="sm" variant={prePost ? 'primary' : 'ghost'} aria-pressed={prePost} title={t('sd_prepost_hint')} onClick={() => setPrePost(v => !v)}>
+                      {t('sd_prepost')}
+                    </Button>
+                  )}
+                  <span className="ml-auto flex items-center gap-2">
+                    {benchLoading && <Spinner size="sm" />}
+                    <SegmentedControl
+                      aria-label={t('sd_benchmark')}
+                      options={BENCH_OPTS.map(b => ({ value: b.key ?? 'none', label: b.key === null ? t('none_label') : b.label }))}
+                      value={benchSymbol ?? 'none'}
+                      onChange={v => setBenchSymbol(v === 'none' ? null : v)}
+                    />
+                  </span>
+                </div>
+              </div>
+            ) : <p className="py-3 text-small text-faint">{t('no_chart_data')}</p>
+          )}
+
+          {/* Zakładki z danymi montowane przy pierwszym otwarciu i trzymane */}
+          {wskaznikMounted && (
+            <div hidden={activeTab !== 'wskazniki'}>
+              <KeyStatsTab symbol={item.symbol} livePrice={currentPrice} currency={currency} yearChangePct={yearChangePct} />
             </div>
           )}
-        </div>
-        )}
+          {financialsMounted && (
+            <div hidden={activeTab !== 'finanse'}>
+              <FinancialsTab symbol={item.symbol} livePrice={currentPrice} companyName={item.name} />
+            </div>
+          )}
+          {summaryMounted && (
+            <div hidden={activeTab !== 'ai'}>
+              <SummaryTab symbol={item.symbol} livePrice={currentPrice} />
+            </div>
+          )}
 
-        {/* Wskaźniki tab — lazy mount */}
-        {wskaznikMounted && (
-          <div style={{ display: activeTab === 'wskazniki' ? 'block' : 'none' }}>
-            <KeyStatsTab symbol={item.symbol} livePrice={currentPrice} currency={currency} yearChangePct={yearChangePct} />
-          </div>
-        )}
-
-        {/* Finanse tab — lazy mount */}
-        {financialsMounted && (
-          <div style={{ display: activeTab === 'finanse' ? 'block' : 'none' }}>
-            <FinancialsTab symbol={item.symbol} livePrice={currentPrice} companyName={item.name} />
-          </div>
-        )}
-
-        {/* AI tab — lazy mount */}
-        {summaryMounted && (
-          <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }}>
-            <SummaryTab symbol={item.symbol} livePrice={currentPrice} />
-          </div>
-        )}
-
-        {activeTab === 'notatki' && (
-          <div style={{ padding: '16px 20px 20px' }}>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>
-              Teza inwestycyjna, cel cenowy, powód zakupu — zapisywane na Twoim koncie i synchronizowane między urządzeniami. Przy sprzedaży zapytamy, czy teza się sprawdziła.
-            </p>
-            <textarea
-              value={note}
-              onChange={e => updateNote(e.target.value)}
-              placeholder={`Notatki do ${item.symbol}…`}
-              style={{
-                width: '100%', minHeight: 160, padding: '10px 12px',
-                background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8,
-                color: 'var(--text)', fontSize: 13, lineHeight: 1.6, resize: 'vertical',
-                fontFamily: 'Inter, sans-serif', boxSizing: 'border-box', outline: 'none',
-              }}
-              autoFocus
-            />
-            {note && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                <button
-                  onClick={() => updateNote('')}
-                  style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
-                >
-                  Wyczyść notatkę
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+          {activeTab === 'notatki' && (
+            <div className="grid gap-2">
+              <p className="text-[11px] leading-relaxed text-faint">{t('sd_notes_hint')}</p>
+              <textarea
+                value={note}
+                onChange={e => updateNote(e.target.value)}
+                aria-label={t('tab_notes')}
+                placeholder={t('sd_notes_ph').replace('{symbol}', item.symbol)}
+                className="min-h-[160px] w-full resize-y rounded-card-sm border border-line bg-panel-2 px-3 py-2.5 text-small leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
+              />
+              {note && (
+                <Button size="sm" variant="ghost" icon={X} className="justify-self-end" onClick={() => updateNote('')}>{t('sd_notes_clear')}</Button>
+              )}
+            </div>
+          )}
+        </TabPanel>
       </div>
-    </div>
+    </Modal>
   );
 }
