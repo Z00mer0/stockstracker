@@ -89,7 +89,11 @@ before/after screenshots.
       states, cash window on Modal, dead code removed (`KpiPro`, unused
       helpers, orphaned CSS). Kit gained `Callout`; `Stat` gained `spark`,
       `hero`, `blur`.
-- [ ] Portfolio (also split the file — P3-8)
+- [x] Portfolio — split from one 2051-line file into `pages/portfolio/`
+      (overview grid, positions table, other assets, bonds, crypto modal,
+      exporters); 230 inline styles → 2; positions as cards on mobile with a
+      sort selector; all 4 dropdowns on the new kit `Menu`; 3 entry forms on
+      Modal (Esc works now); ~45 hardcoded strings translated.
 - [ ] Transactions
 - [ ] Dividends
 - [ ] History

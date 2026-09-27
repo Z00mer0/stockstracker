@@ -395,6 +395,8 @@ html.has-tabbar { --tabbar-h: calc(58px + env(safe-area-inset-bottom)); }
   @media (min-width: 768px) {
     .ui-sheet { animation: ui-pop 0.16s ease-out; }
   }
+  .ui-menu    { animation: ui-menu-in 0.12s ease-out; }
+  @keyframes ui-menu-in  { from { opacity: 0; transform: translateY(-2px); } }
   @keyframes ui-fade     { from { opacity: 0; } }
   @keyframes ui-sheet-up { from { transform: translateY(24px); opacity: 0; } }
   @keyframes ui-pop      { from { transform: translateY(6px) scale(0.98); opacity: 0; } }
