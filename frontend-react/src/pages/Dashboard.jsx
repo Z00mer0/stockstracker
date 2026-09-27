@@ -19,6 +19,7 @@ import WinnersLosers from '../components/shared/WinnersLosers';
 import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
+import { todayCapital, withCapital } from '../utils/capital.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
@@ -99,7 +100,7 @@ function MoverGroup({ tone, label, items, ...rowProps }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, addPosition, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
@@ -245,26 +246,25 @@ export default function Dashboard() {
     // Zamrażamy fx dnia razem ze snapshotem — historyczne wartości nie
     // będą się już zmieniać z aktualnym kursem NBP (PR #15).
     const fxSnapshot = { ...fxRates };
+    const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0)
+      + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
+    const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
+    if (!(totalValue > 0 && investedValue > 0)) return;
+    // Kapitał własny (wpłaty − wypłaty) — Historia odejmuje go od wartości,
+    // żeby wpłaty i zakupy nie liczyły się jako zysk. Patrz utils/capital.js.
+    const today = new Date().toISOString().slice(0, 10);
+    const { capital, native } = todayCapital({ snapshots, holdings: portfolio, cash, transactions, fxRates, today });
     if (activePortfolioId === 'all') {
-      // In "Wszystkie" view: save snapshot for each individual portfolio separately
-      const byPid = {};
-      allPositions.forEach(pos => {
-        const pid = pos._portfolioId;
-        if (!pid) return;
-        if (!byPid[pid]) byPid[pid] = { total: 0, invested: 0, fx: fxSnapshot };
-        byPid[pid].total += pos.valuePLN ?? 0;
-        byPid[pid].invested += pos.costPLN ?? 0;
+      // Widok „Wszystkie" łączy ten sam symbol z kilku portfeli pod jednym
+      // _portfolioId i nie zna gotówki per portfel — zapis per portfel był
+      // więc błędny (bez gotówki, cudze akcje w obcym portfelu). Przy jednym
+      // portfelu dane są jego własne; przy kilku zostawiamy to schedulerowi.
+      if (portfolios.length !== 1) return;
+      saveBatchSnapshots({
+        [portfolios[0].id]: { total: totalValue, invested: investedValue, fx: fxSnapshot, capital, capitalNative: native },
       });
-      if (Object.keys(byPid).length > 0) {
-        saveBatchSnapshots(byPid);
-      }
     } else {
-      const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0)
-        + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
-      const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
-      if (totalValue > 0 && investedValue > 0) {
-        saveSnapshot(totalValue, investedValue, fxSnapshot);
-      }
+      saveSnapshot(totalValue, investedValue, fxSnapshot, { capital, native });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionsValueKey, loading]);
@@ -285,8 +285,14 @@ export default function Dashboard() {
     if (kpi.totalValue > 0 && (sorted.length === 0 || sorted[sorted.length - 1].date !== today)) {
       // fx dnia dołączony — chart używa per-pkt fx, więc live endpoint
       // musi być rysowany po dzisiejszym kursie (spójnie z resztą punktów).
-      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null, fx: { ...fxRates } }];
+      const { capital } = todayCapital({ snapshots, holdings: portfolio, cash, transactions, fxRates, today });
+      sorted = [...sorted, { date: today, total: kpi.totalValue, invested: invested ?? null, capital, fx: { ...fxRates } }];
     }
+    // Linia przerywana to kapitał własny (wpłaty), nie koszt pozycji: wartość
+    // obejmuje gotówkę, więc przy koszcie różnica między liniami była
+    // „zyskiem + gotówką". Dni bez zapisanego kapitału — szacunek.
+    sorted = withCapital(sorted, { transactions, fxRates, cashPLN: kpi.cashValue })
+      .map(s => ({ ...s, invested: s.capital }));
     if (tf === 'MAX') return sorted;
     const days = { '1T': 7, '1M': 30, '3M': 90, '6M': 180, '1R': 365 }[tf] || 30;
     const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -297,7 +303,7 @@ export default function Dashboard() {
       if (before.length > 0) return [before[before.length - 1], ...inRange];
     }
     return inRange;
-  }, [snapshots, tf, kpi.totalValue, invested, fxRates]);
+  }, [snapshots, tf, kpi.totalValue, kpi.cashValue, invested, fxRates, portfolio, cash, transactions]);
 
   const blur = isPrivate;
 

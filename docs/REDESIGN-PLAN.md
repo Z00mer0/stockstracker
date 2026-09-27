@@ -108,9 +108,13 @@ before/after screenshots.
 - [x] History — period and benchmark moved to one page toolbar (benchmark was
       duplicated in two cards and a 8-button strip overflowed on phones),
       5 kit Stat tiles, snapshot table on kit Table (sortable, 50 per page —
-      it rendered all ~300 rows at once). Calculations unchanged and checked
-      row-by-row against `main`; open question about how History counts
-      contributions (see PR #83).
+      it rendered all ~300 rows at once). Calculations checked row-by-row
+      against `main`.
+- [x] History net of deposits — each daily snapshot now stores paid-in
+      capital (`utils/capital.js`, DB column `capital`); profit = value −
+      capital, return is time-weighted, CAGR and drawdown on that index.
+      Days saved before this are estimated and marked. The "all portfolios"
+      view no longer writes per-portfolio snapshots it could not attribute.
 - [x] Calculation check — old vs new side by side on identical data and
       prices, every number on Dashboard/Portfolio/Transactions/Dividends/
       History compared; fixed the daily result formula, dividend yield on

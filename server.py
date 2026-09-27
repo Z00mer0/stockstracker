@@ -1292,6 +1292,11 @@ if DATABASE_URL:
                     PRIMARY KEY (portfolio_id, date)
                 )""")
             cur.execute("ALTER TABLE portfolio_snapshots ADD COLUMN IF NOT EXISTS fx_json TEXT")
+            # Kapitał własny (wpłaty − wypłaty) w dniu snapshotu, w PLN, i jego
+            # składniki per waluta — bez tego Historia liczyła wpłaty jako zysk.
+            # Liczy go klient (frontend-react/src/utils/capital.js).
+            cur.execute("ALTER TABLE portfolio_snapshots ADD COLUMN IF NOT EXISTS capital NUMERIC")
+            cur.execute("ALTER TABLE portfolio_snapshots ADD COLUMN IF NOT EXISTS capital_native TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_cash (
                     portfolio_id TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
@@ -1519,10 +1524,18 @@ if DATABASE_URL:
             # przy każdym odczycie danych. Dla dat, których NBP nie zna, kończyło
             # się to serią zapytań do NBP przy każdym wejściu na stronę — teraz
             # robi to _backfill_all_snapshot_fx w wątku w tle (patrz start serwera).
-            cur.execute("SELECT date::text, total, invested, fx_json FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
+            cur.execute("SELECT date::text, total, invested, fx_json, capital, capital_native FROM portfolio_snapshots WHERE portfolio_id=%s ORDER BY date", (portfolio_id,))
             snaps_rows = cur.fetchall()
             snapshots = {r['date']: float(r['total']) for r in snaps_rows if r['total'] is not None}
             snapshots_inv = {r['date']: float(r['invested']) for r in snaps_rows if r['invested'] is not None}
+            snapshots_cap = {r['date']: float(r['capital']) for r in snaps_rows if r['capital'] is not None}
+            snapshots_cap_native = {}
+            for r in snaps_rows:
+                if r['capital_native']:
+                    try:
+                        snapshots_cap_native[r['date']] = json.loads(r['capital_native'])
+                    except Exception:
+                        pass
             snapshots_fx = {}
             for r in snaps_rows:
                 if r['fx_json']:
@@ -1551,7 +1564,8 @@ if DATABASE_URL:
                 bonds = []
         return {'portfolio': {'holdings': holdings}, 'transactions': transactions,
                 'snapshots': snapshots, 'snapshotsInvested': snapshots_inv,
-                'snapshotsFx': snapshots_fx, 'cash': cash,
+                'snapshotsFx': snapshots_fx, 'snapshotsCapital': snapshots_cap,
+                'snapshotsCapitalNative': snapshots_cap_native, 'cash': cash,
                 'otherAssets': other_assets, 'importSnapshots': import_snapshots,
                 'bonds': bonds}
 
@@ -1561,6 +1575,8 @@ if DATABASE_URL:
         snapshots = data.get('snapshots', {})
         snapshots_inv = data.get('snapshotsInvested', {})
         snapshots_fx = data.get('snapshotsFx', {})
+        snapshots_cap = data.get('snapshotsCapital', {})
+        snapshots_cap_native = data.get('snapshotsCapitalNative', {})
         cash = data.get('cash', {})
         with _conn() as c, c.cursor() as cur:
             cur.execute("DELETE FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
@@ -1590,8 +1606,10 @@ if DATABASE_URL:
                 inv = snapshots_inv.get(date)
                 fx  = snapshots_fx.get(date)
                 fx_str = json.dumps(fx) if isinstance(fx, dict) and fx else None
-                cur.execute("INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json) VALUES (%s,%s,%s,%s,%s)",
-                            (portfolio_id, date, total, inv, fx_str))
+                cap_native = snapshots_cap_native.get(date)
+                cap_native_str = json.dumps(cap_native) if isinstance(cap_native, dict) else None
+                cur.execute("INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json, capital, capital_native) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                            (portfolio_id, date, total, inv, fx_str, snapshots_cap.get(date), cap_native_str))
             cur.execute("DELETE FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
             for cur_code, amount in cash.items():
                 cur.execute("INSERT INTO portfolio_cash (portfolio_id, currency, amount) VALUES (%s,%s,%s)",
@@ -1895,6 +1913,9 @@ def load_aggregate_data(username):
     merged_txs = []
     merged_snaps = {}
     merged_snaps_inv = {}
+    merged_snaps_cap = {}
+    merged_snaps_cap_native = {}
+    cap_incomplete = set()   # daty, w których któryś portfel nie ma kapitału
     merged_cash = {}
     merged_bonds = []
     symbol_set = {}
@@ -1923,6 +1944,18 @@ def load_aggregate_data(username):
             merged_snaps[date] = merged_snaps.get(date, 0) + val
         for date, val in data.get('snapshotsInvested', {}).items():
             merged_snaps_inv[date] = merged_snaps_inv.get(date, 0) + val
+        # Suma kapitału tylko tam, gdzie mają go wszystkie portfele z wartością
+        # w tym dniu — częściowa suma byłaby gorsza niż szacunek po stronie klienta.
+        caps = data.get('snapshotsCapital', {})
+        caps_native = data.get('snapshotsCapitalNative', {})
+        for date in data.get('snapshots', {}):
+            if date in caps and isinstance(caps_native.get(date), dict):
+                merged_snaps_cap[date] = merged_snaps_cap.get(date, 0) + caps[date]
+                bucket = merged_snaps_cap_native.setdefault(date, {})
+                for ccy, amt in caps_native[date].items():
+                    bucket[ccy] = bucket.get(ccy, 0) + amt
+            else:
+                cap_incomplete.add(date)
         for cur, amt in data.get('cash', {}).items():
             merged_cash[cur] = merged_cash.get(cur, 0) + amt
         for b in data.get('bonds', []):
@@ -1934,6 +1967,8 @@ def load_aggregate_data(username):
         'transactions': merged_txs,
         'snapshots': merged_snaps,
         'snapshotsInvested': merged_snaps_inv,
+        'snapshotsCapital': {d: v for d, v in merged_snaps_cap.items() if d not in cap_incomplete},
+        'snapshotsCapitalNative': {d: v for d, v in merged_snaps_cap_native.items() if d not in cap_incomplete},
         'cash': merged_cash,
         'bonds': merged_bonds,
     }
@@ -2053,7 +2088,13 @@ def _demo_seed_data():
     # daily value history: invested capital steps up with each buy (USD ≈ 4 PLN),
     # market value drifts up ~14% with mild deterministic noise
     buy_steps = [(290, 5230.0), (260, 4896.0), (230, 6600.0), (180, 4008.0), (150, 4440.0)]
-    snapshots, snapshots_inv = {}, {}
+    # Gotówka jak w transakcjach: wpłata 30 000 zł, zakupy GPW z gotówki, AAPL
+    # kupione spoza konta (1110 $ — druga wpłata), sprzedaż CDR i dywidendy
+    # na konto. Snapshot = pozycje + gotówka, tak jak zapisuje go Dashboard
+    # i scheduler; kapitał = wpłaty (patrz frontend-react/src/utils/capital.js).
+    cash_steps = [(290, -5230.0), (260, -4896.0), (230, -6600.0), (180, -4008.0),
+                  (120, 259.0), (90, 3100.0), (60, 1.5 * 4.0)]
+    snapshots, snapshots_inv, snapshots_cap, snapshots_cap_native = {}, {}, {}, {}
     for days_ago in range(300, -1, -1):
         invested = sum(cost for step_day, cost in buy_steps if days_ago <= step_day)
         if days_ago <= 90:
@@ -2063,8 +2104,12 @@ def _demo_seed_data():
         progress = (300 - days_ago) / 300.0
         noise = ((days_ago * 7919) % 200 - 100) / 100.0 * 0.015
         date = d(days_ago)
-        snapshots[date] = round(invested * (1 + 0.14 * progress + noise), 2)
+        cash_pln = 30000.0 + sum(v for step_day, v in cash_steps if days_ago <= step_day)
+        native = {'PLN': 30000.0, **({'USD': 1110.0} if days_ago <= 150 else {})}
+        snapshots[date] = round(invested * (1 + 0.14 * progress + noise) + cash_pln, 2)
         snapshots_inv[date] = round(invested, 2)
+        snapshots_cap[date] = native['PLN'] + native.get('USD', 0) * 4.0
+        snapshots_cap_native[date] = native
     # Ids must be unique per signup: portfolio_holdings/transactions PKs are the
     # bare id, so a second concurrent demo account would collide (or hijack rows).
     uid = secrets.token_hex(4)
@@ -2077,6 +2122,8 @@ def _demo_seed_data():
         'transactions': transactions,
         'snapshots': snapshots,
         'snapshotsInvested': snapshots_inv,
+        'snapshotsCapital': snapshots_cap,
+        'snapshotsCapitalNative': snapshots_cap_native,
         'cash': {'PLN': 12625.0, 'USD': 1.50},
     }
 
@@ -5218,7 +5265,7 @@ async function doRecover() {
                 self.send_json(500, {'error': str(e)})
 
         elif path == '/api/portfolios/save-snapshots':
-            # POST {pid: {total, invested}} — batch-save today's snapshot for multiple portfolios
+            # POST {pid: {total, invested, fx?, capital?, capitalNative?}} — batch-save today's snapshot for multiple portfolios
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return
@@ -5251,6 +5298,11 @@ async function doRecover() {
                     pdata.setdefault('snapshotsInvested', {})[today] = invested
                     if fx_map:
                         pdata.setdefault('snapshotsFx', {})[today] = fx_map
+                    capital = vals.get('capital')
+                    cap_native = vals.get('capitalNative')
+                    if isinstance(capital, (int, float)) and isinstance(cap_native, dict):
+                        pdata.setdefault('snapshotsCapital', {})[today] = capital
+                        pdata.setdefault('snapshotsCapitalNative', {})[today] = cap_native
                     save_portfolio_data(pid, pdata)
                 self.send_json(200, {'ok': True})
             except Exception as e:
@@ -6185,12 +6237,25 @@ def _run_daily_snapshots():
                 continue
             fx_json = json.dumps({k: float(v) for k, v in fx_rates.items()})
             with _conn() as conn, conn.cursor() as cur:
+                # Kapitał własny zmienia się tylko przy działaniach użytkownika
+                # w aplikacji, a klient zapisuje go razem ze snapshotem — tu
+                # przenosimy ostatni znany. Policzenie go od zera wymagałoby
+                # przepisania na Pythona odtwarzania kosztu sprzedaży
+                # (realizedPL.js). Dzisiejszy zapis klienta ma pierwszeństwo.
+                cur.execute(
+                    "SELECT capital, capital_native FROM portfolio_snapshots "
+                    "WHERE portfolio_id=%s AND date<%s AND capital IS NOT NULL "
+                    "ORDER BY date DESC LIMIT 1", (pid, today))
+                prev = cur.fetchone()
+                capital, capital_native = (prev[0], prev[1]) if prev else (None, None)
                 cur.execute("""
-                    INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json, capital, capital_native)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (portfolio_id, date) DO UPDATE
-                        SET total=EXCLUDED.total, invested=EXCLUDED.invested, fx_json=EXCLUDED.fx_json
-                """, (pid, today, total, invested, fx_json))
+                        SET total=EXCLUDED.total, invested=EXCLUDED.invested, fx_json=EXCLUDED.fx_json,
+                            capital=COALESCE(portfolio_snapshots.capital, EXCLUDED.capital),
+                            capital_native=COALESCE(portfolio_snapshots.capital_native, EXCLUDED.capital_native)
+                """, (pid, today, total, invested, fx_json, capital, capital_native))
             saved += 1
 
         if skipped:

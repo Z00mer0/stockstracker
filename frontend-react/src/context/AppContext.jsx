@@ -291,12 +291,17 @@ export function AppProvider({ children }) {
 
   const snapshotsInv = rawData?.snapshotsInvested ?? {};
   const snapshotsFx = rawData?.snapshotsFx ?? {};
+  const snapshotsCap = rawData?.snapshotsCapital ?? {};
+  const snapshotsCapNative = rawData?.snapshotsCapitalNative ?? {};
   const snapshots = rawData?.snapshots
     ? Object.entries(rawData.snapshots)
         .map(([date, total]) => ({
           date, total,
           invested: snapshotsInv[date] ?? null,
           fx: snapshotsFx[date] ?? null,
+          // Kapitał własny w PLN (wpłaty − wypłaty) — patrz utils/capital.js.
+          capital: snapshotsCap[date] ?? null,
+          capitalNative: snapshotsCapNative[date] ?? null,
         }))
     : [];
 
@@ -652,9 +657,16 @@ export function AppProvider({ children }) {
     const rd = rawDataRef.current;
     const newSnapshots = { ...(rd?.snapshots ?? {}) };
     const newSnapshotsInv = { ...(rd?.snapshotsInvested ?? {}) };
+    const newSnapshotsCap = { ...(rd?.snapshotsCapital ?? {}) };
+    const newSnapshotsCapNative = { ...(rd?.snapshotsCapitalNative ?? {}) };
     delete newSnapshots[date];
     delete newSnapshotsInv[date];
-    const updated = { ...rd, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv };
+    delete newSnapshotsCap[date];
+    delete newSnapshotsCapNative[date];
+    const updated = {
+      ...rd, snapshots: newSnapshots, snapshotsInvested: newSnapshotsInv,
+      snapshotsCapital: newSnapshotsCap, snapshotsCapitalNative: newSnapshotsCapNative,
+    };
     await postUpdate(updated);
   }
 
@@ -672,7 +684,8 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
-  async function saveSnapshot(totalValue, investedValue, fxSnapshot) {
+  // capitalInfo: { capital, native } z utils/capital.js — opcjonalne.
+  async function saveSnapshot(totalValue, investedValue, fxSnapshot, capitalInfo) {
     if (!canWrite) return; // "all" view cannot save directly — use saveBatchSnapshots instead
     assertLoaded();
     const rd = rawDataRef.current;
@@ -687,12 +700,16 @@ export function AppProvider({ children }) {
       snapshotsFx: fxSnapshot
         ? { ...(rd.snapshotsFx ?? {}), [today]: fxSnapshot }
         : (rd.snapshotsFx ?? {}),
+      ...(capitalInfo && {
+        snapshotsCapital: { ...(rd.snapshotsCapital ?? {}), [today]: capitalInfo.capital },
+        snapshotsCapitalNative: { ...(rd.snapshotsCapitalNative ?? {}), [today]: capitalInfo.native },
+      }),
     };
     await postUpdate(updated);
   }
 
   async function saveBatchSnapshots(snapshotsMap) {
-    // snapshotsMap: {portfolioId: {total, invested, fx?}}
+    // snapshotsMap: {portfolioId: {total, invested, fx?, capital?, capitalNative?}}
     await api.post('/api/portfolios/save-snapshots', snapshotsMap);
   }
 
