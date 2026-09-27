@@ -126,7 +126,13 @@ before/after screenshots.
       beta pairs shifted after a filtered day; FIRE mixing currencies;
       tax-loss insight promising 19% of all losses and contradicting the Tax
       tab on wash-sale; Health Score only in Polish.
-- [ ] Settings — sections with side navigation
+- [x] Settings — 13 stacked cards → 4 groups (Account / Notifications / Data
+      & import / Tax & rates) with side navigation (a scrollable bar on phones),
+      split into `pages/settings/*`. Fixed: snapshot edits overwrote the day's
+      exchange rates with today's; snapshot edits and imports in the
+      all-portfolios view looked saved but were rejected by the server; alert
+      card had no inner padding; ~10 hard-coded Polish strings. Menu item
+      "Atrybucja" renamed to "Analiza".
 - [ ] Remaining pages
 - [ ] All 11 modals on the shared Modal
 

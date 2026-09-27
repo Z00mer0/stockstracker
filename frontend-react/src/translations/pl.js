@@ -822,6 +822,17 @@ export default {
 
   // ── Settings ────────────────────────────────────────────────
   settings_title:       'Ustawienia',
+  set_nav_notifications: 'Powiadomienia',
+  set_nav_data:          'Dane i import',
+  set_nav_market:        'Podatki i kursy',
+  settings_pick_portfolio: 'Widok wszystkich portfeli służy do przeglądania — żeby importować dane albo edytować snapshoty, wybierz konkretny portfel w menu (sekcja „Portfele”).',
+  import_statement_btn:  'Zestawienie kwartalne (PDF)',
+  import_kind_statement: 'Zestawienie',
+  api_key_set:           'ustawiony',
+  api_key_unset:         'nie ustawiony',
+  api_key_free:          'Darmowy klucz: marketdata.app',
+  api_url_local:         '(proxy lokalny)',
+  settings_footer:       'StocksTracker — Vite + React. Dane: Render (PostgreSQL).',
   api_keys:             'Klucze API',
   change_password:      'Zmiana hasła',
   current_password:     'Aktualne hasło',

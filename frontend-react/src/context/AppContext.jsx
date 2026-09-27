@@ -653,6 +653,9 @@ export function AppProvider({ children }) {
   }
 
   async function deleteSnapshot(date) {
+    // Bez tego w widoku „Wszystkie" zmiana pojawiała się na ekranie, a serwer
+    // odrzucał zapis (400) — po odświeżeniu znikała bez słowa.
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     assertLoaded();
     const rd = rawDataRef.current;
     const newSnapshots = { ...(rd?.snapshots ?? {}) };
@@ -671,6 +674,9 @@ export function AppProvider({ children }) {
   }
 
   async function setSnapshot(date, totalValue, investedValue, fxSnapshot) {
+    // Bez tego w widoku „Wszystkie" zmiana pojawiała się na ekranie, a serwer
+    // odrzucał zapis (400) — po odświeżeniu znikała bez słowa.
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     assertLoaded();
     const rd = rawDataRef.current;
     const updated = {
