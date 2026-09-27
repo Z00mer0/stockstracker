@@ -11,7 +11,7 @@ export default {
   nav_watchlist:        'Watchlist',
   nav_alerts:           'Alerty',
   nav_scenario:         'Scenario Lab',
-  nav_analysis:         'Atrybucja',
+  nav_analysis:         'Analiza',
   nav_ai:               'AI Insights',
   nav_news:             'Newsy',
   nav_oki:              'Kalkulator OKI',
