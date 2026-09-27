@@ -48,3 +48,14 @@ export function computePortfolioValue(positions, snapshots = [], extraValue = 0)
     partialPrices: anyPriceLoaded && !pricesLoaded, // żywa wartość, ale część pozycji po koszcie
   };
 }
+
+// Wynik dnia w PLN. dailyChg to % względem wczorajszego zamknięcia, więc
+// wczoraj pozycja była warta value / (1 + dailyChg/100), a zmiana wynosi
+// value · dailyChg / (100 + dailyChg). Wcześniej Dashboard i Portfel liczyły
+// value · dailyChg / 100 — przy ruchu +10% wynik dnia wychodził o 10% za duży.
+// null, gdy żadna pozycja nie ma zmiany dziennej (weekend, brak notowań).
+export function dailyChangePLN(positions) {
+  const withDay = positions.filter(p => p.valuePLN != null && p.dailyChg != null);
+  if (!withDay.length) return null;
+  return withDay.reduce((s, p) => s + p.valuePLN * p.dailyChg / (100 + p.dailyChg), 0);
+}

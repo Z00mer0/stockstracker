@@ -18,7 +18,7 @@ import StackedAllocation from '../components/shared/StackedAllocation';
 import WinnersLosers from '../components/shared/WinnersLosers';
 import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
-import { computePortfolioValue } from '../utils/portfolioValue.js';
+import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
@@ -270,16 +270,11 @@ export default function Dashboard() {
   }, [positionsValueKey, loading]);
 
   const dailyChange = useMemo(() => {
-    let contributing = 0;
-    const pln = allPositions.reduce((sum, pos) => {
-      if (pos.valuePLN != null && pos.dailyChg != null) {
-        contributing++;
-        return sum + pos.valuePLN * pos.dailyChg / 100;
-      }
-      return sum;
-    }, 0);
-    if (contributing === 0) return { pln: null, pct: null };
-    const pct = kpi.totalValue > 0 ? (pln / kpi.totalValue) * 100 : null;
+    const pln = dailyChangePLN(allPositions);
+    if (pln == null) return { pln: null, pct: null };
+    // Procent względem wczorajszej wartości, nie dzisiejszej.
+    const prev = kpi.totalValue - pln;
+    const pct = prev > 0 ? (pln / prev) * 100 : null;
     return { pln, pct };
   }, [allPositions, kpi.totalValue]);
 
@@ -349,7 +344,9 @@ export default function Dashboard() {
     ? (kpi.unrealPct >= 0 ? '+' : '') + fmtVal(kpi.unrealPct, 2) + '%'
     : null;
   const irrChipVal = portfolioIrr != null
-    ? formatPercent(portfolioIrr * 100, { locale, decimals: 1 }) + '/r'
+    // Z etykietą: bez niej roczna stopa zwrotu całego portfela stała pod
+    // „Wolne środki" i czytała się jak oprocentowanie gotówki.
+    ? `IRR ${formatPercent(portfolioIrr * 100, { locale, decimals: 1 })}/r`
     : null;
 
   // Nieaktualny kurs walut idzie przed resztą: fałszuje przeliczenie

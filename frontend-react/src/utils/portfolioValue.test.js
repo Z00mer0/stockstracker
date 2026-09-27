@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computePortfolioValue } from './portfolioValue.js';
+import { computePortfolioValue, dailyChangePLN } from './portfolioValue.js';
 
 const pos = (valuePLN, costPLN) => ({ valuePLN, costPLN });
 const SNAPS = [
@@ -98,5 +98,25 @@ describe('computePortfolioValue', () => {
       const r = computePortfolioValue(positions, SNAPS);
       expect(r.staleTotal && r.partialPrices).toBe(false);
     }
+  });
+});
+
+describe('dailyChangePLN', () => {
+  const day = (valuePLN, dailyChg) => ({ valuePLN, dailyChg });
+
+  it('zmiana względem wczorajszego zamknięcia, nie dzisiejszej wartości', () => {
+    // Wczoraj 1000, dziś +10% → 1100. Zmiana to 100, a nie 1100 · 10% = 110.
+    expect(dailyChangePLN([day(1100, 10)])).toBeCloseTo(100, 10);
+    // Wczoraj 1000, dziś −20% → 800. Zmiana −200, a nie −160.
+    expect(dailyChangePLN([day(800, -20)])).toBeCloseTo(-200, 10);
+  });
+
+  it('sumuje pozycje i pomija te bez ceny lub zmiany dziennej', () => {
+    expect(dailyChangePLN([day(1100, 10), day(800, -20), day(null, 5), day(500, null)])).toBeCloseTo(-100, 10);
+  });
+
+  it('null, gdy żadna pozycja nie ma zmiany dziennej (weekend, brak notowań)', () => {
+    expect(dailyChangePLN([day(1000, null)])).toBeNull();
+    expect(dailyChangePLN([])).toBeNull();
   });
 });

@@ -26,7 +26,7 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import { addRetro, loadJournal, setThesis } from '../services/journalService';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
-import { computePortfolioValue } from '../utils/portfolioValue.js';
+import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
 import PortfolioOverview from './portfolio/PortfolioOverview.jsx';
 import PositionsTable from './portfolio/PositionsTable.jsx';
@@ -161,10 +161,7 @@ export default function Portfolio() {
   const portCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const portToDisp = v => v / portFx;
 
-  const dailyContribs = enriched.filter(p => p.valuePLN != null && p.dailyChg != null);
-  const dailyChangePLN = dailyContribs.length
-    ? dailyContribs.reduce((sum, pos) => sum + pos.valuePLN * pos.dailyChg / 100, 0)
-    : null;
+  const dailyChange = dailyChangePLN(enriched);
 
   async function handleTickerRename(oldSymbol, newSymbol) {
     const sym = newSymbol.trim().toUpperCase();
@@ -403,7 +400,7 @@ export default function Portfolio() {
         metricsLoading={metricsLoading}
         anyPriceLoaded={anyPriceLoaded}
         partialPrices={partialPrices}
-        dailyChangePLN={dailyChangePLN}
+        dailyChangePLN={dailyChange}
         totalCostPLN={totalCostPLN}
         positionsCount={portfolio.length}
         positions={enriched}

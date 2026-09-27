@@ -7,6 +7,7 @@ import { useLanguage, useT } from '../context/LanguageContext';
 import Chip from '../components/shared/Chip';
 import AddDividendModal from '../components/AddDividendModal';
 import useDividendEvents from '../hooks/useDividendEvents';
+import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { lsSet } from '../utils/safeStorage.js';
 import { normalizeType } from '../utils/transactions.js';
 import { PageSkeleton } from '../components/RouteFallback';
@@ -54,6 +55,18 @@ export default function Dividends() {
   }
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
+
+  // Pozycje z ceną rynkową. Surowe pozycje z useApp nie mają pola price, więc
+  // `pos.price ?? pos.avgPrice` zawsze brało cenę zakupu — stopa dywidendy
+  // i yield w DRIP wychodziły od kosztu, choć opis mówi o wartości portfela.
+  const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
+  const positions = useMemo(
+    () => portfolio.map(pos => enrichPosition(pos)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [portfolio, fxRates, enrichPosition]
+  );
+  // Bez notowania — po koszcie, jak w nagłówku portfela (computePortfolioValue).
+  const valueOf = p => p.valuePLN ?? p.costPLN ?? 0;
 
   const {
     manualDividends, allCalendarEvents,
@@ -157,22 +170,19 @@ export default function Dividends() {
 
   const portfolioYield = useMemo(() => {
     let totalAnnualDiv = 0, totalValue = 0;
-    portfolio.forEach(pos => {
+    positions.forEach(pos => {
       const data = yocMap[pos.symbol];
       if (!data?.annual) return;
-      const rate = fxRates[pos.currency] ?? 1;
-      totalAnnualDiv += pos.qty * data.annual * rate;
-      totalValue += pos.qty * (pos.price ?? pos.avgPrice) * rate;
+      totalAnnualDiv += pos.qty * data.annual * (fxRates[pos.currency] ?? 1);
+      totalValue += valueOf(pos);
     });
     return totalValue > 0 ? (totalAnnualDiv / totalValue) * 100 : null;
-  }, [portfolio, yocMap, fxRates]);
+  }, [positions, yocMap, fxRates]);
 
   // ── Kula śnieżna (DRIP): dochód roczny rośnie o (1+wzrost)·(1+yield) przy
   //    reinwestycji, o (1+wzrost) bez niej; yield efektywny = wypłaty 12m / wartość portfela
   const drip = useMemo(() => {
-    const valuePLN = portfolio.reduce(
-      (s, p) => s + p.qty * (p.price ?? p.avgPrice) * (fxRates[p.currency] ?? 1), 0
-    );
+    const valuePLN = positions.reduce((s, p) => s + valueOf(p), 0);
     if (annualDivPLN <= 0 || valuePLN <= 0) return null;
     const y = annualDivPLN / valuePLN;
     const g = dripGrowth / 100;
@@ -186,7 +196,7 @@ export default function Dividends() {
     }
     const goalYear = fireGoal ? rows.find(r => r.drip >= fireGoal / dispFx)?.year ?? null : null;
     return { rows, yieldPct: y * 100, last: rows[rows.length - 1], goalYear };
-  }, [portfolio, fxRates, annualDivPLN, dripGrowth, dripYears, dispFx, fireGoal]);
+  }, [positions, annualDivPLN, dripGrowth, dripYears, dispFx, fireGoal]);
 
   const bySymbol = useMemo(() => {
     const map = {};
