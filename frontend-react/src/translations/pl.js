@@ -103,7 +103,6 @@ export default {
   total_result:         'łączny wynik',
   realized_short:       'zrealizowany',
   paper_short:          'papierowy',
-  dividends_ytd:        'Dywidendy YTD',
   free_cash:            'Wolne środki',
   next_dividend:        'Nast. dywidenda',
   next_prefix:          'następna',

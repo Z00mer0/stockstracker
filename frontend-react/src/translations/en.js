@@ -103,7 +103,6 @@ export default {
   page_error_hint:      'The rest of the app is fine — navigate elsewhere or try again.',
   last_session:         'from last session',
   gain_loss:            'Gain / loss',
-  dividends_ytd:        'Dividends YTD',
   free_cash:            'Free cash',
   next_dividend:        'Next dividend',
   next_prefix:          'next',

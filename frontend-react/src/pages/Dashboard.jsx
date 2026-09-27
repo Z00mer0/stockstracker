@@ -20,6 +20,7 @@ import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
 import { todayCapital, withCapital } from '../utils/capital.js';
+import { normalizeType } from '../utils/transactions.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
@@ -149,15 +150,17 @@ export default function Dashboard() {
     const realizedPLN = computeRealizedTrades(transactions, fxRates)
       .reduce((sum, t) => sum + t.plPLN, 0);
 
+    // normalizeType: „DIVIDEND" z importu brokera to też dywidenda — wcześniej
+    // kafelek i ROI ją pomijały (Transakcje i Dywidendy już ją liczą).
     const dividendsPLN = transactions
-      .filter(t => t.type === 'DIV')
+      .filter(t => normalizeType(t.type) === 'DIV')
       .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
 
     const yearAgo = new Date();
     yearAgo.setFullYear(yearAgo.getFullYear() - 1);
     const yearCutStr = yearAgo.toISOString().slice(0, 10);
     const annualDivPLN = transactions
-      .filter(t => t.type === 'DIV' && t.date >= yearCutStr)
+      .filter(t => normalizeType(t.type) === 'DIV' && t.date >= yearCutStr)
       .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
 
     const jan1 = `${new Date().getFullYear()}-01-01`;
@@ -438,7 +441,7 @@ export default function Dashboard() {
         <Stat
           blur={blur}
           icon={Coins}
-          label={t('dividends_ytd')}
+          label={t('div_12m_label')}
           value={`${fmtDisp(kpi.annualDivPLN)} ${currLabel}`}
           hint={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
           onClick={() => navigate('/dividends')}
