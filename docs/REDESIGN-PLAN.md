@@ -133,7 +133,16 @@ before/after screenshots.
       all-portfolios view looked saved but were rejected by the server; alert
       card had no inner padding; ~10 hard-coded Polish strings. Menu item
       "Atrybucja" renamed to "Analiza".
-- [ ] Remaining pages
+- [x] Remaining pages — Closed positions, Watchlist, Alerts, News, Calendar,
+      OKI, Scenario Lab, AI Insights, public shared portfolio. Each compared
+      old vs new with the same data; calculations checked independently.
+      Fixed: closed-position averages and cost-weighted %; option prices
+      (normal CDF missing √2 — every price, delta, theta and PoP was off);
+      cash-secured put and iron condor ignoring the contract count; covered
+      call max loss ignoring the premium; hidden quantity field still
+      multiplying spreads; runway ignoring a negative real return; AI review
+      and public-portfolio IRR skipping "DIVIDEND" rows; currency exposure
+      not summing to 100%; OKI/Scenario charts unreadable in the light theme.
 - [ ] All 11 modals on the shared Modal
 
 ### Phase 4 — Charts
