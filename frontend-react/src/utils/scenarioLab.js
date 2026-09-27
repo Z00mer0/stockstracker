@@ -7,8 +7,11 @@ const R = 0.05; // risk-free rate
 
 export function normCDF(x) {
   const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+  // Φ(x) = ½·(1 + erf(x/√2)); przybliżenie Abramowitza-Stegun liczy erf.
+  // Wcześniej brakowało dzielenia przez √2 — Φ(1,96) wychodziło 0,997
+  // zamiast 0,975, a z nim wszystkie ceny opcji, delty i prawdopodobieństwa.
   const sign = x < 0 ? -1 : 1;
-  const ax = Math.abs(x);
+  const ax = Math.abs(x) / Math.SQRT2;
   const t = 1 / (1 + p * ax);
   const y = 1 - (t*(a1+t*(a2+t*(a3+t*(a4+t*a5))))) * Math.exp(-ax*ax);
   return 0.5 * (1 + sign * y);
@@ -82,12 +85,13 @@ export function calcPayoff(strategy, prices, params) {
       case 'long-put':         return (Math.max(0, strike-p) - premium) * C * qty;
       case 'covered-call':     return (p-entry)*qty + (Math.min(0, strike-p) + premium)*C*nC;
       case 'protective-put':   return (p-entry)*qty + (Math.max(0, strike-p) - premium)*C*nC;
-      case 'csp':              return (Math.min(0, p-strike) + premium) * C;
+      // CSP: qty = liczba kontraktów (wcześniej ignorowane — zawsze 1 kontrakt).
+      case 'csp':              return (Math.min(0, p-strike) + premium) * C * qty;
       case 'bull-call-spread': return (Math.max(0,p-strike) - Math.max(0,p-strike2) - premium) * C * qty;
       case 'bear-put-spread':  return (Math.max(0,strike-p) - Math.max(0,strike2-p) - premium) * C * qty;
       case 'iron-condor': {
         const K1b = strike - wing, K2b = strike2 + wing;
-        return (Math.max(0,K1b-p) - Math.max(0,strike-p) - Math.max(0,p-strike2) + Math.max(0,p-K2b) + premium) * C;
+        return (Math.max(0,K1b-p) - Math.max(0,strike-p) - Math.max(0,p-strike2) + Math.max(0,p-K2b) + premium) * C * qty;
       }
       default: return 0;
     }
@@ -104,7 +108,7 @@ export function calcPayoff(strategy, prices, params) {
       case 'protective-put':
         return (p-entry)*qty + (bsPrice(p, strike, T, r, iv, 'put') - premium)*C*nC;
       case 'csp':
-        return (premium - bsPrice(p, strike, T, r, iv, 'put')) * C;
+        return (premium - bsPrice(p, strike, T, r, iv, 'put')) * C * qty;
       case 'bull-call-spread':
         return (bsPrice(p,strike,T,r,iv,'call') - bsPrice(p,strike2,T,r,iv,'call') - premium) * C * qty;
       case 'bear-put-spread':
@@ -112,7 +116,7 @@ export function calcPayoff(strategy, prices, params) {
       case 'iron-condor': {
         const K1b = strike - wing, K2b = strike2 + wing;
         return (bsPrice(p,K1b,T,r,iv,'put') - bsPrice(p,strike,T,r,iv,'put')
-               - bsPrice(p,strike2,T,r,iv,'call') + bsPrice(p,K2b,T,r,iv,'call') + premium) * C;
+               - bsPrice(p,strike2,T,r,iv,'call') + bsPrice(p,K2b,T,r,iv,'call') + premium) * C * qty;
       }
       default: return 0;
     }
@@ -161,7 +165,9 @@ export function calcKPIs(strategy, params) {
       return {
         breakevens: [be],
         maxProfit,
-        maxLoss: -entry * qty,
+        // Przy kursie 0 zostaje otrzymana premia — strata to cena − premia
+        // (wcześniej pełna cena wejścia, niezgodnie z wykresem i progiem).
+        maxLoss: -(entry - premium) * qty,
         bpe,
         moic: bpe > 0 ? maxProfit / bpe : null,
         pop: probAbove(entry, be, iv, T),
@@ -182,9 +188,9 @@ export function calcKPIs(strategy, params) {
     }
     case 'csp': {
       const be = strike - premium;
-      const maxProfit = premium * C;
-      const maxLoss = -(strike - premium) * C;
-      const bpe = strike * C;
+      const maxProfit = premium * C * qty;
+      const maxLoss = -(strike - premium) * C * qty;
+      const bpe = strike * C * qty;
       return {
         breakevens: [be],
         maxProfit,
@@ -225,9 +231,10 @@ export function calcKPIs(strategy, params) {
     case 'iron-condor': {
       const beLo = strike - premium;
       const beHi = strike2 + premium;
-      const maxProfit = premium * C;
-      const maxLoss = -(wing - premium) * C;
-      const bpe = (wing - premium) * C;
+      // Iron condor: qty = liczba kontraktów (wcześniej zawsze 1).
+      const maxProfit = premium * C * qty;
+      const maxLoss = -(wing - premium) * C * qty;
+      const bpe = (wing - premium) * C * qty;
       const popHi = probAbove(entry, beHi, iv, T);
       const popLo = probAbove(entry, beLo, iv, T);
       return {
