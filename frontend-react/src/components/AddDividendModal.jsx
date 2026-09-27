@@ -1,133 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useT } from '../context/LanguageContext';
+import { Button, Field, Input, Modal, Select } from './ui';
 
 const EMPTY = { symbol: '', exDate: '', payDate: '', amount: '', currency: 'PLN', note: '' };
-
-const overlay = {
-  position: 'fixed', inset: 0,
-  background: 'rgba(0,0,0,0.72)',
-  backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-  zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-};
-
-const card = {
-  background: 'var(--bg-2)', border: '1px solid var(--border)',
-  borderRadius: 12,
-  width: '100%', maxWidth: 400,
-  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-  overflow: 'hidden',
-};
 
 export default function AddDividendModal({ isOpen, onClose, onSave, initialData = null }) {
   const { portfolio } = useApp();
   const t = useT();
   const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  // Waluta pozycji — dywidenda z AAPL jest w $, nie w zł. Wcześniej okno
+  // otwarte z Portfela zawsze proponowało PLN, więc 0,25 $ zapisywało się
+  // jako 0,25 zł (czterokrotnie za mało po przeliczeniu).
+  const currencyOf = sym => portfolio.find(p => p.symbol === sym)?.currency;
 
   useEffect(() => {
     if (isOpen) {
+      setError('');
       setForm(initialData
-        ? { symbol: initialData.symbol, exDate: initialData.exDate, payDate: initialData.payDate ?? '',
-            amount: String(initialData.amount ?? ''), currency: initialData.currency ?? 'PLN', note: initialData.note ?? '' }
+        ? { symbol: initialData.symbol ?? '', exDate: initialData.exDate ?? '', payDate: initialData.payDate ?? '',
+            amount: String(initialData.amount ?? ''),
+            currency: initialData.currency ?? currencyOf(initialData.symbol) ?? 'PLN', note: initialData.note ?? '' }
         : EMPTY
       );
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
-  const symbols = [...new Set(portfolio.map(p => p.symbol))].sort();
+  // Edytowana dywidenda może dotyczyć spółki już sprzedanej — bez tego lista
+  // jej nie zawierała i pole spółki wyglądało na puste.
+  const symbols = [...new Set([...portfolio.map(p => p.symbol), form.symbol].filter(Boolean))].sort();
+  const amount = parseFloat(form.amount);
+  const valid = form.symbol && form.exDate && amount > 0;
 
   function set(field, value) { setForm(prev => ({ ...prev, [field]: value })); }
 
-  function handleSave() {
-    if (!form.symbol || !form.exDate || !form.amount) return;
-    onSave({
-      symbol: form.symbol, exDate: form.exDate,
-      payDate: form.payDate || null,
-      amount: parseFloat(form.amount),
-      currency: form.currency, note: form.note.trim(),
-    });
-    onClose();
+  function pickSymbol(sym) {
+    setForm(prev => ({ ...prev, symbol: sym, currency: currencyOf(sym) ?? prev.currency }));
+  }
+
+  // Czekamy na zapis: wcześniej okno zamykało się od razu, a odrzucony zapis
+  // (np. w widoku „Wszystkie") kończył się niezłapanym błędem bez śladu.
+  async function handleSave(e) {
+    e?.preventDefault();
+    if (!valid) return;
+    setSaving(true); setError('');
+    try {
+      await onSave({
+        symbol: form.symbol, exDate: form.exDate,
+        payDate: form.payDate || null,
+        amount,
+        currency: form.currency, note: form.note.trim(),
+      });
+      onClose();
+    } catch (err) {
+      setError(err?.message || t('save_error'));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <div style={overlay}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-            {initialData?.id ? t('edit_dividend_title') : t('add_dividend_title')}
-          </h3>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
-          >×</button>
+    <Modal
+      size="sm"
+      title={initialData?.id ? t('edit_dividend_title') : t('add_dividend_title')}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button variant="primary" type="submit" form="add-dividend" disabled={!valid} loading={saving}>{t('save_btn')}</Button>
+        </>
+      }
+    >
+      <form id="add-dividend" onSubmit={handleSave} className="grid gap-3">
+        <Field label={t('col_company')}>
+          <Select value={form.symbol} onChange={e => pickSymbol(e.target.value)}>
+            <option value="">—</option>
+            {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+          </Select>
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('ex_date_label')}>
+            <Input type="date" value={form.exDate} onChange={e => set('exDate', e.target.value)} />
+          </Field>
+          <Field label={t('pay_date_label')}>
+            <Input type="date" value={form.payDate} onChange={e => set('payDate', e.target.value)} />
+          </Field>
         </div>
-
-        {/* Form */}
-        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label className="field-label">{t('col_company')}</label>
-            <select className="field-input" value={form.symbol} onChange={e => set('symbol', e.target.value)}>
-              <option value="">—</option>
-              {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="field-label">{t('ex_date_label')}</label>
-            <input type="date" className="field-input" value={form.exDate} onChange={e => set('exDate', e.target.value)} />
-          </div>
-
-          <div>
-            <label className="field-label">{t('pay_date_label')}</label>
-            <input type="date" className="field-input" value={form.payDate} onChange={e => set('payDate', e.target.value)} />
-          </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label className="field-label">{t('amount_per_share')}</label>
-              <input
-                type="number" min="0" step="0.01"
-                className="field-input"
-                placeholder="0.00"
-                value={form.amount}
-                onChange={e => set('amount', e.target.value)}
-              />
-            </div>
-            <div style={{ width: 90 }}>
-              <label className="field-label">{t('currency_label')}</label>
-              <select className="field-input" value={form.currency} onChange={e => set('currency', e.target.value)}>
-                {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="field-label">{t('note_label')}</label>
-            <input
-              type="text" className="field-input"
-              placeholder="np. wypłata za 2025"
-              maxLength={120}
-              value={form.note}
-              onChange={e => set('note', e.target.value)}
-            />
-          </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-3">
+          <Field label={t('amount_per_share')}>
+            <Input type="number" min="0" step="0.0001" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e => set('amount', e.target.value)} />
+          </Field>
+          <Field label={t('currency_label')}>
+            <Select value={form.currency} onChange={e => set('currency', e.target.value)}>
+              {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </Field>
         </div>
-
-        {/* Footer */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" onClick={onClose}>{t('cancel')}</button>
-          <button
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={!form.symbol || !form.exDate || !form.amount}
-          >
-            {t('save_btn')}
-          </button>
-        </div>
-      </div>
-    </div>
+        <Field label={t('note_label')}>
+          <Input type="text" maxLength={120} placeholder={t('dividend_note_ph')} value={form.note} onChange={e => set('note', e.target.value)} />
+        </Field>
+        {error && <p role="alert" className="text-small text-down">{error}</p>}
+      </form>
+    </Modal>
   );
 }

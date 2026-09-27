@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useT } from '../context/LanguageContext';
 import { genAlertId } from '../services/watchlistService';
+import { Button, Field, Input, Modal, SegmentedControl } from './ui';
 
 // Uniwersalny modal alertu: cena / dzienna zmiana / 52W, tryby once/rearm/repeat.
 // Używany zarówno na stronie Obserwowane, jak i w menu ⋯ w Portfelu.
@@ -26,18 +27,23 @@ export default function AlertModal({ symbol, currency, livePrice, fallbackPrice 
     setMode(k === 'price' ? 'rearm' : 'repeat');
   }
 
-  function handleAdd() {
+  const displayPrice = livePrice?.price ?? fallbackPrice;
+  const priceValid = kind !== 'price' || parseFloat(price) > 0;
+  const pctValid = kind !== 'dailyChange' || parseFloat(pct) > 0;
+
+  function handleAdd(e) {
+    e?.preventDefault();
+    if (!priceValid || !pctValid) return;
     if (kind === 'price') {
-      if (!price || isNaN(parseFloat(price))) return;
       const target = parseFloat(price);
-      const currentPrice = livePrice?.price ?? fallbackPrice ?? 0;
-      const alreadyMet = (type === 'above' && currentPrice >= target)
-                      || (type === 'below' && currentPrice <= target);
+      // Bez znanej ceny nie wiadomo, czy warunek już jest spełniony. Wcześniej
+      // przyjmowano cenę 0, więc alert „poniżej" zapisywał się jako już
+      // wyzwolony i nigdy nie przychodził.
+      const alreadyMet = displayPrice != null && (
+        (type === 'above' && displayPrice >= target) || (type === 'below' && displayPrice <= target));
       onSave({ id: genAlertId(), kind, type, targetPrice: target, mode, triggered: mode === 'repeat' ? false : alreadyMet });
     } else if (kind === 'dailyChange') {
-      const p = parseFloat(pct);
-      if (!p || p <= 0) return;
-      onSave({ id: genAlertId(), kind, type, targetPercent: p, mode, triggered: false });
+      onSave({ id: genAlertId(), kind, type, targetPercent: parseFloat(pct), mode, triggered: false });
     } else {
       onSave({ id: genAlertId(), kind, type, mode, triggered: false });
     }
@@ -49,57 +55,44 @@ export default function AlertModal({ symbol, currency, livePrice, fallbackPrice 
       ? { above: t('alert_rise_min'), below: t('alert_fall_min') }
       : { above: t('alert_new_high'), below: t('alert_new_low') };
 
-  const displayPrice = livePrice?.price ?? fallbackPrice;
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div className="card" style={{ width: 340, padding: 24 }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🔔 Alert — {symbol}</h2>
-        {displayPrice != null && (
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}>
-            {livePrice?.price != null ? 'Aktualna cena: ' : ''}{Number(displayPrice).toFixed(2)} {currency ?? ''}
-          </p>
-        )}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-          {[['price', 'alert_kind_price'], ['dailyChange', 'alert_kind_daily'], ['week52', 'alert_kind_week52']].map(([k, key]) => (
-            <button key={k} onClick={() => switchKind(k)} className={`btn ${kind === k ? 'btn-primary' : ''}`}
-              style={{ flex: 1, justifyContent: 'center', fontSize: 11, padding: '6px 4px' }}>
-              {t(key)}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {['above', 'below'].map(tp => (
-            <button key={tp} onClick={() => setType(tp)} className={`btn ${type === tp ? 'btn-primary' : ''}`} style={{ flex: 1, justifyContent: 'center', fontSize: 11 }}>
-              {typeLabels[tp]}
-            </button>
-          ))}
-        </div>
+    <Modal
+      size="sm"
+      title={`${t('alert_title')} — ${symbol}`}
+      description={displayPrice != null
+        ? `${livePrice?.price != null ? `${t('alert_current_price')} ` : ''}${Number(displayPrice).toFixed(2)} ${currency ?? ''}`
+        : undefined}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button variant="primary" type="submit" form="alert-form" disabled={!priceValid || !pctValid}>{t('add_btn')}</Button>
+        </>
+      }
+    >
+      <form id="alert-form" onSubmit={handleAdd} className="grid gap-3">
+        <SegmentedControl
+          block
+          aria-label={t('alert_title')}
+          options={[['price', 'alert_kind_price'], ['dailyChange', 'alert_kind_daily'], ['week52', 'alert_kind_week52']].map(([value, key]) => ({ value, label: t(key) }))}
+          value={kind}
+          onChange={switchKind}
+        />
+        <SegmentedControl block options={['above', 'below'].map(v => ({ value: v, label: typeLabels[v] }))} value={type} onChange={setType} />
         {kind === 'price' && (
-          <input type="number" placeholder={t('col_price')} value={price} onChange={e => setPrice(e.target.value)}
-            className="field-input" style={{ marginBottom: 16 }} autoFocus />
+          <Field label={t('col_price')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} suffix={currency} />
+          </Field>
         )}
         {kind === 'dailyChange' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <input type="number" placeholder={t('alert_pct_placeholder')} value={pct} onChange={e => setPct(e.target.value)}
-              className="field-input" style={{ flex: 1 }} autoFocus />
-            <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>%</span>
-          </div>
+          <Field label={t('alert_kind_daily')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder={t('alert_pct_placeholder')} value={pct} onChange={e => setPct(e.target.value)} suffix="%" />
+          </Field>
         )}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-          {['once', 'rearm', 'repeat'].map(m => (
-            <button key={m} onClick={() => setMode(m)} className={`btn ${mode === m ? 'btn-primary' : ''}`}
-              style={{ flex: 1, justifyContent: 'center', fontSize: 11, padding: '6px 4px' }}>
-              {t(`alert_mode_${m}`)}
-            </button>
-          ))}
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 20, minHeight: 28 }}>{t(`alert_mode_${mode}_hint`)}</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>{t('cancel')}</button>
-          <button onClick={handleAdd} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{t('add_btn')}</button>
-        </div>
-      </div>
-    </div>
+        <Field label={t('alert_mode_label')} hint={t(`alert_mode_${mode}_hint`)}>
+          <SegmentedControl block options={['once', 'rearm', 'repeat'].map(m => ({ value: m, label: t(`alert_mode_${m}`) }))} value={mode} onChange={setMode} />
+        </Field>
+      </form>
+    </Modal>
   );
 }
