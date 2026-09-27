@@ -2332,8 +2332,37 @@ def _fetch_quote(symbol):
     return None
 
 
+# Ostatnie kursy pobrane z NBP w tym procesie — zapas na awarię NBP.
+_nbp_last_good = {}
+
+
+def _nbp_fallback_rates():
+    """Kursy na wypadek awarii NBP: ostatnie pobrane w tym procesie, a po
+    restarcie — najnowsze zapisane w fx_rates_history. Wcześniej awaria dawała
+    samo {'PLN': 1.0}, więc wołający liczyli USD/EUR po kursie 1: dzienny
+    snapshot schedulera zapisywał wtedy portfel zagraniczny kilkukrotnie
+    zaniżony, a publiczny link pokazywał zaniżone udziały."""
+    rates = {'PLN': 1.0}
+    if _nbp_last_good:
+        rates.update(_nbp_last_good)
+        return rates
+    if not DATABASE_URL:
+        return rates
+    try:
+        with _conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT DISTINCT ON (currency) currency, rate FROM fx_rates_history "
+                "WHERE rate > 0 ORDER BY currency, date DESC")
+            for cur_code, rate in cur.fetchall():
+                rates[cur_code] = float(rate)
+    except Exception as e:
+        log.warning(f'[nbp] fallback z bazy: {e}')
+    return rates
+
+
 def _nbp_rates():
-    """Kursy NBP tabela A: {'USD': 3.98, ...}; PLN=1. Pusty dict przy błędzie."""
+    """Kursy NBP tabela A: {'USD': 3.98, ...}; PLN=1. Przy błędzie NBP —
+    ostatnie znane kursy (_nbp_fallback_rates), a bez nich samo PLN."""
     try:
         req = urllib.request.Request('https://api.nbp.pl/api/exchangerates/tables/a?format=json',
                                      headers={'User-Agent': 'Mozilla/5.0'})
@@ -2341,10 +2370,11 @@ def _nbp_rates():
             table = json.loads(r.read())[0]['rates']
         rates = {row['code']: float(row['mid']) for row in table}
         rates['PLN'] = 1.0
+        _nbp_last_good.update(rates)
         return rates
     except Exception as e:
         log.warning(f'[push] nbp: {e}')
-        return {'PLN': 1.0}
+        return _nbp_fallback_rates()
 
 
 # Zapamiętane "NBP nie ma kursu na ten dzień". Prawdziwy kurs jest zawsze

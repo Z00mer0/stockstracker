@@ -86,3 +86,6 @@ jobs:
       # IRR publicznego portfela pomijał dywidendy „DIVIDEND" / małe litery
       # z importu brokera i dywidendy bez ilości. Test pilnuje przepływów.
       - run: python test_share_irr.py
+      # Awaria NBP dawała samo PLN — USD/EUR liczone po kursie 1 w dziennym
+      # snapshocie i na publicznym linku. Test pilnuje zapasu (proces, baza).
+      - run: python test_nbp_fallback.py
