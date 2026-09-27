@@ -80,7 +80,19 @@ export function groupBySymbol(trades) {
     g.plNative += t.plNative;
     g.totalQty += t.qty;
   }
-  return Object.values(map).sort((a, b) => b.plPLN - a.plPLN);
+  // Średnie ważone ilością, a % liczony od łącznego kosztu — wcześniej
+  // Zamknięte pozycje brały zwykłą średnią z % transakcji, więc 10 akcji
+  // na −50% i 1000 na +10% dawało −20% zamiast ok. +9%.
+  return Object.values(map).map(g => {
+    const cost = g.trades.reduce((s, t) => s + t.costBasis * t.qty, 0);
+    const sell = g.trades.reduce((s, t) => s + t.sellPrice * t.qty, 0);
+    return {
+      ...g,
+      avgCost: g.totalQty > 0 ? cost / g.totalQty : 0,
+      avgSell: g.totalQty > 0 ? sell / g.totalQty : 0,
+      pct: cost > 0 ? (g.plNative / cost) * 100 : 0,
+    };
+  }).sort((a, b) => b.plPLN - a.plPLN);
 }
 
 // Generates PIT-38-compatible CSV (in PLN, current FX rates)

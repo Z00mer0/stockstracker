@@ -23,6 +23,7 @@ const COLLAPSE_KEY = 'myfund_sidebar_collapsed';
 const PAGE_HEADINGS = {
   '/portfolio':    ['nav_portfolio',    'page_sub_portfolio'],
   '/history':      ['nav_history',      'page_sub_history'],
+  '/closed':       ['closed_positions_title', 'closed_positions_subtitle'],
   '/transactions': ['nav_transactions', 'page_sub_transactions'],
   '/dividends':    ['nav_dividends',    'page_sub_dividends'],
   '/calendar':     ['nav_calendar',     'page_sub_calendar'],
