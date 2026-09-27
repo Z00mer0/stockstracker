@@ -85,7 +85,10 @@ Each page PR: move to the kit, remove inline styles, mobile layout,
 empty/loading/error states, translate remaining hardcoded strings (P3-5),
 before/after screenshots.
 
-- [ ] Dashboard
+- [x] Dashboard — kit + Tailwind (86 inline styles → 1), skeleton / error / empty
+      states, cash window on Modal, dead code removed (`KpiPro`, unused
+      helpers, orphaned CSS). Kit gained `Callout`; `Stat` gained `spark`,
+      `hero`, `blur`.
 - [ ] Portfolio (also split the file — P3-8)
 - [ ] Transactions
 - [ ] Dividends

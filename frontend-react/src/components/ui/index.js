@@ -2,6 +2,7 @@
 // Nowy kod importuje stąd: `import { Button, Modal } from '../components/ui'`.
 export { default as Badge }      from './Badge.jsx';
 export { default as Button }     from './Button.jsx';
+export { default as Callout }    from './Callout.jsx';
 export { default as Card }       from '../shared/Card.jsx';
 export { default as EmptyState } from './EmptyState.jsx';
 export { default as Field }      from './Field.jsx';

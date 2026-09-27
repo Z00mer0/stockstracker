@@ -118,8 +118,12 @@ export default {
   investor_fallback:    'Inwestorze',
   ticker_not_found:     'Bez notowań',
   ticker_not_found_hint: 'Ticker prawdopodobnie nieprawidłowy — sprawdź w edycji pozycji. Wycena portfela oraz snapshot dnia liczą się z ceną zakupu, nie z rynkowej.',
-  market_live:          'live',
-  market_closed_status: 'closed',
+  market_live:          'na żywo',
+  market_closed_status: 'zamknięta',
+  movers_best:          'Najlepsze',
+  movers_worst:         'Najgorsze',
+  cash_empty_hint:      'Nie masz jeszcze gotówki — wpisz kwoty poniżej.',
+  go_to_portfolio:      'Przejdź do Portfela',
 
   // ── InsightStrip ─────────────────────────────────────────────
   best_position:        'Najlepsza pozycja',

@@ -1,27 +1,30 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase,
+  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useChart } from '../context/ChartContext';
 import StockDetailModal from '../components/StockDetailModal';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import Sparkline from '../components/shared/Sparkline';
-import Spinner from '../components/shared/Spinner';
 import TickerLogo from '../components/shared/TickerLogo';
-import Chip from '../components/shared/Chip';
-import { usePortfolioMetrics, fmtPeriod } from '../hooks/usePortfolioMetrics';
+import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
-import { COLUMN_DEFS, loadColumnConfig } from '../utils/portfolioColumns';
 import { formatPercent } from '../utils/format.js';
-import KpiPro from '../components/shared/KpiPro';
 import InsightStrip from '../components/shared/InsightStrip';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import WinnersLosers from '../components/shared/WinnersLosers';
-import SegmentedControl from '../components/shared/SegmentedControl';
 import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue } from '../utils/portfolioValue.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
+import { PageSkeleton } from '../components/RouteFallback';
+import {
+  Button, Callout, Card, EmptyState, Field, Input, Modal, PageHeader, SegmentedControl, Stat,
+} from '../components/ui';
+import { cx } from '../components/ui/cx.js';
 
 function xirr(cashflows) {
   if (cashflows.length < 2) return null;
@@ -56,71 +59,58 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
   });
 }
 
-const CUR_FLAG_DASH = { PLN: '🇵🇱', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧' };
-const COL_LABEL_DASH = Object.fromEntries(COLUMN_DEFS.map(c => [c.key, c.label]));
 
-function renderCellDash(key, pos, isPrivate, locale = 'pl-PL', currLabel = 'zł', toDisp = v => v) {
-  const flag = CUR_FLAG_DASH[pos.currency] ?? pos.currency;
-  switch (key) {
-    case 'qty':
-      return <span style={{ color: 'var(--text)' }}>{fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4)}</span>;
-    case 'avgPrice':
-      return <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.avgPrice)} <span className="text-xs">{flag}</span></span>;
-    case 'price':
-      return pos.price != null
-        ? <span style={{ color: 'var(--text)' }}>{fmt(pos.price)} <span className="text-xs">{flag}</span></span>
-        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
-    case 'dailyChg': {
-      if (pos.dailyChg == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
-      const up = pos.dailyChg >= 0;
-      return <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>{up ? '+' : ''}{fmt(pos.dailyChg, 2)}%</span>;
-    }
-    case 'costPLN':
-      return <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(toDisp(pos.costPLN))} {currLabel}</span>;
-    case 'valuePLN':
-      return pos.valuePLN != null
-        ? <span style={{ color: 'var(--text)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{fmt(toDisp(pos.valuePLN))} {currLabel}</span>
-        : <span style={{ color: 'var(--text-faint)' }}>—</span>;
-    case 'plPLN': {
-      if (pos.plPLN == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
-      const up = pos.plPLN >= 0;
-      return <span style={{ color: up ? 'var(--up)' : 'var(--down)', fontWeight: 600 }} className={isPrivate ? 'privacy-blur' : ''}>{up ? '+' : ''}{fmt(toDisp(pos.plPLN))} {currLabel}</span>;
-    }
-    case 'period':
-      return <span style={{ color: 'var(--text-dim)' }}>{fmtPeriod(pos.periodDays)}</span>;
-    case 'moic':
-      return pos.moic != null ? <span style={{ color: 'var(--text)' }}>{fmt(pos.moic, 2)}x</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
-    case 'irr': {
-      if (pos.irr == null) return <span style={{ color: 'var(--text-faint)' }}>—</span>;
-      const up = pos.irr >= 0;
-      return <span style={{ color: up ? 'var(--up)' : 'var(--down)' }}>{up ? '+' : ''}{fmt(pos.irr, 1)}%</span>;
-    }
-    case 'pe':
-      return pos.pe != null ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pe, 1)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
-    case 'peFwd':
-      return pos.peFwd != null ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.peFwd, 1)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
-    case 'pb':
-      return pos.pb != null ? <span style={{ color: 'var(--text-dim)' }}>{fmt(pos.pb, 2)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>;
-    default:
-      return <span style={{ color: 'var(--text-faint)' }}>—</span>;
-  }
+// Wiersz „Top ruchy dzisiaj" — cały jest przyciskiem otwierającym spółkę.
+function MoverRow({ pos, onOpen, locale, fmtN }) {
+  const up = pos.dailyChg >= 0;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(pos)}
+      className="flex w-full items-center gap-3 border-b border-line px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-panel-hover"
+    >
+      <TickerLogo symbol={pos.symbol} size={28} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-bold text-fg">{pos.symbol.replace('.WA', '')}</div>
+        {pos.name && <div className="truncate text-[11px] text-faint">{pos.name}</div>}
+      </div>
+      <div className="min-w-[58px] text-right">
+        <div className={cx('text-[13px] font-semibold', up ? 'text-up' : 'text-down')}>
+          {formatPercent(pos.dailyChg, { locale, decimals: 2 })}
+        </div>
+        {pos.price != null && <div className="text-[11px] text-faint">{fmtN(pos.price)}</div>}
+      </div>
+    </button>
+  );
 }
 
+function MoverGroup({ tone, label, items, ...rowProps }) {
+  const Arrow = tone === 'up' ? ArrowUp : ArrowDown;
+  return (
+    <>
+      <div className={cx('flex items-center gap-1 px-4 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider', tone === 'up' ? 'text-up' : 'text-down')}>
+        <Arrow size={11} aria-hidden /> {label}
+      </div>
+      {items.length === 0
+        ? <div className="px-4 pb-2 pt-1 text-small text-faint">—</div>
+        : items.map(pos => <MoverRow key={pos.symbol} pos={pos} {...rowProps} />)}
+    </>
+  );
+}
 
 export default function Dashboard() {
   const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, displayName, displayCurrency, addPosition, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
-  const { openChart } = useChart();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
   const navigate = useNavigate();
   const fmtN = (n, decimals = 2) => fmt(n, decimals, locale);
-  const [cols] = useState(loadColumnConfig);
   const [tf, setTf] = useState('MAX');
   const [selectedStock, setSelectedStock] = useState(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const [cashEdit, setCashEdit] = useState({});
+  const [savingCash, setSavingCash] = useState(false);
   const [wlMode, setWlMode] = useState('pct');
   const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
@@ -132,15 +122,6 @@ export default function Dashboard() {
   // ── Live positions (market prices + enrichment) ──────────────────────────
   const allPositions = useMemo(
     () => portfolio.map(pos => enrichPosition(pos)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [portfolio, fxRates, enrichPosition]
-  );
-
-  const topPositions = useMemo(
-    () => [...portfolio]
-      .sort((a, b) => (b.qty * b.avgPrice * toPlnRate(b.currency, fxRates)) - (a.qty * a.avgPrice * toPlnRate(a.currency, fxRates)))
-      .slice(0, 7)
-      .map(pos => enrichPosition(pos)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [portfolio, fxRates, enrichPosition]
   );
@@ -214,10 +195,10 @@ export default function Dashboard() {
       ytdRealizedPLN,
       sparkValues, pricesLoaded, staleTotal, partialPrices,
     };
-  }, [allPositions, snapshots, transactions, fxRates, cash, invested]);
+  }, [allPositions, snapshots, transactions, fxRates, cash, otherAssets, invested]);
 
   // ── Portfolio IRR — requires ≥30 days of history ──────────────────────────
-  const { portfolioIrr, irrMissingSymbols, irrDaySpan } = useMemo(() => {
+  const { portfolioIrr } = useMemo(() => {
     const symbolsWithBuy = new Set(
       transactions.filter(t => t.type === 'BUY').map(t => t.symbol)
     );
@@ -323,25 +304,23 @@ export default function Dashboard() {
     return inRange;
   }, [snapshots, tf, kpi.totalValue, invested, fxRates]);
 
+  const blur = isPrivate;
+
   if (loading && !portfolio.length) {
-    return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+    return <PageSkeleton />;
   }
 
   // Fetch danych padł (backend nie odpowiada) i nie mamy nic w pamięci — pokaż
   // uczciwy błąd połączenia z retry zamiast mylących „0 zł" jak przy pustym portfelu.
   if (error && !loading && !portfolio.length) {
     return (
-      <div style={{ textAlign: 'center', padding: '64px 20px', color: 'var(--text-faint)' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🔌</div>
-        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('connection_error')}</p>
-        <p style={{ fontSize: 14, marginTop: 4, maxWidth: 380, marginInline: 'auto' }}>{t('connection_error_hint')}</p>
-        <button
-          onClick={() => refresh()}
-          style={{ marginTop: 16, padding: '8px 18px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13 }}
-        >
-          ↻ {t('refresh_data')}
-        </button>
-      </div>
+      <EmptyState
+        icon={WifiOff}
+        title={t('connection_error')}
+        description={t('connection_error_hint')}
+        action={<Button variant="primary" icon={RefreshCw} onClick={() => refresh()}>{t('refresh_data')}</Button>}
+        className="py-16"
+      />
     );
   }
 
@@ -350,6 +329,7 @@ export default function Dashboard() {
     : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
   const dispFx = fxRates[displayCurrency] ?? 1;
   const fmtDisp = (n, d = 0) => fmtVal(n == null ? null : n / dispFx, d);
+  const sign = v => (v >= 0 ? '+' : '');
 
   const isWeekend = [0, 6].includes(new Date().getDay());
 
@@ -372,21 +352,28 @@ export default function Dashboard() {
     ? formatPercent(portfolioIrr * 100, { locale, decimals: 1 }) + '/r'
     : null;
 
+  // Nieaktualny kurs walut idzie przed resztą: fałszuje przeliczenie
+  // każdej pozycji w obcej walucie, więc jest gorszy niż brak ceny.
+  const valueHint = fxStale ? (fxStale === 'fallback' ? t('fx_fallback') : t('fx_stale'))
+    : kpi.staleTotal ? t('last_session')
+    : kpi.partialPrices ? t('prices_partial')
+    : kpi.pricesLoaded ? t('today') : t('loading_prices');
+  const valueHintWarn = Boolean(fxStale || kpi.staleTotal || kpi.partialPrices);
+
+  const currentGainPLN = (kpi.unrealPLN ?? 0) + (kpi.realizedPLN ?? 0);
+  const currentGainPct = kpi.costBasis > 0 ? (currentGainPLN / kpi.costBasis) * 100 : null;
+  const gainUp = currentGainPLN >= 0;
+
+  const notFound = allPositions.filter(p => p.notFound).map(p => p.symbol);
   const TF_OPTIONS = ['1T', '1M', '3M', '6M', '1R', 'MAX'];
 
   return (
     <div>
-      {/* page-head */}
-      <div className="page-header" style={{ marginBottom: 18 }}>
-        <div>
-          <h1 className="page-title">{t('greeting')}, {displayName ?? t('investor_fallback')}</h1>
-          <p className="page-sub">
-            {new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={`${t('greeting')}, ${displayName ?? t('investor_fallback')}`}
+        subtitle={new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
+      />
 
-      {/* InsightStrip */}
       {allPositions.length > 0 && (
         <InsightStrip
           positions={allPositions}
@@ -401,204 +388,124 @@ export default function Dashboard() {
       {/* Bledne tickery — pokazujemy wprost. Bez tego jeden zly ticker
           (jak SMSN zamiast SMSN.IL) siedzial w portfelu 20 dni bez sygnalu:
           scheduler po cichu pomijal snapshoty calego portfela. */}
-      {(() => {
-        const brak = allPositions.filter(p => p.notFound).map(p => p.symbol);
-        if (!brak.length) return null;
-        return (
-          <div
-            role="alert"
-            style={{
-              marginBottom: 14, padding: '10px 14px', borderRadius: 8,
-              background: 'var(--warn-bg, rgba(255,180,50,0.12))',
-              border: '1px solid var(--warn, #d69f2b)',
-              color: 'var(--text)', fontSize: 13, cursor: 'pointer',
-            }}
-            onClick={() => navigate('/portfolio')}
-            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/portfolio'); }}
-            tabIndex={0}
-          >
-            <strong>{t('ticker_not_found')}: </strong>
-            <span className="mono">{brak.join(', ')}</span>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
-              {t('ticker_not_found_hint')}
-            </div>
-          </div>
-        );
-      })()}
+      {notFound.length > 0 && (
+        <Callout
+          tone="warn"
+          icon={TriangleAlert}
+          title={`${t('ticker_not_found')}: ${notFound.join(', ')}`}
+          onClick={() => navigate('/portfolio')}
+          className="mb-4"
+        >
+          {t('ticker_not_found_hint')}
+        </Callout>
+      )}
 
-      {/* KPI grid */}
-      <div className="kpi-grid" style={{ gap: 14, marginBottom: 18 }}>
-        <KpiPro
+      {/* KPI */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat
           hero
+          blur={blur}
+          icon={Activity}
           label={t('portfolio_value')}
           value={kpi.totalValue == null ? '—' : `${fmtDisp(kpi.totalValue)} ${currLabel}`}
-          chip={(kpi.pricesLoaded || kpi.partialPrices) ? dayChipVal : null}
-          chipUp={dailyChange.pln >= 0}
-          sub={
-            // Nieaktualny kurs walut idzie przed resztą: fałszuje przeliczenie
-            // każdej pozycji w obcej walucie, więc jest gorszy niż brak ceny.
-            fxStale ? (fxStale === 'fallback' ? t('fx_fallback') : t('fx_stale'))
-              : kpi.staleTotal ? t('last_session')
-              : kpi.partialPrices ? t('prices_partial')
-              : kpi.pricesLoaded ? t('today') : t('loading_prices')
-          }
-          spark={kpi.sparkValues.slice(-24)}
-          sparkUp={dailyChange.pln >= 0}
-          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+          delta={(kpi.pricesLoaded || kpi.partialPrices) ? dayChipVal : null}
+          deltaTone={dailyChange.pln >= 0 ? 'up' : 'down'}
+          hint={valueHint}
+          hintTone={valueHintWarn ? 'warn' : undefined}
+          spark={kpi.sparkValues.length >= 2 ? <Sparkline data={kpi.sparkValues.slice(-24)} width={72} height={26} /> : null}
           onClick={() => navigate('/portfolio')}
         />
-        {(() => {
-          const currentGainPLN = (kpi.unrealPLN ?? 0) + (kpi.realizedPLN ?? 0);
-          const currentGainPct = kpi.costBasis > 0 ? (currentGainPLN / kpi.costBasis) * 100 : null;
-          const gainUp = currentGainPLN >= 0;
-          const sign = (v) => (v >= 0 ? '+' : '');
-          return (
-            <KpiPro
-              label={t('current_gain')}
-              tone={gainUp ? 'up' : 'down'}
-              value={`${sign(currentGainPLN)}${fmtDisp(currentGainPLN)} ${currLabel}`}
-              chip={currentGainPct != null ? `${sign(currentGainPct)}${fmtVal(currentGainPct, 2)}%` : null}
-              chipUp={gainUp}
-              subWrap
-              sub={
-                <span style={{ fontSize: 11 }}>
-                  {t('realized_short')}: <span style={{ color: kpi.realizedPLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>{sign(kpi.realizedPLN)}{fmtDisp(kpi.realizedPLN)}</span>
-                  {' · '}
-                  {t('paper_short')}: <span style={{ color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)' }}>{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN)}</span>
-                </span>
-              }
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
-              onClick={() => navigate('/closed')}
-            />
-          );
-        })()}
-        <KpiPro
+        <Stat
+          blur={blur}
+          icon={TrendingUp}
+          label={t('current_gain')}
+          tone={gainUp ? 'up' : 'down'}
+          value={`${sign(currentGainPLN)}${fmtDisp(currentGainPLN)} ${currLabel}`}
+          delta={currentGainPct != null ? `${sign(currentGainPct)}${fmtVal(currentGainPct, 2)}%` : null}
+          deltaTone={gainUp ? 'up' : 'down'}
+          hint={
+            <span className={blur ? 'privacy-blur' : undefined}>
+              {t('realized_short')}: <span className={kpi.realizedPLN >= 0 ? 'text-up' : 'text-down'}>{sign(kpi.realizedPLN)}{fmtDisp(kpi.realizedPLN)}</span>
+              {' · '}
+              {t('paper_short')}: <span className={kpi.unrealPLN >= 0 ? 'text-up' : 'text-down'}>{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN)}</span>
+            </span>
+          }
+          onClick={() => navigate('/closed')}
+        />
+        <Stat
+          blur={blur}
+          icon={Coins}
           label={t('dividends_ytd')}
           value={`${fmtDisp(kpi.annualDivPLN)} ${currLabel}`}
-          sub={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
-          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>}
+          hint={nextDividend ? `${t('next_prefix')}: ${nextDividend.symbol}` : t('last_12m')}
           onClick={() => navigate('/dividends')}
         />
-        <KpiPro
+        <Stat
+          blur={blur}
+          icon={Wallet}
           label={t('free_cash')}
           value={`${fmtDisp(kpi.cashValue)} ${currLabel}`}
-          chip={irrChipVal}
-          chipUp={portfolioIrr != null && portfolioIrr >= 0}
-          sub={`${t('account_label')} · ${displayCurrency}`}
-          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>}
+          delta={irrChipVal}
+          deltaTone={portfolioIrr != null && portfolioIrr >= 0 ? 'up' : 'down'}
+          hint={`${t('account_label')} · ${displayCurrency}`}
           onClick={() => { setCashEdit({ ...cash }); setShowCashModal(true); }}
         />
       </div>
 
-      {/* Chart + Top movers */}
-      <div className="detail-grid" style={{ gap: 16, marginBottom: 18 }}>
-        <div className="card chart-card">
-          <div style={{ padding: '18px 20px 4px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
-            <div>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)', fontWeight: 600, marginBottom: 4 }}>
-                {t('portfolio_value_tf')} · {tf}
-              </div>
-              <div className={isPrivate ? 'privacy-blur' : ''} style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+      {/* Wykres + top ruchy */}
+      <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-1 pt-4">
+            <div className="min-w-0">
+              <div className="text-label font-semibold uppercase text-faint">{t('portfolio_value_tf')} · {tf}</div>
+              <div className={cx('mt-1 whitespace-nowrap text-[22px] font-semibold tracking-tight text-fg', blur && 'privacy-blur')}>
                 {kpi.totalValue == null ? '—' : `${fmtDisp(kpi.totalValue)} ${currLabel}`}
-                {kpi.staleTotal && (
-                  <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--text-faint)', fontWeight: 500 }}>~ {t('last_session')}</span>
-                )}
+                {kpi.staleTotal && <span className="ml-2 text-[11px] font-medium text-faint">~ {t('last_session')}</span>}
               </div>
             </div>
-            <SegmentedControl
-              options={TF_OPTIONS}
-              value={tf}
-              onChange={setTf}
-            />
+            <SegmentedControl options={TF_OPTIONS} value={tf} onChange={setTf} />
           </div>
-          <div style={{ padding: '4px 12px 18px' }}>
+          <div className="px-3 pb-4 pt-1">
             {snapshotsFiltered.length >= 2
               ? <HistoryChart data={snapshotsFiltered} displayCurrency={displayCurrency} fxRate={fxRates[displayCurrency] ?? 1} />
-              : <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{t('not_enough_history')}</div>
-            }
+              : <EmptyState icon={LineChart} title={t('not_enough_history')} className="py-8" />}
           </div>
-        </div>
+        </Card>
 
-        <div className="card">
-          <div className="card-head">
-            <div className="card-title">{t('top_movers_today')}</div>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5 }}>
+        <Card
+          title={t('top_movers_today')}
+          actions={
+            <span className="flex items-center gap-1.5 text-[11px] text-dim">
               <span className={isWeekend ? 'dot-status closed' : 'dot-status'} />
               {isWeekend ? t('market_closed_status') : t('market_live')}
             </span>
-          </div>
-          <div>
-            {topMovers.gainers.length === 0 && topMovers.losers.length === 0
-              ? <p style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-faint)' }}>{isWeekend ? t('market_closed') : t('no_data')}</p>
-              : <>
-                  <div style={{ padding: '8px 16px 2px', fontSize: 10, fontWeight: 700, color: 'var(--up)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>▲ Najlepsze</div>
-                  {topMovers.gainers.length === 0
-                    ? <div style={{ padding: '4px 16px 8px', fontSize: 12, color: 'var(--text-faint)' }}>—</div>
-                    : topMovers.gainers.map(pos => (
-                      <div key={pos.symbol} className="mover-row clickable" onClick={() => setSelectedStock(pos)} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
-                        <TickerLogo symbol={pos.symbol} size={28} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
-                          {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
-                        </div>
-                        <div style={{ textAlign: 'right', minWidth: 58 }}>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                            {formatPercent(pos.dailyChg, { locale, decimals: 2 })}
-                          </div>
-                          {pos.price != null && (
-                            <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  }
-                  <div style={{ padding: '8px 16px 2px', fontSize: 10, fontWeight: 700, color: 'var(--down)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>▼ Najgorsze</div>
-                  {topMovers.losers.length === 0
-                    ? <div style={{ padding: '4px 16px 8px', fontSize: 12, color: 'var(--text-faint)' }}>—</div>
-                    : topMovers.losers.map(pos => (
-                      <div key={pos.symbol} className="mover-row clickable" onClick={() => setSelectedStock(pos)} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10 }}>
-                        <TickerLogo symbol={pos.symbol} size={28} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>{pos.symbol.replace('.WA', '')}</div>
-                          {pos.name && <div style={{ fontSize: 11, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pos.name}</div>}
-                        </div>
-                        <div style={{ textAlign: 'right', minWidth: 58 }}>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13, color: pos.dailyChg >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                            {formatPercent(pos.dailyChg, { locale, decimals: 2 })}
-                          </div>
-                          {pos.price != null && (
-                            <div style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>{fmtN(pos.price)}</div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  }
-                </>
-            }
-          </div>
-        </div>
+          }
+        >
+          {topMovers.gainers.length === 0 && topMovers.losers.length === 0
+            ? <EmptyState icon={isWeekend ? MoonStar : Activity} title={isWeekend ? t('market_closed') : t('no_data')} className="py-8" />
+            : (
+              <div className="pb-1">
+                <MoverGroup tone="up" label={t('movers_best')} items={topMovers.gainers} onOpen={setSelectedStock} locale={locale} fmtN={fmtN} />
+                <MoverGroup tone="down" label={t('movers_worst')} items={topMovers.losers} onOpen={setSelectedStock} locale={locale} fmtN={fmtN} />
+              </div>
+            )}
+        </Card>
       </div>
 
-      {/* Unrealized P&L per position */}
+      {/* Niezrealizowany zysk per pozycja */}
       {unrealRows.length > 0 && (
-        <div className="card" style={{ marginBottom: 18 }}>
-          <div className="card-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <Card className="mb-4">
+          <div className="card-head items-start">
             <div>
               <div className="card-title">{t('unreal_pl_title')}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>{t('unreal_pl_sub')}</div>
+              <div className="mt-0.5 text-[11px] text-faint">{t('unreal_pl_sub')}</div>
             </div>
-            <div className={isPrivate ? 'privacy-blur' : ''} style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                {kpi.unrealPLN >= 0 ? '+' : ''}{fmtDisp(kpi.unrealPLN, 2)} {currLabel}
-              </div>
-              {unrealChipVal && (
-                <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: kpi.unrealPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                  {unrealChipVal}
-                </div>
-              )}
+            <div className={cx('whitespace-nowrap text-right', blur && 'privacy-blur', kpi.unrealPLN >= 0 ? 'text-up' : 'text-down')}>
+              <div className="text-base font-bold">{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN, 2)} {currLabel}</div>
+              {unrealChipVal && <div className="text-[11px]">{unrealChipVal}</div>}
             </div>
           </div>
-          <div style={{ height: unrealRows.length * 30 + 40, padding: '4px 8px 12px' }}>
+          <div className="px-2 pb-3 pt-1" style={{ height: unrealRows.length * 30 + 40 }}>
             <UnrealizedPnlBar
               rows={unrealRows}
               currLabel={currLabel}
@@ -610,57 +517,42 @@ export default function Dashboard() {
               }}
             />
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Allocation + Winners/Losers */}
+      {/* Alokacja + wygrani/przegrani */}
       {allPositions.length > 0 && (
-        <div className="detail-grid detail-grid-alloc" style={{ gap: 16, marginBottom: 18 }}>
-          <div className="card">
-            <div className="card-head">
-              <div className="card-title">{t('sector_alloc')}</div>
+        <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <Card title={t('sector_alloc')}>
+            <div className="px-5 py-4">
+              <StackedAllocation positions={allPositions} totalValue={kpi.positionsValue} currency={displayCurrency} fxRate={dispFx} />
             </div>
-            <div style={{ padding: '16px 20px' }}>
-              <StackedAllocation
-                positions={allPositions}
-                totalValue={kpi.positionsValue}
-                currency={displayCurrency}
-                fxRate={dispFx}
-              />
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-head">
-              <div className="card-title">{t('winners_losers')}</div>
+          </Card>
+          <Card
+            title={t('winners_losers')}
+            actions={
               <SegmentedControl
-                options={[
-                  { value: 'pct', label: t('wl_mode_pct') },
-                  { value: 'abs', label: currLabel },
-                ]}
+                options={[{ value: 'pct', label: t('wl_mode_pct') }, { value: 'abs', label: currLabel }]}
                 value={wlMode}
                 onChange={setWlMode}
               />
+            }
+          >
+            <div className="px-5 py-4">
+              <WinnersLosers positions={allPositions} onSymbolClick={setSelectedStock} mode={wlMode} fxRate={dispFx} currLabel={currLabel} locale={locale} />
             </div>
-            <div style={{ padding: '16px 20px' }}>
-              <WinnersLosers
-                positions={allPositions}
-                onSymbolClick={setSelectedStock}
-                mode={wlMode}
-                fxRate={dispFx}
-                currLabel={currLabel}
-                locale={locale}
-              />
-            </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {!portfolio.length && !loading && (
-        <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-faint)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-          <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('no_portfolio_data')}</p>
-          <p style={{ fontSize: 14, marginTop: 4 }}>{t('add_positions_hint')}</p>
-        </div>
+        <EmptyState
+          icon={Briefcase}
+          title={t('no_portfolio_data')}
+          description={t('add_positions_hint')}
+          action={<Button variant="primary" onClick={() => navigate('/portfolio')}>{t('go_to_portfolio')}</Button>}
+          className="py-16"
+        />
       )}
 
       {selectedStock && (
@@ -673,34 +565,42 @@ export default function Dashboard() {
       )}
 
       {showCashModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)' }}
-          onClick={() => setShowCashModal(false)}>
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, minWidth: 280, maxWidth: 360 }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>{t('free_cash')}</div>
-            {Object.keys(cashEdit).length === 0 && <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 12 }}>Brak walut — dodaj wartość poniżej.</p>}
+        <Modal
+          size="sm"
+          title={t('free_cash')}
+          description={Object.keys(cashEdit).length === 0 ? t('cash_empty_hint') : undefined}
+          onClose={() => setShowCashModal(false)}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setShowCashModal(false)}>{t('cancel')}</Button>
+              <Button
+                variant="primary"
+                loading={savingCash}
+                onClick={async () => {
+                  setSavingCash(true);
+                  try { await saveCash(cashEdit); setShowCashModal(false); }
+                  finally { setSavingCash(false); }
+                }}
+              >
+                {t('save_btn')}
+              </Button>
+            </>
+          }
+        >
+          <div className="grid grid-cols-2 gap-3">
             {['PLN', 'USD', 'EUR', 'GBP'].map(cur => (
-              <div key={cur} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 36 }}>{cur}</span>
-                <input
+              <Field key={cur} label={cur}>
+                <Input
                   type="number"
-                  className="field-input"
-                  style={{ flex: 1, height: 36, fontSize: 13 }}
+                  inputMode="decimal"
                   value={cashEdit[cur] ?? ''}
                   placeholder="0"
                   onChange={e => setCashEdit(prev => ({ ...prev, [cur]: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))}
                 />
-              </div>
+              </Field>
             ))}
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn" style={{ flex: 1 }} onClick={() => setShowCashModal(false)}>{'Anuluj'}</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
-                await saveCash(cashEdit);
-                setShowCashModal(false);
-              }}>{'Zapisz'}</button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

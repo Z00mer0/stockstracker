@@ -34,7 +34,7 @@ const SharedPortfolio = React.lazy(() => import('./pages/SharedPortfolio'));
 const UiKit = import.meta.env.DEV ? React.lazy(() => import('./pages/UiKit')) : null;
 
 function AppRoutes() {
-  const { isAuthenticated, login, portfolio } = useApp();
+  const { isAuthenticated, login, portfolio, loading, error } = useApp();
   const [wizardDone, setWizardDone] = React.useState(false);
   const location = useLocation();
 
@@ -56,7 +56,11 @@ function AppRoutes() {
     return <AuthGate onLogin={login} />;
   }
 
-  const showWizard = !wizardDone && shouldShowWizard(portfolio);
+  // Pusty portfel w trakcie ładowania albo po błędzie serwera to nie „nowy
+  // użytkownik" — bez tego kreator powitalny wyskakiwał przy każdym pierwszym
+  // wczytaniu na nowym urządzeniu i zasłaniał komunikat o awarii (np. gdy
+  // Render się budzi). Ta sama osłona co przy oknie „Nowy portfel" w Layout.
+  const showWizard = !wizardDone && !loading && !error && shouldShowWizard(portfolio);
 
   return (
     <>

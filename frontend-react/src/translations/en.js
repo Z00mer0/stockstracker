@@ -120,6 +120,10 @@ export default {
   investor_fallback:    'Investor',
   market_live:          'live',
   market_closed_status: 'closed',
+  movers_best:          'Best',
+  movers_worst:         'Worst',
+  cash_empty_hint:      'No cash recorded yet — enter amounts below.',
+  go_to_portfolio:      'Go to Portfolio',
 
   // ── InsightStrip ─────────────────────────────────────────────
   best_position:        'Best position',
