@@ -99,7 +99,12 @@ before/after screenshots.
       mixed currencies; `DIVIDEND` missing from the dividends filter; PL
       export → import lost notes and cash rows; trailing quote cut from notes.
       Export/import round trip covered by a test.
-- [ ] Dividends
+- [x] Dividends — restructured from 9 stacked sections: gross/net switch and
+      "Add" on top, one row of 4 tiles (the duplicate bottom row merged in),
+      goal card, DRIP, upcoming, and one "Payments" card with tabs (timeline /
+      by company / all). Fixed: `DIVIDEND` transactions ignored, goal card
+      titled "Next dividend", duplicated goal sentence, "≈ PLN" header on
+      display-currency amounts.
 - [ ] History
 - [ ] Analysis — 11 accordions → tabs (Risk / Allocation / Tax / FIRE)
 - [ ] Settings — sections with side navigation
