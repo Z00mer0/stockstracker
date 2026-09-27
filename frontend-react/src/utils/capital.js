@@ -11,6 +11,7 @@
 // Wycena pozycji się skraca, więc do kapitału nie potrzeba cen.
 import { computeRealizedTrades } from './realizedPL.js';
 import { normalizeType } from './transactions.js';
+import { investedPlnAt, fxForSnapshot } from './investedAtDate.js';
 
 const divAmount = tx => (tx.price || 0) * (tx.qty || 1);
 
@@ -94,4 +95,18 @@ export function withCapital(rows, { transactions = [], fxRates = {}, cashPLN = 0
     if (r.invested == null) return { ...r, capital: null, capitalEstimated: true };
     return { ...r, capital: r.invested - earnedTo(r.date) + K, capitalEstimated: true };
   });
+}
+
+// Snapshoty rosnąco z kursem dnia, kosztem pozycji i kapitałem własnym —
+// wspólne dla Historii i miar ryzyka w Analizie.
+// Kurs: własny snapshotu, inaczej z jego epoki (fxForSnapshot), dopiero na
+// końcu dzisiejszy. Koszt: zapisany, a dla starych wpisów z replay
+// transakcji do TEJ daty — nie dzisiejszy koszt, który zmieniałby stary
+// wiersz codziennie.
+export function snapshotRows(snapshots, { transactions = [], fxRates = {}, cashPLN = 0 } = {}) {
+  const asc = [...snapshots].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return withCapital(asc.map(s => {
+    const fx = fxForSnapshot(s, asc) || fxRates;
+    return { ...s, fx, invested: s.invested ?? investedPlnAt(transactions, s.date, fx) };
+  }), { transactions, fxRates, cashPLN });
 }

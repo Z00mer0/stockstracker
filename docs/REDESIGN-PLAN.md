@@ -119,7 +119,13 @@ before/after screenshots.
       prices, every number on Dashboard/Portfolio/Transactions/Dividends/
       History compared; fixed the daily result formula, dividend yield on
       cost instead of market value, duplicate in "Winners and losers".
-- [ ] Analysis — 11 accordions → tabs (Risk / Allocation / Tax / FIRE)
+- [x] Analysis — 11 accordions → 5 tabs (Overview / Allocation / Risk / Tax /
+      FIRE), split into `pages/analysis/*`, last tab remembered. Fixed: return %
+      divided by the display-currency rate; rebalancing share counts and prices
+      for foreign stocks; risk metrics on raw value (deposits as returns) and
+      beta pairs shifted after a filtered day; FIRE mixing currencies;
+      tax-loss insight promising 19% of all losses and contradicting the Tax
+      tab on wash-sale; Health Score only in Polish.
 - [ ] Settings — sections with side navigation
 - [ ] Remaining pages
 - [ ] All 11 modals on the shared Modal

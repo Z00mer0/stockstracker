@@ -9,8 +9,8 @@ import RollingReturnsChart from '../components/RollingReturnsChart';
 import { PageSkeleton } from '../components/RouteFallback';
 import { Button, Callout, Card, EmptyState, SegmentedControl, Select, Spinner, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
-import { investedPlnAt, fxForSnapshot } from '../utils/investedAtDate.js';
-import { withCapital } from '../utils/capital.js';
+import { fxForSnapshot } from '../utils/investedAtDate.js';
+import { snapshotRows } from '../utils/capital.js';
 import { historyStats } from '../utils/historyStats.js';
 import { formatPercent } from '../utils/format.js';
 
@@ -145,17 +145,9 @@ export default function History() {
   // wypłaty). Kapitał liczymy na całej historii, zanim wytniemy okres —
   // szacunek dla starszych dni opiera się na pierwszym dniu ze znanym
   // kapitałem, który może leżeć poza okresem.
-  // Snapshot bez zapisanego `invested` (stare wpisy) dostaje koszt z replay
-  // transakcji do TEJ daty, po kursach z tej epoki — nie dzisiejszy koszt
-  // po dzisiejszych kursach, który zmieniałby stary wiersz codziennie.
   const allRows = useMemo(
-    () => withCapital(sorted.map(s => ({
-      ...s,
-      fx: fxFor(s),
-      invested: s.invested ?? investedPlnAt(transactions, s.date, fxFor(s)),
-    })), { transactions, fxRates, cashPLN }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sorted, transactions, snapshotsAsc, fxRates, cashPLN]
+    () => snapshotRows(snapshots, { transactions, fxRates, cashPLN }),
+    [snapshots, transactions, fxRates, cashPLN]
   );
 
   const filtered = useMemo(() => {
