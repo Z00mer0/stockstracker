@@ -105,7 +105,16 @@ before/after screenshots.
       by company / all). Fixed: `DIVIDEND` transactions ignored, goal card
       titled "Next dividend", duplicated goal sentence, "≈ PLN" header on
       display-currency amounts.
-- [ ] History
+- [x] History — period and benchmark moved to one page toolbar (benchmark was
+      duplicated in two cards and a 8-button strip overflowed on phones),
+      5 kit Stat tiles, snapshot table on kit Table (sortable, 50 per page —
+      it rendered all ~300 rows at once). Calculations unchanged and checked
+      row-by-row against `main`; open question about how History counts
+      contributions (see PR #83).
+- [x] Calculation check — old vs new side by side on identical data and
+      prices, every number on Dashboard/Portfolio/Transactions/Dividends/
+      History compared; fixed the daily result formula, dividend yield on
+      cost instead of market value, duplicate in "Winners and losers".
 - [ ] Analysis — 11 accordions → tabs (Risk / Allocation / Tax / FIRE)
 - [ ] Settings — sections with side navigation
 - [ ] Remaining pages
