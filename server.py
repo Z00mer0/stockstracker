@@ -2622,6 +2622,33 @@ def _xirr(cashflows):
     return None
 
 
+def _share_cashflows(transactions, fx):
+    """Przepływy do IRR publicznego portfela: (kwota PLN, data), znak z punktu
+    widzenia inwestora (zakup < 0, sprzedaż i dywidenda > 0).
+
+    Typ normalizowany jak normalizeType() po stronie klienta: wcześniej
+    „DIVIDEND" i małe litery z importu brokera wypadały z IRR. Dywidenda bez
+    ilości liczy się jako 1 × kwota (jak w aplikacji) — wcześniej qty=None
+    dawało 0 i dywidenda znikała.
+    """
+    cfs = []
+    for tx in transactions:
+        typ = str(tx.get('type') or '').upper()
+        if typ == 'DIVIDEND':
+            typ = 'DIV'
+        qty = float(tx.get('qty') or (1 if typ == 'DIV' else 0))
+        prc = float(tx.get('price') or 0)
+        dt  = tx.get('date')
+        if not dt or qty <= 0 or prc <= 0:
+            continue
+        amt = qty * prc * fx.get(tx.get('currency') or 'PLN', 1.0)
+        if typ == 'BUY':
+            cfs.append((-amt, dt))
+        elif typ in ('SELL', 'DIV'):
+            cfs.append((+amt, dt))
+    return cfs
+
+
 def _build_shared_payload(username, portfolio_id):
     """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot.
     Metryki portfela to również same ratio/procenty — nie zdradzają kwot."""
@@ -2681,22 +2708,7 @@ def _build_shared_payload(username, portfolio_id):
 
     # IRR — cashflows z transakcji + terminal value = bieżąca wartość
     try:
-        cfs = []
-        for tx in transactions:
-            typ = tx.get('type')
-            qty = float(tx.get('qty') or 0)
-            prc = float(tx.get('price') or 0)
-            dt  = tx.get('date')
-            cur = tx.get('currency') or 'PLN'
-            if not dt or qty <= 0 or prc <= 0:
-                continue
-            r = fx.get(cur, 1.0)
-            if typ == 'BUY':
-                cfs.append((-qty * prc * r, dt))
-            elif typ == 'SELL':
-                cfs.append((+qty * prc * r, dt))
-            elif typ == 'DIV':
-                cfs.append((+qty * prc * r, dt))
+        cfs = _share_cashflows(transactions, fx)
         if cfs and total_val > 0:
             cfs.sort(key=lambda x: x[1])
             day_span = (datetime.date.today() - datetime.date.fromisoformat(cfs[0][1])).days
