@@ -784,6 +784,14 @@ export default {
   forecast_colon:       'Forecast:',
   previous_colon:       'Prev.:',
   add_to_portfolio_hint: 'Add stocks to portfolio to see earnings and dividends',
+  cal_all:               'all',
+  cal_impact:            'Impact',
+  cal_impact_high:       'high',
+  cal_impact_medium:     'medium',
+  cal_impact_low:        'low',
+  cal_prev_month:        'Previous month',
+  cal_next_month:        'Next month',
+  cal_div_removed:       'Removed dividend {sym}',
 
   // ── Watchlist ────────────────────────────────────────────────
   watched_companies:    'Watched stocks',

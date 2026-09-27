@@ -784,6 +784,14 @@ export default {
   forecast_colon:       'Prognoza:',
   previous_colon:       'Poprz.:',
   add_to_portfolio_hint: 'Dodaj spółki do portfela, by zobaczyć wyniki finansowe i dywidendy',
+  cal_all:               'wszystkie',
+  cal_impact:            'Wpływ',
+  cal_impact_high:       'wysoki',
+  cal_impact_medium:     'średni',
+  cal_impact_low:        'niski',
+  cal_prev_month:        'Poprzedni miesiąc',
+  cal_next_month:        'Następny miesiąc',
+  cal_div_removed:       'Usunięto dywidendę {sym}',
 
   // ── Watchlist ────────────────────────────────────────────────
   watched_companies:    'Obserwowane spółki',

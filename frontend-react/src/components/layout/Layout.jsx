@@ -26,6 +26,7 @@ const PAGE_HEADINGS = {
   '/closed':       ['closed_positions_title', 'closed_positions_subtitle'],
   '/transactions': ['nav_transactions', 'page_sub_transactions'],
   '/dividends':    ['nav_dividends',    'page_sub_dividends'],
+  '/news':         ['news_title',       'news_subtitle'],
   '/calendar':     ['nav_calendar',     'page_sub_calendar'],
   '/watchlist':    ['nav_watchlist',    'page_sub_watchlist'],
   '/alerts':       ['nav_alerts',       'page_sub_alerts'],
