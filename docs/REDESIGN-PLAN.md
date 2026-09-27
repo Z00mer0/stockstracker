@@ -143,7 +143,16 @@ before/after screenshots.
       multiplying spreads; runway ignoring a negative real return; AI review
       and public-portfolio IRR skipping "DIVIDEND" rows; currency exposure
       not summing to 100%; OKI/Scenario charts unreadable in the light theme.
-- [ ] All 11 modals on the shared Modal
+- [x] All 11 modals on the shared Modal — edit position, dividend, alert,
+      new portfolio, buy, sell, three imports (positions, broker, statement),
+      stock detail; import parsers moved to `utils/*Import.js` with tests.
+      Fixed: dividends and "buy more" defaulting to PLN for foreign stocks;
+      sale currency different from the position's (mixed P&L); price alert
+      without a known price saved as already triggered; broker import crash
+      on an unknown file, deposits always in USD, dotted dates not ISO,
+      "Symbol" column ignored; "1 050,00" read as 1 in two importers;
+      benchmark joined by index instead of date; thesis note lost on close.
+      Still on their own overlay: setup wizard, advanced price chart.
 
 ### Phase 4 — Charts
 - [ ] One chart library with one theme (colours, tooltip, axes); keep the
