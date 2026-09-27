@@ -42,6 +42,7 @@ import AlertModal from '../components/AlertModal';
 import { apiLoadWatchlist, apiSaveWatchlist, addAlertToItems } from '../services/watchlistService';
 import { lsSet } from '../utils/safeStorage.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
+import { useToast } from '../context/ToastContext';
 // Ładowane dopiero przy kliknięciu „eksportuj" — samo wejście do portfela
 // nie ma po co ciągnąć generatora arkuszy.
 async function exportXlsx(headers, rows, sheetName, fileName) {
@@ -345,7 +346,7 @@ export default function Portfolio() {
   const [menuPos, setMenuPos]         = useState({ x: 0, y: 0 });
   const [editTarget, setEditTarget]   = useState(null);
   const [confirmDel, setConfirmDel]   = useState(null);
-  const [toast, setToast]             = useState('');
+  const { showToast }                = useToast();
   const [editTicker, setEditTicker]   = useState(null); // { oldSymbol, value }
   const [selectedItem, setSelectedItem] = useState(null);
   const [notes, setNotes]             = useState({});
@@ -425,7 +426,7 @@ export default function Portfolio() {
     if (!sym || sym === oldSymbol) { setEditTicker(null); return; }
     await renameSymbol(oldSymbol, sym);
     setEditTicker(null);
-    setToast(`${oldSymbol} → ${sym}`);
+    showToast(`${oldSymbol} → ${sym}`, { type: 'success' });
     refresh();
   }
   const menuRef = useRef(null);
@@ -442,11 +443,6 @@ export default function Portfolio() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [menuSym]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(''), 2500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   useEffect(() => {
     if (!showExportMenu) return;
@@ -1519,7 +1515,7 @@ export default function Portfolio() {
             await saveTransactions(prev => [...prev, newTx]);
             addDividend(data);
             setDivTarget(null);
-            setToast(`Dywidenda ${divTarget} zapisana`);
+            showToast(`Dywidenda ${divTarget} zapisana`, { type: 'success' });
           }}
           onClose={() => setDivTarget(null)}
         />
@@ -1585,7 +1581,7 @@ export default function Portfolio() {
               { icon: '↘', label: 'Sprzedaj', action: () => { setSellTarget(pos); setMenuSym(null); } },
               { icon: '✏', label: t('edit_position'), action: () => { setEditTarget(pos); setMenuSym(null); } },
               { icon: '💰', label: 'Dywidenda', action: () => { setDivTarget(pos.symbol); setMenuSym(null); } },
-              { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); setToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`); setMenuSym(null); } },
+              { icon: '👁', label: isWatched(pos.symbol) ? t('unwatch') : t('watch'), action: () => { const added = toggleWatchlist(pos.symbol); showToast(added ? `${pos.symbol} ${t('added_watchlist')}` : `${pos.symbol} ${t('removed_watchlist')}`, { type: 'success' }); setMenuSym(null); } },
               { icon: '📊', label: 'Fundamenty', action: () => { setSelectedItem(pos); setMenuSym(null); } },
               { icon: '🔔', label: 'Ustaw alert', action: () => { setAlertTarget({ symbol: pos.symbol, price: pos.price, currency: pos.currency }); setMenuSym(null); }, disabled: watchlistMigrationPending, disabledTitle: 'Trwa migracja alertów, spróbuj za chwilę…' },
               null,
@@ -1621,16 +1617,6 @@ export default function Portfolio() {
         </div>
         );
       })()}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--panel-2)', color: 'var(--text)', fontSize: 14,
-          padding: '10px 20px', borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-          zIndex: 50, pointerEvents: 'none',
-        }}>
-          {toast}
-        </div>
-      )}
       {alertTarget && (
         <AlertModal
           symbol={alertTarget.symbol}
@@ -1651,9 +1637,9 @@ export default function Portfolio() {
               const merged = addAlertToItems(base, symbol, alert);
               await apiSaveWatchlist(merged);
               setWatchItems(merged);
-              setToast(`Alert dla ${symbol} zapisany`);
+              showToast(`Alert dla ${symbol} zapisany`, { type: 'success' });
             } catch {
-              setToast('Nie udało się zapisać alertu — spróbuj ponownie');
+              showToast('Nie udało się zapisać alertu — spróbuj ponownie', { type: 'error' });
             }
           }}
         />

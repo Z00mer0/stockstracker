@@ -384,6 +384,12 @@ body.privacy-mode .lg-pct {
 .data-table tbody tr { transition: background 0.1s; }
 .data-table tbody tr:hover  { background: var(--panel-hover); cursor: pointer; }
 
+/* ── Dolny pasek na telefonie (layout/BottomNav.jsx) ──
+   Elementy przyklejone do dołu ekranu (toasty, komunikat o aktualizacji,
+   margines treści) dodają tę wysokość, żeby nie chować się pod paskiem. */
+:root { --tabbar-h: 0px; }
+html.has-tabbar { --tabbar-h: calc(58px + env(safe-area-inset-bottom)); }
+
 /* ── Modal (components/ui/Modal.jsx) ── */
 @media (prefers-reduced-motion: no-preference) {
   .ui-overlay { animation: ui-fade 0.15s ease-out; }
@@ -394,12 +400,6 @@ body.privacy-mode .lg-pct {
   @keyframes ui-fade     { from { opacity: 0; } }
   @keyframes ui-sheet-up { from { transform: translateY(24px); opacity: 0; } }
   @keyframes ui-pop      { from { transform: translateY(6px) scale(0.98); opacity: 0; } }
-}
-
-/* ── Sidebar nav hover ── (styl bazowy jest inline, stąd !important) */
-.nav-item:not(.active):hover {
-  background: var(--panel-hover) !important;
-  color: var(--text) !important;
 }
 
 /* Łagodne wejście treści przy zmianie strony — skok z pustego ekranu

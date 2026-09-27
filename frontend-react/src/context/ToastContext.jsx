@@ -32,7 +32,8 @@ export function ToastProvider({ children }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed bottom-6 left-1/2 z-[9999] flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col items-center gap-2"
+        className="pointer-events-none fixed left-1/2 z-[9999] flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col items-center gap-2"
+        style={{ bottom: 'calc(var(--tabbar-h, 0px) + 24px)' }}
       >
         {toasts.map(t => <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />)}
       </div>

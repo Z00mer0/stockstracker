@@ -7,7 +7,7 @@ import { useLanguage, useT } from '../../context/LanguageContext';
 import AddStockModal from '../AddStockModal';
 import StockDetailModal from '../StockDetailModal';
 import NotificationBell from '../NotificationBell';
-import { Sun, Moon, Eye, EyeOff, Menu, Search, CalendarDays } from 'lucide-react';
+import { Sun, Moon, Eye, EyeOff, Search, CalendarDays } from 'lucide-react';
 import { lsSet } from '../../utils/safeStorage.js';
 
 function isEuropeDST() {
@@ -114,7 +114,7 @@ const SunIcon  = () => <Sun size={15} aria-hidden />;
 const MoonIcon = () => <Moon size={15} aria-hidden />;
 const EyeIcon  = ({ closed }) => closed ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />;
 
-export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, compact = false }) {
+export default function Header({ theme, onThemeToggle, isMobile, compact = false }) {
   const { refresh, loading, portfolio, addPosition } = useApp();
   const { isPrivate, toggle: togglePrivacy } = usePrivacy();
   const { language, locale, toggle: toggleLanguage } = useLanguage();
@@ -328,17 +328,6 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
     transition: 'background 0.1s, color 0.1s',
   };
 
-  // Hamburger — mobile only
-  const hamburger = (
-    <button
-      onClick={onMenuToggle}
-      style={{ ...iconBtn, flexShrink: 0 }}
-      aria-label="Menu"
-    >
-      <Menu size={18} aria-hidden />
-    </button>
-  );
-
   // Na mobile pasek szukania jedzie do własnego rzędu i bierze całą
   // szerokość — w jednym rzędzie ścisnął taśmę notowań do jednej litery.
   const searchBlock = (
@@ -545,7 +534,6 @@ export default function Header({ theme, onThemeToggle, isMobile, onMenuToggle, c
         gap: isMobile ? 8 : 12,
         padding: isMobile ? '0 12px' : '0 20px',
       }}>
-        {isMobile && hamburger}
         {!isMobile && searchBlock}
         {tickerStrip}
         {!isMobile && marketDots}

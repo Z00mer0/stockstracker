@@ -64,10 +64,21 @@ Import from the barrel: `import { Button, Modal, Table } from '../components/ui'
 Logic is unit-tested (`focus.test.js`, `tabsNav.test.js`, `tableSort.test.js`).
 
 ### Phase 2 — App shell
-- [ ] Desktop sidebar collapsible to an icon rail
-- [ ] Mobile **bottom tab bar** (Dashboard, Portfolio, Transactions, Dividends, More)
-- [ ] Skeletons instead of spinners; toasts instead of `alert()`
-- [ ] Delete unused `MobileDrawer.jsx`
+- [x] Sidebar rebuilt on the kit; on desktop it collapses to a 68 px icon
+      rail (remembered per browser), names stay in tooltips and for screen
+      readers
+- [x] Mobile **bottom tab bar** (Dashboard, Portfolio, Transactions,
+      Dividends, More); "More" opens the full menu and lights up on pages
+      outside the four tabs. The header hamburger is gone.
+- [x] Mobile drawer: Esc closes it, and when closed it is `inert` (Tab no
+      longer walked through hidden links)
+- [x] `--tabbar-h` lifts toasts, the update prompt and page padding above
+      the tab bar; Portfolio's private toast moved to the shared one
+- [x] Skeleton instead of "…" while a page's code loads (after 180 ms);
+      each route gets its own Suspense boundary so a tap gives instant
+      feedback instead of freezing on the old page
+- [x] `alert()` — none left in the code (checked)
+- [x] Deleted unused `MobileDrawer.jsx`
 
 ### Phase 3 — Pages (one PR each, by usage)
 Each page PR: move to the kit, remove inline styles, mobile layout,
