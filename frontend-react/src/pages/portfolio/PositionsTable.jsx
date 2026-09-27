@@ -117,7 +117,12 @@ export default function PositionsTable({
     return base;
   }, [sorted, filterChip, filterGpw]);
 
-  const filteredCostPLN = filteredSorted.reduce((sum, p) => sum + (p.costPLN ?? 0), 0);
+  // Udział wg wartości rynkowej — tak samo jak wykres „Skład portfela" obok.
+  // Wcześniej wg kosztu zakupu, więc tabela i wykres pokazywały inne procenty
+  // (demo: PKO 23,2% w tabeli, 7,1% na wykresie). Pozycja bez notowania
+  // liczy się po koszcie, jak w nagłówku portfela.
+  const worth = p => p.valuePLN ?? p.costPLN ?? 0;
+  const filteredValuePLN = filteredSorted.reduce((sum, p) => sum + worth(p), 0);
 
   const groupedPositions = useMemo(() => {
     if (!grouped) return null;
@@ -130,7 +135,7 @@ export default function PositionsTable({
       b[1].reduce((s, p) => s + (p.valuePLN ?? 0), 0) - a[1].reduce((s, p) => s + (p.valuePLN ?? 0), 0));
   }, [filteredSorted, grouped]);
 
-  const shareOf = pos => (filteredCostPLN > 0 ? ((pos.costPLN ?? 0) / filteredCostPLN) * 100 : 0);
+  const shareOf = pos => (filteredValuePLN > 0 ? (worth(pos) / filteredValuePLN) * 100 : 0);
   const sectorLabel = sec => (sec === SECTOR_OTHER ? t('pf_sector_other') : sec);
 
   // ── Menu ⋯ przy pozycji ──
