@@ -114,7 +114,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   })() : null;
 
   const isUp      = totals[totals.length - 1] >= totals[0];
-  const lineColor = isUp ? '#10b981' : '#f43f5e';
+  const lineColor = isUp ? 'var(--up)' : 'var(--down)';
 
   // Y-axis ticks
   const tickCount = 5;
@@ -166,8 +166,8 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
       >
         <defs>
           <linearGradient id="hc-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={lineColor} stopOpacity="0.18" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+            <stop offset="0%"   style={{ stopColor: lineColor, stopOpacity: 0.18 }} />
+            <stop offset="100%" style={{ stopColor: lineColor, stopOpacity: 0.02 }} />
           </linearGradient>
         </defs>
 
@@ -177,8 +177,8 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
           return (
             <g key={i}>
               <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
-                stroke="#334155" strokeDasharray="3,3" strokeWidth={0.5} />
-              <text x={svgWidth - M.right + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start" className={blurCls}>
+                stroke="var(--border)" strokeDasharray="3,3" strokeWidth={0.5} />
+              <text x={svgWidth - M.right + 4} y={y + 4} fill="var(--text-faint)" fontSize={10} textAnchor="start" className={blurCls}>
                 {fmtVal(v)} {currLabel}
               </text>
             </g>
@@ -190,7 +190,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
 
         {/* Benchmark line (normalized to portfolio start value) */}
         {hasBenchNorm && benchPath && (
-          <path d={benchPath} fill="none" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="4,2" opacity={0.8} />
+          <path d={benchPath} fill="none" stroke="var(--info)" strokeWidth={1.5} strokeDasharray="4,2" opacity={0.8} />
         )}
 
         {/* Invested line (dashed, slate) — skip zero/outlier segments */}
@@ -204,7 +204,7 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
             pen = false;
           }
           const d = parts.join(' ');
-          return d ? <path d={d} fill="none" stroke="#475569" strokeWidth={1.5} strokeDasharray="5,3" /> : null;
+          return d ? <path d={d} fill="none" stroke="var(--border-strong)" strokeWidth={1.5} strokeDasharray="5,3" /> : null;
         })()}
 
         {/* Portfolio value line */}
@@ -216,20 +216,20 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
             <line
               x1={tooltip.x} x2={tooltip.x}
               y1={M.top} y2={M.top + H}
-              stroke="#64748b" strokeWidth={1} strokeDasharray="2,2"
+              stroke="var(--text-faint)" strokeWidth={1} strokeDasharray="2,2"
             />
             <circle cx={tooltip.x} cy={yScale(tooltip.total ?? 0)} r={4}
-              fill={lineColor} stroke="#1e293b" strokeWidth={2} />
+              fill={lineColor} stroke="var(--panel)" strokeWidth={2} />
           </>
         )}
 
         {/* X-axis baseline */}
         <line x1={M.left} x2={svgWidth - M.right} y1={M.top + H} y2={M.top + H}
-          stroke="#334155" strokeWidth={0.5} />
+          stroke="var(--border)" strokeWidth={0.5} />
 
         {/* X-axis date labels */}
         {dateLabels.map(({ i, date }) => (
-          <text key={i} x={xScale(i)} y={M.top + H + 17} fill="#64748b" fontSize={9} textAnchor="middle">
+          <text key={i} x={xScale(i)} y={M.top + H + 17} fill="var(--text-faint)" fontSize={9} textAnchor="middle">
             {fmtXDate(date)}
           </text>
         ))}
@@ -276,13 +276,13 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
         </div>
         {hasInvested && (
           <div className="hc-legend-item">
-            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="#94a3b8" strokeWidth="1.8" strokeDasharray="5,3" strokeLinecap="round" /></svg>
+            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--text-dim)" strokeWidth="1.8" strokeDasharray="5,3" strokeLinecap="round" /></svg>
             <span>{t('legend_invested')}</span>
           </div>
         )}
         {hasBenchNorm && benchLabel && (
           <div className="hc-legend-item">
-            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="#60a5fa" strokeWidth="1.8" strokeDasharray="4,2" strokeLinecap="round" /></svg>
+            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--info)" strokeWidth="1.8" strokeDasharray="4,2" strokeLinecap="round" /></svg>
             <span>{benchLabel} <span style={{ color: 'var(--text-faint)' }}>{t('legend_benchmark')}</span></span>
           </div>
         )}

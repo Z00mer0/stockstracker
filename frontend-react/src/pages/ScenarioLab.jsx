@@ -1,8 +1,7 @@
 // frontend-react/src/pages/ScenarioLab.jsx
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { Chart, registerables } from 'chart.js';
+import { useEffect, useMemo, useState } from 'react';
+import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { RotateCcw, Search, X } from 'lucide-react';
-import Annotation from 'chartjs-plugin-annotation';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { fetchOptionChain, getMdApiKey } from '../services/MarketDataService';
@@ -12,6 +11,7 @@ import {
 import { runway } from '../utils/runway.js';
 import { Badge, Button, Card, Field, Input, Select, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
+import { axisProps, gridProps, legendProps, tooltipProps } from '../components/charts/theme.js';
 
 function dteToDateStr(days) {
   const d = new Date();
@@ -25,7 +25,6 @@ function dateStrToDte(str) {
   return Math.max(1, diff);
 }
 
-Chart.register(...registerables, Annotation);
 
 const STRATEGIES = [
   { value: 'long-call',        label: 'Long Call' },
@@ -87,17 +86,6 @@ function contractLabel(c) {
 export default function ScenarioLab() {
   const { portfolio } = useApp();
   const t = useT();
-  const canvasRef = useRef(null);
-  const chartRef  = useRef(null);
-  // Motyw ustawia Layout atrybutem data-theme — przerysowujemy wykres
-  // w kolorach nowego motywu (jak w Kalkulatorze OKI).
-  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme'));
-  useEffect(() => {
-    const obs = new MutationObserver(() => setTheme(document.documentElement.getAttribute('data-theme')));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
-
   const [strategy, setStrategy] = useState('long-call');
   const [entry,    setEntry]    = useState(100);
   const [qty,      setQty]      = useState(1);
@@ -255,126 +243,25 @@ export default function ScenarioLab() {
   const isWing   = WING_STRATEGIES.has(strategy);
   const isHedged = HEDGED_STRATEGIES.has(strategy);
 
-  const [kpis,   setKpis]   = useState(null);
-  const [greeks, setGreeks] = useState(null);
-  const [sigma,  setSigma]  = useState(null);
-
-  const renderChart = useCallback(() => {
-    if (!canvasRef.current) return;
-
-    const isSpreadLocal = SPREAD_STRATEGIES.has(strategy);
-    const isHedgedLocal = HEDGED_STRATEGIES.has(strategy);
-
+  // Wszystko liczone z parametrów w jednym miejscu (wcześniej KPI ustawiano
+  // jako skutek uboczny rysowania wykresu chart.js).
+  const { kpis, greeks, sigma, chartData, strategyLabel } = useMemo(() => {
     const ivDec  = iv / 100;
     const T      = dte / 365;
-    const sig    = calcSigma(entry, ivDec, dte);
     const prices = makePrices(entry, ivDec, dte);
-
     const params = { entry, qty, strike, strike2, premium, T, iv: ivDec, wing };
     const { expiry, t0, stock } = calcPayoff(strategy, prices, params);
-    const kpisCalc   = calcKPIs(strategy, params);
-    const greeksCalc = calcGreeks(strategy, params);
-
-    setKpis(kpisCalc);
-    setGreeks(greeksCalc);
-    setSigma(sig);
-
-    // Find index of price closest to target
-    const findIdx = (target) => prices.reduce((best, p, i) =>
-      Math.abs(p - target) < Math.abs(prices[best] - target) ? i : best, 0);
-
-    const labels   = prices.map(p => '$' + p.toFixed(0));
-    const datasets = [];
-    // Kolory z tokenów motywu — wcześniej na sztywno jasne napisy i białe
-    // linie siatki, w jasnym motywie niewidoczne.
-    const css = getComputedStyle(document.documentElement);
-    const v = name => css.getPropertyValue(name).trim();
-    const text = v('--text'), dim = v('--text-faint'), grid = v('--border');
-    const accent = v('--accent'), info = v('--info');
-
-    if ((isHedgedLocal || isSpreadLocal) && !hideStock) {
-      datasets.push({
-        label: t('scenario_stock_only'),
-        data: stock,
-        borderColor: info,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [5, 4],
-        pointRadius: 0,
-        tension: 0.1,
-      });
-    }
-
-    datasets.push({
-      label: STRATEGIES.find(s => s.value === strategy)?.label || strategy,
-      data: expiry,
-      borderColor: accent,
-      backgroundColor: 'transparent',
-      borderWidth: 2.5,
-      pointRadius: 0,
-      tension: 0.1,
-    });
-
-    datasets.push({
-      label: t('scenario_today_t0'),
-      data: t0,
-      borderColor: dim,
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderDash: [4, 3],
-      pointRadius: 0,
-      tension: 0.3,
-    });
-
-    const annotations = {
-      entryLine: {
-        type: 'line', xMin: findIdx(entry), xMax: findIdx(entry),
-        borderColor: dim, borderWidth: 1, borderDash: [2, 4],
-        label: { content: 'Entry', display: true, color: text, backgroundColor: 'transparent', font: { size: 10 }, position: 'start' },
-      },
-      sigma1Lo: {
-        type: 'line', xMin: findIdx(entry - sig), xMax: findIdx(entry - sig),
-        borderColor: info, borderWidth: 1, borderDash: [4, 4],
-        label: { content: '-1σ', display: true, color: info, backgroundColor: 'transparent', font: { size: 10 }, position: 'start' },
-      },
-      sigma1Hi: {
-        type: 'line', xMin: findIdx(entry + sig), xMax: findIdx(entry + sig),
-        borderColor: info, borderWidth: 1, borderDash: [4, 4],
-        label: { content: '+1σ', display: true, color: info, backgroundColor: 'transparent', font: { size: 10 }, position: 'start' },
-      },
+    return {
+      kpis: calcKPIs(strategy, params),
+      greeks: calcGreeks(strategy, params),
+      sigma: calcSigma(entry, ivDec, dte),
+      chartData: prices.map((price, i) => ({ price, expiry: expiry[i], t0: t0[i], stock: stock[i] })),
+      strategyLabel: STRATEGIES.find(s => s.value === strategy)?.label || strategy,
     };
-
-    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'line',
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { labels: { color: text, font: { size: 12, weight: '600' } } },
-          tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + fmtDollar(ctx.parsed.y) } },
-          annotation: { annotations },
-        },
-        scales: {
-          x: { ticks: { color: dim, maxTicksLimit: 10 }, grid: { color: grid } },
-          y: {
-            ticks: { color: dim, callback: val => fmtDollar(val) },
-            grid: { color: grid },
-            title: { display: true, text: t('scenario_pnl_axis'), color: dim, font: { size: 11 } },
-          },
-        },
-      },
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strategy, entry, qty, strike, strike2, premium, dte, iv, wing, hideStock, theme, t]);
-
-  useEffect(() => {
-    renderChart();
-    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [renderChart]);
+  }, [strategy, entry, qty, strike, strike2, premium, dte, iv, wing]);
+  const showStock = (isHedged || isSpread) && !hideStock;
+  const priceDomain = [chartData[0]?.price ?? 0, chartData[chartData.length - 1]?.price ?? 1];
+  const refLabel = (value, fill) => ({ value, position: 'insideTopLeft', fill, fontSize: 10 });
 
   // Bear put spread wymaga krótkiego strike'u poniżej długiego, pozostałe
   // spready — powyżej. Przy odwrotnej kolejności wzory dają bzdury (np.
@@ -563,7 +450,26 @@ export default function ScenarioLab() {
       {/* Wykres */}
       <Card>
         <div className="h-[360px] p-4">
-          <canvas ref={canvasRef} />
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="price" type="number" domain={priceDomain} {...axisProps} tickFormatter={v => '$' + v.toFixed(0)} tickCount={10} />
+              <YAxis {...axisProps} width={72} tickFormatter={v => fmtDollar(v)}
+                label={{ value: t('scenario_pnl_axis'), angle: -90, position: 'insideLeft', fill: 'var(--text-faint)', fontSize: 11, dx: -2 }} />
+              <Tooltip {...tooltipProps} labelFormatter={v => '$' + Number(v).toFixed(2)} formatter={(v, name) => [fmtDollar(v), name]} />
+              <Legend {...legendProps} />
+              <ReferenceLine x={entry} stroke="var(--text-faint)" strokeDasharray="2 4" label={refLabel('Entry', 'var(--text)')} />
+              {sigma > 0 && entry - sigma > priceDomain[0] && (
+                <ReferenceLine x={entry - sigma} stroke="var(--info)" strokeDasharray="4 4" label={refLabel('-1σ', 'var(--info)')} />
+              )}
+              {sigma > 0 && entry + sigma < priceDomain[1] && (
+                <ReferenceLine x={entry + sigma} stroke="var(--info)" strokeDasharray="4 4" label={refLabel('+1σ', 'var(--info)')} />
+              )}
+              {showStock && <Line name={t('scenario_stock_only')} dataKey="stock" stroke="var(--info)" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />}
+              <Line name={strategyLabel} dataKey="expiry" stroke="var(--accent)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+              <Line name={t('scenario_today_t0')} dataKey="t0" stroke="var(--text-faint)" strokeWidth={1.5} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </Card>
 

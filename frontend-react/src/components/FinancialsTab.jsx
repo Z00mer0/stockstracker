@@ -103,7 +103,7 @@ function RevenueChart({ periods, currency }) {
                 fillOpacity={0.45}
                 rx={1}
               />
-              <text x={xC(i)} y={totalH - 5} textAnchor="middle" fontSize={8} fill="#64748b">
+              <text x={xC(i)} y={totalH - 5} textAnchor="middle" fontSize={8} fill="var(--text-faint)">
                 {p.date
                   ? `Q${Math.ceil(parseInt(p.date.slice(5, 7)) / 3)} '${p.date.slice(2, 4)}`
                   : (p.label ?? '').slice(-5)}
@@ -114,7 +114,7 @@ function RevenueChart({ periods, currency }) {
         <line
           x1={xC(0)} y1={yS(intercept)}
           x2={xC(n - 1)} y2={yS(slope * (n - 1) + intercept)}
-          stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4,3"
+          stroke="var(--warn)" strokeWidth={1.5} strokeDasharray="4,3"
         />
       </svg>
     </div>

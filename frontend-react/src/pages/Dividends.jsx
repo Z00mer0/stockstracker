@@ -15,6 +15,7 @@ import {
   Button, Callout, Card, EmptyState, Field, IconButton, Input, SegmentedControl, Spinner, Stat, Table, Tabs, TabPanel,
 } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
+import { axisProps, tooltipProps } from '../components/charts/theme.js';
 import {
   fetchDividendHistory,
   calcAnnualDivPerShare,
@@ -461,12 +462,11 @@ export default function Dividends() {
             <div className={cx('h-[220px] w-full', blur)}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={drip.rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} minTickGap={24} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} width={60}
+                  <XAxis dataKey="year" {...axisProps} minTickGap={24} />
+                  <YAxis {...axisProps} width={60}
                     tickFormatter={v => Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })} />
                   <Tooltip
-                    contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                    {...tooltipProps}
                     formatter={(v, name) => [perMonth(v), name === 'drip' ? t('drip_with') : t('drip_without')]}
                   />
                   <Legend formatter={name => <span className="text-xs text-dim">{name === 'drip' ? t('drip_with') : t('drip_without')}</span>} />

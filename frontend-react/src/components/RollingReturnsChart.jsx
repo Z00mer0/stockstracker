@@ -144,7 +144,7 @@ export default function RollingReturnsChart({ data }) {
               border: '1px solid',
               borderColor: displayPeriod === p.key ? 'var(--accent)' : 'var(--border)',
               background: displayPeriod === p.key ? 'var(--accent)' : 'var(--panel-2)',
-              color: displayPeriod === p.key ? '#fff' : 'var(--text-dim)',
+              color: displayPeriod === p.key ? 'var(--accent-fg)' : 'var(--text-dim)',
               fontWeight: displayPeriod === p.key ? 600 : 400,
             }}
           >{p.label}</button>
@@ -166,8 +166,8 @@ export default function RollingReturnsChart({ data }) {
             return (
               <g key={i}>
                 <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
-                  stroke="#334155" strokeDasharray="3,3" strokeWidth={0.5} />
-                <text x={svgWidth - M.right + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start">
+                  stroke="var(--border)" strokeDasharray="3,3" strokeWidth={0.5} />
+                <text x={svgWidth - M.right + 4} y={y + 4} fill="var(--text-faint)" fontSize={10} textAnchor="start">
                   {v >= 0 ? '+' : ''}{v.toFixed(1)}%
                 </text>
               </g>
@@ -175,16 +175,16 @@ export default function RollingReturnsChart({ data }) {
           })}
 
           <line x1={M.left} x2={svgWidth - M.right} y1={zeroY} y2={zeroY}
-            stroke="#475569" strokeWidth={1} />
+            stroke="var(--border-strong)" strokeWidth={1} />
 
           {has6m && path6m && (
-            <path d={path6m} fill="none" stroke="#f59e0b"
+            <path d={path6m} fill="none" stroke="var(--warn)"
               strokeWidth={1.5} strokeDasharray="5,3" opacity={0.85}
               clipPath="url(#roll-clip)" />
           )}
 
           {has3m && path3m && (
-            <path d={path3m} fill="none" stroke="#38bdf8"
+            <path d={path3m} fill="none" stroke="var(--info)"
               strokeWidth={2} strokeLinejoin="round"
               clipPath="url(#roll-clip)" />
           )}
@@ -192,24 +192,24 @@ export default function RollingReturnsChart({ data }) {
           {tooltip && (
             <>
               <line x1={tooltip.x} x2={tooltip.x} y1={M.top} y2={M.top + H}
-                stroke="#64748b" strokeWidth={1} strokeDasharray="2,2" />
+                stroke="var(--text-faint)" strokeWidth={1} strokeDasharray="2,2" />
               {tooltip.v3m != null && (
                 <circle cx={tooltip.x} cy={yScale(tooltip.v3m)} r={3.5}
-                  fill="#38bdf8" stroke="#1e293b" strokeWidth={2} />
+                  fill="var(--info)" stroke="var(--panel)" strokeWidth={2} />
               )}
               {tooltip.v6m != null && (
                 <circle cx={tooltip.x} cy={yScale(tooltip.v6m)} r={3.5}
-                  fill="#f59e0b" stroke="#1e293b" strokeWidth={2} />
+                  fill="var(--warn)" stroke="var(--panel)" strokeWidth={2} />
               )}
             </>
           )}
 
           <line x1={M.left} x2={svgWidth - M.right} y1={M.top + H} y2={M.top + H}
-            stroke="#334155" strokeWidth={0.5} />
+            stroke="var(--border)" strokeWidth={0.5} />
 
           {dateLabels.map(({ i, date }) => (
             <text key={i} x={xScale(i)} y={M.top + H + 17}
-              fill="#64748b" fontSize={9} textAnchor="middle">
+              fill="var(--text-faint)" fontSize={9} textAnchor="middle">
               {fmtXDate(date)}
             </text>
           ))}
@@ -229,7 +229,7 @@ export default function RollingReturnsChart({ data }) {
               {tooltip.v3m != null && (
                 <>
                   <span>Rolling 3M</span>
-                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v3m >= 0 ? '#38bdf8' : 'var(--down)' }}>
+                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v3m >= 0 ? 'var(--info)' : 'var(--down)' }}>
                     {tooltip.v3m >= 0 ? '+' : ''}{tooltip.v3m.toFixed(2)}%
                   </span>
                 </>
@@ -237,7 +237,7 @@ export default function RollingReturnsChart({ data }) {
               {tooltip.v6m != null && (
                 <>
                   <span>Rolling 6M</span>
-                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v6m >= 0 ? '#f59e0b' : 'var(--down)' }}>
+                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v6m >= 0 ? 'var(--warn)' : 'var(--down)' }}>
                     {tooltip.v6m >= 0 ? '+' : ''}{tooltip.v6m.toFixed(2)}%
                   </span>
                 </>
@@ -248,11 +248,11 @@ export default function RollingReturnsChart({ data }) {
 
         <div style={{ display: 'flex', gap: 20, marginTop: 10, fontSize: 12, color: 'var(--text-faint)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="#38bdf8" strokeWidth="2" /></svg>
+            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="var(--info)" strokeWidth="2" /></svg>
             Rolling 3M
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5,3" /></svg>
+            <svg width="16" height="4"><line x1="0" y1="2" x2="16" y2="2" stroke="var(--warn)" strokeWidth="1.5" strokeDasharray="5,3" /></svg>
             Rolling 6M
           </div>
         </div>

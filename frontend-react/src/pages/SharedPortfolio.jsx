@@ -5,6 +5,7 @@ import { Lock, PieChart as PieIcon } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { Card, EmptyState, Skeleton, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
+import { tooltipProps } from '../components/charts/theme.js';
 
 // Publiczny widok portfela — tylko struktura w %, bez kwot i ilości.
 // Renderowany bez logowania (route /s/:token omija AuthGate).
@@ -110,8 +111,7 @@ export default function SharedPortfolio() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                      itemStyle={{ color: 'var(--text)' }}
+                      {...tooltipProps}
                       formatter={(v, name) => [`${fmt(v)}%`, name]}
                     />
                   </PieChart>

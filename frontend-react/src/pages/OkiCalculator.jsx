@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Chart, registerables } from 'chart.js';
+import { useMemo, useState } from 'react';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { TriangleAlert, Info } from 'lucide-react';
+import { axisProps, gridProps, legendProps, tooltipProps } from '../components/charts/theme.js';
 import { Callout, Card, Field, Input } from '../components/ui';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { simulateOki, OKI_LIMIT, OKI_RATE, BELKA_RATE } from '../utils/okiCalc.js';
-
-Chart.register(...registerables);
 
 function fmtMoney(v, locale) {
   const n = Math.round(Number(v) || 0);
@@ -23,15 +22,6 @@ function fmtMoneyShort(v, locale) {
 export default function OkiCalculator() {
   const t = useT();
   const { locale } = useLanguage();
-  // Motyw ustawia Layout atrybutem data-theme — obserwujemy go, żeby
-  // przerysować wykres w kolorach nowego motywu.
-  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme'));
-  useEffect(() => {
-    const obs = new MutationObserver(() => setTheme(document.documentElement.getAttribute('data-theme')));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
-
   const [initialValue, setInitialValue] = useState(100_000);
   const [annualReturn, setAnnualReturn] = useState(10);
   const [years, setYears] = useState(20);
@@ -44,67 +34,12 @@ export default function OkiCalculator() {
     activelyManaged,
   }), [initialValue, annualReturn, years, activelyManaged]);
 
-  const canvasRef = useRef(null);
-  const chartRef  = useRef(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const labels = result.rows.map(r => `R${r.year}`);
-    const okiSeries = result.rows.map(r => r.okiEnd - initialValue);
-    const regSeries = result.rows.map(r => r.regEnd - initialValue);
-
-    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-    // Kolory z tokenów motywu — wcześniej na sztywno jasne napisy i białe
-    // linie siatki, w jasnym motywie niewidoczne.
-    const css = getComputedStyle(document.documentElement);
-    const v = name => css.getPropertyValue(name).trim();
-    const text = v('--text'), dim = v('--text-faint'), grid = v('--border');
-
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: t('oki_chart_regular'),
-            data: regSeries,
-            borderColor: v('--up'),
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.25,
-          },
-          {
-            label: t('oki_chart_oki'),
-            data: okiSeries,
-            borderColor: v('--accent'),
-            backgroundColor: 'transparent',
-            borderWidth: 2.5,
-            pointRadius: 0,
-            tension: 0.25,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { labels: { color: text, font: { size: 12, weight: '600' } } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y, locale)}` } },
-        },
-        scales: {
-          x: { ticks: { color: dim, maxTicksLimit: 10 }, grid: { color: grid } },
-          y: {
-            ticks: { color: dim, callback: val => fmtMoneyShort(val, locale) },
-            grid:  { color: grid },
-            title: { display: true, text: t('oki_chart_net_gain'), color: dim, font: { size: 11 } },
-          },
-        },
-      },
-    });
-    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [result, initialValue, locale, t, theme]);
+  // Zysk netto (ponad wpłatę) w obu wariantach, rok po roku.
+  const chartData = result.rows.map(r => ({
+    label: `R${r.year}`,
+    reg: r.regEnd - initialValue,
+    oki: r.okiEnd - initialValue,
+  }));
 
   const firstYear = result.rows[0];
   const advantage = result.advantage;
@@ -183,7 +118,20 @@ export default function OkiCalculator() {
 
           <div>
             <p className="mb-2 text-[13px] font-semibold text-fg">{t('oki_chart_title').replace('{years}', years).replace('{yearsLabel}', t('oki_years'))}</p>
-            <div className="h-80"><canvas ref={canvasRef} /></div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...gridProps} />
+                  <XAxis dataKey="label" {...axisProps} minTickGap={16} />
+                  <YAxis {...axisProps} width={56} tickFormatter={v => fmtMoneyShort(v, locale)} />
+                  <Tooltip {...tooltipProps} formatter={(v, name) => [fmtMoney(v, locale), name]} />
+                  <Legend {...legendProps} />
+                  <Line name={t('oki_chart_regular')} dataKey="reg" stroke="var(--up)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line name={t('oki_chart_oki')} dataKey="oki" stroke="var(--accent)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="mt-1 text-[11px] text-faint">{t('oki_chart_net_gain')}</p>
           </div>
 
           <Callout tone="info" icon={Info}>{t('oki_footer_note').replace('{limit}', fmtMoney(OKI_LIMIT, locale))}</Callout>

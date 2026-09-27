@@ -6,6 +6,7 @@ import { useLanguage, useT } from '../../context/LanguageContext';
 import { Card, Field, Input, Stat } from '../../components/ui';
 import { lsSet } from '../../utils/safeStorage.js';
 import { yearsToFire, runFireMonteCarlo } from '../../utils/fire.js';
+import { axisProps, tooltipProps } from '../../components/charts/theme.js';
 
 const FIRE_KEY = 'myfund_fire_settings';
 function loadFireSettings() {
@@ -124,12 +125,11 @@ export default function FireTab({ totalValue }) {
                 <div className="h-60 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={mc.rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-                      <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} minTickGap={24} />
-                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} width={56}
+                      <XAxis dataKey="year" {...axisProps} minTickGap={24} />
+                      <YAxis {...axisProps} width={56}
                         tickFormatter={v => Number(v).toLocaleString(locale, { notation: 'compact', maximumFractionDigits: 1 })} />
                       <ChartTooltip
-                        contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                        labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                        {...tooltipProps}
                         formatter={(v, name) => (name === 'median'
                           ? [money(v), t('fire_mc_median')]
                           : [`${fmt(v[0])} – ${money(v[1])}`, t('fire_mc_band')])}

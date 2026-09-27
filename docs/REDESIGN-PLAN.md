@@ -152,11 +152,18 @@ before/after screenshots.
       on an unknown file, deposits always in USD, dotted dates not ISO,
       "Symbol" column ignored; "1 050,00" read as 1 in two importers;
       benchmark joined by index instead of date; thesis note lost on close.
-      Still on their own overlay: setup wizard, advanced price chart.
+      Setup wizard moved too (its currency choice now actually applies).
+      The advanced price chart (`ChartContext` → `AdvancedPriceChart`) is never
+      opened anywhere — dead code, left for a decision.
 
 ### Phase 4 — Charts
-- [ ] One chart library with one theme (colours, tooltip, axes); keep the
-      hand-made sparklines.
+- [x] One chart library with one theme (colours, tooltip, axes); keep the
+      hand-made sparklines. Recharts everywhere; shared props in
+      `components/charts/theme.js` (theme CSS variables, so charts follow the
+      theme without redrawing). OKI and Scenario Lab moved off chart.js;
+      chart.js, its annotation plugin and the unused react-chartjs-2 removed.
+      Hand-drawn SVG charts (History, rate of return, rolling returns,
+      financials, stock detail) now use theme tokens instead of fixed hex.
 
 ### Phase 5 — Pro-feel features
 - [ ] Undo toasts after deletes
