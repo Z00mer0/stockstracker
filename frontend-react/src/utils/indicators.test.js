@@ -3,7 +3,7 @@ import { calcMA, calcEMA, calcRSI, calcMACD, calcBollingerBands } from './indica
 import ref from './indicators.fixture.json';
 
 // ref: te same wskaźniki policzone niezależną implementacją w Pythonie
-// (skrypt w opisie commita) na 80 syntetycznych cenach.
+// (indicators.fixture.py) na 80 syntetycznych cenach.
 const close = (a, b) => a.forEach((v, i) => (b[i] == null ? expect(v).toBeNull() : expect(v).toBeCloseTo(b[i], 9)));
 
 describe('wskaźniki vs niezależna implementacja', () => {
