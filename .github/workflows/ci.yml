@@ -89,3 +89,7 @@ jobs:
       # Awaria NBP dawała samo PLN — USD/EUR liczone po kursie 1 w dziennym
       # snapshocie i na publicznym linku. Test pilnuje zapasu (proces, baza).
       - run: python test_nbp_fallback.py
+      # Świeża baza dawała 500 przy zapisie portfela: asset_type
+      # i portfolio_other_assets były używane, ale nie tworzone przy starcie.
+      # Test porównuje SQL z CREATE/ALTER (bez bazy).
+      - run: python test_schema_complete.py

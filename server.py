@@ -1268,6 +1268,24 @@ if DATABASE_URL:
                     currency     TEXT NOT NULL DEFAULT 'PLN',
                     UNIQUE(portfolio_id, symbol)
                 )""")
+            # asset_type jest czytane i zapisywane przy każdej pozycji, ale nigdy
+            # nie było tworzone przy starcie — na świeżej bazie zapis portfela
+            # kończył się błędem 500 (kolumna istniała tylko na produkcji).
+            cur.execute("ALTER TABLE portfolio_holdings ADD COLUMN IF NOT EXISTS asset_type TEXT")
+            # Tak samo „Inne aktywa": tabela używana przy każdym odczycie i zapisie
+            # portfela, ale nigdy nie tworzona — świeża baza dawała 500.
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio_other_assets (
+                    id           TEXT NOT NULL,
+                    portfolio_id TEXT NOT NULL REFERENCES portfolio_list(id) ON DELETE CASCADE,
+                    name         TEXT NOT NULL DEFAULT '',
+                    category     TEXT NOT NULL DEFAULT 'Inne',
+                    value        NUMERIC NOT NULL DEFAULT 0,
+                    currency     TEXT NOT NULL DEFAULT 'PLN',
+                    note         TEXT NOT NULL DEFAULT '',
+                    updated_at   TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (portfolio_id, id)
+                )""")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_transactions (
                     id                 TEXT PRIMARY KEY,
