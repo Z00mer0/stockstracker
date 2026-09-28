@@ -1,14 +1,15 @@
 // src/pages/ClosedPositions.jsx
 import { useEffect, useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Scale, Hash, Download, Search, BookOpen, Archive } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Hash, Search, BookOpen, Archive } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import TickerLogo from '../components/shared/TickerLogo';
 import { PageSkeleton } from '../components/RouteFallback';
-import { Button, Card, EmptyState, Input, SegmentedControl, Stat, Table } from '../components/ui';
+import { Card, EmptyState, Input, SegmentedControl, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
-import { computeRealizedTrades, groupBySymbol, exportPIT38CSV } from '../utils/realizedPL';
+import { computeRealizedTrades, groupBySymbol } from '../utils/realizedPL';
+import Pit38Card from '../components/Pit38Card.jsx';
 import { loadJournal } from '../services/journalService';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
@@ -90,25 +91,12 @@ export default function ClosedPositions() {
       plCol, pctCol,
     ];
 
-  function downloadCSV() {
-    const blob = new Blob([exportPIT38CSV(trades, fxRates, locale)], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `pit38_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
   const journalCell = g => (g.n === 0 ? <span className="text-faint">—</span> : (
     <span>{signed(g.pctSum / g.n, '%')}<span className="text-[11px] text-faint"> ({g.n} {t('journal_trades_unit')})</span></span>
   ));
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="primary" icon={Download} disabled={!trades.length} onClick={downloadCSV}>{t('export_pit38')}</Button>
-      </div>
-
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat blur={isPrivate} icon={TrendingUp} tone="up" label={t('realized_gain')} value={`+${fmt(toDisp(gain))} ${currSym}`} />
         <Stat blur={isPrivate} icon={TrendingDown} tone="down" label={t('realized_loss')} value={`${fmt(toDisp(loss))} ${currSym}`} />
@@ -164,9 +152,10 @@ export default function ClosedPositions() {
             defaultSort={{ key: 'plPLN', dir: 'desc' }}
             pageSize={50}
           />
-          <p className="border-t border-line px-4 py-2.5 text-[11px] text-faint">{t('pit38_note')}</p>
         </Card>
       )}
+
+      {trades.length > 0 && <Pit38Card />}
     </div>
   );
 }

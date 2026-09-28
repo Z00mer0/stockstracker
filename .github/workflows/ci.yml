@@ -95,3 +95,5 @@ jobs:
       - run: python test_schema_complete.py
       # Podsumowanie tygodnia: wpłata w trakcie tygodnia nie może wyjść jako zysk.
       - run: python test_weekly_summary.py
+      # /api/splits nie istniał — wykrywanie splitów nigdy nie działało.
+      - run: python test_splits.py

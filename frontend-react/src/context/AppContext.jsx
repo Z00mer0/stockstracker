@@ -388,6 +388,32 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
+  // Split: pozycja dostaje ilość × ratio i cenę / ratio (wartość bez zmian),
+  // a historia wpis SPLIT — obliczenia z historii przeliczają przez niego
+  // wcześniejsze transakcje (utils/splits.js).
+  async function applySplit({ symbol, date, ratio, label }) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zastosować split');
+    if (!(ratio > 0)) throw new Error('Nieprawidłowy podział');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const holdings = rd?.portfolio?.holdings ?? [];
+    const existing = holdings.find(h => h.symbol === symbol);
+    if (!existing) throw new Error('Nie znaleziono pozycji');
+    const updated = {
+      ...rd,
+      portfolio: {
+        ...rd.portfolio,
+        holdings: holdings.map(h => h.symbol === symbol ? { ...h, qty: h.qty * ratio, avgPrice: h.avgPrice / ratio } : h),
+      },
+      transactions: [...(rd.transactions ?? []), {
+        id: Math.random().toString(36).slice(2, 10),
+        type: 'SPLIT', symbol, date, ratio, qty: null, price: 0,
+        currency: existing.currency, note: `Split ${label ?? ratio}`,
+      }],
+    };
+    await postUpdate(updated);
+  }
+
   async function removePosition(symbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć pozycję');
     assertLoaded();
@@ -814,6 +840,7 @@ export function AppProvider({ children }) {
     deleteSnapshot,
     addPosition,
     editPosition,
+    applySplit,
     removePosition,
     sellPosition,
     renameSymbol,

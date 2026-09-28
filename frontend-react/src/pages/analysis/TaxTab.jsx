@@ -1,20 +1,29 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Landmark, Receipt, PiggyBank, Sprout, Info, Lightbulb, PartyPopper } from 'lucide-react';
 import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { Callout, Card, EmptyState, Stat, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
+import { usePit38 } from '../../hooks/usePit38.js';
 
 // Optymalizator podatku Belki (tax-loss harvesting) — logika bez zmian:
 // straty z otwartych pozycji rozdzielane na zrealizowany zysk w roku,
 // od największej, do wyczerpania zysku. Kwoty w PLN (podatek jest w PLN).
 const BELKA_RATE = 0.19;
 
-export default function TaxTab({ enriched, realizedYtdPLN, accountType }) {
+export default function TaxTab({ enriched, realizedYtdPLN: avgCostYtd, accountType }) {
   const t = useT();
   const { locale } = useLanguage();
   const { isPrivate } = usePrivacy();
   const year = new Date().getFullYear();
+  // Wynik roku i podatek tak, jak w PIT-38 (FIFO, kursy NBP z dnia przed
+  // transakcją). Do czasu pobrania kursów — przybliżenie średnią ceną
+  // i bieżącym kursem, jak wcześniej.
+  const { forYear, loading: pitLoading } = usePit38();
+  const pit = useMemo(() => forYear(year), [forYear, year]);
+  const exact = !pitLoading && pit.totals.missingRates === 0;
+  const realizedYtdPLN = exact ? pit.totals.income : avgCostYtd;
   const fmt = (n, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
 
   const losers = useMemo(() => enriched
@@ -26,7 +35,7 @@ export default function TaxTab({ enriched, realizedYtdPLN, accountType }) {
     return <EmptyState icon={PartyPopper} title={t('tax_opt_title')} description={t('tax_opt_ike_note').replace('{type}', accountType)} />;
   }
 
-  const taxDue = Math.max(0, realizedYtdPLN) * BELKA_RATE;
+  const taxDue = exact ? pit.totals.tax : Math.max(0, realizedYtdPLN) * BELKA_RATE;
   let remaining = Math.max(0, realizedYtdPLN);
   const rows = losers.map(l => {
     const offset = Math.min(l.lossPLN, remaining);
@@ -56,6 +65,11 @@ export default function TaxTab({ enriched, realizedYtdPLN, accountType }) {
           tone={totalSaving > 0 ? 'up' : undefined}
         />
       </div>
+
+      <p className="text-small text-dim">
+        {exact ? t('tax_pit38_basis') : t('tax_pit38_approx')}{' '}
+        <Link to="/closed" className="font-semibold text-accent-text hover:underline">{t('tax_pit38_link')}</Link>
+      </p>
 
       <Card title={t('tax_opt_title')}>
         {losers.length === 0 ? (

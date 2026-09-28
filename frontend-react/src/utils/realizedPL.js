@@ -5,6 +5,7 @@
 // ta sama metoda co avgPrice w portfelu). Sprzedaż bez żadnego wcześniejszego
 // zakupu w historii nadal jest pomijana (nie znamy kosztu).
 import { weightedAvg } from './weightedAvg.js';
+import { splitAdjusted } from './splits.js';
 
 function backfillCostBasis(transactions) {
   const bySym = new Map();
@@ -36,7 +37,9 @@ function backfillCostBasis(transactions) {
   return filled;
 }
 
-export function computeRealizedTrades(transactions = [], fxRates = {}) {
+export function computeRealizedTrades(rawTransactions = [], fxRates = {}) {
+  // Sprzedaż po splicie ma ilość w nowych jednostkach — zakupy sprzed niego też.
+  const transactions = splitAdjusted(rawTransactions);
   const filled = backfillCostBasis(transactions);
   const sells = transactions.filter(tx => tx.type === 'SELL' && (tx.costBasis != null || filled.has(tx)));
   return sells.map(txRaw => {
@@ -93,36 +96,4 @@ export function groupBySymbol(trades) {
       pct: cost > 0 ? (g.plNative / cost) * 100 : 0,
     };
   }).sort((a, b) => b.plPLN - a.plPLN);
-}
-
-// Generates PIT-38-compatible CSV (in PLN, current FX rates)
-export function exportPIT38CSV(trades, fxRates = {}, locale = 'pl-PL') {
-  const sep = ';';
-  const rows = [
-    ['Spółka', 'Data sprzedaży', 'Ilość', 'Cena sprzedaży', 'Koszt nabycia', 'Przychód (PLN)', 'Koszt (PLN)', 'Dochód/Strata (PLN)', 'Waluta', 'Kurs'].join(sep),
-  ];
-  for (const t of [...trades].sort((a, b) => a.date.localeCompare(b.date))) {
-    const rate     = fxRates[t.currency] ?? 1;
-    const income   = t.qty * t.sellPrice * rate;
-    const cost     = t.qty * t.costBasis * rate;
-    const gain     = income - cost;
-    const fmt2 = v => v.toFixed(2).replace('.', ',');
-    rows.push([
-      t.symbol,
-      t.date,
-      String(t.qty).replace('.', ','),
-      fmt2(t.sellPrice),
-      fmt2(t.costBasis),
-      fmt2(income),
-      fmt2(cost),
-      fmt2(gain),
-      t.currency,
-      fmt2(rate),
-    ].join(sep));
-  }
-  // summary row
-  const totalIncome = trades.reduce((s, t) => s + t.qty * t.sellPrice * (fxRates[t.currency] ?? 1), 0);
-  const totalCost   = trades.reduce((s, t) => s + t.qty * t.costBasis * (fxRates[t.currency] ?? 1), 0);
-  rows.push(['RAZEM', '', '', '', '', totalIncome.toFixed(2).replace('.', ','), totalCost.toFixed(2).replace('.', ','), (totalIncome - totalCost).toFixed(2).replace('.', ','), '', ''].join(sep));
-  return '﻿' + rows.join('\r\n'); // BOM for Excel
 }

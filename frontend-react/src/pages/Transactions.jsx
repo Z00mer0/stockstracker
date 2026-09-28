@@ -14,7 +14,7 @@ import ImportCsvModal from './transactions/ImportCsvModal.jsx';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 const TYPE_TONE = { BUY: 'up', SELL: 'down', DIV: 'info', CASH: 'warn' };
-const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 'type_cash' };
+const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 'type_cash', SPLIT: 'tx_type_split' };
 
 function fmtDate(d, locale) {
   if (!d) return '—';
@@ -88,7 +88,7 @@ export default function Transactions() {
     },
     {
       key: 'qty', header: t('qty_short'), align: 'right', sortable: true, firstDir: 'desc',
-      render: tx => (tx.qty != null ? fmt(tx.qty, tx.qty % 1 === 0 ? 0 : 4, locale) : '—'),
+      render: tx => (tx.ratio > 0 ? `×${fmt(tx.ratio, tx.ratio % 1 === 0 ? 0 : 4, locale)}` : tx.qty != null ? fmt(tx.qty, tx.qty % 1 === 0 ? 0 : 4, locale) : '—'),
     },
     {
       key: 'price', header: t('price_label'), align: 'right',
