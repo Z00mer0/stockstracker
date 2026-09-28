@@ -266,14 +266,9 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
     return () => clearInterval(id);
   }, []);
 
-  // ⌘K opens search
+  // ⌘K otwiera paletę poleceń (Layout); tu tylko Esc dla wyszukiwarki.
   useEffect(() => {
     function onKey(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setSearchOpen(true);
-      }
       if (e.key === 'Escape') { setSearchOpen(false); setQuery(''); inputRef.current?.blur(); }
     }
     window.addEventListener('keydown', onKey);
@@ -347,12 +342,18 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
           onFocus={() => setSearchOpen(true)}
         />
         {!query && !isMobile && (
-          <kbd style={{
-            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
-            border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
-            fontFamily: 'var(--font-mono)', pointerEvents: 'none',
-          }}>⌘K</kbd>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('myfund-open-palette'))}
+            aria-label={t('cmd_title')}
+            title={t('cmd_title')}
+            style={{
+              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 10, color: 'var(--text-faint)', background: 'var(--panel-2)',
+              border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px',
+              fontFamily: 'var(--font-mono)', cursor: 'pointer',
+            }}
+          >⌘K</button>
         )}
         {searchOpen && (searchResults.length > 0 || showExternal) && (
           <div style={{

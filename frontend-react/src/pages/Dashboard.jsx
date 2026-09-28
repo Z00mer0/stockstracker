@@ -16,6 +16,7 @@ import { formatPercent } from '../utils/format.js';
 import InsightStrip from '../components/shared/InsightStrip';
 import StackedAllocation from '../components/shared/StackedAllocation';
 import WinnersLosers from '../components/shared/WinnersLosers';
+import PortfolioHeatmap from '../components/shared/PortfolioHeatmap';
 import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
@@ -497,6 +498,15 @@ export default function Dashboard() {
             )}
         </Card>
       </div>
+
+      {/* Mapa portfela: wielkość = wartość, kolor = zmiana dnia */}
+      {allPositions.some(p => p.valuePLN > 0) && (
+        <Card className="mb-4" title={t('heatmap_title')}>
+          <div className="px-4 pb-4 pt-3">
+            <PortfolioHeatmap positions={allPositions} onOpen={setSelectedStock} height={320} />
+          </div>
+        </Card>
+      )}
 
       {/* Niezrealizowany zysk per pozycja */}
       {unrealRows.length > 0 && (

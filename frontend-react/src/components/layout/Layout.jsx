@@ -1,5 +1,5 @@
 // src/components/layout/Layout.jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { lazy, useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
 import RouteFallback from '../RouteFallback';
@@ -14,6 +14,11 @@ import { wizardPending, WIZARD_DONE_EVENT } from '../SetupWizard.jsx';
 import { useApp } from '../../context/AppContext';
 import { lsSet } from '../../utils/safeStorage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+
+// Paleta ⌘K i okna, które z niej otwieramy — dociągane dopiero przy użyciu.
+const CommandPalette = lazy(() => import('../CommandPalette.jsx'));
+const StockDetailModal = lazy(() => import('../StockDetailModal.jsx'));
+const AddStockModal = lazy(() => import('../AddStockModal.jsx'));
 
 const THEME_KEY = 'myfund_theme';
 const COLLAPSE_KEY = 'myfund_sidebar_collapsed';
@@ -54,7 +59,24 @@ export default function Layout() {
   const mainRef = useRef(null);
   const lastScrollY = useRef(0);
 
-  const { portfolios, isAuthenticated, loading, error } = useApp();
+  const { portfolios, isAuthenticated, loading, error, portfolio, addPosition, refresh } = useApp();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteStock, setPaletteStock] = useState(null);
+  const [paletteAdd, setPaletteAdd] = useState(false);
+
+  // ⌘K / Ctrl+K — paleta poleceń (wcześniej tylko fokus na wyszukiwarce).
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    const onOpen = () => setPaletteOpen(true);
+    window.addEventListener('myfund-open-palette', onOpen);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('myfund-open-palette', onOpen); };
+  }, []);
   const location = useLocation();
   const t = useT();
   const heading = PAGE_HEADINGS[location.pathname.replace(/\/$/, '')];
@@ -170,6 +192,27 @@ export default function Layout() {
       </div>
       {isMobile && <BottomNav onMore={() => setSidebarOpen(o => !o)} moreOpen={sidebarOpen} />}
       {showNewPortfolio && <NewPortfolioModal onClose={() => setShowNewPortfolio(false)} />}
+      <Suspense fallback={null}>
+        {paletteOpen && (
+          <CommandPalette
+            onClose={() => setPaletteOpen(false)}
+            onOpenStock={setPaletteStock}
+            onAddPosition={() => setPaletteAdd(true)}
+            onNewPortfolio={() => setShowNewPortfolio(true)}
+            onToggleTheme={() => setTheme(th => (th === 'dark' ? 'light' : 'dark'))}
+          />
+        )}
+        {paletteStock && (
+          <StockDetailModal item={paletteStock} existingPortfolio={portfolio} onClose={() => setPaletteStock(null)} />
+        )}
+        {paletteAdd && (
+          <AddStockModal
+            existingPortfolio={portfolio}
+            onSave={async data => { await addPosition(data); refresh(); }}
+            onClose={() => setPaletteAdd(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
