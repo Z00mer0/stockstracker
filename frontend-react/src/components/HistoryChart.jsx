@@ -5,17 +5,12 @@ import { usePrivacy } from '../context/PrivacyContext';
 const M = { top: 10, right: 75, bottom: 28, left: 10 };
 const H = 220;
 
-// Returns the benchmark price at or before a given date (binary-search style scan)
-function priceAtDate(benchData, date) {
-  let last = null;
-  for (const pt of benchData) {
-    if (pt.date <= date) last = pt.price;
-    else break;
-  }
-  return last;
-}
-
-export default function HistoryChart({ data, benchData = [], benchLabel = '', displayCurrency = 'PLN', fxRate = 1 }) {
+// Wykres wartości portfela. Bez linii benchmarku: indeks skalowany do
+// pierwszej wartości portfela porównywał go z wartością, w której siedzą
+// późniejsze wpłaty — różnica między liniami nie była wynikiem inwestycji.
+// Porównanie z indeksem jest na wykresie stopy zwrotu (TWR) i w karcie
+// „Ty vs indeks" na stronie Historia.
+export default function HistoryChart({ data, displayCurrency = 'PLN', fxRate = 1 }) {
   const { locale } = useLanguage();
   const t = useT();
   const { isPrivate } = usePrivacy();
@@ -65,24 +60,8 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   const investeds = data.map(d => (d.invested ?? 0) / rateFor(d));
   const hasInvested = data.some(d => d.invested != null && d.invested > 0);
 
-  // Normalize benchmark to portfolio's first value so both lines share the same scale
-  const benchNormalized = (() => {
-    if (!benchData.length || !data.length) return [];
-    const firstBenchPrice = priceAtDate(benchData, data[0].date);
-    const firstPortfolio  = totals[0];
-    if (!firstBenchPrice || !firstPortfolio) return [];
-    return data.map(s => {
-      const price = priceAtDate(benchData, s.date);
-      return price != null ? (price / firstBenchPrice) * firstPortfolio : null;
-    });
-  })();
-  const hasBenchNorm = benchNormalized.length > 0 && benchNormalized.some(v => v != null);
-
-  // Scale based on totals + benchmark; never let stale/zero invested values distort the Y-axis
-  const scaleVals = [
-    ...totals,
-    ...(hasBenchNorm ? benchNormalized.filter(v => v != null) : []),
-  ];
+  // Scale based on totals; never let stale/zero invested values distort the Y-axis
+  const scaleVals = [...totals];
   const minTotal = Math.min(...totals);
   // Include invested in scale only if it's in a reasonable range (≥ 30% of min total)
   const saneinvesteds = investeds.filter(v => v > 0 && v >= minTotal * 0.3);
@@ -101,17 +80,6 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   const totalPath = buildPath(totals);
   const baseY = (M.top + H).toFixed(1);
   const areaPath = `${totalPath} L${xScale(data.length - 1).toFixed(1)},${baseY} L${M.left.toFixed(1)},${baseY} Z`;
-
-  const benchPath = hasBenchNorm ? (() => {
-    const parts = [];
-    let movePending = true;
-    for (let i = 0; i < benchNormalized.length; i++) {
-      if (benchNormalized[i] == null) { movePending = true; continue; }
-      parts.push(`${movePending ? 'M' : 'L'}${xScale(i).toFixed(1)},${yScale(benchNormalized[i]).toFixed(1)}`);
-      movePending = false;
-    }
-    return parts.join(' ');
-  })() : null;
 
   const isUp      = totals[totals.length - 1] >= totals[0];
   const lineColor = isUp ? 'var(--up)' : 'var(--down)';
@@ -148,9 +116,6 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
       total:      dispTotal,       // już w displayCurrency
       invested:   dispInvested,    // już w displayCurrency
       pl,                          // już w displayCurrency
-      // benchNormalized[idx] jest w tych samych jednostkach co totals[idx]
-      // (bo skalujemy do totals[0]), a totals[i] też już podzielone przez rateFor
-      benchValue: hasBenchNorm ? benchNormalized[idx] : null,
       idx,
     });
   };
@@ -187,11 +152,6 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
 
         {/* Area fill */}
         <path d={areaPath} fill="url(#hc-area)" />
-
-        {/* Benchmark line (normalized to portfolio start value) */}
-        {hasBenchNorm && benchPath && (
-          <path d={benchPath} fill="none" stroke="var(--info)" strokeWidth={1.5} strokeDasharray="4,2" opacity={0.8} />
-        )}
 
         {/* Invested line (dashed, slate) — skip zero/outlier segments */}
         {hasInvested && saneinvesteds.length > 0 && (() => {
@@ -258,12 +218,6 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
                 </span>
               </>
             )}
-            {hasBenchNorm && tooltip.benchValue != null && (
-              <>
-                <span>{benchLabel || 'Benchmark'}</span>
-                <span className={`text-blue-400 text-right${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.benchValue)} {currLabel}</span>
-              </>
-            )}
           </div>
         </div>
       )}
@@ -278,12 +232,6 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
           <div className="hc-legend-item">
             <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--text-dim)" strokeWidth="1.8" strokeDasharray="5,3" strokeLinecap="round" /></svg>
             <span>{t('legend_invested')}</span>
-          </div>
-        )}
-        {hasBenchNorm && benchLabel && (
-          <div className="hc-legend-item">
-            <svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--info)" strokeWidth="1.8" strokeDasharray="4,2" strokeLinecap="round" /></svg>
-            <span>{benchLabel} <span style={{ color: 'var(--text-faint)' }}>{t('legend_benchmark')}</span></span>
           </div>
         )}
       </div>

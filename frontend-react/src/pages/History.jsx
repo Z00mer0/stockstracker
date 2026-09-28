@@ -417,8 +417,6 @@ export default function History() {
         <div className="px-4 pb-4 pt-2">
           <HistoryChart
             data={chartRows}
-            benchData={benchView}
-            benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
             displayCurrency={displayCurrency}
             fxRate={fxRates[displayCurrency] ?? 1}
           />

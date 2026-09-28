@@ -54,6 +54,18 @@ describe('installFetchRetry', () => {
     expect(res.status).toBe(503);
   });
 
+  it('503 „AI unavailable" (brak klucza Groq) tez nie idzie w retry', async () => {
+    const originalFetch = vi.fn().mockResolvedValue(jsonRes(503, { error: 'AI unavailable' }));
+    globalThis.fetch = originalFetch;
+
+    const { installFetchRetry } = await withFreshClient();
+    installFetchRetry();
+
+    const res = await globalThis.fetch('/api/espi-digest?symbols=PKO.WA');
+    expect(originalFetch).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(503);
+  });
+
   it('503 z generycznym bledem nadal jest ponawiany — moze byc przejsciowe', async () => {
     const originalFetch = vi.fn().mockResolvedValue(
       jsonRes(503, { error: 'db_error' })
