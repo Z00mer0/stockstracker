@@ -181,11 +181,11 @@ before/after screenshots.
 
 ### Feature backlog (agreed 28.09.2026)
 
-Being built now (branch `claude/features-heatmap-palette`):
-- [ ] Portfolio heatmap on the Dashboard (tile size = value, colour = today's move)
-- [ ] ⌘K command palette (pages, actions, stocks)
-- [ ] Weekly summary push (week's result net of deposits, best/worst position)
-- [ ] Phone polish: PWA shortcuts, last-known data offline
+Done on branch `claude/features-heatmap-palette`:
+- [x] Portfolio heatmap on the Dashboard (tile size = value, colour = today's move)
+- [x] ⌘K command palette (pages, actions, stocks)
+- [x] Weekly summary push (week's result net of deposits, best/worst position) — opt-in, Saturday morning
+- [x] Phone polish: PWA shortcuts, last-known data offline, offline banner
 
 Next, in order of priority:
 1. [ ] **PIT-38 done right** — NBP rate from the working day before each trade,

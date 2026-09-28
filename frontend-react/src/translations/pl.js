@@ -864,6 +864,7 @@ export default {
   pa_error:        'Błąd zapisu',
   pa_session_summary_desc: 'Podsumowania sesji — push z wartością portfela na otwarcie i zamknięcie giełdy (dni robocze):',
   pa_weekly_desc:     'Podsumowanie tygodnia — w sobotę rano: wynik tygodnia bez wpłat, najlepsza i najsłabsza spółka:',
+  offline_banner:     'Brak połączenia — pokazuję ostatnio zapisane dane portfela, ceny mogą być nieaktualne.',
   pa_summary_on:      'Włącz',
   pa_summary_off:     'Wyłącz',
   pa_push_missing:    'Powiadomienia push nie są aktywne w tej przeglądarce — alert nie zadziała bez subskrypcji.',

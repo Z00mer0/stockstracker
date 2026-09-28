@@ -29,6 +29,15 @@ export default defineConfig(({ mode }) => {
             { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
             { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
           ],
+          // Przytrzymanie ikony na telefonie; obsługa ?action= w Layout.jsx.
+          shortcuts: [
+            { name: 'Dodaj pozycję', short_name: 'Dodaj', url: '/?action=add',
+              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+            { name: 'Szukaj', short_name: 'Szukaj', url: '/?action=search',
+              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+            { name: 'Transakcje', short_name: 'Transakcje', url: '/transactions',
+              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }] },
+          ],
         },
         injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
