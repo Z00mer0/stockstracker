@@ -1442,6 +1442,7 @@ if DATABASE_URL:
                 )""")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS us_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS gpw_summary BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS weekly_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_language TEXT DEFAULT 'pl'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_hour INT DEFAULT 16")
@@ -2956,8 +2957,91 @@ class _SkipBigMoves(Exception):
     pass
 
 
+# ── Podsumowanie tygodnia ────────────────────────────────────────────────────
+def _week_pairs(snapshots, days=7):
+    """snapshots: {portfolio_id: [(date, total, capital), ...] rosnąco po dacie}.
+    Dla każdego portfela: ostatni snapshot i ostatni sprzed ≥ `days` dni od niego.
+    Portfele bez snapshotu sprzed tygodnia (nowe) pomijamy."""
+    pairs = []
+    for rows in snapshots.values():
+        if not rows:
+            continue
+        end = rows[-1]
+        cutoff = end[0] - datetime.timedelta(days=days)
+        start = next((r for r in reversed(rows) if r[0] <= cutoff), None)
+        if start is not None:
+            pairs.append((start, end))
+    return pairs
+
+
+def _week_result(pairs):
+    """Wynik tygodnia bez wpłat i wypłat. Wpłaty to zmiana kapitału własnego
+    (snapshots.capital); gdy brakuje go w którymkolwiek snapshocie, nie da się
+    ich oddzielić — wtedy zwracamy samą zmianę wartości z net=False.
+    Procent metodą Dietza (przepływy liczone w połowie okresu)."""
+    if not pairs:
+        return None
+    start = sum(s[1] for s, _ in pairs)
+    end = sum(e[1] for _, e in pairs)
+    net = all(s[2] is not None and e[2] is not None for s, e in pairs)
+    flows = sum(e[2] - s[2] for s, e in pairs) if net else 0.0
+    result = end - start - flows
+    base = start + flows / 2
+    return {'start': start, 'end': end, 'flows': flows, 'result': result, 'net': net,
+            'pct': result / base * 100 if base > 0 else None}
+
+
+def _change_over_days(points, days=7):
+    """points: [(date, close)] rosnąco. Zmiana % ostatniego zamknięcia względem
+    ostatniego zamknięcia sprzed ≥ `days` dni."""
+    if not points:
+        return None
+    last_d, last_c = points[-1]
+    cutoff = last_d - datetime.timedelta(days=days)
+    prev = next((c for d, c in reversed(points) if d <= cutoff), None)
+    if not prev:
+        return None
+    return (last_c / prev - 1) * 100
+
+
+def _fetch_week_change(symbol):
+    url = (f'https://query1.finance.yahoo.com/v8/finance/chart/'
+           f'{urllib.parse.quote(symbol)}?interval=1d&range=1mo')
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=12) as r:
+            res = (json.loads(r.read().decode()).get('chart', {}).get('result') or [{}])[0]
+        closes = ((res.get('indicators') or {}).get('quote') or [{}])[0].get('close') or []
+        points = [(datetime.datetime.fromtimestamp(ts, _WARSAW).date(), float(c))
+                  for ts, c in zip(res.get('timestamp') or [], closes) if c]
+        return _change_over_days(points)
+    except Exception as e:
+        log.warning(f'[push] weekly change {symbol}: {e}')
+        return None
+
+
+def _weekly_summary_text(summary, movers, lang):
+    """movers: {symbol: zmiana % tygodnia}. Zwraca (tytuł, treść)."""
+    en = lang == 'en'
+    r = summary['result']
+    pct = f" ({summary['pct']:+.2f}%)" if summary['pct'] is not None else ''
+    label = ('Week' if en else 'Tydzień') if summary['net'] else ('Value change' if en else 'Zmiana wartości')
+    title = f"{'📈' if r >= 0 else '📉'} {label}: {r:+,.0f} zł{pct}".replace(',', ' ')
+    lines = [f"{'Portfolio' if en else 'Portfel'}: {summary['end']:,.0f} zł".replace(',', ' ')]
+    if summary['net'] and abs(summary['flows']) >= 1:
+        lines.append(f"{'Deposits' if en else 'Wpłaty'}: {summary['flows']:+,.0f} zł".replace(',', ' '))
+    ranked = sorted(movers.items(), key=lambda kv: kv[1])
+    if len(ranked) >= 2:
+        (w_sym, w), (b_sym, b) = ranked[0], ranked[-1]
+        lines.append(f"{'Best' if en else 'Najlepsza'}: {b_sym} {b:+.1f}% · "
+                     f"{'worst' if en else 'najsłabsza'}: {w_sym} {w:+.1f}%")
+    elif ranked:
+        lines.append(f'{ranked[0][0]} {ranked[0][1]:+.1f}%')
+    return title, '\n'.join(lines)
+
+
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -3215,6 +3299,42 @@ def _run_push_checks():
         except Exception as e:
             log.warning(f'[push] big moves {username}: {e}')
 
+        # ── 1e. Podsumowanie tygodnia (opt-in) ──────────────────────────
+        # Snapshoty zapisują się o 22:00, więc piątkowe zamknięcie jest pewne
+        # dopiero w sobotę — wysyłamy w weekend od 9:00, raz na tydzień ISO.
+        try:
+            now_warsaw = datetime.datetime.now(_WARSAW)
+            if now_warsaw.weekday() >= 5 and now_warsaw.hour >= 9:
+                iso = now_warsaw.isocalendar()
+                key = f'weekly:{iso[0]}-W{iso[1]:02d}'
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("SELECT weekly_summary, notification_language FROM portfolio_alerts WHERE username=%s",
+                                (username,))
+                    wrow = cur.fetchone()
+                if wrow and wrow[0] and not _already_sent(username, key):
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute("""SELECT s.portfolio_id, s.date, s.total, s.capital
+                                       FROM portfolio_snapshots s JOIN portfolio_list p ON p.id = s.portfolio_id
+                                       WHERE p.user_id=%s AND s.date > %s AND s.total IS NOT NULL
+                                       ORDER BY s.date""",
+                                    (username, now_warsaw.date() - datetime.timedelta(days=16)))
+                        snaps = {}
+                        for pid, d, total, cap in cur.fetchall():
+                            snaps.setdefault(pid, []).append((d, float(total), float(cap) if cap is not None else None))
+                        cur.execute("""SELECT DISTINCT h.symbol FROM portfolio_holdings h
+                                       JOIN portfolio_list p ON p.id = h.portfolio_id
+                                       WHERE p.user_id=%s AND h.qty > 0""", (username,))
+                        held = [r[0] for r in cur.fetchall() if r[0]]
+                    summary = _week_result(_week_pairs(snaps))
+                    if summary:
+                        movers = {s: ch for s in held if (ch := _fetch_week_change(s)) is not None}
+                        title, body = _weekly_summary_text(summary, movers, wrow[1] or 'pl')
+                        if _send_push(username, title, body, '/history'):
+                            _mark_sent(username, key)
+                            stats['weekly'] += 1
+        except Exception as e:
+            log.warning(f'[push] weekly {username}: {e}')
+
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
         try:
@@ -3437,15 +3557,15 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             if not DATABASE_URL:
                 # Tryb plikowy (lokalny dev/demo): brak tabeli portfolio_alerts — zwróć domyślne
-                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False}); return
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False}); return
             with _conn() as c, c.cursor() as cur:
-                cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary FROM portfolio_alerts WHERE username=%s", (username,))
+                cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary, weekly_summary FROM portfolio_alerts WHERE username=%s", (username,))
                 row = cur.fetchone()
             if row:
                 self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1]),
-                                     'usSummary': bool(row[2]), 'gpwSummary': bool(row[3])})
+                                     'usSummary': bool(row[2]), 'gpwSummary': bool(row[3]), 'weeklySummary': bool(row[4])})
             else:
-                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False})
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False})
             return
 
         elif path == '/api/notification-tone':
@@ -5930,24 +6050,27 @@ async function doRecover() {
                 threshold = float(body.get('thresholdPct') or 0)
                 us_summary = bool(body.get('usSummary'))
                 gpw_summary = bool(body.get('gpwSummary'))
+                # Opcjonalne — starszy klient go nie wysyła i nie może go kasować.
+                weekly = bool(body['weeklySummary']) if 'weeklySummary' in body else None
                 if enabled and not (0.5 <= threshold <= 90):
                     self.send_json(400, {'error': 'thresholdPct must be 0.5-90'}); return
                 with _conn() as c, c.cursor() as cur:
                     # reset pomiaru ATH tylko gdy zmienia się konfiguracja drawdownu —
                     # przełączanie samych podsumowań nie może kasować szczytu
                     cur.execute("""
-                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled, us_summary, gpw_summary)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled, us_summary, gpw_summary, weekly_summary)
+                        VALUES (%s, %s, %s, %s, %s, COALESCE(%s, FALSE))
                         ON CONFLICT (username) DO UPDATE
                         SET threshold_pct=EXCLUDED.threshold_pct, enabled=EXCLUDED.enabled,
                             us_summary=EXCLUDED.us_summary, gpw_summary=EXCLUDED.gpw_summary,
+                            weekly_summary=COALESCE(%s, portfolio_alerts.weekly_summary),
                             triggered=CASE WHEN portfolio_alerts.threshold_pct=EXCLUDED.threshold_pct
                                                 AND portfolio_alerts.enabled=EXCLUDED.enabled
                                            THEN portfolio_alerts.triggered ELSE FALSE END,
                             ath_value=CASE WHEN portfolio_alerts.threshold_pct=EXCLUDED.threshold_pct
                                                 AND portfolio_alerts.enabled=EXCLUDED.enabled
                                            THEN portfolio_alerts.ath_value ELSE NULL END
-                    """, (username, threshold or 10, enabled, us_summary, gpw_summary))
+                    """, (username, threshold or 10, enabled, us_summary, gpw_summary, weekly, weekly))
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 log.warning(f'[push] portfolio-alert save: {e}')

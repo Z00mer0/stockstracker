@@ -863,6 +863,7 @@ export default {
   pa_saved:        'Saved',
   pa_error:        'Save failed',
   pa_session_summary_desc: 'Session summaries — push with your portfolio value at market open and close (weekdays):',
+  pa_weekly_desc:     'Weekly summary — Saturday morning: the week\'s result excluding deposits, best and worst stock:',
   pa_summary_on:      'Enable',
   pa_summary_off:     'Disable',
   pa_push_missing:    'Push notifications are not active in this browser — the alert will not fire without a subscription.',

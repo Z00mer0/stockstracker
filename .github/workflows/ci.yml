@@ -93,3 +93,5 @@ jobs:
       # i portfolio_other_assets były używane, ale nie tworzone przy starcie.
       # Test porównuje SQL z CREATE/ALTER (bez bazy).
       - run: python test_schema_complete.py
+      # Podsumowanie tygodnia: wpłata w trakcie tygodnia nie może wyjść jako zysk.
+      - run: python test_weekly_summary.py
