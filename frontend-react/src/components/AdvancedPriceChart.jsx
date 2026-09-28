@@ -1,9 +1,13 @@
 // src/components/AdvancedPriceChart.jsx
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { Download, TriangleAlert, X } from 'lucide-react';
 import CandlestickChart from './CandlestickChart';
 import IndicatorPanel from './IndicatorPanel';
 import { usePriceHistory } from '../hooks/usePriceHistory';
 import { useTechnicalIndicators } from '../hooks/useTechnicalIndicators';
+import { useT } from '../context/LanguageContext';
+import { Button, Callout, IconButton, Modal, SegmentedControl, Skeleton } from './ui';
+import { cx } from './ui/cx.js';
 
 const PERIODS = ['1D', '1W', '1M', '3M', '6M', '1Y', 'ALL'];
 
@@ -17,23 +21,18 @@ const DEFAULT_IND = {
 };
 
 export default function AdvancedPriceChart({ symbol, onClose }) {
+  const t = useT();
   const [period, setPeriod]         = useState('3M');
   const [indicators, setIndicators] = useState(DEFAULT_IND);
   const [selectedCandle, setSelectedCandle] = useState(null);
 
-  const { candles, loading, error } = usePriceHistory(symbol, period);
-  const technicalData               = useTechnicalIndicators(candles);
+  const { candles, start, loading, error } = usePriceHistory(symbol, period);
+  const technicalData = useTechnicalIndicators(candles);
 
-  // Close on Escape key
-  useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
+  // CSV tylko z wybranego okresu (bez świec rozbiegu wskaźników).
   function downloadCSV() {
-    const header = 'Data,Otwarcie,Maksimum,Minimum,Zamknięcie,Wolumen';
-    const rows   = candles.map(c => `${c.date},${c.open},${c.high},${c.low},${c.close},${c.volume}`);
+    const header = [t('col_date'), t('ac_open'), t('ac_high'), t('ac_low'), t('ac_close'), t('ac_volume')].join(',');
+    const rows   = candles.slice(start).map(c => `${c.date}${c.time ? ` ${c.time}` : ''},${c.open},${c.high},${c.low},${c.close},${c.volume}`);
     const blob   = new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement('a');
@@ -41,117 +40,68 @@ export default function AdvancedPriceChart({ symbol, onClose }) {
     URL.revokeObjectURL(url);
   }
 
+  const sc = selectedCandle;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    <Modal
+      size="xl"
+      title={symbol}
+      description={t('ac_hint')}
+      onClose={onClose}
+      footer={
+        <>
+          <Button icon={Download} disabled={!candles.length} onClick={downloadCSV}>{t('ac_csv')}</Button>
+          <Button variant="primary" onClick={onClose}>{t('close_btn')}</Button>
+        </>
+      }
     >
-      <div className="w-full max-w-5xl bg-slate-800 rounded-2xl border border-slate-700 flex flex-col max-h-[92vh] shadow-2xl">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700 shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-slate-100">{symbol}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Wykres świecowy · scroll = zoom · przeciągnij = pan</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={downloadCSV}
-              disabled={!candles.length}
-              className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-40 px-3 py-1.5 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors"
-            >
-              Pobierz CSV
-            </button>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 text-lg"
-            >
-              ✕
-            </button>
-          </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl
+            aria-label={t('sd_period')}
+            options={PERIODS.map(p => ({ value: p, label: p }))}
+            value={period}
+            onChange={p => { setPeriod(p); setSelectedCandle(null); }}
+          />
+          <IndicatorPanel label={t('ac_indicators')} indicators={indicators} onChange={setIndicators} />
         </div>
 
-        {/* Period selector */}
-        <div className="flex items-center gap-1 px-5 py-3 border-b border-slate-700 shrink-0">
-          {PERIODS.map(p => (
-            <button
-              key={p}
-              onClick={() => { setPeriod(p); setSelectedCandle(null); }}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                period === p
-                  ? 'bg-indigo-500 text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+        {loading && <Skeleton className="h-[300px] w-full" />}
+        {error && <Callout tone="down" icon={TriangleAlert} title={t('ac_error')}>{error}</Callout>}
+        {!loading && !error && candles.length > 0 && (
+          <CandlestickChart
+            candles={candles}
+            start={start}
+            indicators={indicators}
+            technicalData={technicalData}
+            onCandleClick={setSelectedCandle}
+          />
+        )}
+        {!loading && !error && candles.length === 0 && (
+          <p className="py-12 text-center text-small text-faint">{t('ac_no_data').replace('{symbol}', symbol)}</p>
+        )}
 
-        {/* Indicator toggles */}
-        <div className="px-5 py-3 border-b border-slate-700 shrink-0">
-          <IndicatorPanel indicators={indicators} onChange={setIndicators} />
-        </div>
-
-        {/* Chart area */}
-        <div className="flex-1 overflow-auto px-3 py-3 min-h-0">
-          {loading && (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+        {sc && (
+          <div className="rounded-card-sm border border-line bg-panel-2 px-3 py-2.5">
+            <div className="mb-1 flex items-center justify-between">
+              <p className="text-[12px] font-semibold text-dim">{t('ac_day_details')} {sc.date}{sc.time ? ` ${sc.time}` : ''}</p>
+              <IconButton icon={X} size="sm" label={t('close_btn')} onClick={() => setSelectedCandle(null)} />
             </div>
-          )}
-          {error && (
-            <div className="text-center py-16">
-              <p className="text-rose-400 font-medium">Błąd ładowania danych</p>
-              <p className="text-sm text-rose-300 mt-1">{error}</p>
-            </div>
-          )}
-          {!loading && !error && candles.length > 0 && (
-            <CandlestickChart
-              candles={candles}
-              indicators={indicators}
-              technicalData={technicalData}
-              onCandleClick={setSelectedCandle}
-            />
-          )}
-          {!loading && !error && candles.length === 0 && (
-            <div className="text-center py-16 text-slate-500">
-              Brak danych historycznych dla <span className="font-semibold text-slate-400">{symbol}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Selected candle details footer */}
-        {selectedCandle && (
-          <div className="px-5 py-3 border-t border-slate-700 bg-slate-900/60 shrink-0">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-semibold text-slate-400">Szczegóły dnia: {selectedCandle.date}</p>
-              <button onClick={() => setSelectedCandle(null)} className="text-slate-500 hover:text-slate-300 text-sm">✕</button>
-            </div>
-            <div className="flex flex-wrap gap-6">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-small tabular-nums">
               {[
-                ['Otwarcie', selectedCandle.open, ''],
-                ['Max', selectedCandle.high ?? selectedCandle.close, ''],
-                ['Min', selectedCandle.low ?? selectedCandle.close, ''],
-                ['Zamknięcie', selectedCandle.close, selectedCandle.close >= selectedCandle.open ? 'text-emerald-400' : 'text-rose-400'],
+                [t('ac_open'), sc.open, ''],
+                [t('ac_high'), sc.high ?? sc.close, ''],
+                [t('ac_low'), sc.low ?? sc.close, ''],
+                [t('ac_close'), sc.close, sc.close >= sc.open ? 'text-up' : 'text-down'],
               ].map(([lbl, val, cls]) => (
-                <div key={lbl}>
-                  <span className="text-xs text-slate-500">{lbl} </span>
-                  <span className={`text-sm font-semibold ${cls || 'text-slate-200'}`}>{val?.toFixed(2)}</span>
-                </div>
+                <span key={lbl}><span className="text-faint">{lbl} </span><span className={cx('font-semibold', cls || 'text-fg')}>{val?.toFixed(2)}</span></span>
               ))}
-              {selectedCandle.volume != null && (
-                <div>
-                  <span className="text-xs text-slate-500">Wolumen </span>
-                  <span className="text-sm font-semibold text-slate-300">
-                    {(selectedCandle.volume / 1_000_000).toFixed(2)}M
-                  </span>
-                </div>
+              {sc.volume != null && (
+                <span><span className="text-faint">{t('ac_volume')} </span><span className="font-semibold text-fg">{(sc.volume / 1_000_000).toFixed(2)}M</span></span>
               )}
             </div>
           </div>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

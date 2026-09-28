@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Maximize2, Minimize2, StickyNote, X } from 'lucide-react';
+import { ChartCandlestick, Maximize2, Minimize2, StickyNote, X } from 'lucide-react';
 import FinancialsTab from './FinancialsTab';
 import KeyStatsTab from './KeyStatsTab';
 import SummaryTab from './SummaryTab';
 import TickerLogo from './shared/TickerLogo';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
+import { useChart } from '../context/ChartContext';
 import { getThesis, setThesis } from '../services/journalService';
 import { alignBenchmark } from '../utils/benchmark.js';
 import { Button, IconButton, Modal, SegmentedControl, Spinner, Tabs, TabPanel } from './ui';
@@ -211,6 +212,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
   const { locale } = useLanguage();
   const t = useT();
   const { displayCurrency, fxRates } = useApp();
+  const { openChart } = useChart();
   const dispFx = fxRates?.[displayCurrency] ?? 1;
   const dispCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const PERIODS = PERIODS_BASE.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
@@ -465,6 +467,7 @@ export default function StockDetailModal({ item, existingPortfolio, totalPortfol
                       {t('sd_prepost')}
                     </Button>
                   )}
+                  <Button size="sm" variant="ghost" icon={ChartCandlestick} onClick={() => openChart(item.symbol)}>{t('ac_open_btn')}</Button>
                   <span className="ml-auto flex items-center gap-2">
                     {benchLoading && <Spinner size="sm" />}
                     <SegmentedControl

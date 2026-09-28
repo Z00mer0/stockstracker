@@ -153,8 +153,10 @@ before/after screenshots.
       "Symbol" column ignored; "1 050,00" read as 1 in two importers;
       benchmark joined by index instead of date; thesis note lost on close.
       Setup wizard moved too (its currency choice now actually applies).
-      The advanced price chart (`ChartContext` → `AdvancedPriceChart`) is never
-      opened anywhere — dead code, left for a decision.
+      Advanced price chart (candles + MA/EMA/Bollinger/RSI/MACD) — was never
+      reachable; now opened from the stock window, on the shared Modal,
+      indicators computed on a longer history (warm-up) and tested against an
+      independent implementation.
 
 ### Phase 4 — Charts
 - [x] One chart library with one theme (colours, tooltip, axes); keep the
