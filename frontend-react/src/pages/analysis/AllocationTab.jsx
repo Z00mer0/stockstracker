@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Download, Pencil, Save, Scale, CheckCircle2, PiggyBank } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
@@ -8,6 +8,8 @@ import { Badge, Button, Card, Input, SegmentedControl, Table } from '../../compo
 import { cx } from '../../components/ui/cx.js';
 import { lsSet } from '../../utils/safeStorage.js';
 import { rebalanceOrders, allocateNewMoney } from '../../utils/rebalance.js';
+import { lookThrough, sectorLookThrough } from '../../utils/lookThrough.js';
+import { authHeader } from '../../utils/auth.js';
 
 const SECTOR_KEY_MAP = {
   'Technology': 'sector_Technology',
@@ -43,11 +45,32 @@ function useDisplay() {
   return { fmt, money: (pln, d = 0) => `${fmt(pln == null ? null : pln / dispFx, d)} ${currLabel}` };
 }
 
-function SectorCard({ positions, total }) {
+// Skład ETF-ów z serwera (Yahoo): największe składniki i rozkład sektorowy.
+// Wspólny dla kart sektorów i „Co naprawdę masz".
+function useEtfHoldings(positions) {
+  const [etfs, setEtfs] = useState(null);
+  const symbols = positions.map(p => p.symbol).sort().join(',');
+  useEffect(() => {
+    if (!symbols) return;
+    let cancelled = false;
+    fetch(`/api/etf-holdings?symbols=${encodeURIComponent(symbols)}`, { headers: authHeader(), signal: AbortSignal.timeout(30000) })
+      .then(r => (r.ok ? r.json() : {}))
+      .then(d => { if (!cancelled) setEtfs(d || {}); })
+      .catch(() => { if (!cancelled) setEtfs({}); });
+    return () => { cancelled = true; };
+  }, [symbols]);
+  return etfs;
+}
+
+function SectorCard({ positions: raw, total, etfs }) {
   const t = useT();
   const { isPrivate } = usePrivacy();
   const { fmt, money } = useDisplay();
   const [view, setView] = useState('sector');
+  // ETF-y rozłożone na sektory według składu funduszu (wcześniej cały ETF
+  // lądował w „Inne").
+  const positions = useMemo(() => sectorLookThrough(raw, etfs ?? {}), [raw, etfs]);
+  const expanded = positions.some(p => p.viaEtf);
 
   const grouped = useMemo(() => {
     const map = {};
@@ -56,7 +79,8 @@ function SectorCard({ positions, total }) {
       if (!map[key]) map[key] = { name: key, valuePLN: 0, plPLN: 0, positions: [] };
       map[key].valuePLN += p.valuePLN;
       map[key].plPLN += p.plPLN ?? 0;
-      map[key].positions.push(p.symbol);
+      const tag = p.viaEtf ? `${p.symbol} (ETF)` : p.symbol;
+      if (!map[key].positions.includes(tag)) map[key].positions.push(tag);
     }
     return Object.values(map)
       .sort((a, b) => b.valuePLN - a.valuePLN)
@@ -106,6 +130,7 @@ function SectorCard({ positions, total }) {
         ))}
       </div>
       <Table columns={columns} rows={grouped} rowKey={g => g.name} />
+      {expanded && <p className="border-t border-line px-4 py-2.5 text-[11px] text-faint">{t('lt_sector_note')}</p>}
     </Card>
   );
 }
@@ -318,17 +343,71 @@ function NewMoneyCard({ positions, total, targets }) {
   );
 }
 
+// „Co naprawdę masz" — ETF-y rozłożone na składniki (Yahoo: największe
+// pozycje funduszu) i zsumowane z akcjami trzymanymi bezpośrednio.
+function LookThroughCard({ positions, etfs }) {
+  const t = useT();
+  const { isPrivate } = usePrivacy();
+  const { fmt, money } = useDisplay();
+  const lt = useMemo(() => (etfs && Object.keys(etfs).length ? lookThrough(positions, etfs) : null), [positions, etfs]);
+  if (!lt) return null;
+  const blur = isPrivate ? 'privacy-blur' : undefined;
+  const rows = lt.rows.slice(0, 15);
+
+  return (
+    <Card title={t('lt_title')}>
+      <p className="px-4 pt-3 text-small text-dim">
+        {t('lt_summary')
+          .replace('{etf}', fmt(lt.etfPct, 0))
+          .replace('{n}', Object.keys(etfs).length)
+          .replace('{covered}', fmt(lt.coveredPct, 0))}
+      </p>
+      <Table
+        columns={[
+          {
+            key: 'name', header: t('lt_company'), mobile: 'title',
+            render: r => (
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate font-semibold text-fg">{r.symbol || r.name}</span>
+                {r.symbol && r.name && r.name !== r.symbol && <span className="truncate text-[11px] text-faint">{r.name}</span>}
+              </span>
+            ),
+          },
+          { key: 'direct', header: t('lt_direct'), align: 'right', render: r => <span className={cx(r.direct ? 'text-fg' : 'text-faint', blur)}>{r.direct ? money(r.direct) : '—'}</span> },
+          {
+            key: 'via', header: t('lt_via'), align: 'right',
+            render: r => (r.viaEtf ? (
+              <span className="inline-flex flex-col items-end leading-tight">
+                <span className={blur}>{money(r.viaEtf)}</span>
+                <span className="text-[11px] text-faint">{r.sources.join(', ')}</span>
+              </span>
+            ) : <span className="text-faint">—</span>),
+          },
+          { key: 'pct', header: t('col_share'), align: 'right', mobile: 'aside', render: r => <span className="font-semibold text-fg">{fmt(r.pct, 1)}%</span> },
+        ]}
+        rows={rows}
+        rowKey={r => r.key}
+      />
+      <p className="border-t border-line px-4 py-2.5 text-[11px] leading-relaxed text-faint">
+        {t('lt_note').replace('{rest}', isPrivate ? '•••' : money(lt.restInEtfs))}
+      </p>
+    </Card>
+  );
+}
+
 export default function AllocationTab({ enriched, totalValue }) {
   const positions = enriched.filter(p => p.valuePLN != null && p.valuePLN > 0);
   const total = totalValue || positions.reduce((s, p) => s + p.valuePLN, 0);
   const [targets, setTargets] = useState(loadTargets); // wspólne dla rebalansowania i nowych wpłat
+  const etfs = useEtfHoldings(positions);
   return (
     <div className="space-y-4">
-      {positions.length > 0 && <SectorCard positions={positions} total={total} />}
+      {positions.length > 0 && <SectorCard positions={positions} total={total} etfs={etfs} />}
       <div className="grid gap-4 lg:grid-cols-2">
         <ConcentrationCard enriched={enriched} total={totalValue} />
         <CurrencyCard enriched={enriched} total={totalValue} />
       </div>
+      <LookThroughCard positions={positions} etfs={etfs} />
       <RebalanceCard positions={positions} total={total} targets={targets} setTargets={setTargets} />
       <NewMoneyCard positions={positions} total={total} targets={targets} />
     </div>

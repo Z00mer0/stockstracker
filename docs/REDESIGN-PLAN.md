@@ -187,7 +187,7 @@ Done on branch `claude/features-heatmap-palette`:
 - [x] Weekly summary push (week's result net of deposits, best/worst position) — opt-in, Saturday morning
 - [x] Phone polish: PWA shortcuts, last-known data offline, offline banner
 
-Next, in order of priority (1–4 done on branch `claude/features-tax-splits`):
+Next, in order of priority (1–4 on `claude/features-tax-splits`, 5–7 on `claude/features-benchmark-dividends`):
 1. [x] **PIT-38 done right** — NBP rate from the working day before each trade,
        FIFO cost matching (Polish tax law); today realised P&L uses the current
        rate and average cost. `fx_rates_history` already stores NBP rates.
@@ -196,12 +196,12 @@ Next, in order of priority (1–4 done on branch `claude/features-tax-splits`):
 3. [x] **Return split: stock vs currency** for foreign holdings.
 4. [x] **"Where should my next 1,000 zł go?"** — split new money towards target
        allocation without selling (no tax).
-5. [ ] **You vs benchmark** — clear line and yearly difference vs WIG20 /
+5. [x] **You vs benchmark** — clear line and yearly difference vs WIG20 /
        S&P 500 / MSCI World on TWR.
-6. [ ] **Dividend income forecast** — expected payouts per month, net of the
+6. [x] **Dividend income forecast** — expected payouts per month, net of the
        right tax (19% PL, 15% US with W-8BEN), alert the day before ex-date.
-7. [ ] **ETF look-through** — real country/sector exposure inside ETFs
-       (needs a holdings data source).
+7. [x] **ETF look-through** — real sector exposure and top holdings inside ETFs
+       (Yahoo topHoldings; country split not available from that source).
 
 **Size:** ~20–25 PRs. The biggest visible change lands after Phase 2 +
 Dashboard + Portfolio (~8 PRs).

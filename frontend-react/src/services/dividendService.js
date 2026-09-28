@@ -14,7 +14,12 @@ export function getTaxRate(symbol, currency, accountType) {
     // IKE/IKZE: dywidendy z GPW bez podatku Belki; zagraniczny WHT u źródła obowiązuje nadal
     return accountType === 'IKE' || accountType === 'IKZE' ? 0 : 0.19;
   }
-  return getUsTaxRate();
+  // Zagranica: podatek u źródła (15% z W-8BEN, 30% bez). Na zwykłym rachunku
+  // do 19% dopłaca się w Polsce, więc łącznie nigdy mniej niż 19% — wcześniej
+  // liczyło się samo 15% i dochód netto wychodził zawyżony. Na IKE/IKZE
+  // zostaje tylko potrącenie u źródła.
+  const wht = getUsTaxRate();
+  return accountType === 'IKE' || accountType === 'IKZE' ? wht : Math.max(wht, 0.19);
 }
 
 export async function fetchDividendHistory(symbol) {

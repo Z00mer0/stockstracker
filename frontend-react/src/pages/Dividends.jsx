@@ -6,6 +6,8 @@ import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import Chip from '../components/shared/Chip';
 import AddDividendModal from '../components/AddDividendModal';
+import DividendForecastCard from '../components/DividendForecastCard.jsx';
+import { forecastDividends } from '../utils/dividendForecast.js';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { lsSet } from '../utils/safeStorage.js';
@@ -79,6 +81,7 @@ export default function Dividends() {
   const [isNet, setIsNet] = useState(() => localStorage.getItem(DIV_MODE_KEY) === 'net');
   const [yocMap, setYocMap] = useState({});
   const [yocLoading, setYocLoading] = useState(false);
+  const [divHistory, setDivHistory] = useState({});
   const [tab, setTab] = useState('timeline');
 
   const [fireGoal, setFireGoal] = useState(() => {
@@ -115,13 +118,14 @@ export default function Dividends() {
       portfolio.map(async pos => {
         const hist = await fetchDividendHistory(pos.symbol);
         const annual = calcAnnualDivPerShare(hist);
-        return { symbol: pos.symbol, annual, yoc: calcYoC(annual, pos.avgPrice) };
+        return { symbol: pos.symbol, annual, yoc: calcYoC(annual, pos.avgPrice), hist };
       })
     ).then(results => {
       if (cancelled) return;
       const map = {};
       results.forEach(r => { map[r.symbol] = r; });
       setYocMap(map);
+      setDivHistory(Object.fromEntries(results.map(r => [r.symbol, r.hist])));
       setYocLoading(false);
     });
     return () => { cancelled = true; };
@@ -162,6 +166,15 @@ export default function Dividends() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dividends, fxRates, isNet]
   );
+
+  const forecast = useMemo(() => forecastDividends({
+    positions: portfolio,
+    history: divHistory,
+    announced: allCalendarEvents,
+    fx: fxRates,
+    taxRate: (sym, cur) => getTaxRate(sym, cur, accountType),
+    today,
+  }), [portfolio, divHistory, allCalendarEvents, fxRates, accountType, today]);
 
   const upcoming = useMemo(() => allCalendarEvents.filter(e => e.date >= today), [allCalendarEvents, today]);
   const upcoming30d = useMemo(() =>
@@ -427,6 +440,8 @@ export default function Dividends() {
           hint={t('div_total_hint').replace('{n}', dividends.length).replace('{m}', bySymbol.length)}
         />
       </div>
+
+      <DividendForecastCard forecast={forecast} isNet={isNet} dispFx={dispFx} currency={dCurr} loading={yocLoading} />
 
       {goalCard}
 
