@@ -7,7 +7,9 @@ const RETRY_STATUSES = new Set([503, 504]);
 // brakuje mu klucza w zmiennych środowiskowych (FINNHUB_TOKEN, GROQ_API_KEY,
 // itd.) — takiego 503 nie da się naprawić ponawianiem, a pełny backoff to
 // 87 sekund straconego czasu na każde żądanie. Rozpoznajemy je po treści.
-const PERMANENT_503_RE = /not[\s_]configured|no_groq_key/i;
+// „AI unavailable" to ten sam brak GROQ_API_KEY (espi-digest,
+// financials/summary) — bez tego strona AI kręciła się ~90 s.
+const PERMANENT_503_RE = /not[\s_]configured|no_groq_key|ai unavailable/i;
 // Render hobby cold start bywa i 60-90s → retry window ~90s (2+5+10+15+25+30s).
 // Toast pokazujemy dopiero po wyczerpaniu wszystkich prób.
 const BACKOFF_MS = [2000, 5000, 10000, 15000, 25000, 30000];

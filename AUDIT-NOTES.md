@@ -11,6 +11,11 @@ blokuje tylko podatności `critical` — tutaj jest zapisane, dlaczego pozostał
 Zmiany są wyłącznie w `package-lock.json` — żadna deklarowana wersja w
 `package.json` nie ruszona, build przechodzi.
 
+Później (28.09.2026): `pdfjs-dist` 6.0.227 → 6.2.108 — wykonanie kodu przy
+otwarciu spreparowanego PDF (GHSA-hq66-cqwq-w95j). Realna ścieżka: import
+wyciągu PDF parsuje plik z zewnątrz. Tu podniesiona też dolna granica w
+`package.json` (`^6.2.108`), żeby świeża instalacja nie wzięła starszej.
+
 ## Usunięte
 
 ### `xlsx` (SheetJS) — zastąpiony

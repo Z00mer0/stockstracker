@@ -13,3 +13,12 @@ __pycache__/
 # muszą zostać w repozytorium, inaczej build wypuści aplikację bez ikon.
 *.png
 !frontend-react/public/*.png
+
+# Dane trybu plikowego (serwer bez DATABASE_URL, np. lokalnie albo konto demo).
+# Serwer zapisuje je w korzeniu repo — łatwo było je przypadkiem dodać do commita.
+pdata_*.json
+multiportfolio_*.json
+watchlist_*.json
+insights_*.json
+journal_*.json
+share_links.json

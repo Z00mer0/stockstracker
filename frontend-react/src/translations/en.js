@@ -221,7 +221,6 @@ export default {
   // ── Chart legend ─────────────────────────────────────────────
   legend_portfolio_value: 'Portfolio value',
   legend_invested:        'Invested capital',
-  legend_benchmark:       '(norm.)',
 
   // ── Winners/Losers toggle ────────────────────────────────────
   wl_mode_pct:          '%',
@@ -1000,8 +999,6 @@ export default {
   stats_section:        'Statistics',
   stats_cost:           'Purchase cost',
   stats_daily:          'Daily result',
-  stats_beta:           'Portfolio beta',
-  stats_beta_hint:      'Portfolio beta needs at least 60 sessions of history (computation coming soon).',
   totals_roi_hint:      'ROI computed from cost basis (value / cost − 1).',
   stats_positions:      'Positions',
   alloc_section:        'Sector Allocation',

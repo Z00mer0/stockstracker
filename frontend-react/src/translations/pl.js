@@ -221,7 +221,6 @@ export default {
   // ── Chart legend ─────────────────────────────────────────────
   legend_portfolio_value: 'Wartość portfela',
   legend_invested:        'Zainwestowany kapitał',
-  legend_benchmark:       '(znorm.)',
 
   // ── Winners/Losers toggle ────────────────────────────────────
   wl_mode_pct:          '%',
@@ -1000,8 +999,6 @@ export default {
   stats_section:        'Statystyki',
   stats_cost:           'Koszt zakupu',
   stats_daily:          'Wynik dnia',
-  stats_beta:           'Beta portfela',
-  stats_beta_hint:      'Beta portfela wymaga min. 60 sesji historii (obliczenie w przygotowaniu).',
   totals_roi_hint:      'ROI liczony od kosztu zakupu (wartość / koszt − 1).',
   stats_positions:      'Pozycji',
   alloc_section:        'Alokacja sektorowa',

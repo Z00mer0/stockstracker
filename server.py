@@ -282,7 +282,7 @@ _BENCH_PL_TTL   = 6 * 3600   # 6 hours
 
 _BANKIER_SYMBOLS = {
     'WIG20': 'WIG20',
-    'WIG': 'WIG',   # opcja „WIG" w Historii dostawała 400 — nie było go na liście
+    'WIG': 'WIG',   # na produkcji WIG obsługuje api/bench-pl.js (Vercel); tu — lokalnie
 }
 
 def _fetch_bench_pl(index_name):
@@ -4739,8 +4739,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json(200, {s: v for s, v in found.items() if v})
 
         elif path == '/api/splits':
-            # Podziały akcji z Yahoo (events=split). Front (useSplitDetector)
-            # wołał ten adres od dawna, ale serwer go nie miał — 404 i cisza.
+            # Podziały akcji z Yahoo (events=split). Na produkcji ten adres
+            # obsługuje funkcja Vercela api/splits.js — ta wersja działa przy
+            # uruchomieniu lokalnym (vite → Python) i jako zapas.
             username = get_username(self)
             if not username:
                 self.send_json(401, {'error': 'unauthorized'}); return

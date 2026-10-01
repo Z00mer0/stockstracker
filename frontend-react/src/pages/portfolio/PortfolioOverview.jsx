@@ -204,10 +204,6 @@ export default function PortfolioOverview({
                         ? <span className="rs-val text-faint">—</span>
                         : <span className={cx('rs-val', dailyChangePLN >= 0 ? 'text-up' : 'text-down')}>{dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel}</span>}
                     </div>
-                    <div className="rail-stat" title={t('stats_beta_hint')}>
-                      <span className="rs-lbl">{t('stats_beta')}</span>
-                      <span className="rs-val text-faint">—<span className="ml-1.5 text-[10px] font-normal">({snapshotsSorted.length}/60)</span></span>
-                    </div>
                     <div className="rail-stat">
                       <span className="rs-lbl">{t('stats_positions')}</span>
                       <span className="rs-val">{positionsCount}</span>

@@ -95,7 +95,7 @@ jobs:
       - run: python test_schema_complete.py
       # Podsumowanie tygodnia: wpłata w trakcie tygodnia nie może wyjść jako zysk.
       - run: python test_weekly_summary.py
-      # /api/splits nie istniał — wykrywanie splitów nigdy nie działało.
+      # /api/splits w serwerze (lokalnie; na produkcji api/splits.js) — parser Yahoo.
       - run: python test_splits.py
       # ETF look-through: skład funduszu z Yahoo (topHoldings).
       - run: python test_etf_holdings.py

@@ -1,7 +1,8 @@
 """/api/splits: podziały akcji z odpowiedzi Yahoo v8/chart (events=split).
 
-Front wołał /api/splits od dawna, a serwer go nie miał — wykrywanie splitów
-nigdy nie działało. Test pilnuje parsowania formatu Yahoo.
+Na produkcji /api/splits obsługuje funkcja Vercela (api/splits.js); ta wersja
+w serwerze służy lokalnemu uruchomieniu (vite przekierowuje /api do Pythona)
+i jako zapas. Test pilnuje parsowania formatu Yahoo.
 """
 import sys
 from pathlib import Path
