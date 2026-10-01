@@ -229,7 +229,7 @@ export default function RollingReturnsChart({ data }) {
               {tooltip.v3m != null && (
                 <>
                   <span>Rolling 3M</span>
-                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', color: tooltip.v3m >= 0 ? '#38bdf8' : 'var(--down)' }}>
+                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v3m >= 0 ? '#38bdf8' : 'var(--down)' }}>
                     {tooltip.v3m >= 0 ? '+' : ''}{tooltip.v3m.toFixed(2)}%
                   </span>
                 </>
@@ -237,7 +237,7 @@ export default function RollingReturnsChart({ data }) {
               {tooltip.v6m != null && (
                 <>
                   <span>Rolling 6M</span>
-                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', color: tooltip.v6m >= 0 ? '#f59e0b' : 'var(--down)' }}>
+                  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v6m >= 0 ? '#f59e0b' : 'var(--down)' }}>
                     {tooltip.v6m >= 0 ? '+' : ''}{tooltip.v6m.toFixed(2)}%
                   </span>
                 </>

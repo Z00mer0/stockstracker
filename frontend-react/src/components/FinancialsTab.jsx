@@ -152,7 +152,7 @@ function TableRow({ label, values, fmt, locale = 'pl-PL' }) {
         <span key={i} style={{
           color: 'var(--text)',
           fontWeight: i === cols.length - 1 ? 700 : 400,
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: 'var(--font-mono)',
           fontSize: 11,
         }}>{fmtFn(v)}</span>
       ))}
@@ -178,7 +178,7 @@ function SubRow({ label, values, fmt = fmtPct }) {
       {cols.map((v, i) => (
         <span key={i} style={{
           color: fmt === fmtPct ? growthColor(v) : 'var(--text-dim)',
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: 'var(--font-mono)',
         }}>
           {fmt === fmtPct && v != null && v >= 0 ? '+' : ''}{fmt(v)}
         </span>
@@ -246,7 +246,7 @@ function ValuationCard({ label, value, sub }) {
       padding: '10px 12px',
     }}>
       <div style={{ fontSize: 10, color: 'var(--text-faint)', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
         {value}
       </div>
       {sub && <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{sub}</div>}

@@ -125,7 +125,10 @@ export default function HistoryChart({ data, benchData = [], benchLabel = '', di
   const labelStep  = Math.max(1, Math.floor(data.length / 7));
   const dateLabels = data
     .map((d, i) => ({ i, date: d.date }))
-    .filter((_, i) => i % labelStep === 0 || i === data.length - 1);
+    .filter((_, i) => i === data.length - 1
+      // Ostatnia data jest zawsze; regularna etykieta tuż przed nią nachodziła
+      // na nią tekstem („23 wrz" + „26 wrz" w jednym miejscu).
+      || (i % labelStep === 0 && data.length - 1 - i >= labelStep / 2));
 
   const handleMouseMove = (e) => {
     if (!svgRef.current) return;

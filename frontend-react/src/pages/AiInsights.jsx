@@ -286,7 +286,7 @@ export default function AiInsights() {
                     <div style={{
                       width: 32, height: 32, borderRadius: 6, flexShrink: 0, background: 'var(--panel-2)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)',
                     }}>
                       {sym.replace('.WA', '').slice(0, 4)}
                     </div>
@@ -509,7 +509,7 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
           background: text ? 'rgba(99,102,241,0.15)' : 'var(--panel-2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontWeight: 800, color: text ? 'var(--accent)' : 'var(--text-faint)',
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: 'var(--font-mono)',
           fontSize: ticker.length > 4 ? 8 : ticker.length > 3 ? 10 : 12,
           letterSpacing: '-0.5px',
         }}>
@@ -612,7 +612,7 @@ function AiInsightCard({ item }) {
           width: 40, height: 40, borderRadius: 8, flexShrink: 0,
           background: item.summary ? 'rgba(99,102,241,0.15)' : 'var(--panel-2)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'var(--accent)', fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 11, fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--font-mono)',
         }}>
           {ticker}
         </div>

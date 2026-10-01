@@ -1,223 +1,207 @@
 // src/components/layout/Sidebar.jsx
-import React, { useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { TrendingUp, LogOut, X, ChevronDown, Plus, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useT } from '../../context/LanguageContext';
 import { getNavItems, getNavBottom } from './navItems.jsx';
+import IconButton from '../ui/IconButton.jsx';
+import { cx } from '../ui/cx.js';
 
-const BrandIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-    <polyline points="17 6 23 6 23 12"/>
-  </svg>
-);
+// Menu boczne. Na komputerze można je zwinąć do paska ikon (`collapsed`) —
+// wtedy etykiety znikają, a nazwa strony zostaje w dymku i dla czytnika
+// ekranu. Na telefonie to szuflada otwierana z dolnego paska („Więcej").
 
-function NavItem({ to, icon, label, onClick }) {
+const NAV_GROUPS = ['portfolio', 'market', 'tools'];
+
+function NavItem({ to, icon, label, collapsed, onClick }) {
   return (
     <NavLink
       to={to}
       end={to === '/'}
       onClick={onClick}
-      style={({ isActive }) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '9px 10px',
-        borderRadius: '8px',
-        fontSize: '13px',
-        fontWeight: 500,
-        color: isActive ? 'var(--text)' : 'var(--text-dim)',
-        background: isActive ? 'var(--panel)' : 'transparent',
-        boxShadow: isActive ? 'inset 3px 0 0 var(--accent)' : 'none',
-        textDecoration: 'none',
-        transition: 'background 0.1s, color 0.1s',
-      })}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
+      className={({ isActive }) => cx(
+        'relative flex items-center gap-2.5 rounded-card-sm py-[7px] text-[13px] font-medium transition-colors duration-100',
+        collapsed ? 'justify-center px-0' : 'px-2.5',
+        isActive
+          ? 'bg-panel text-fg shadow-card before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-accent'
+          : 'text-dim hover:bg-panel-hover hover:text-fg',
+      )}
     >
-      <span style={{ opacity: 0.75, flexShrink: 0 }}>{icon}</span>
-      {label}
+      <span className="shrink-0 opacity-80">{icon}</span>
+      {!collapsed && <span className="truncate">{label}</span>}
     </NavLink>
   );
 }
 
-function PortfolioItem({ id, name, currency, isActive, onClick }) {
-  return (
-    <button
-      onClick={() => onClick(id)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        width: '100%', padding: '7px 10px', borderRadius: 7,
-        background: isActive ? 'var(--panel)' : 'transparent',
-        boxShadow: isActive ? 'inset 3px 0 0 var(--accent)' : 'none',
-        border: 'none', cursor: 'pointer', textAlign: 'left',
-        color: isActive ? 'var(--text)' : 'var(--text-dim)',
-        fontSize: 13, fontWeight: 500,
-        transition: 'background 0.1s, color 0.1s',
-      }}
-    >
-      <span style={{ opacity: 0.6, fontSize: 10 }}>◆</span>
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-      {currency && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{currency}</span>}
-    </button>
-  );
+function SectionLabel({ collapsed, children }) {
+  // W pasku ikon nagłówek sekcji zamienia się w cienką kreskę — grupy
+  // nadal są widoczne, a tekst się nie mieści.
+  if (collapsed) return <div aria-hidden className="mx-3 my-2.5 h-px bg-line" />;
+  return <div className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-faint">{children}</div>;
 }
 
-export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio }) {
+const initials = name => (name || '?').replace(/[^\p{L}\p{N} ]/gu, '').trim().slice(0, 2).toUpperCase() || '?';
+
+export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio, collapsed = false, onToggleCollapse }) {
   const { displayName, logout, portfolios, activePortfolioId, switchPortfolio } = useApp();
   const t = useT();
   const NAV_ITEMS = getNavItems(t);
   const NAV_BOTTOM = getNavBottom(t);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
+  const rail = collapsed && !isMobile;
 
   const allLabel = t('nav_all');
   const activePortfolio = activePortfolioId === 'all'
     ? { name: allLabel, currency: '' }
     : portfolios.find(p => p.id === activePortfolioId) || { name: allLabel, currency: '' };
-
   const allItems = [{ id: 'all', name: allLabel, currency: '' }, ...portfolios];
 
-  const sidebarContent = (
-    <aside style={{
-      background: 'var(--bg-2)',
-      borderRight: '1px solid var(--border)',
-      height: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      width: 232,
-    }}>
-      {/* Brand */}
-      <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-          background: 'linear-gradient(135deg, var(--accent), #00a863)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#051a10',
-        }}>
-          <BrandIcon />
+  // Esc zamyka szufladę na telefonie.
+  useEffect(() => {
+    if (!isMobile || !isOpen) return undefined;
+    const onKey = e => { if (e.key === 'Escape') onClose?.(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isMobile, isOpen, onClose]);
+
+  const closeOnMobile = isMobile ? onClose : undefined;
+
+  const content = (
+    <aside className={cx('flex h-[100dvh] flex-col overflow-hidden border-r border-line bg-bg-2', isMobile ? 'w-[272px]' : 'w-full')}>
+      {/* Marka */}
+      <div className={cx('flex items-center gap-2.5 pb-3 pt-5', rail ? 'justify-center px-0' : 'px-4')}>
+        <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-card-sm bg-gradient-to-br from-[var(--accent)] to-[#8b5cf6] text-accent-fg">
+          <TrendingUp size={16} strokeWidth={2.5} aria-hidden />
         </div>
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          myfund<span style={{ color: 'var(--accent)' }}>.</span>
-        </span>
-        {isMobile && (
-          <button
-            onClick={onClose}
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: 4, lineHeight: 1, fontSize: 20 }}
-            aria-label={t('close_menu')}
-          >
-            ×
-          </button>
+        {!rail && (
+          <span className="text-sm font-bold tracking-tight text-fg">
+            myfund<span className="text-accent-text">.</span>
+          </span>
         )}
+        {isMobile && <IconButton icon={X} label={t('close_menu')} size="sm" onClick={onClose} className="ml-auto" />}
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '4px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {/* Portfolio switcher */}
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
-          {t('nav_portfolios')}
-        </div>
-        {/* Active portfolio row — click to expand */}
-        <button
-          onClick={() => setPortfolioOpen(o => !o)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            width: '100%', padding: '7px 10px', borderRadius: 7,
-            background: 'var(--panel)', boxShadow: 'inset 3px 0 0 var(--accent)',
-            border: 'none', cursor: 'pointer', textAlign: 'left',
-            color: 'var(--text)', fontSize: 13, fontWeight: 500,
-          }}
-        >
-          <span style={{ opacity: 0.6, fontSize: 10 }}>◆</span>
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePortfolio.name}</span>
-          {activePortfolio.currency && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{activePortfolio.currency}</span>}
-          <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0, marginLeft: 2, transition: 'transform 0.15s', display: 'inline-block', transform: portfolioOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
-        </button>
-        {/* Dropdown list */}
-        {portfolioOpen && (
-          <div style={{ paddingLeft: 8 }}>
+      <nav className="flex flex-1 flex-col gap-px overflow-y-auto px-2.5 py-1">
+        {/* Przełącznik portfela */}
+        {!rail && <SectionLabel>{t('nav_portfolios')}</SectionLabel>}
+        {rail ? (
+          <button
+            type="button"
+            title={activePortfolio.name}
+            aria-label={`${t('nav_portfolios')}: ${activePortfolio.name}`}
+            onClick={() => { onToggleCollapse?.(); setPortfolioOpen(true); }}
+            className="mx-auto grid h-9 w-9 place-items-center rounded-card-sm border border-line bg-panel text-[11px] font-bold text-dim transition hover:border-line-strong hover:text-fg"
+          >
+            {initials(activePortfolio.name)}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPortfolioOpen(o => !o)}
+            aria-expanded={portfolioOpen}
+            className="flex w-full items-center gap-2 rounded-card-sm border border-line bg-panel px-2.5 py-2 text-left text-[13px] font-medium text-fg transition hover:border-line-strong"
+          >
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded bg-panel-2 text-[9px] font-bold text-dim">{initials(activePortfolio.name)}</span>
+            <span className="min-w-0 flex-1 truncate">{activePortfolio.name}</span>
+            {activePortfolio.currency && <span className="shrink-0 text-[10px] text-faint">{activePortfolio.currency}</span>}
+            <ChevronDown size={14} aria-hidden className={cx('shrink-0 text-faint transition-transform', portfolioOpen && 'rotate-180')} />
+          </button>
+        )}
+        {portfolioOpen && !rail && (
+          <div className="mt-1 flex flex-col gap-px pl-2">
             {allItems.map(p => (
-              <PortfolioItem
+              <button
                 key={p.id}
-                id={p.id}
-                name={p.name}
-                currency={p.currency}
-                isActive={activePortfolioId === p.id}
-                onClick={id => { switchPortfolio(id); setPortfolioOpen(false); if (isMobile) onClose?.(); }}
-              />
+                type="button"
+                onClick={() => { switchPortfolio(p.id); setPortfolioOpen(false); closeOnMobile?.(); }}
+                aria-current={activePortfolioId === p.id || undefined}
+                className={cx(
+                  'flex w-full items-center gap-2 rounded-card-sm px-2.5 py-1.5 text-left text-[13px] font-medium transition-colors',
+                  activePortfolioId === p.id ? 'bg-panel text-fg' : 'text-dim hover:bg-panel-hover hover:text-fg',
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                {p.currency && <span className="shrink-0 text-[10px] text-faint">{p.currency}</span>}
+              </button>
             ))}
             <button
+              type="button"
               onClick={() => { setPortfolioOpen(false); onNewPortfolio?.(); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                width: '100%', padding: '6px 10px', borderRadius: 7,
-                background: 'none', border: '1px dashed var(--border)',
-                cursor: 'pointer', color: 'var(--text-faint)', fontSize: 12,
-                marginTop: 4,
-              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-card-sm border border-dashed border-line px-2.5 py-1.5 text-small text-faint transition hover:border-line-strong hover:text-fg"
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> {t('nav_new_portfolio')}
+              <Plus size={13} aria-hidden /> {t('nav_new_portfolio')}
             </button>
           </div>
         )}
-        <div style={{ height: 8 }} />
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '8px 10px 4px' }}>
-          {t('nav_section_main')}
-        </div>
-        {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
-        <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-faint)', padding: '12px 10px 4px' }}>
-          {t('nav_section_account')}
-        </div>
-        {NAV_BOTTOM.map(item => <NavItem key={item.to} {...item} onClick={isMobile ? onClose : undefined} />)}
+
+        {/* Czternaście pozycji w jednej kolumnie czytało się jak spis treści —
+            grupy pozwalają trafić wzrokiem w sekcję, zanim w pozycję. */}
+        {NAV_GROUPS.map(group => (
+          <Fragment key={group}>
+            <SectionLabel collapsed={rail}>{t(`nav_section_${group}`)}</SectionLabel>
+            {NAV_ITEMS.filter(item => item.group === group).map(item => (
+              <NavItem key={item.to} {...item} collapsed={rail} onClick={closeOnMobile} />
+            ))}
+          </Fragment>
+        ))}
+        <SectionLabel collapsed={rail}>{t('nav_section_account')}</SectionLabel>
+        {NAV_BOTTOM.map(item => <NavItem key={item.to} {...item} collapsed={rail} onClick={closeOnMobile} />)}
       </nav>
 
-      {/* Footer */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-          background: 'var(--panel-2)', border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace',
-        }}>
-          {(displayName || 'U').slice(0, 2).toUpperCase()}
+      {/* Zwijanie — tylko na komputerze */}
+      {!isMobile && (
+        <div className="border-t border-line px-2.5 py-1.5">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={rail ? t('sidebar_expand') : undefined}
+            aria-label={rail ? t('sidebar_expand') : t('sidebar_collapse')}
+            aria-expanded={!rail}
+            className={cx(
+              'flex w-full items-center gap-2.5 rounded-card-sm py-2 text-[13px] font-medium text-faint transition-colors hover:bg-panel-hover hover:text-fg',
+              rail ? 'justify-center' : 'px-2.5',
+            )}
+          >
+            {rail ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+            {!rail && t('sidebar_collapse')}
+          </button>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName || t('user_label')}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t('gpw_pln_label')}</div>
-        </div>
-        <button
-          onClick={logout}
-          style={{ fontSize: 11, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+      )}
+
+      {/* Stopka: użytkownik i wylogowanie */}
+      <div className={cx('flex items-center gap-2.5 border-t border-line py-3', rail ? 'flex-col px-0' : 'px-4')}>
+        <div
+          title={rail ? (displayName || t('user_label')) : undefined}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-line bg-panel-2 text-[11px] font-bold text-dim"
         >
-          ↪
-        </button>
+          {initials(displayName || 'U')}
+        </div>
+        {!rail && (
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-semibold text-fg">{displayName || t('user_label')}</div>
+            <div className="text-[11px] text-faint">{t('gpw_pln_label')}</div>
+          </div>
+        )}
+        <IconButton icon={LogOut} label={t('logout_btn')} size="sm" onClick={logout} />
       </div>
     </aside>
   );
 
-  // Desktop: static sidebar in grid
-  if (!isMobile) return sidebarContent;
+  if (!isMobile) return content;
 
-  // Mobile: fixed overlay drawer
+  // Telefon: szuflada nad treścią. Zamknięta jest `inert` — inaczej Tab
+  // wędrował po niewidocznych linkach schowanych za lewą krawędzią.
   return (
     <>
-      {/* Backdrop */}
-      {isOpen && (
-        <div
-          onClick={onClose}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 199,
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(2px)',
-          }}
-        />
-      )}
-      {/* Drawer */}
-      <div style={{
-        position: 'fixed', top: 0, left: 0, bottom: 0,
-        zIndex: 200,
-        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
-      }}>
-        {sidebarContent}
+      {isOpen && <div onClick={onClose} className="ui-overlay fixed inset-0 z-[199] bg-black/60 backdrop-blur-[2px]" aria-hidden />}
+      <div
+        className={cx('fixed inset-y-0 left-0 z-[200] transition-transform duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]', isOpen ? 'translate-x-0 shadow-pop' : '-translate-x-full')}
+        {...(!isOpen && { inert: '', 'aria-hidden': true })}
+      >
+        {content}
       </div>
     </>
   );

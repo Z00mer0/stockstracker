@@ -29,9 +29,12 @@ const News            = React.lazy(() => import('./pages/News'));
 const ClosedPositions = React.lazy(() => import('./pages/ClosedPositions'));
 const Settings        = React.lazy(() => import('./pages/Settings'));
 const SharedPortfolio = React.lazy(() => import('./pages/SharedPortfolio'));
+// Przegląd komponentów — tylko w `vite dev`. W buildzie warunek jest stałym
+// false, więc import (i cały plik) wypada z paczki.
+const UiKit = import.meta.env.DEV ? React.lazy(() => import('./pages/UiKit')) : null;
 
 function AppRoutes() {
-  const { isAuthenticated, login, portfolio } = useApp();
+  const { isAuthenticated, login, portfolio, loading, error } = useApp();
   const [wizardDone, setWizardDone] = React.useState(false);
   const location = useLocation();
 
@@ -53,7 +56,11 @@ function AppRoutes() {
     return <AuthGate onLogin={login} />;
   }
 
-  const showWizard = !wizardDone && shouldShowWizard(portfolio);
+  // Pusty portfel w trakcie ładowania albo po błędzie serwera to nie „nowy
+  // użytkownik" — bez tego kreator powitalny wyskakiwał przy każdym pierwszym
+  // wczytaniu na nowym urządzeniu i zasłaniał komunikat o awarii (np. gdy
+  // Render się budzi). Ta sama osłona co przy oknie „Nowy portfel" w Layout.
+  const showWizard = !wizardDone && !loading && !error && shouldShowWizard(portfolio);
 
   return (
     <>
@@ -75,6 +82,7 @@ function AppRoutes() {
           <Route path="ai"          element={<AiInsights />} />
           <Route path="news"        element={<News />} />
           <Route path="settings"    element={<Settings />} />
+          {UiKit && <Route path="dev/ui" element={<UiKit />} />}
           <Route path="*"           element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

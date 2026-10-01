@@ -133,7 +133,7 @@ function RiskSection({ snapshots }) {
   if (values.length < 10 || daySpan < 30) {
     if (daySpan > 0) {
       return (
-        <Card title={t('risk_section')} collapsible defaultCollapsed collapseKey="an_risk">
+        <Card title={t('risk_section')} collapsible collapseKey="an_risk">
           <div className="card-body">
             <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
               {t('not_enough_history')} (min. 30 {t('days_of_history')}: {daySpan})
@@ -147,7 +147,7 @@ function RiskSection({ snapshots }) {
   const hasEnoughSessions = values.length >= MIN_SESSIONS;
 
   return (
-    <Card title={t('risk_section')} collapsible defaultCollapsed collapseKey="an_risk">
+    <Card title={t('risk_section')} collapsible collapseKey="an_risk">
       <div className="card-body">
         <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 12 }}></p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
@@ -926,7 +926,7 @@ function SectorAnalysisSection({ enriched, totalValue }) {
               <div key={g.name}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>{label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{fmtSec(pct, 1)}%</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{fmtSec(pct, 1)}%</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
@@ -1013,7 +1013,7 @@ function TaxOptimizerSection({ enriched, transactions, fxRates, accountType }) {
   // Konta IKE/IKZE — zwolnione z Belki
   if (accountType === 'IKE' || accountType === 'IKZE') {
     return (
-      <Card title={`💰 ${t('tax_opt_title')}`} collapsible defaultCollapsed collapseKey="an_tax">
+      <Card title={t('tax_opt_title')} collapsible defaultCollapsed collapseKey="an_tax">
         <div className="card-body" style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
           {t('tax_opt_ike_note').replace('{type}', accountType)}
         </div>
@@ -1035,7 +1035,7 @@ function TaxOptimizerSection({ enriched, transactions, fxRates, accountType }) {
   const taxAfter = taxDue - totalSaving;
 
   return (
-    <Card title={`💰 ${t('tax_opt_title')}`} collapsible defaultCollapsed collapseKey="an_tax">
+    <Card title={t('tax_opt_title')} collapsible defaultCollapsed collapseKey="an_tax">
       <div className="card-body">
         {/* KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -1382,7 +1382,7 @@ function PerformanceTable({ title, positions }) {
   }
 
   return (
-    <Card title={title} collapsible defaultCollapsed>
+    <Card title={title} collapsible>
       <div style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>

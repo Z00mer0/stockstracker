@@ -188,7 +188,7 @@ export default function Watchlist() {
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', minWidth: 72, fontFamily: 'JetBrains Mono, monospace' }}>{s.symbol}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', minWidth: 72, fontFamily: 'var(--font-mono)' }}>{s.symbol}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
                     {s.exchange && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{s.exchange}</span>}
                   </div>

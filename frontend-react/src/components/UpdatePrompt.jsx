@@ -24,7 +24,7 @@ export default function UpdatePrompt() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+      position: 'fixed', bottom: 'calc(var(--tabbar-h, 0px) + 20px)', left: '50%', transform: 'translateX(-50%)',
       zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 16px', borderRadius: 12,
       background: 'var(--panel)', border: '1px solid var(--border-strong)',

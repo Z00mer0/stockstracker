@@ -88,7 +88,7 @@ function Row({ label, value, color, tooltip }) {
         ? <Tooltip text={tooltip}><span style={{ fontSize: 12, color: 'var(--text-dim)', borderBottom: '1px dashed rgba(100,116,139,0.35)', paddingBottom: 1 }}>{label}</span></Tooltip>
         : <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{label}</span>
       }
-      <span style={{ fontSize: 12, fontWeight: 600, color: color || 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>{value}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: color || 'var(--text)', fontFamily: 'var(--font-mono)' }}>{value}</span>
     </div>
   );
 }
@@ -125,7 +125,7 @@ function HealthBar({ label, score, tooltip }) {
             </Tooltip>
           )}
         </span>
-        <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'JetBrains Mono, monospace' }}>{score.toFixed(1)} / 10</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'var(--font-mono)' }}>{score.toFixed(1)} / 10</span>
       </div>
       <div style={{ height: 4, borderRadius: 2, background: 'var(--panel-2)' }}>
         <div style={{ height: '100%', width: `${score * 10}%`, background: color, borderRadius: 2, transition: 'width 0.4s' }} />
@@ -174,7 +174,7 @@ function GrowthDrivers({ symbol, roic }) {
         {items.map(({ label, value, highlight }) => (
           <div key={label} style={{ background: 'var(--panel-2)', borderRadius: 8, padding: '8px 10px' }}>
             <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: highlight ? '#008751' : 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>{value}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: highlight ? '#008751' : 'var(--text)', fontFamily: 'var(--font-mono)' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -216,7 +216,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
             <div style={{ flex: 1, background: 'var(--panel-2)', borderRadius: 8, padding: '7px 6px', textAlign: 'center' }}>
               <div style={{ fontSize: 8, color: 'var(--text-faint)', marginBottom: 3, lineHeight: 1.2 }}>{box.label}</div>
               <Tooltip text={box.tooltip}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: box.color, fontFamily: 'JetBrains Mono, monospace', borderBottom: '1px dashed rgba(100,116,139,0.3)', paddingBottom: 1, cursor: 'help' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: box.color, fontFamily: 'var(--font-mono)', borderBottom: '1px dashed rgba(100,116,139,0.3)', paddingBottom: 1, cursor: 'help' }}>
                   {box.value}
                 </span>
               </Tooltip>
@@ -230,7 +230,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
           borderRadius: 8, padding: '7px 6px', textAlign: 'center',
         }}>
           <div style={{ fontSize: 8, color: 'var(--text-faint)', marginBottom: 3 }}>ROE</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#008751', fontFamily: 'JetBrains Mono, monospace' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#008751', fontFamily: 'var(--font-mono)' }}>
             {roe != null ? `${roe.toFixed(1)}%` : '—'}
           </div>
         </div>
@@ -274,21 +274,21 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
         {dcfX != null && (
           <div style={{ position: 'absolute', top: '50%', left: `${dcfX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
             <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: '9px solid #008751' }} />
-            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#008751', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#008751', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               DCF {dcfValue.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         )}
         <div style={{ position: 'absolute', top: '50%', left: `${priceX}%`, transform: 'translate(-50%, -50%)', zIndex: 4 }}>
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--text)', border: '2px solid var(--panel)' }} />
-          <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: 'var(--text)', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+          <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: 'var(--text)', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
             {currentPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         {targetX != null && (
           <div style={{ position: 'absolute', top: '50%', left: `${targetX}%`, transform: 'translate(-50%, -50%)', zIndex: 3 }}>
             <div style={{ width: 2, height: 14, background: '#f59e0b', marginLeft: -1 }} />
-            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#f59e0b', whiteSpace: 'nowrap', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontSize: 9, color: '#f59e0b', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               TP {analystTarget.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
@@ -488,10 +488,10 @@ function PeerComparison({ symbol, pe, netMargin }) {
             <td style={{ padding: '5px 0', color: 'var(--text)', fontWeight: 600 }}>
               {companyName} <span style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 400 }}>{symbol}</span>
             </td>
-            <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+            <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               {pe != null ? `${pe.toFixed(1)}x` : '—'}
             </td>
-            <td style={{ textAlign: 'right', padding: '5px 0', color: '#008751', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+            <td style={{ textAlign: 'right', padding: '5px 0', color: '#008751', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (currentMarginPct / maxMarginPct) * 100 : 0}%`, background: '#008751', borderRadius: 2 }} />
@@ -505,10 +505,10 @@ function PeerComparison({ symbol, pe, netMargin }) {
               <td style={{ padding: '5px 0', color: 'var(--text-dim)' }}>
                 {p.name} <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>{p.ticker}</span>
               </td>
-              <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
+              <td style={{ textAlign: 'right', padding: '5px 8px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                 {p.pe != null ? `${p.pe.toFixed(1)}x` : '—'}
               </td>
-              <td style={{ textAlign: 'right', padding: '5px 0', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>
+              <td style={{ textAlign: 'right', padding: '5px 0', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${maxMarginPct > 0 && p.netMargin != null ? (p.netMargin / maxMarginPct) * 100 : 0}%`, background: '#64748b', borderRadius: 2 }} />
@@ -537,7 +537,7 @@ function CheckItem({ label, pass, value, tooltip }) {
           : <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{label}</span>
         }
       </div>
-      <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color, fontWeight: 600 }}>{value ?? '—'}</span>
+      <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color, fontWeight: 600 }}>{value ?? '—'}</span>
     </div>
   );
 }
