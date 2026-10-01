@@ -102,7 +102,7 @@ function MoverGroup({ tone, label, items, ...rowProps }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, addPosition, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
@@ -524,9 +524,7 @@ export default function Dashboard() {
           <div className="px-2 pb-3 pt-1" style={{ height: unrealRows.length * 30 + 40 }}>
             <UnrealizedPnlBar
               rows={unrealRows}
-              currLabel={currLabel}
               locale={locale}
-              fmt={(v, d) => fmtVal(v, d)}
               onSymbolClick={(sym) => {
                 const pos = allPositions.find(p => p.symbol === sym);
                 if (pos) setSelectedStock(pos);
@@ -574,8 +572,6 @@ export default function Dashboard() {
       {selectedStock && (
         <StockDetailModal
           item={selectedStock}
-          existingPortfolio={portfolio}
-          onSave={async (data) => { await addPosition(data); refresh(); }}
           onClose={() => setSelectedStock(null)}
         />
       )}

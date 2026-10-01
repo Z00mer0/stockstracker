@@ -42,10 +42,12 @@ const DASH_DEFAULT_LAYOUT = [
 const DASH_MOBILE_BREAKPOINT = 640;
 const DASH_MOBILE_LAYOUT = [
   { i: 'chart',   x: 0, y: 0,  w: 12, h: 10, minW: 12, minH: 7, maxH: 20 },
-  { i: 'stats',   x: 0, y: 10, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
-  { i: 'pie',     x: 0, y: 18, w: 12, h: 10, minW: 12, minH: 9, maxH: 20 },
-  { i: 'alloc',   x: 0, y: 28, w: 12, h: 8,  minW: 12, minH: 8, maxH: 20 },
-  { i: 'realytd', x: 0, y: 36, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
+  // Trzy wiersze statystyk (~210 px z nagłówkiem) — przy h: 8 (324 px) połowa
+  // karty była pusta.
+  { i: 'stats',   x: 0, y: 10, w: 12, h: 6,  minW: 12, minH: 5, maxH: 20 },
+  { i: 'pie',     x: 0, y: 16, w: 12, h: 10, minW: 12, minH: 9, maxH: 20 },
+  { i: 'alloc',   x: 0, y: 26, w: 12, h: 8,  minW: 12, minH: 8, maxH: 20 },
+  { i: 'realytd', x: 0, y: 34, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
 ];
 
 // Zapisany układ z localStorage wygrywa z domyślnym, więc samo podniesienie
@@ -282,9 +284,7 @@ export default function PortfolioOverview({
                     unrealizedData.chartRows.length > 0 ? (
                       <UnrealizedPnlBar
                         rows={unrealizedData.chartRows}
-                        currLabel={portCurrLabel}
                         locale={locale}
-                        fmt={fmt}
                         onSymbolClick={sym => { const pos = positions.find(p => p.symbol === sym); if (pos) onOpen(pos); }}
                       />
                     ) : (

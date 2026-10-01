@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
 

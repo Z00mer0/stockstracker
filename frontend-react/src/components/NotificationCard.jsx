@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useT, useLanguage } from '../context/LanguageContext';
 import { getNotificationText } from '../utils/notificationText.js';
 import { formatRelative } from '../utils/relativeTime.js';

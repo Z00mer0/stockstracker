@@ -131,7 +131,6 @@ export function calcPayoff(strategy, prices, params) {
 export function calcKPIs(strategy, params) {
   const { entry, qty, strike, strike2 = strike, premium, T, iv, wing = 5 } = params;
   const C = CONTRACT_SIZE;
-  const nC = qty / C;
 
   switch (strategy) {
     case 'long-call': {

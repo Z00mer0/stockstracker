@@ -1,4 +1,3 @@
-import React from 'react';
 import { useT, useLanguage } from '../../context/LanguageContext';
 
 const SECTOR_KEY_MAP = {

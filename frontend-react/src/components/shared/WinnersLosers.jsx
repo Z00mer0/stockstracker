@@ -1,4 +1,3 @@
-import React from 'react';
 import TickerLogo from './TickerLogo';
 import { useT } from '../../context/LanguageContext';
 import { pickWinnersLosers } from './winnersLosers.js';

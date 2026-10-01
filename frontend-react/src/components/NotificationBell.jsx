@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import NotificationCard from './NotificationCard';
 // Okno spółki dociągane przy otwarciu (jak w nagłówku).
 const StockDetailModal = lazy(() => import('./StockDetailModal'));
@@ -14,7 +14,7 @@ export default function NotificationBell({ buttonStyle }) {
   const t = useT();
   const [tone] = useNotificationTone();
   const { notifications, dismiss } = useMarketNotifications();
-  const { portfolio, addPosition, refresh } = useApp();
+  const { portfolio } = useApp();
   const [open, setOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const wrapRef = useRef(null);
@@ -120,8 +120,6 @@ export default function NotificationBell({ buttonStyle }) {
         <Suspense fallback={null}>
         <StockDetailModal
           item={selectedStock}
-          existingPortfolio={portfolio}
-          onSave={async (data) => { await addPosition(data); refresh(); }}
           onClose={() => setSelectedStock(null)}
         />
         </Suspense>

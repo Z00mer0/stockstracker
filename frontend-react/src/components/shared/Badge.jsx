@@ -1,4 +1,3 @@
-import React from 'react';
 
 const VARIANTS = {
   green:  'bg-green-900/40 text-green-400 border-green-700/40',

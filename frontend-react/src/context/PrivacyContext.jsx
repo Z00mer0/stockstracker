@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { lsSet } from '../utils/safeStorage.js';
 
 const PrivacyContext = createContext({ isPrivate: false, toggle: () => {} });

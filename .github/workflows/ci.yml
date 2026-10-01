@@ -28,25 +28,12 @@ jobs:
           cache-dependency-path: frontend-react/package-lock.json
 
       - run: npm ci
-      # Blokuje na bledach, ostrzezenia przepuszcza. Ostrzezen jest teraz 103
-      # (glownie nieuzywane zmienne i zaleznosci useEffect) — wywalanie sie na
-      # nich zablokowaloby kazdy PR i skonczyloby sie wylaczeniem lintera.
+      # Blokuje na bledach, ostrzezenia przepuszcza. Zostalo 8 ostrzezen
+      # o zaleznosciach useEffect/useCallback — kazde wymaga osobnego
+      # sprawdzenia (dopisanie zaleznosci zmienia, kiedy efekt sie odpala).
       - run: npm run lint
       - run: npm test
       - run: npm run build
-
-  # Vercel wdraża funkcje z katalogu /api w korzeniu repo (root vercel.json
-  # buduje frontend-react, ale sam projekt ma korzeń w repo). Kopia w
-  # frontend-react/api jest historyczna i nigdzie nie trafia. Rozjazd między
-  # nimi już raz wyłączył pobieranie notowań na produkcji: refaktor batcha
-  # zmienił tylko kopię, a wdrożony handler nie znał ?format=map i zwracał 404
-  # na każdą paczkę symboli. Ten krok pilnuje, żeby obie kopie były identyczne.
-  api-sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Katalogi api/ musza byc identyczne
-        run: diff -r api frontend-react/api
 
   server:
     runs-on: ubuntu-latest

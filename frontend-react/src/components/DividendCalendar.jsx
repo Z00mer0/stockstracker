@@ -1,4 +1,3 @@
-import React from 'react';
 import { usePortfolioData } from '../hooks/usePortfolioData';
 import Spinner from './shared/Spinner';
 
