@@ -6,6 +6,8 @@ import { useLanguage, useT } from '../context/LanguageContext';
 import HistoryChart from '../components/HistoryChart';
 import ReturnRateChart from '../components/ReturnRateChart';
 import RollingReturnsChart from '../components/RollingReturnsChart';
+import BenchmarkCompareCard from '../components/BenchmarkCompareCard.jsx';
+import { benchInPLN, compareWithBenchmark } from '../utils/benchmarkCompare.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import { Button, Callout, Card, EmptyState, SegmentedControl, Select, Spinner, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
@@ -93,6 +95,8 @@ function generateSynthBench(key, startDate, endDate) {
   return pts;
 }
 
+const USD_BENCHMARKS = new Set(['^GSPC', '^IXIC', 'URTH']);
+
 export default function History() {
   const { snapshots, loading, displayCurrency, fxRates, transactions, cash } = useApp();
   // Snapshoty rosnąco — potrzebne, żeby dla wpisu bez zapisanych kursów sięgnąć
@@ -133,6 +137,7 @@ export default function History() {
   const [benchmark, setBenchmark] = useState(null);
   const [benchData, setBenchData] = useState([]);
   const [benchLoading, setBenchLoading] = useState(false);
+  const [benchInPln, setBenchInPln] = useState(true);
 
   const sorted = useMemo(
     () => [...snapshots].sort((a, b) => a.date.localeCompare(b.date)),
@@ -180,6 +185,20 @@ export default function History() {
     [allRows, displayCurrency, fxRates]
   );
   const { profit: gainDisp, twrPct, cagr, days, mdd } = stats;
+
+  // Indeksy notowane w dolarach domyślnie w złotych — kurs USD z dnia
+  // snapshotu (a przed pierwszym — najstarszy znany). Portfel liczony jest
+  // w złotych, więc porównanie z indeksem w dolarach pomijało ruch kursu.
+  const usdIndex = USD_BENCHMARKS.has(benchmark);
+  const benchView = useMemo(() => {
+    if (!usdIndex || !benchInPln || !benchData.length) return benchData;
+    const fxSeries = sorted.filter(s => s.fx?.USD > 0).map(s => ({ date: s.date, rate: s.fx.USD }));
+    return benchInPLN(benchData, fxSeries.length ? fxSeries : [{ date: '1970-01-01', rate: fxRates.USD ?? 1 }]);
+  }, [benchData, usdIndex, benchInPln, sorted, fxRates]);
+  const benchCmp = useMemo(
+    () => (benchmark && benchView.length ? compareWithBenchmark(stats.series, benchView) : null),
+    [benchmark, benchView, stats.series]
+  );
   // Ostatni dzień okresu z kapitałem szacowanym (sprzed jego zapisywania).
   const estimatedUntil = [...filtered].reverse().find(r => r.capitalEstimated)?.date ?? null;
 
@@ -398,7 +417,7 @@ export default function History() {
         <div className="px-4 pb-4 pt-2">
           <HistoryChart
             data={chartRows}
-            benchData={benchData}
+            benchData={benchView}
             benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
             displayCurrency={displayCurrency}
             fxRate={fxRates[displayCurrency] ?? 1}
@@ -411,12 +430,22 @@ export default function History() {
           {/* Indeks TWR zamiast wartość / pierwsza wartość — wpłaty nie są zwrotem. */}
           <ReturnRateChart
             data={stats.series.map(p => ({ date: p.date, total: p.index }))}
-            benchData={benchData}
+            benchData={benchView}
             benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
           />
           <p className="mt-2 text-small text-faint">{t('history_twr_note')}</p>
         </div>
       </Card>
+
+      {benchCmp && (
+        <BenchmarkCompareCard
+          cmp={benchCmp}
+          label={BENCHMARKS.find(b => b.key === benchmark)?.label}
+          usdIndex={usdIndex}
+          inPLN={benchInPln}
+          onInPLN={setBenchInPln}
+        />
+      )}
 
       <Card title={t('rolling_returns')} collapsible collapseKey="history_rolling">
         <div className="px-4 pb-4 pt-2">

@@ -97,3 +97,5 @@ jobs:
       - run: python test_weekly_summary.py
       # /api/splits nie istniał — wykrywanie splitów nigdy nie działało.
       - run: python test_splits.py
+      # ETF look-through: skład funduszu z Yahoo (topHoldings).
+      - run: python test_etf_holdings.py

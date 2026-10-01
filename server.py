@@ -282,6 +282,7 @@ _BENCH_PL_TTL   = 6 * 3600   # 6 hours
 
 _BANKIER_SYMBOLS = {
     'WIG20': 'WIG20',
+    'WIG': 'WIG',   # opcja „WIG" w Historii dostawała 400 — nie było go na liście
 }
 
 def _fetch_bench_pl(index_name):
@@ -4466,7 +4467,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             qs  = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
             sym = qs.get('s', '').upper()
-            if sym not in ('WIG20', 'MWIG40', 'SWIG80'):
+            if sym not in _BANKIER_SYMBOLS:
                 self.send_json(400, {'error': 'invalid symbol'}); return
             data = _fetch_bench_pl(sym)
             if data is None:
@@ -4724,6 +4725,18 @@ class Handler(SimpleHTTPRequestHandler):
                 import traceback
                 log.warning(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
                 self.send_json(500, {'error': str(_top_e)})
+
+        elif path == '/api/etf-holdings':
+            # Skład ETF-ów w portfelu (look-through): największe składniki z Yahoo.
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbols = [s for s in dict.fromkeys(x.strip().upper() for x in qs.get('symbols', '').split(','))
+                       if re.match(r'^[A-Z0-9.\-^=]{1,20}$', s)][:40]
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+                found = dict(zip(symbols, ex.map(_fetch_etf_holdings, symbols)))
+            self.send_json(200, {s: v for s, v in found.items() if v})
 
         elif path == '/api/splits':
             # Podziały akcji z Yahoo (events=split). Front (useSplitDetector)
@@ -6232,6 +6245,59 @@ def _fetch_prices_batch(symbols):
     except Exception as e:
         log.warning(f'[snapshot] v7/quote batch error: {e}')
         return {}
+
+
+_ETF_CACHE = {}
+# Klucze sectorWeightings z Yahoo → nazwy sektorów, których używa reszta aplikacji.
+_ETF_SECTORS = {
+    'technology': 'Technology', 'financial_services': 'Financial Services', 'healthcare': 'Healthcare',
+    'consumer_cyclical': 'Consumer Cyclical', 'consumer_defensive': 'Consumer Defensive',
+    'industrials': 'Industrials', 'basic_materials': 'Basic Materials', 'energy': 'Energy',
+    'utilities': 'Utilities', 'realestate': 'Real Estate', 'communication_services': 'Communication Services',
+}
+
+
+def _parse_etf_holdings(summary):
+    """quoteSummary (topHoldings, quoteType) → {'name', 'holdings': [{symbol, name, weight}]}
+    albo None, gdy to nie fundusz lub Yahoo nie podaje składu. Waga w ułamku (0–1).
+    Yahoo zwraca tylko największe składniki (zwykle 10)."""
+    if not summary:
+        return None
+    qt = (summary.get('quoteType') or {})
+    if qt.get('quoteType') not in ('ETF', 'MUTUALFUND'):
+        return None
+    holdings = []
+    for h in ((summary.get('topHoldings') or {}).get('holdings') or []):
+        w = h.get('holdingPercent')
+        w = w.get('raw') if isinstance(w, dict) else w
+        if not w or w <= 0:
+            continue
+        holdings.append({'symbol': (h.get('symbol') or '').upper() or None,
+                         'name': h.get('holdingName') or h.get('symbol') or '?',
+                         'weight': float(w)})
+    sectors = {}
+    for entry in ((summary.get('topHoldings') or {}).get('sectorWeightings') or []):
+        for k, v in (entry or {}).items():
+            v = v.get('raw') if isinstance(v, dict) else v
+            if v and v > 0:
+                name = _ETF_SECTORS.get(k, 'Inne')
+                sectors[name] = sectors.get(name, 0.0) + float(v)
+    if not holdings and not sectors:
+        return None
+    return {'name': qt.get('longName') or qt.get('shortName') or '', 'holdings': holdings, 'sectors': sectors}
+
+
+def _fetch_etf_holdings(symbol):
+    hit = _ETF_CACHE.get(symbol)
+    if hit and time.time() - hit[0] < 24 * 3600:
+        return hit[1]
+    try:
+        data = _parse_etf_holdings(_yf_quotesummary(symbol, 'topHoldings,quoteType'))
+    except Exception as e:
+        log.warning(f'[etf] {symbol}: {e}')
+        return None  # bez cache — spróbujemy przy następnym wejściu
+    _ETF_CACHE[symbol] = (time.time(), data)  # także „nie ETF" — raz na dobę
+    return data
 
 
 _SPLITS_CACHE = {}
