@@ -1,6 +1,7 @@
 import React from 'react';
 import TickerLogo from './TickerLogo';
 import { useT } from '../../context/LanguageContext';
+import { pickWinnersLosers } from './winnersLosers.js';
 
 function getPlPct(p) {
   if (p.plPLN == null || !p.costPLN) return null;
@@ -25,9 +26,7 @@ export default function WinnersLosers({
   }
 
   const sorted = [...withPl].sort((a, b) => b._plPct - a._plPct);
-  const top    = sorted.slice(0, 4);
-  const bottom = sorted.slice(-3).filter(p => p._plPct < 0);
-  const display = [...top, ...bottom];
+  const display = pickWinnersLosers(sorted);
 
   const isPct = mode !== 'abs';
   const magnitude = (p) => (isPct ? Math.abs(p._plPct) : Math.abs(p._plDisp ?? 0));

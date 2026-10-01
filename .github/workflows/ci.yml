@@ -83,3 +83,13 @@ jobs:
       # karcie i w pushu. Test pilnuje wspolnego pliku i tego, ze _fnv1a
       # zgadza sie z hashStr() z notificationText.js na tych samych wektorach.
       - run: python test_big_move_text.py
+      # IRR publicznego portfela pomijał dywidendy „DIVIDEND" / małe litery
+      # z importu brokera i dywidendy bez ilości. Test pilnuje przepływów.
+      - run: python test_share_irr.py
+      # Awaria NBP dawała samo PLN — USD/EUR liczone po kursie 1 w dziennym
+      # snapshocie i na publicznym linku. Test pilnuje zapasu (proces, baza).
+      - run: python test_nbp_fallback.py
+      # Świeża baza dawała 500 przy zapisie portfela: asset_type
+      # i portfolio_other_assets były używane, ale nie tworzone przy starcie.
+      # Test porównuje SQL z CREATE/ALTER (bez bazy).
+      - run: python test_schema_complete.py

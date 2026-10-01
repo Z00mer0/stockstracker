@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Bot, ChevronDown, ClipboardList, Compass, Languages, Pencil, Plus, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useT } from '../context/LanguageContext';
-import Spinner from '../components/shared/Spinner';
+import { useLanguage, useT } from '../context/LanguageContext';
 import PortfolioReview from '../components/PortfolioReview';
 import ConfirmModal from '../components/ConfirmModal';
+import TickerLogo from '../components/shared/TickerLogo';
+import { Badge, Button, Callout, Card, EmptyState, IconButton, PageHeader, Skeleton, Spinner, Tabs, TabPanel } from '../components/ui';
+import { cx } from '../components/ui/cx.js';
 import { authHeader } from '../utils/auth.js';
 import { lsSet } from '../utils/safeStorage.js';
 
@@ -44,13 +47,13 @@ async function apiSaveInsights(data) {
   });
 }
 
-function fmtTime(iso, locale = 'pl-PL') {
+function fmtTime(iso, locale) {
   if (!iso) return '';
   try { return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); }
   catch { return ''; }
 }
 
-function fmtDate(iso, locale = 'pl-PL') {
+function fmtDate(iso, locale) {
   if (!iso) return '';
   try { return new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }); }
   catch { return ''; }
@@ -62,7 +65,7 @@ async function translateChunk(text) {
     `https://translate.googleapis.com/translate_a/single?${params}`,
     { signal: AbortSignal.timeout(15000) }
   );
-  if (!res.ok) throw new Error(`Blad API tlumaczenia (${res.status})`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   return data[0].map(seg => seg[0]).join('');
 }
@@ -94,6 +97,7 @@ function wordCount(text) {
 export default function AiInsights() {
   const { portfolio, activePortfolio } = useApp();
   const t = useT();
+  const { locale } = useLanguage();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
@@ -157,6 +161,7 @@ export default function AiInsights() {
     } catch (e) {
       setError(e.message || t('error'));
     } finally { setLoading(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allSymbols.join(',')]);
 
   useEffect(() => { load(); }, [load]);
@@ -177,169 +182,114 @@ export default function AiInsights() {
     apiSaveInsights(updated).catch(() => {});
   }
 
+  const title = activePortfolio ? `${t('ai_title_prefix')} ${activePortfolio.name}` : t('ai_title_all');
+
   if (!allSymbols.length) {
     return (
-      <div style={{ textAlign: 'center', paddingTop: 80, color: 'var(--text-faint)' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🤖</div>
-        <p style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 6 }}>{t('ai_no_stocks')}</p>
-        <p style={{ fontSize: 13 }}>{t('ai_no_stocks_hint')}</p>
-      </div>
+      <>
+        <PageHeader title={title} />
+        <EmptyState icon={Bot} title={t('ai_no_stocks')} description={t('ai_no_stocks_hint')} />
+      </>
     );
   }
 
   const progress = Math.round(filledSymbols.length / allSymbols.length * 100);
+  const subtitle = activeTab === 'manual'
+    ? t('ai_filled_count').replace('{n}', filledSymbols.length).replace('{total}', allSymbols.length)
+    : activeTab === 'review'
+      ? t('review_subtitle')
+      : `${t('ai_companies_count').replace('{n}', allSymbols.length)}${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt, locale)}` : ''}`;
 
   return (
-    <div className="space-y-5">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
-            {activePortfolio ? `${t('ai_title_prefix')} ${activePortfolio.name}` : t('ai_title_all')}
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
-            {activeTab === 'manual'
-              ? t('ai_filled_count').replace('{n}', filledSymbols.length).replace('{total}', allSymbols.length)
-              : activeTab === 'review'
-                ? t('review_subtitle')
-                : `${allSymbols.length} spółek${data?.generatedAt ? ` · ${t('ai_generated_at')} ${fmtTime(data.generatedAt)}` : ''}`}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-            {[['review', t('ai_tab_review')], ['ai', t('ai_tab_ai')], ['manual', t('ai_tab_manual')]].map(([key, label]) => (
-              <button key={key} onClick={() => setActiveTab(key)} style={{
-                padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                background: activeTab === key ? 'var(--accent)' : 'var(--panel)',
-                color: activeTab === key ? '#fff' : 'var(--text-dim)',
-                border: 'none', cursor: 'pointer',
-              }}>{label}</button>
+    <div className="space-y-4">
+      <PageHeader
+        className="mb-0"
+        title={title}
+        subtitle={subtitle}
+        actions={activeTab === 'ai' && (
+          <Button variant="primary" icon={RefreshCw} loading={loading} onClick={() => { setData(null); load(); }}>
+            {loading ? t('ai_generating') : t('ai_refresh')}
+          </Button>
+        )}
+      />
+      <Tabs
+        id="ai"
+        value={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { value: 'review', label: t('ai_tab_review'), icon: Compass },
+          { value: 'ai', label: t('ai_tab_ai'), icon: Bot },
+          { value: 'manual', label: t('ai_tab_manual'), icon: ClipboardList },
+        ]}
+      />
+
+      <TabPanel tabsId="ai" value={activeTab}>
+        {activeTab === 'review' && <PortfolioReview />}
+
+        {activeTab === 'ai' && (
+          <div className="space-y-3">
+            {error && <Callout tone="down" icon={TriangleAlert}>{t('ai_error_prefix')} {error}</Callout>}
+            {loading && !data && allSymbols.map(sym => (
+              <Card key={sym}>
+                <div className="flex items-center gap-3 p-4">
+                  <Skeleton className="h-10 w-10" />
+                  <span className="flex items-center gap-2.5 text-small text-faint"><Spinner size="sm" /> {sym} · {t('ai_generating_summary')}</span>
+                </div>
+              </Card>
             ))}
+            {data?.items?.map(item => <AiInsightCard key={item.symbol} item={item} />)}
           </div>
-          {activeTab === 'ai' && (
-            <button className="btn btn-primary" onClick={() => { setData(null); load(); }} disabled={loading} style={{ fontSize: 12 }}>
-              {loading ? t('ai_generating') : t('ai_refresh')}
-            </button>
-          )}
-        </div>
-      </div>
+        )}
 
-      {activeTab === 'manual' && (
-        <>
-          <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--panel)', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-              <span style={{ color: 'var(--text-dim)' }}>{t('ai_coverage')}</span>
-              <span style={{ fontWeight: 700, color: progress === 100 ? 'var(--up)' : 'var(--accent)' }}>
-                {filledSymbols.length}/{allSymbols.length}
-              </span>
-            </div>
-            <div style={{ height: 5, borderRadius: 3, background: 'var(--panel-2)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, var(--accent), #818cf8)', borderRadius: 3, transition: 'width 0.4s ease' }} />
-            </div>
-            <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-faint)', lineHeight: 1.6 }}>
-              {t('ai_coverage_hint')}
-            </p>
-          </div>
-
-          {filledSymbols.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {filledSymbols.map(sym => (
-                <ManualCard
-                  key={sym}
-                  symbol={sym}
-                  entry={manual[sym]}
-                  onSave={text => handleSave(sym, text)}
-                  onDelete={() => handleDelete(sym)}
-                />
-              ))}
-            </div>
-          )}
-
-          {editingNew && (
-            <ManualCard
-              key={'editing-' + editingNew}
-              symbol={editingNew}
-              entry={null}
-              defaultEditing
-              onSave={text => handleSave(editingNew, text)}
-              onDelete={() => {}}
-              onCancel={() => setEditingNew(null)}
-            />
-          )}
-
-          {emptyListSymbols.length > 0 && (
-            <div>
-              {filledSymbols.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 10px' }}>
-                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-                    {t('ai_to_fill')} ({emptyListSymbols.length})
-                  </span>
-                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        {activeTab === 'manual' && (
+          <div className="space-y-3">
+            <Card>
+              <div className="grid gap-2 p-4">
+                <div className="flex justify-between text-small">
+                  <span className="text-dim">{t('ai_coverage')}</span>
+                  <span className={cx('font-bold', progress === 100 ? 'text-up' : 'text-accent-text')}>{filledSymbols.length}/{allSymbols.length}</span>
                 </div>
-              )}
-              <div style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--panel)' }}>
-                {emptyListSymbols.map((sym, i) => (
-                  <div key={sym} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
-                    borderBottom: i < emptyListSymbols.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 6, flexShrink: 0, background: 'var(--panel-2)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)',
-                    }}>
-                      {sym.replace('.WA', '').slice(0, 4)}
-                    </div>
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>{sym}</span>
-                    <button
-                      onClick={() => setEditingNew(sym)}
-                      style={{
-                        fontSize: 11, padding: '4px 12px', borderRadius: 6, fontWeight: 600, cursor: 'pointer',
-                        background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: 'var(--accent)',
-                      }}
-                    >
-                      {t('ai_add_analysis')}
-                    </button>
-                  </div>
-                ))}
+                <div className="h-1.5 overflow-hidden rounded-full bg-panel-2" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={t('ai_coverage')}>
+                  <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="text-[11px] leading-relaxed text-faint">{t('ai_coverage_hint')}</p>
               </div>
-            </div>
-          )}
-        </>
-      )}
+            </Card>
 
-      {activeTab === 'review' && <PortfolioReview />}
+            {filledSymbols.map(sym => (
+              <ManualCard key={sym} symbol={sym} entry={manual[sym]} onSave={text => handleSave(sym, text)} onDelete={() => handleDelete(sym)} />
+            ))}
 
-      {activeTab === 'ai' && (
-        <>
-          {error && (
-            <div style={{ padding: '14px 18px', borderRadius: 10, background: 'var(--down-soft)', border: '1px solid var(--down)', color: 'var(--down)', fontSize: 13 }}>
-              {t('ai_error_prefix')} {error}
-            </div>
-          )}
-          {loading && !data && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {allSymbols.map(sym => (
-                <div key={sym} style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '20px 24px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--panel-2)' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-faint)', fontSize: 13 }}>
-                      <Spinner size="sm" /> {t('ai_generating_summary')}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {data?.items?.map(item => (
-            <AiInsightCard key={item.symbol} item={item} />
-          ))}
-        </>
-      )}
+            {editingNew && (
+              <ManualCard
+                key={'editing-' + editingNew}
+                symbol={editingNew}
+                entry={null}
+                defaultEditing
+                onSave={text => handleSave(editingNew, text)}
+                onDelete={() => {}}
+                onCancel={() => setEditingNew(null)}
+              />
+            )}
 
-      <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)', fontSize: 11, color: 'var(--text-faint)' }}>
-        {t('ai_disclaimer')}
-      </div>
+            {emptyListSymbols.length > 0 && (
+              <Card title={`${t('ai_to_fill')} (${emptyListSymbols.length})`}>
+                <ul className="divide-y divide-line">
+                  {emptyListSymbols.map(sym => (
+                    <li key={sym} className="flex items-center gap-3 px-4 py-2.5">
+                      <TickerLogo symbol={sym} size={28} />
+                      <span className="flex-1 text-small font-semibold text-dim">{sym}</span>
+                      <Button size="sm" icon={Plus} onClick={() => setEditingNew(sym)}>{t('ai_add_analysis')}</Button>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </div>
+        )}
+      </TabPanel>
+
+      <p className="text-[11px] text-faint">{t('ai_disclaimer')}</p>
     </div>
   );
 }
@@ -393,11 +343,11 @@ const HL_PATTERNS = [
   { re: /\b(?:Neutral|Hold|Trzymaj)\b/gi, s: 'dim' },
 ];
 
-const HL_STYLE = {
-  bold: { fontWeight: 700, color: 'var(--text)' },
-  neg:  { fontWeight: 700, color: 'var(--down)',  background: 'rgba(239,68,68,0.1)',  borderRadius: 3, padding: '0 3px' },
-  pos:  { fontWeight: 700, color: 'var(--up)',    background: 'rgba(34,197,94,0.1)', borderRadius: 3, padding: '0 3px' },
-  dim:  { fontWeight: 600, color: 'var(--text-dim)' },
+const HL_CLASS = {
+  bold: 'font-bold text-fg',
+  neg:  'rounded-sm bg-down-soft px-0.5 font-bold text-down',
+  pos:  'rounded-sm bg-up-soft px-0.5 font-bold text-up',
+  dim:  'font-semibold text-dim',
 };
 
 function renderPara(text, idx) {
@@ -418,15 +368,11 @@ function renderPara(text, idx) {
   let pos = 0;
   for (const { start, end, s } of clean) {
     if (start > pos) parts.push(text.slice(pos, start));
-    parts.push(<span key={start} style={HL_STYLE[s]}>{text.slice(start, end)}</span>);
+    parts.push(<span key={start} className={HL_CLASS[s]}>{text.slice(start, end)}</span>);
     pos = end;
   }
   if (pos < text.length) parts.push(text.slice(pos));
-  return (
-    <p key={idx} style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.8, margin: idx > 0 ? '8px 0 0' : 0 }}>
-      {parts}
-    </p>
-  );
+  return <p key={idx} className="text-small leading-[1.8] text-dim">{parts}</p>;
 }
 
 function AnalysisView({ text, expanded, onToggle }) {
@@ -441,17 +387,14 @@ function AnalysisView({ text, expanded, onToggle }) {
   const hasMore = paras.length > PREVIEW;
 
   return (
-    <div style={{ borderTop: '1px solid var(--border)', padding: '14px 20px 16px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        {shown.map((p, i) => renderPara(p, i))}
-      </div>
+    <div className="grid gap-2 border-t border-line px-4 py-3.5">
+      {shown.map((p, i) => renderPara(p, i))}
       {hasMore && (
-        <button onClick={onToggle}
-          style={{ marginTop: 12, fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <Button size="sm" variant="ghost" className="justify-self-start" onClick={onToggle}>
           {expanded
             ? t('ai_collapse')
             : `${t('ai_expand')} (${t('ai_more_paragraphs').replace('{n}', paras.length - PREVIEW)} ${paras.length - PREVIEW === 1 ? t('ai_paragraph') : t('ai_paragraphs')})`}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -461,6 +404,7 @@ function AnalysisView({ text, expanded, onToggle }) {
 
 function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, onCancel }) {
   const t = useT();
+  const { locale } = useLanguage();
   const [editing, setEditing]         = useState(defaultEditing);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [draft, setDraft]             = useState(entry?.text || '');
@@ -473,9 +417,8 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
     if (editing && taRef.current) taRef.current.focus();
   }, [editing]);
 
-  const text   = entry?.text || '';
-  const ticker = symbol.replace('.WA', '');
-  const wc     = wordCount(text);
+  const text = entry?.text || '';
+  const wc   = wordCount(text);
 
   async function handleTranslate() {
     if (!draft.trim() || translating) return;
@@ -484,7 +427,7 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
     try {
       setDraft(await translateText(draft.trim()));
     } catch (e) {
-      setTranslateError(e.message);
+      setTranslateError(`${t('ai_translate_error')} (${e.message})`);
     } finally {
       setTranslating(false);
     }
@@ -498,27 +441,13 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
   }
 
   return (
-    <div style={{
-      borderRadius: 12, background: 'var(--panel)', overflow: 'hidden',
-      border: '1px solid var(--border)',
-      borderLeft: text ? '4px solid var(--accent)' : '1px solid var(--border)',
-    }}>
-      <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 8, flexShrink: 0,
-          background: text ? 'rgba(99,102,241,0.15)' : 'var(--panel-2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 800, color: text ? 'var(--accent)' : 'var(--text-faint)',
-          fontFamily: 'var(--font-mono)',
-          fontSize: ticker.length > 4 ? 8 : ticker.length > 3 ? 10 : 12,
-          letterSpacing: '-0.5px',
-        }}>
-          {ticker.slice(0, 5)}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{symbol}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-            {text ? `${wc} ${t('ai_words_saved')} ${fmtDate(entry?.savedAt) || '—'}` : t('ai_no_analysis')}
+    <Card className={cx(text && 'border-l-4 border-l-accent')}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <TickerLogo symbol={symbol} size={36} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-bold text-fg">{symbol}</div>
+          <div className="text-[11px] text-faint">
+            {text ? `${wc} ${t('ai_words_saved')} ${fmtDate(entry?.savedAt, locale) || '—'}` : t('ai_no_analysis')}
           </div>
         </div>
         {confirmDelete && (
@@ -529,65 +458,33 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
           />
         )}
         {!editing && text && (
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button onClick={() => { setDraft(text); setEditing(true); }}
-              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer' }}>
-              {t('ai_edit_btn')}
-            </button>
-            <button onClick={() => setConfirmDelete(true)}
-              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'none', border: '1px solid var(--border)', color: 'var(--text-faint)', cursor: 'pointer' }}
-              title="Usuń">
-              🗑
-            </button>
+          <div className="flex shrink-0 gap-1.5">
+            <Button size="sm" icon={Pencil} onClick={() => { setDraft(text); setEditing(true); }}>{t('ai_edit_btn')}</Button>
+            <IconButton icon={Trash2} label={t('ai_delete_btn')} onClick={() => setConfirmDelete(true)} />
           </div>
         )}
       </div>
 
       {editing && (
-        <div style={{ padding: '0 18px 16px', borderTop: '1px solid var(--border)' }}>
+        <div className="grid gap-2 border-t border-line px-4 pb-4 pt-3">
           <textarea
             ref={taRef}
             value={draft}
             onChange={e => setDraft(e.target.value)}
+            aria-label={symbol}
             placeholder={t('ai_paste_placeholder').replace('{symbol}', symbol)}
-            style={{
-              width: '100%', minHeight: 180, marginTop: 12, padding: '10px 12px',
-              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
-              color: 'var(--text)', fontSize: 13, lineHeight: 1.65, resize: 'vertical',
-              fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
-            }}
+            className="min-h-[180px] w-full resize-y rounded-card-sm border border-line bg-panel-2 px-3 py-2.5 text-small leading-relaxed text-fg placeholder:text-faint hover:border-line-strong focus:border-accent focus:outline-none"
           />
-          {translateError && (
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--down)' }}>{translateError}</p>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={handleTranslate}
-              disabled={translating || !draft.trim()}
-              style={{
-                fontSize: 11, padding: '5px 12px', borderRadius: 6,
-                background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
-                color: 'var(--accent)', cursor: translating || !draft.trim() ? 'not-allowed' : 'pointer',
-                opacity: !draft.trim() ? 0.4 : 1,
-              }}
-            >
+          {translateError && <p className="text-[11px] text-down">{translateError}</p>}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button size="sm" variant="ghost" icon={Languages} loading={translating} disabled={!draft.trim()} onClick={handleTranslate}>
               {translating ? t('ai_translating') : t('ai_translate_btn')}
-            </button>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={handleCancel}
-                style={{ fontSize: 12, padding: '5px 14px', borderRadius: 6, background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer' }}>
-                {t('ai_cancel_btn')}
-              </button>
-              <button
-                onClick={() => { if (draft.trim()) { onSave(draft.trim()); setEditing(false); } }}
-                disabled={!draft.trim()}
-                style={{
-                  fontSize: 12, padding: '5px 14px', borderRadius: 6, background: 'var(--accent)', border: 'none',
-                  color: '#fff', cursor: draft.trim() ? 'pointer' : 'not-allowed', fontWeight: 600,
-                  opacity: draft.trim() ? 1 : 0.5,
-                }}>
+            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleCancel}>{t('ai_cancel_btn')}</Button>
+              <Button size="sm" variant="primary" disabled={!draft.trim()} onClick={() => { if (draft.trim()) { onSave(draft.trim()); setEditing(false); } }}>
                 {t('ai_save_btn')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -596,67 +493,49 @@ function ManualCard({ symbol, entry, onSave, onDelete, defaultEditing = false, o
       {!editing && text && (
         <AnalysisView text={text} expanded={expanded} onToggle={() => setExpanded(v => !v)} />
       )}
-    </div>
+    </Card>
   );
 }
 
 function AiInsightCard({ item }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
-  const ticker = item.symbol.replace('.WA', '').slice(0, 4);
+  const n = item.headlines?.length ?? 0;
 
   return (
-    <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 8, flexShrink: 0,
-          background: item.summary ? 'rgba(99,102,241,0.15)' : 'var(--panel-2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--font-mono)',
-        }}>
-          {ticker}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{item.symbol}</span>
-            {item.headlines?.length > 0 && (
-              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: 'var(--panel-2)', color: 'var(--text-faint)', border: '1px solid var(--border)' }}>
-                {item.headlines.length} informacji
-              </span>
-            )}
+    <Card>
+      <div className="flex items-start gap-3 p-4">
+        <TickerLogo symbol={item.symbol} size={36} />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <span className="text-[15px] font-bold text-fg">{item.symbol}</span>
+            {n > 0 && <Badge>{t('ai_headlines_count').replace('{n}', n)}</Badge>}
           </div>
           {item.summary
-            ? <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.65, margin: 0 }}>{item.summary}</p>
-            : <p style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', margin: 0 }}>
-                {item.headlines?.length === 0 ? t('ai_no_press_info') : t('ai_summary_unavailable')}
-              </p>
-          }
+            ? <p className="text-small leading-relaxed text-dim">{item.summary}</p>
+            : <p className="text-small italic text-faint">{n === 0 ? t('ai_no_press_info') : t('ai_summary_unavailable')}</p>}
         </div>
       </div>
-      {item.headlines?.length > 0 && (
-        <div style={{ borderTop: '1px solid var(--border)' }}>
+      {n > 0 && (
+        <div className="border-t border-line">
           <button
+            type="button"
+            aria-expanded={expanded}
             onClick={() => setExpanded(v => !v)}
-            style={{ width: '100%', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--text-faint)' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            className="flex w-full items-center justify-between px-4 py-2 text-[11px] text-faint transition hover:bg-panel-hover hover:text-dim"
           >
-            <span>{expanded ? t('ai_headlines_collapse') : t('ai_headlines_expand')} ({item.headlines.length})</span>
-            <span style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+            <span>{expanded ? t('ai_headlines_collapse') : t('ai_headlines_expand')} ({n})</span>
+            <ChevronDown size={14} aria-hidden className={cx('transition-transform', expanded && 'rotate-180')} />
           </button>
           {expanded && (
-            <div style={{ padding: '0 20px 16px' }}>
-              <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {item.headlines.map((h, i) => (
-                  <li key={i} style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5, display: 'flex', gap: 8 }}>
-                    <span style={{ color: 'var(--text-faint)', flexShrink: 0 }}>›</span>{h}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ul className="grid gap-1.5 px-4 pb-4">
+              {item.headlines.map((h, i) => (
+                <li key={i} className="flex gap-2 text-[12px] leading-normal text-dim"><span className="shrink-0 text-faint">›</span>{h}</li>
+              ))}
+            </ul>
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

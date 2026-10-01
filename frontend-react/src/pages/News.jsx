@@ -1,163 +1,96 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/News.jsx
+import { useCallback, useEffect, useState } from 'react';
+import { Newspaper, RefreshCw, Search, TriangleAlert, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useT, useLanguage } from '../context/LanguageContext';
-import Spinner from '../components/shared/Spinner';
+import { useLanguage, useT } from '../context/LanguageContext';
 import TickerLogo from '../components/shared/TickerLogo';
+import { Badge, Button, Callout, EmptyState, Input, Skeleton } from '../components/ui';
 import { authHeader } from '../utils/auth.js';
 
-function fmtDateTime(iso, locale = 'pl-PL') {
+const SENTIMENT_TONE = { positive: 'up', negative: 'down', neutral: 'neutral' };
+
+function fmtDateTime(iso, locale) {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleDateString(locale, {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
+    return new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch { return ''; }
 }
 
-const SENTIMENT_STYLE = {
-  positive: { bg: 'rgba(34,197,94,0.12)', color: 'var(--up)' },
-  negative: { bg: 'rgba(239,68,68,0.12)', color: 'var(--down)' },
-  neutral:  { bg: 'var(--panel-2)', color: 'var(--text-faint)' },
-};
+function NewsCard({ item, locale, t }) {
+  return (
+    <article className="rounded-card border border-line bg-panel px-4 py-3.5 shadow-card">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <TickerLogo symbol={item.symbol} />
+        <span className="text-[14px] font-bold text-fg">{item.symbol}</span>
+        {item.sentiment && <Badge tone={SENTIMENT_TONE[item.sentiment] ?? 'neutral'}>{t(`sentiment_${item.sentiment}`)}</Badge>}
+      </div>
+      <p className="text-[13px] leading-relaxed text-dim">{item.summary || item.title}</p>
+      {item.summary && <p className="mt-1 text-small leading-snug text-faint">{item.title}</p>}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-faint">
+        <span>{item.source}</span><span aria-hidden>·</span><span>{fmtDateTime(item.publishedAt, locale)}</span>
+        <a href={item.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-accent-text hover:underline">
+          {t('news_read_more').replace(/\s*→$/, '')}<ExternalLink size={12} aria-hidden />
+        </a>
+      </div>
+    </article>
+  );
+}
 
 export default function News() {
   const { portfolio } = useApp();
   const t = useT();
   const { locale } = useLanguage();
-  const [data, setData]       = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
-  const [filter, setFilter]   = useState('');
-
-  const allSymbols = [...new Set(portfolio.map(p => p.symbol).filter(Boolean))];
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('');
+  const symbolsKey = [...new Set(portfolio.map(p => p.symbol).filter(Boolean))].join(',');
 
   const load = useCallback(async () => {
-    if (!allSymbols.length) return;
+    if (!symbolsKey) return;
     setLoading(true); setError(null);
     try {
       const base = import.meta.env.VITE_API_URL ?? '';
-      const r = await fetch(`${base}/api/newsfeed?symbols=${encodeURIComponent(allSymbols.join(','))}`, {
-        headers: authHeader(),
-        signal: AbortSignal.timeout(90000),
-      });
+      const r = await fetch(`${base}/api/newsfeed?symbols=${encodeURIComponent(symbolsKey)}`, { headers: authHeader(), signal: AbortSignal.timeout(90000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setData(await r.json());
     } catch (e) {
       setError(e.message || t('error'));
     } finally { setLoading(false); }
-  }, [allSymbols.join(',')]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolsKey]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (!allSymbols.length) {
-    return (
-      <div style={{ textAlign: 'center', paddingTop: 80, color: 'var(--text-faint)' }}>
-        <p style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{t('news_empty')}</p>
-      </div>
-    );
-  }
+  if (!symbolsKey) return <EmptyState icon={Newspaper} title={t('news_empty')} className="py-16" />;
 
-  const items = data?.items || [];
-  const filtered = filter.trim()
-    ? items.filter(it => it.symbol.toLowerCase().includes(filter.trim().toLowerCase()))
-    : items;
+  const q = filter.trim().toLowerCase();
+  const items = (data?.items || []).filter(it => !q || it.symbol.toLowerCase().includes(q));
 
   return (
-    <div className="space-y-5">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
-            {t('news_title')}
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
-            {t('news_subtitle')}
-            {data?.generatedAt && ` · ${t('news_updated_at')}: ${fmtDateTime(data.generatedAt, locale)}`}
-          </p>
-        </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          style={{ fontSize: 11, padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', background: 'var(--panel-2)', color: 'var(--text-dim)' }}
-        >
-          {loading ? <Spinner size="sm" /> : `↺ ${t('news_refresh')}`}
-        </button>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input icon={Search} aria-label={t('news_filter_placeholder')} placeholder={t('news_filter_placeholder')} value={filter} onChange={e => setFilter(e.target.value)} className="w-full max-w-xs" />
+        {data?.generatedAt && <span className="text-small text-faint">{t('news_updated_at')}: {fmtDateTime(data.generatedAt, locale)}</span>}
+        <Button size="sm" icon={RefreshCw} loading={loading} onClick={load} className="ml-auto">{t('news_refresh')}</Button>
       </div>
 
-      <input
-        className="field-input"
-        style={{ maxWidth: 320 }}
-        placeholder={t('news_filter_placeholder')}
-        value={filter}
-        onChange={e => setFilter(e.target.value)}
-      />
-
-      {error && (
-        <div style={{ padding: '14px 18px', borderRadius: 10, background: 'var(--down-soft)', border: '1px solid var(--down)', color: 'var(--down)', fontSize: 13 }}>
-          {error}
-        </div>
-      )}
+      {error && <Callout tone="down" icon={TriangleAlert}>{error}</Callout>}
 
       {loading && !data && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-          <Spinner size="lg" />
+        <div className="grid gap-2.5" aria-busy="true">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="grid gap-2 rounded-card border border-line bg-panel px-4 py-3.5">
+              <Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-4/5" />
+            </div>
+          ))}
         </div>
       )}
 
-      {!loading && data && filtered.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-faint)', fontSize: 13 }}>
-          {t('news_no_results')}
-        </div>
-      )}
+      {!loading && data && items.length === 0 && <EmptyState icon={Newspaper} title={t('news_no_results')} />}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {filtered.map((item, i) => (
-          <NewsCard key={`${item.symbol}-${item.url}-${i}`} item={item} locale={locale} t={t} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function NewsCard({ item, locale, t }) {
-  const sentimentKey = item.sentiment ? `sentiment_${item.sentiment}` : null;
-  const sentimentStyle = item.sentiment ? SENTIMENT_STYLE[item.sentiment] : null;
-
-  return (
-    <div className="card" style={{ padding: '14px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-        <TickerLogo symbol={item.symbol} />
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{item.symbol}</span>
-        {sentimentStyle && (
-          <span style={{
-            fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
-            background: sentimentStyle.bg, color: sentimentStyle.color,
-          }}>
-            {t(sentimentKey)}
-          </span>
-        )}
-      </div>
-
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, margin: 0 }}>
-        {item.summary || item.title}
-      </p>
-      {item.summary && (
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5, margin: '4px 0 0' }}>
-          {item.title}
-        </p>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 11, color: 'var(--text-faint)' }}>
-        <span>{item.source}</span>
-        <span>·</span>
-        <span>{fmtDateTime(item.publishedAt, locale)}</span>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ marginLeft: 'auto', color: 'var(--info)', fontWeight: 600, textDecoration: 'none' }}
-        >
-          {t('news_read_more')}
-        </a>
+      <div className="grid gap-2.5">
+        {items.map((item, i) => <NewsCard key={`${item.symbol}-${item.url}-${i}`} item={item} locale={locale} t={t} />)}
       </div>
     </div>
   );

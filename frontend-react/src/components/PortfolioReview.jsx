@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Compass, RefreshCw, Sparkles, TriangleAlert } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
-import Spinner from './shared/Spinner';
 import { valueBond, fetchCpiSeries } from '../services/bondService';
-import { getTaxRate } from '../services/dividendService';
-
+import { buildReviewContext } from '../utils/reviewContext.js';
+import { Button, Callout, Card, Spinner } from './ui';
 
 // ── mini-markdown (ten sam wzorzec co FinancialsTab) ─────────────────────────
 function parseInline(text) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} style={{ color: 'var(--text)' }}>{part.slice(2, -2)}</strong>;
+      return <strong key={i} className="font-semibold text-fg">{part.slice(2, -2)}</strong>;
     }
     return part;
   });
@@ -19,17 +19,11 @@ function parseInline(text) {
 
 function renderReview(text) {
   return text.split('\n').map((line, i) => {
-    if (line.startsWith('### ')) {
-      return <h3 key={i} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', margin: '18px 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{line.slice(4)}</h3>;
-    }
-    if (line.startsWith('## ')) {
-      return <h2 key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '18px 0 6px' }}>{line.slice(3)}</h2>;
-    }
-    if (/^\s*[-*] /.test(line)) {
-      return <div key={i} style={{ paddingLeft: 12, marginBottom: 4, fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.7 }}>• {parseInline(line.replace(/^\s*[-*] /, ''))}</div>;
-    }
-    if (line.trim() === '') return <div key={i} style={{ height: 6 }} />;
-    return <p key={i} style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.7, margin: '0 0 4px' }}>{parseInline(line)}</p>;
+    if (line.startsWith('### ')) return <h3 key={i} className="mb-1.5 mt-4 text-label font-bold uppercase text-accent-text">{line.slice(4)}</h3>;
+    if (line.startsWith('## ')) return <h2 key={i} className="mb-1.5 mt-4 text-[14px] font-bold text-fg">{line.slice(3)}</h2>;
+    if (/^\s*[-*] /.test(line)) return <div key={i} className="mb-1 pl-3 text-small leading-relaxed text-dim">• {parseInline(line.replace(/^\s*[-*] /, ''))}</div>;
+    if (line.trim() === '') return <div key={i} className="h-1.5" />;
+    return <p key={i} className="mb-1 text-small leading-relaxed text-dim">{parseInline(line)}</p>;
   });
 }
 
@@ -48,81 +42,20 @@ export default function PortfolioReview() {
   const [started, setStarted]   = useState(false);
 
   async function buildContext() {
-    const toPLN = (v, cur) => (v || 0) * (fxRates[cur] ?? 1);
-
-    // Akcje / ETF
-    const positions = portfolio.map(p => {
-      const valuePLN = toPLN(p.qty * (p.price ?? p.avgPrice), p.currency);
-      const plPct = p.avgPrice > 0 && p.price != null
-        ? ((p.price - p.avgPrice) / p.avgPrice) * 100 : null;
-      return { symbol: p.symbol, name: p.name || undefined, currency: p.currency, valuePLN: Math.round(valuePLN), plPct: plPct != null ? Math.round(plPct * 10) / 10 : null };
-    }).filter(p => p.valuePLN > 0);
-
-    // Obligacje skarbowe (wycena CPI)
-    let bondsPLN = 0;
-    const bondItems = [];
+    // Obligacje skarbowe (wycena CPI; bez CPI — nominał)
+    let bondItems = [];
     if (bonds.length) {
       try {
         const cpiMap = await fetchCpiSeries();
-        bonds.forEach(b => {
-          const v = valueBond(b, cpiMap);
-          bondsPLN += v.totalValue;
-          bondItems.push({ type: b.type, valuePLN: Math.round(v.totalValue), maturity: v.maturityDate });
-        });
+        bondItems = bonds.map(b => { const v = valueBond(b, cpiMap); return { type: b.type, valuePLN: Math.round(v.totalValue), maturity: v.maturityDate }; });
       } catch {
-        bonds.forEach(b => { const nominal = (Number(b.count) || 0) * 100; bondsPLN += nominal; bondItems.push({ type: b.type, valuePLN: nominal }); });
+        bondItems = bonds.map(b => ({ type: b.type, valuePLN: (Number(b.count) || 0) * 100 }));
       }
     }
-
-    const cashPLN = Object.entries(cash).reduce((s, [cur, v]) => s + toPLN(v, cur), 0);
-    const otherPLN = otherAssets.reduce((s, a) => s + toPLN(a.value, a.currency), 0);
-    const stocksPLN = positions.reduce((s, p) => s + p.valuePLN, 0);
-    const totalPLN = stocksPLN + bondsPLN + cashPLN + otherPLN;
-    if (totalPLN <= 0) return null;
-
-    const pct = v => Math.round((v / totalPLN) * 1000) / 10;
-
-    // Ekspozycja walutowa (akcje wg waluty notowania + gotówka)
-    const curExp = {};
-    positions.forEach(p => { curExp[p.currency] = (curExp[p.currency] || 0) + p.valuePLN; });
-    Object.entries(cash).forEach(([cur, v]) => { curExp[cur] = (curExp[cur] || 0) + toPLN(v, cur); });
-    curExp['PLN'] = (curExp['PLN'] || 0) + bondsPLN;
-    const currencyExposure = Object.fromEntries(
-      Object.entries(curExp).filter(([, v]) => v > 0).map(([k, v]) => [k, `${pct(v)}%`])
-    );
-
-    // Dywidendy 12 mies. (brutto, PLN)
-    const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    const accountType = activePortfolio?.accountType || '';
-    const divs = transactions.filter(tx => tx.type === 'DIV' && tx.date >= cutoffStr);
-    const divGrossPLN = divs.reduce((s, d) => s + toPLN((d.price || 0) * (d.qty || 1), d.currency), 0);
-    const divNetPLN = divs.reduce((s, d) => {
-      const g = toPLN((d.price || 0) * (d.qty || 1), d.currency);
-      return s + g * (1 - getTaxRate(d.symbol, d.currency, accountType));
-    }, 0);
-
-    return {
-      totalValuePLN: Math.round(totalPLN),
-      accountType: accountType || 'standardowe (opodatkowane)',
-      allocation: {
-        stocks: `${pct(stocksPLN)}%`,
-        treasuryBonds: `${pct(bondsPLN)}%`,
-        cash: `${pct(cashPLN)}%`,
-        otherAssets: `${pct(otherPLN)}%`,
-      },
-      currencyExposure,
-      positions: positions
-        .sort((a, b) => b.valuePLN - a.valuePLN)
-        .map(p => ({ ...p, weight: `${pct(p.valuePLN)}%` })),
-      bonds: bondItems.length ? bondItems : undefined,
-      otherAssets: otherAssets.length
-        ? otherAssets.map(a => ({ name: a.name, category: a.category, valuePLN: Math.round(toPLN(a.value, a.currency)) }))
-        : undefined,
-      dividends12m: divs.length
-        ? { grossPLN: Math.round(divGrossPLN), netPLN: Math.round(divNetPLN), payments: divs.length }
-        : undefined,
-    };
+    return buildReviewContext({
+      portfolio, bonds: bondItems, cash, otherAssets, fxRates, transactions,
+      accountType: activePortfolio?.accountType || '',
+    });
   }
 
   async function generate(force = false) {
@@ -174,56 +107,30 @@ export default function PortfolioReview() {
   }[error] || (error ? t('review_err_failed') : '');
 
   return (
-    <div className="space-y-4">
-      <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: '18px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ maxWidth: 520 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
-              🧭 {t('review_title')}
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6, margin: 0 }}>
-              {t('review_intro')}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            {started && !loading && text && (
-              <button className="btn" style={{ fontSize: 12 }} onClick={() => generate(true)}>
-                {t('review_regenerate')}
-              </button>
-            )}
-            {(!started || (!loading && !text)) && (
-              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => generate(false)} disabled={loading}>
-                {t('review_generate')}
-              </button>
-            )}
-          </div>
-        </div>
-
+    <Card
+      title={<span className="inline-flex items-center gap-2"><Compass size={15} aria-hidden className="text-accent-text" />{t('review_title')}</span>}
+      actions={started && !loading && text
+        ? <Button size="sm" icon={RefreshCw} onClick={() => generate(true)}>{t('review_regenerate')}</Button>
+        : (!started || (!loading && !text)) && <Button size="sm" variant="primary" icon={Sparkles} onClick={() => generate(false)}>{t('review_generate')}</Button>}
+    >
+      <div className="grid gap-3 p-4">
+        <p className="max-w-2xl text-small leading-relaxed text-faint">{t('review_intro')}</p>
         {meta?.cached && meta.createdAt && (
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '10px 0 0' }}>
+          <p className="text-[11px] text-faint">
             {t('review_cached_at')} {new Date(meta.createdAt).toLocaleDateString(locale)} · {t('review_cached_hint')}
           </p>
         )}
-
         {loading && !text && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, color: 'var(--text-faint)', fontSize: 13 }}>
-            <Spinner size="sm" /> {t('review_generating')}
-          </div>
+          <div className="flex items-center gap-2.5 text-small text-faint"><Spinner size="sm" /> {t('review_generating')}</div>
         )}
-
-        {errorLabel && (
-          <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'var(--down-soft)', border: '1px solid var(--down)', color: 'var(--down)', fontSize: 12 }}>
-            {errorLabel}
-          </div>
-        )}
-
+        {errorLabel && <Callout tone="down" icon={TriangleAlert}>{errorLabel}</Callout>}
         {text && (
-          <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
+          <div className="border-t border-line pt-1">
             {renderReview(text)}
-            {loading && <span style={{ color: 'var(--accent)' }}>▍</span>}
+            {loading && <span className="text-accent-text">▍</span>}
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

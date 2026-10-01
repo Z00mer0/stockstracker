@@ -94,17 +94,78 @@ before/after screenshots.
       exporters); 230 inline styles → 2; positions as cards on mobile with a
       sort selector; all 4 dropdowns on the new kit `Menu`; 3 entry forms on
       Modal (Esc works now); ~45 hardcoded strings translated.
-- [ ] Transactions
-- [ ] Dividends
-- [ ] History
-- [ ] Analysis — 11 accordions → tabs (Risk / Allocation / Tax / FIRE)
-- [ ] Settings — sections with side navigation
-- [ ] Remaining pages
-- [ ] All 11 modals on the shared Modal
+- [x] Transactions — kit Stat/Tabs/Table (sort, mobile cards, 50 per page),
+      add + CSV import windows on Modal (drag & drop). Fixed: 30-day tiles
+      mixed currencies; `DIVIDEND` missing from the dividends filter; PL
+      export → import lost notes and cash rows; trailing quote cut from notes.
+      Export/import round trip covered by a test.
+- [x] Dividends — restructured from 9 stacked sections: gross/net switch and
+      "Add" on top, one row of 4 tiles (the duplicate bottom row merged in),
+      goal card, DRIP, upcoming, and one "Payments" card with tabs (timeline /
+      by company / all). Fixed: `DIVIDEND` transactions ignored, goal card
+      titled "Next dividend", duplicated goal sentence, "≈ PLN" header on
+      display-currency amounts.
+- [x] History — period and benchmark moved to one page toolbar (benchmark was
+      duplicated in two cards and a 8-button strip overflowed on phones),
+      5 kit Stat tiles, snapshot table on kit Table (sortable, 50 per page —
+      it rendered all ~300 rows at once). Calculations checked row-by-row
+      against `main`.
+- [x] History net of deposits — each daily snapshot now stores paid-in
+      capital (`utils/capital.js`, DB column `capital`); profit = value −
+      capital, return is time-weighted, CAGR and drawdown on that index.
+      Days saved before this are estimated and marked. The "all portfolios"
+      view no longer writes per-portfolio snapshots it could not attribute.
+- [x] Calculation check — old vs new side by side on identical data and
+      prices, every number on Dashboard/Portfolio/Transactions/Dividends/
+      History compared; fixed the daily result formula, dividend yield on
+      cost instead of market value, duplicate in "Winners and losers".
+- [x] Analysis — 11 accordions → 5 tabs (Overview / Allocation / Risk / Tax /
+      FIRE), split into `pages/analysis/*`, last tab remembered. Fixed: return %
+      divided by the display-currency rate; rebalancing share counts and prices
+      for foreign stocks; risk metrics on raw value (deposits as returns) and
+      beta pairs shifted after a filtered day; FIRE mixing currencies;
+      tax-loss insight promising 19% of all losses and contradicting the Tax
+      tab on wash-sale; Health Score only in Polish.
+- [x] Settings — 13 stacked cards → 4 groups (Account / Notifications / Data
+      & import / Tax & rates) with side navigation (a scrollable bar on phones),
+      split into `pages/settings/*`. Fixed: snapshot edits overwrote the day's
+      exchange rates with today's; snapshot edits and imports in the
+      all-portfolios view looked saved but were rejected by the server; alert
+      card had no inner padding; ~10 hard-coded Polish strings. Menu item
+      "Atrybucja" renamed to "Analiza".
+- [x] Remaining pages — Closed positions, Watchlist, Alerts, News, Calendar,
+      OKI, Scenario Lab, AI Insights, public shared portfolio. Each compared
+      old vs new with the same data; calculations checked independently.
+      Fixed: closed-position averages and cost-weighted %; option prices
+      (normal CDF missing √2 — every price, delta, theta and PoP was off);
+      cash-secured put and iron condor ignoring the contract count; covered
+      call max loss ignoring the premium; hidden quantity field still
+      multiplying spreads; runway ignoring a negative real return; AI review
+      and public-portfolio IRR skipping "DIVIDEND" rows; currency exposure
+      not summing to 100%; OKI/Scenario charts unreadable in the light theme.
+- [x] All 11 modals on the shared Modal — edit position, dividend, alert,
+      new portfolio, buy, sell, three imports (positions, broker, statement),
+      stock detail; import parsers moved to `utils/*Import.js` with tests.
+      Fixed: dividends and "buy more" defaulting to PLN for foreign stocks;
+      sale currency different from the position's (mixed P&L); price alert
+      without a known price saved as already triggered; broker import crash
+      on an unknown file, deposits always in USD, dotted dates not ISO,
+      "Symbol" column ignored; "1 050,00" read as 1 in two importers;
+      benchmark joined by index instead of date; thesis note lost on close.
+      Setup wizard moved too (its currency choice now actually applies).
+      Advanced price chart (candles + MA/EMA/Bollinger/RSI/MACD) — was never
+      reachable; now opened from the stock window, on the shared Modal,
+      indicators computed on a longer history (warm-up) and tested against an
+      independent implementation.
 
 ### Phase 4 — Charts
-- [ ] One chart library with one theme (colours, tooltip, axes); keep the
-      hand-made sparklines.
+- [x] One chart library with one theme (colours, tooltip, axes); keep the
+      hand-made sparklines. Recharts everywhere; shared props in
+      `components/charts/theme.js` (theme CSS variables, so charts follow the
+      theme without redrawing). OKI and Scenario Lab moved off chart.js;
+      chart.js, its annotation plugin and the unused react-chartjs-2 removed.
+      Hand-drawn SVG charts (History, rate of return, rolling returns,
+      financials, stock detail) now use theme tokens instead of fixed hex.
 
 ### Phase 5 — Pro-feel features
 - [ ] Undo toasts after deletes

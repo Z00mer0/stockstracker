@@ -1,29 +1,17 @@
-import React, { useMemo, useState, useEffect } from 'react';
+// src/pages/ClosedPositions.jsx
+import { useEffect, useMemo, useState } from 'react';
+import { TrendingUp, TrendingDown, Scale, Hash, Download, Search, BookOpen, Archive } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
-import Card from '../components/shared/Card';
 import TickerLogo from '../components/shared/TickerLogo';
-import Spinner from '../components/shared/Spinner';
+import { PageSkeleton } from '../components/RouteFallback';
+import { Button, Card, EmptyState, Input, SegmentedControl, Stat, Table } from '../components/ui';
+import { cx } from '../components/ui/cx.js';
 import { computeRealizedTrades, groupBySymbol, exportPIT38CSV } from '../utils/realizedPL';
 import { loadJournal } from '../services/journalService';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
-
-function fmt(n, dec = 2, locale = 'pl-PL') {
-  if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString(locale, { minimumFractionDigits: dec, maximumFractionDigits: dec });
-}
-
-function PLBadge({ value, locale, suffix = '' }) {
-  const color = value > 0 ? 'var(--up)' : value < 0 ? 'var(--down)' : 'var(--text-faint)';
-  const sign  = value > 0 ? '+' : '';
-  return (
-    <span style={{ color, fontWeight: 600 }}>
-      {sign}{fmt(value, 2, locale)}{suffix}
-    </span>
-  );
-}
 
 export default function ClosedPositions() {
   const { transactions = [], loading, fxRates, displayCurrency } = useApp();
@@ -31,23 +19,13 @@ export default function ClosedPositions() {
   const t = useT();
   const { isPrivate } = usePrivacy();
   const blur = isPrivate ? 'privacy-blur' : undefined;
-
-  const [view, setView]   = useState('symbol'); // 'symbol' | 'trade'
+  const [view, setView] = useState('symbol');
   const [filter, setFilter] = useState('');
-  // Sortowanie tabeli — klucz kolumny + kierunek. Domyślnie P&L malejąco (tak jak było w groupBySymbol).
-  const [sortKey, setSortKey] = useState('pl');
-  const [sortDir, setSortDir] = useState('desc');
-
-  function toggleSort(key) {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('desc'); }
-  }
-  const arrow = k => sortKey === k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  const [journal, setJournal] = useState(null);
 
   const trades = useMemo(() => computeRealizedTrades(transactions, fxRates), [transactions, fxRates]);
   const grouped = useMemo(() => groupBySymbol(trades), [trades]);
 
-  const [journal, setJournal] = useState(null);
   useEffect(() => {
     loadJournal().then(setJournal).catch(() => setJournal({ theses: {}, retros: {} }));
   }, []);
@@ -69,274 +47,124 @@ export default function ClosedPositions() {
     return { years, verdictCounts, hasThesisData: years.some(y => y.thesis.n > 0) };
   }, [journal, trades]);
 
+  if (loading && !transactions.length) return <PageSkeleton />;
+
   const currSym = CUR_SYMBOLS[displayCurrency] ?? displayCurrency;
   const rate = fxRates[displayCurrency] ?? 1;
+  const toDisp = pln => pln / rate;
+  const fmt = (n, d = 2) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
+  const signed = (v, suffix = '') => <span className={cx('font-semibold', v > 0 ? 'text-up' : v < 0 ? 'text-down' : 'text-faint')}>{v > 0 ? '+' : ''}{fmt(v)}{suffix}</span>;
+  const qty = q => fmt(q, q % 1 === 0 ? 0 : 4);
+  const cur = c => <span className="text-[11px] text-faint"> {CUR_SYMBOLS[c] ?? c}</span>;
 
-  // Summary KPIs
-  const totalGainPLN = trades.filter(t => t.plPLN > 0).reduce((s, t) => s + t.plPLN, 0);
-  const totalLossPLN = trades.filter(t => t.plPLN < 0).reduce((s, t) => s + t.plPLN, 0);
-  const netPLN       = totalGainPLN + totalLossPLN;
+  const gain = trades.filter(x => x.plPLN > 0).reduce((s, x) => s + x.plPLN, 0);
+  const loss = trades.filter(x => x.plPLN < 0).reduce((s, x) => s + x.plPLN, 0);
+  const net = gain + loss;
 
-  // Convert PLN → display currency
-  const toDisp = pln => (displayCurrency === 'PLN' ? pln : pln / rate);
+  const q = filter.trim().toUpperCase();
+  const rows = view === 'symbol'
+    ? grouped.filter(g => !q || g.symbol.toUpperCase().includes(q)).map(g => ({ ...g, n: g.trades.length }))
+    : trades.filter(x => !q || x.symbol.toUpperCase().includes(q));
 
-  const filteredTrades  = filter ? trades.filter(t  => t.symbol.toUpperCase().includes(filter.toUpperCase())) : trades;
-  const filteredGrouped = filter ? grouped.filter(g => g.symbol.toUpperCase().includes(filter.toUpperCase())) : grouped;
-
-  // Sortowanie — pre-liczymy pochodne (avgCost/avgSell/avgPct) żeby były sortowalne.
-  const sortedGrouped = useMemo(() => {
-    const enriched = filteredGrouped.map(g => ({
-      ...g,
-      _avgCost: g.trades.reduce((s, t) => s + t.costBasis * t.qty, 0) / g.totalQty,
-      _avgSell: g.trades.reduce((s, t) => s + t.sellPrice * t.qty, 0) / g.totalQty,
-      _avgPct:  g.trades.reduce((s, t) => s + t.pct, 0) / g.trades.length,
-      _n:       g.trades.length,
-    }));
-    const cmp = (a, b) => {
-      let av, bv;
-      switch (sortKey) {
-        case 'symbol':  av = a.symbol;   bv = b.symbol;   break;
-        case 'count':   av = a._n;       bv = b._n;       break;
-        case 'qty':     av = a.totalQty; bv = b.totalQty; break;
-        case 'cost':    av = a._avgCost; bv = b._avgCost; break;
-        case 'sell':    av = a._avgSell; bv = b._avgSell; break;
-        case 'pct':     av = a._avgPct;  bv = b._avgPct;  break;
-        case 'pl':
-        default:        av = a.plPLN;    bv = b.plPLN;    break;
-      }
-      if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-      return sortDir === 'asc' ? av - bv : bv - av;
-    };
-    return [...enriched].sort(cmp);
-  }, [filteredGrouped, sortKey, sortDir]);
-
-  const sortedTrades = useMemo(() => {
-    const cmp = (a, b) => {
-      let av, bv;
-      switch (sortKey) {
-        case 'symbol': av = a.symbol;    bv = b.symbol;    break;
-        case 'date':   av = a.date || ''; bv = b.date || ''; break;
-        case 'qty':    av = a.qty;       bv = b.qty;       break;
-        case 'cost':   av = a.costBasis; bv = b.costBasis; break;
-        case 'sell':   av = a.sellPrice; bv = b.sellPrice; break;
-        case 'pct':    av = a.pct;       bv = b.pct;       break;
-        case 'pl':
-        default:       av = a.plPLN;     bv = b.plPLN;     break;
-      }
-      if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-      return sortDir === 'asc' ? av - bv : bv - av;
-    };
-    return [...filteredTrades].sort(cmp);
-  }, [filteredTrades, sortKey, sortDir]);
+  const symbolCol = {
+    key: 'symbol', header: t('col_symbol'), sortable: true, mobile: 'title',
+    render: r => <span className="flex items-center gap-2"><TickerLogo symbol={r.symbol} size={24} /><span className="font-semibold text-accent-text">{r.symbol}</span></span>,
+  };
+  const plCol = { key: 'plPLN', header: `P&L (${currSym})`, align: 'right', sortable: true, firstDir: 'desc', mobile: 'aside', render: r => <span className={blur}>{signed(toDisp(r.plPLN))}</span> };
+  const pctCol = { key: 'pct', header: 'P&L %', align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{signed(r.pct, '%')}</span> };
+  const columns = view === 'symbol'
+    ? [
+      symbolCol,
+      { key: 'n', header: t('trades_count'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className="text-dim">{r.n}</span> },
+      { key: 'totalQty', header: t('total_qty'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{qty(r.totalQty)}</span> },
+      { key: 'avgCost', header: t('avg_cost'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={cx('text-dim', blur)}>{fmt(r.avgCost)}{cur(r.currency)}</span> },
+      { key: 'avgSell', header: t('avg_sell'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{fmt(r.avgSell)}{cur(r.currency)}</span> },
+      plCol, pctCol,
+    ]
+    : [
+      symbolCol,
+      { key: 'date', header: t('col_date'), sortable: true, firstDir: 'desc', render: r => <span className="text-xs text-dim">{r.date}</span> },
+      { key: 'qty', header: t('qty_short'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{qty(r.qty)}</span> },
+      { key: 'costBasis', header: t('avg_cost'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={cx('text-dim', blur)}>{fmt(r.costBasis)}{cur(r.currency)}</span> },
+      { key: 'sellPrice', header: t('col_price'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{fmt(r.sellPrice)}{cur(r.currency)}</span> },
+      plCol, pctCol,
+    ];
 
   function downloadCSV() {
-    const csv  = exportPIT38CSV(trades, fxRates, locale);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `pit38_${new Date().toISOString().slice(0,10)}.csv`;
+    const blob = new Blob([exportPIT38CSV(trades, fxRates, locale)], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pit38_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(a.href);
   }
 
-  if (loading) return <Spinner />;
+  const journalCell = g => (g.n === 0 ? <span className="text-faint">—</span> : (
+    <span>{signed(g.pctSum / g.n, '%')}<span className="text-[11px] text-faint"> ({g.n} {t('journal_trades_unit')})</span></span>
+  ));
 
   return (
-    <div className="space-y-4" style={{ padding: '0 0 32px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('closed_positions_title')}</h1>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('closed_positions_subtitle')}</p>
-        </div>
-        <button
-          onClick={downloadCSV}
-          className="btn btn-primary"
-          style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-          disabled={trades.length === 0}
-        >
-          ↓ {t('export_pit38')}
-        </button>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button variant="primary" icon={Download} disabled={!trades.length} onClick={downloadCSV}>{t('export_pit38')}</Button>
       </div>
 
-      {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        {[
-          { label: t('realized_gain'),   value: toDisp(totalGainPLN),  color: 'var(--up)' },
-          { label: t('realized_loss'),   value: toDisp(totalLossPLN),  color: 'var(--down)' },
-          { label: t('net_realized_pl'), value: toDisp(netPLN),        color: netPLN >= 0 ? 'var(--up)' : 'var(--down)' },
-          { label: t('closed_trades_count'), value: null, count: trades.length },
-        ].map((k, i) => (
-          <div key={i} className="card" style={{ padding: '14px 16px' }}>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{k.label}</p>
-            {k.count != null
-              ? <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{k.count}</p>
-              : <p className={blur} style={{ fontSize: 22, fontWeight: 700, color: k.color, margin: 0 }}>
-                  {k.value >= 0 && k.color !== 'var(--down)' ? '+' : ''}{fmt(k.value, 2, locale)} {currSym}
-                </p>
-            }
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat blur={isPrivate} icon={TrendingUp} tone="up" label={t('realized_gain')} value={`+${fmt(toDisp(gain))} ${currSym}`} />
+        <Stat blur={isPrivate} icon={TrendingDown} tone="down" label={t('realized_loss')} value={`${fmt(toDisp(loss))} ${currSym}`} />
+        <Stat blur={isPrivate} icon={Scale} tone={net >= 0 ? 'up' : 'down'} label={t('net_realized_pl')} value={`${net >= 0 ? '+' : ''}${fmt(toDisp(net))} ${currSym}`} />
+        <Stat icon={Hash} label={t('closed_trades_count')} value={trades.length} />
       </div>
 
-      {trades.length === 0 && (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-faint)' }}>
-          <p style={{ fontSize: 14 }}>{t('no_closed_positions')}</p>
-        </div>
-      )}
+      {trades.length === 0 && <EmptyState icon={Archive} title={t('no_closed_positions')} />}
 
-      {/* Dziennik inwestora — skuteczność tez */}
       {journalStats && (
-        <Card title={`📓 ${t('journal_stats_title')}`} collapsible collapseKey="cp_journal">
-          <div className="card-body">
-            {journalStats.hasThesisData ? (
-              <>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14, fontSize: 12, color: 'var(--text-dim)' }}>
-                  <span>✅ {t('journal_hit')}: <b style={{ color: 'var(--up)' }}>{journalStats.verdictCounts.hit}</b></span>
-                  <span>➖ {t('journal_partial')}: <b style={{ color: 'var(--warn)' }}>{journalStats.verdictCounts.partial}</b></span>
-                  <span>❌ {t('journal_miss')}: <b style={{ color: 'var(--down)' }}>{journalStats.verdictCounts.miss}</b></span>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                        {[t('journal_year_col'), t('journal_with_thesis'), t('journal_without_thesis')].map((h, i) => (
-                          <th key={h} style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {journalStats.years.map(y => {
-                        const cell = (g) => g.n === 0
-                          ? <span style={{ color: 'var(--text-faint)' }}>—</span>
-                          : (() => {
-                              const avg = g.pctSum / g.n;
-                              return (
-                                <>
-                                  <span style={{ color: avg >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                                    {avg >= 0 ? '+' : ''}{fmt(avg, 1, locale)}%
-                                  </span>
-                                  <span style={{ color: 'var(--text-faint)', fontSize: 11 }}> ({g.n} {t('journal_trades_unit')})</span>
-                                </>
-                              );
-                            })();
-                        return (
-                          <tr key={y.year} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '8px 10px', color: 'var(--text)', fontWeight: 600 }}>{y.year}</td>
-                            <td className="mono" style={{ padding: '8px 10px', textAlign: 'right' }}>{cell(y.thesis)}</td>
-                            <td className="mono" style={{ padding: '8px 10px', textAlign: 'right' }}>{cell(y.impulse)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 10 }}>{t('journal_stats_note')}</p>
-              </>
-            ) : (
-              <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>{t('journal_stats_empty')}</p>
-            )}
-          </div>
+        <Card title={<span className="inline-flex items-center gap-2"><BookOpen size={15} aria-hidden className="text-accent-text" />{t('journal_stats_title')}</span>} collapsible collapseKey="cp_journal">
+          {journalStats.hasThesisData ? (
+            <>
+              <div className="flex flex-wrap gap-4 px-4 pt-3 text-small text-dim">
+                <span>{t('journal_hit')}: <b className="text-up">{journalStats.verdictCounts.hit}</b></span>
+                <span>{t('journal_partial')}: <b className="text-warn">{journalStats.verdictCounts.partial}</b></span>
+                <span>{t('journal_miss')}: <b className="text-down">{journalStats.verdictCounts.miss}</b></span>
+              </div>
+              <Table
+                columns={[
+                  { key: 'year', header: t('journal_year_col'), mobile: 'title', render: y => <span className="font-semibold text-fg">{y.year}</span> },
+                  { key: 'thesis', header: t('journal_with_thesis'), align: 'right', render: y => journalCell(y.thesis) },
+                  { key: 'impulse', header: t('journal_without_thesis'), align: 'right', render: y => journalCell(y.impulse) },
+                ]}
+                rows={journalStats.years}
+                rowKey={y => y.year}
+              />
+              <p className="px-4 pb-3 pt-2 text-[11px] text-faint">{t('journal_stats_note')}</p>
+            </>
+          ) : <p className="p-4 text-small text-faint">{t('journal_stats_empty')}</p>}
         </Card>
       )}
 
       {trades.length > 0 && (
         <Card
           title={t('closed_positions_title')}
-          actions={
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                type="text"
-                placeholder="Symbol…"
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-                className="field-input"
-                style={{ width: 100, fontSize: 12, padding: '4px 8px' }}
+          actions={(
+            <div className="flex flex-wrap items-center gap-2">
+              <Input icon={Search} aria-label={t('col_symbol')} placeholder={`${t('col_symbol')}…`} value={filter} onChange={e => setFilter(e.target.value)} className="w-36" />
+              <SegmentedControl
+                options={[{ value: 'symbol', label: t('group_by_symbol') }, { value: 'trade', label: t('by_trade') }]}
+                value={view}
+                onChange={setView}
               />
-              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-                {['symbol', 'trade'].map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setView(v)}
-                    style={{
-                      padding: '4px 10px', fontSize: 11, border: 'none', cursor: 'pointer',
-                      background: view === v ? 'var(--accent)' : 'transparent',
-                      color: view === v ? 'var(--accent-fg)' : 'var(--text-dim)',
-                      fontWeight: view === v ? 700 : 400,
-                    }}
-                  >
-                    {v === 'symbol' ? t('group_by_symbol') : t('by_trade')}
-                  </button>
-                ))}
-              </div>
             </div>
-          }
+          )}
         >
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {(view === 'symbol'
-                    ? [['symbol', 'Symbol', 'left'], ['count', t('trades_count'), 'right'], ['qty', t('total_qty'), 'right'], ['cost', t('avg_cost'), 'right'], ['sell', t('avg_sell'), 'right'], ['pl', `P&L (${currSym})`, 'right'], ['pct', 'P&L %', 'right']]
-                    : [['symbol', 'Symbol', 'left'], ['date', t('col_date'), 'left'], ['qty', t('qty_short'), 'right'], ['cost', t('avg_cost'), 'right'], ['sell', t('col_price'), 'right'], ['pl', `P&L (${currSym})`, 'right'], ['pct', 'P&L %', 'right']]
-                  ).map(([key, label, align]) => (
-                    <th key={key} onClick={() => toggleSort(key)} style={{ padding: '8px 12px', textAlign: align, fontSize: 10, fontWeight: 600, color: sortKey === key ? 'var(--accent)' : 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>{label}{arrow(key)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {view === 'symbol'
-                  ? sortedGrouped.map(g => {
-                      const avgSell = g._avgSell;
-                      const avgCost = g._avgCost;
-                      const plDisp  = toDisp(g.plPLN);
-                      const avgPct  = g._avgPct;
-                      return (
-                        <tr key={g.symbol} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <TickerLogo symbol={g.symbol} size={24} />
-                              <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{g.symbol}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '10px 12px', color: 'var(--text-dim)', textAlign: 'right' }}>{g.trades.length}</td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(g.totalQty, g.totalQty % 1 === 0 ? 0 : 4, locale)}</td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-dim)' }}>{fmt(avgCost, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[g.currency] ?? g.currency}</span></td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(avgSell, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[g.currency] ?? g.currency}</span></td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={plDisp} locale={locale} /></td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={avgPct} locale={locale} suffix="%" /></td>
-                        </tr>
-                      );
-                    })
-                  : sortedTrades.map(tr => {
-                      const plDisp = toDisp(tr.plPLN);
-                      return (
-                        <tr key={tr.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <TickerLogo symbol={tr.symbol} size={24} />
-                              <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{tr.symbol}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '10px 12px', color: 'var(--text-dim)', fontSize: 12 }}>{tr.date}</td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(tr.qty, tr.qty % 1 === 0 ? 0 : 4, locale)}</td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-dim)' }}>{fmt(tr.costBasis, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[tr.currency] ?? tr.currency}</span></td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(tr.sellPrice, 2, locale)} <span style={{ fontSize: 11 }}>{CUR_SYMBOLS[tr.currency] ?? tr.currency}</span></td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={plDisp} locale={locale} /></td>
-                          <td className={blur} style={{ padding: '10px 12px', textAlign: 'right' }}><PLBadge value={tr.pct} locale={locale} suffix="%" /></td>
-                        </tr>
-                      );
-                    })
-                }
-              </tbody>
-            </table>
-          </div>
-
-          {/* PIT-38 note */}
-          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-faint)' }}>
-            {t('pit38_note')}
-          </div>
+          <Table
+            key={view}
+            columns={columns}
+            rows={rows}
+            rowKey={r => (view === 'symbol' ? r.symbol : r.id)}
+            defaultSort={{ key: 'plPLN', dir: 'desc' }}
+            pageSize={50}
+          />
+          <p className="border-t border-line px-4 py-2.5 text-[11px] text-faint">{t('pit38_note')}</p>
         </Card>
       )}
     </div>

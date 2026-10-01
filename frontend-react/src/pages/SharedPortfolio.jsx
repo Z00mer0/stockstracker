@@ -1,6 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Lock, PieChart as PieIcon } from 'lucide-react';
+import { useLanguage, useT } from '../context/LanguageContext';
+import { Card, EmptyState, Skeleton, Stat, Table } from '../components/ui';
+import { cx } from '../components/ui/cx.js';
+import { tooltipProps } from '../components/charts/theme.js';
 
 // Publiczny widok portfela — tylko struktura w %, bez kwot i ilości.
 // Renderowany bez logowania (route /s/:token omija AuthGate).
@@ -14,11 +19,6 @@ const COLORS = [
 const REST_COLOR = '#475569';
 const CHART_TOP_N = 15;        // ile spółek trafia na wykres przed "Inne"
 const LABEL_MIN_PCT = 3;       // etykiety % rysujemy tylko dla ≥3% (żeby się nie kotłowały)
-
-function fmt(n, dec = 1) {
-  if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('pl-PL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-}
 
 // Etykieta % rysowana bezpośrednio na wycinku (label prop <Pie/>)
 function renderSliceLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent, payload }) {
@@ -36,22 +36,10 @@ function renderSliceLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent,
   );
 }
 
-function Kpi({ label, value, tone }) {
-  const color = tone === 'up' ? 'var(--up)' : tone === 'down' ? 'var(--down)' : 'var(--text)';
-  return (
-    <div style={{
-      flex: '1 1 130px', minWidth: 120,
-      background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10,
-      padding: '12px 14px',
-    }}>
-      <div style={{ fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color, lineHeight: 1.1 }}>{value}</div>
-    </div>
-  );
-}
-
 export default function SharedPortfolio() {
   const { token } = useParams();
+  const t = useT();
+  const { locale } = useLanguage();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -62,85 +50,56 @@ export default function SharedPortfolio() {
       .catch(() => setError('not_found'));
   }, [token]);
 
+  const fmt = (n, dec = 1) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: dec, maximumFractionDigits: dec }));
+  const signedPct = (n, dec = 1) => `${n >= 0 ? '+' : ''}${fmt(n, dec)}%`;
+
   const pieData = data ? (() => {
     const top = data.positions.slice(0, CHART_TOP_N);
     const rest = data.positions.slice(CHART_TOP_N).reduce((s, p) => s + p.pct, 0);
-    return rest > 0.5 ? [...top, { symbol: 'Inne', pct: parseFloat(rest.toFixed(1)) }] : top;
+    return rest > 0.5 ? [...top, { symbol: t('shared_other'), pct: parseFloat(rest.toFixed(1)), rest: true }] : top;
   })() : [];
 
   const m = data?.metrics || {};
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 16px' }}>
-      <div style={{ width: '100%', maxWidth: 620 }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
-            myfund · portfel publiczny
-          </p>
-          {data && <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{data.name}</h1>}
-        </div>
+    <div className="min-h-screen bg-bg px-4 py-8 text-fg">
+      <div className="mx-auto grid w-full max-w-2xl gap-4">
+        <header className="text-center">
+          <p className="text-label font-semibold uppercase tracking-[0.1em] text-faint">{t('shared_kicker')}</p>
+          {data && <h1 className="mt-1 text-h1 text-fg">{data.name}</h1>}
+        </header>
 
-        {error && (
-          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: 32, textAlign: 'center' }}>
-            <p style={{ fontSize: 32, marginBottom: 8 }}>🔒</p>
-            <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Ten link wygasł lub został odwołany.</p>
-          </div>
-        )}
+        {error && <Card><EmptyState icon={Lock} title={t('shared_expired')} /></Card>}
 
         {!data && !error && (
-          <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>Ładowanie…</p>
-        )}
-
-        {data && data.positions.length === 0 && (
-          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', padding: 32, textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Portfel jest pusty.</p>
+          <div className="grid gap-3" aria-busy="true">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-20" rounded="rounded-card" />)}</div>
+            <Skeleton className="h-80" rounded="rounded-card" />
           </div>
         )}
+
+        {data && data.positions.length === 0 && <Card><EmptyState icon={PieIcon} title={t('shared_empty')} /></Card>}
 
         {data && data.positions.length > 0 && (
           <>
-            {/* ── KPI tiles ─────────────────────────────────────────── */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-              {m.plPct != null && (
-                <Kpi label="Wynik" tone={m.plPct >= 0 ? 'up' : 'down'}
-                  value={`${m.plPct >= 0 ? '+' : ''}${fmt(m.plPct, 1)}%`} />
-              )}
-              {m.moic != null && (
-                <Kpi label="MOIC" value={`${fmt(m.moic, 2)}x`} />
-              )}
-              {m.irrPct != null && (
-                <Kpi label="IRR (roczne)" tone={m.irrPct >= 0 ? 'up' : 'down'}
-                  value={`${m.irrPct >= 0 ? '+' : ''}${fmt(m.irrPct, 1)}%`} />
-              )}
-              {m.positionsCount != null && (
-                <Kpi label="Pozycji" value={String(m.positionsCount)} />
-              )}
-              {m.top3Pct != null && (
-                <Kpi label="Top 3 udział" value={`${fmt(m.top3Pct, 1)}%`} />
-              )}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {m.plPct != null && <Stat label={t('shared_result')} tone={m.plPct >= 0 ? 'up' : 'down'} value={signedPct(m.plPct)} />}
+              {m.moic != null && <Stat label="MOIC" value={`${fmt(m.moic, 2)}x`} />}
+              {m.irrPct != null && <Stat label={t('shared_irr')} tone={m.irrPct >= 0 ? 'up' : 'down'} value={signedPct(m.irrPct)} />}
+              {m.positionsCount != null && <Stat label={t('shared_positions')} value={String(m.positionsCount)} />}
+              {m.top3Pct != null && <Stat label={t('shared_top3')} value={`${fmt(m.top3Pct)}%`} />}
               {(m.winnersCount != null || m.losersCount != null) && (
-                <Kpi label="Zielone / Czerwone"
-                  value={
-                    <span>
-                      <span style={{ color: 'var(--up)' }}>{m.winnersCount ?? 0}</span>
-                      <span style={{ color: 'var(--text-faint)', margin: '0 4px' }}>/</span>
-                      <span style={{ color: 'var(--down)' }}>{m.losersCount ?? 0}</span>
-                    </span>
-                  } />
+                <Stat
+                  label={t('shared_winners_losers')}
+                  value={<><span className="text-up">{m.winnersCount ?? 0}</span><span className="mx-1 text-faint">/</span><span className="text-down">{m.losersCount ?? 0}</span></>}
+                />
               )}
-              {m.best && (
-                <Kpi label="Najlepsza" tone="up"
-                  value={<><span style={{ fontSize: 13 }}>{m.best.symbol}</span>{' '}<span>{m.best.plPct >= 0 ? '+' : ''}{fmt(m.best.plPct, 1)}%</span></>} />
-              )}
-              {m.worst && (
-                <Kpi label="Najsłabsza" tone="down"
-                  value={<><span style={{ fontSize: 13 }}>{m.worst.symbol}</span>{' '}<span>{m.worst.plPct >= 0 ? '+' : ''}{fmt(m.worst.plPct, 1)}%</span></>} />
-              )}
+              {m.best && <Stat label={t('shared_best')} tone="up" value={signedPct(m.best.plPct)} hint={m.best.symbol} />}
+              {m.worst && <Stat label={t('shared_worst')} tone={m.worst.plPct >= 0 ? 'up' : 'down'} value={signedPct(m.worst.plPct)} hint={m.worst.symbol} />}
             </div>
 
-            {/* ── Chart + table ─────────────────────────────────────── */}
-            <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', overflow: 'hidden' }}>
-              <div style={{ width: '100%', height: 320, padding: '16px 0 0' }}>
+            <Card>
+              <div className="h-80 px-2 pt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={pieData} dataKey="pct" nameKey="symbol"
@@ -148,50 +107,44 @@ export default function SharedPortfolio() {
                       paddingAngle={1.2} strokeWidth={0} isAnimationActive={false}
                       label={renderSliceLabel} labelLine={false}>
                       {pieData.map((p, i) => (
-                        <Cell key={p.symbol} fill={p.symbol === 'Inne' ? REST_COLOR : COLORS[i % COLORS.length]} />
+                        <Cell key={p.symbol} fill={p.rest ? REST_COLOR : COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                      {...tooltipProps}
                       formatter={(v, name) => [`${fmt(v)}%`, name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              {/* Kontener przewijalny — bez niego wąski ekran rozpycha całą stronę. */}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      {['Pozycja', 'Udział', 'Wynik'].map((h, i) => (
-                        <th key={h} style={{ padding: '10px 16px', fontSize: 11, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.positions.map((p, i) => (
-                      <tr key={p.symbol} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '9px 16px', fontWeight: 600 }}>
-                          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: i < CHART_TOP_N ? COLORS[i % COLORS.length] : REST_COLOR, marginRight: 8, verticalAlign: 'baseline' }} />
-                          {p.symbol}
-                        </td>
-                        <td className="mono" style={{ padding: '9px 16px', textAlign: 'right' }}>{fmt(p.pct)}%</td>
-                        <td className="mono" style={{ padding: '9px 16px', textAlign: 'right', color: p.plPct == null ? 'var(--text-faint)' : p.plPct >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                          {p.plPct == null ? '—' : `${p.plPct >= 0 ? '+' : ''}${fmt(p.plPct)}%`}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              <Table
+                columns={[
+                  {
+                    key: 'symbol', header: t('shared_col_position'), mobile: 'title',
+                    render: p => (
+                      <span className="inline-flex items-center gap-2 font-semibold text-fg">
+                        <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: p.i < CHART_TOP_N ? COLORS[p.i % COLORS.length] : REST_COLOR }} />
+                        {p.symbol}
+                      </span>
+                    ),
+                  },
+                  { key: 'pct', header: t('col_share_pct'), align: 'right', render: p => <span className="tabular-nums">{fmt(p.pct)}%</span> },
+                  {
+                    key: 'plPct', header: t('shared_result'), align: 'right', mobile: 'aside',
+                    render: p => <span className={cx('font-semibold tabular-nums', p.plPct == null ? 'text-faint' : p.plPct >= 0 ? 'text-up' : 'text-down')}>{p.plPct == null ? '—' : signedPct(p.plPct)}</span>,
+                  },
+                ]}
+                rows={data.positions.map((p, i) => ({ ...p, i }))}
+                rowKey={p => p.symbol}
+              />
+            </Card>
           </>
         )}
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-faint)', marginTop: 16, lineHeight: 1.6 }}>
-          Widok pokazuje wyłącznie strukturę portfela w procentach — bez kwot i liczby akcji.
+        <p className="text-center text-[11px] leading-relaxed text-faint">
+          {t('shared_footer')}
           <br />
-          <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Prowadź własny portfel w myfund →</a>
+          <a href="/" className="text-accent-text hover:underline">{t('shared_cta')}</a>
         </p>
       </div>
     </div>

@@ -6,6 +6,7 @@ export { default as Callout }    from './Callout.jsx';
 export { default as Card }       from '../shared/Card.jsx';
 export { default as EmptyState } from './EmptyState.jsx';
 export { default as Field }      from './Field.jsx';
+export { default as FileDrop }   from './FileDrop.jsx';
 export { default as IconButton } from './IconButton.jsx';
 export { default as Input }      from './Input.jsx';
 export { default as Menu }       from './Menu.jsx';

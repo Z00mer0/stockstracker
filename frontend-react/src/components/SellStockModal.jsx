@@ -1,31 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { BookOpen, Pencil, RotateCcw } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { getThesis } from '../services/journalService';
-import { useIsMobile } from '../hooks/useIsMobile.js';
-
-const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
-
-const overlay = {
-  position: 'fixed', inset: 0,
-  background: 'rgba(0,0,0,0.72)',
-  backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-  zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-};
-
-const card = {
-  background: 'var(--bg-2)', border: '1px solid var(--border)',
-  borderRadius: 12, padding: 24,
-  width: '100%', maxWidth: 400,
-  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-};
+import { Button, Field, Input, Modal, SegmentedControl } from './ui';
+import { cx } from './ui/cx.js';
 
 export default function SellStockModal({ holding, onSave, onClose }) {
-  const isMobile = useIsMobile();
   const t = useT();
   const { locale } = useLanguage();
+  // Waluta sprzedaży = waluta pozycji. Wcześniej dało się wybrać inną, a koszt
+  // (costBasis) zostawał w walucie pozycji — wynik mieszał złotówki z dolarami.
+  const currency = holding?.currency ?? 'PLN';
   const [qty, setQty]           = useState('');
   const [price, setPrice]       = useState(holding?.price ?? holding?.avgPrice ?? '');
-  const [currency, setCurrency] = useState(holding?.currency ?? 'PLN');
   const [date, setDate]         = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote]         = useState('');
   const [saving, setSaving]     = useState(false);
@@ -60,10 +47,12 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   }
 
   const effectivePL = editingPL && manualPL !== '' ? parseFloat(manualPL) : calcPL;
+  const fmt = n => n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  async function handleSave() {
+  async function handleSave(e) {
+    e?.preventDefault();
     if (isNaN(q) || q <= 0) { setError(t('err_enter_qty_short')); return; }
-    if (q > (holding?.qty ?? 0)) { setError(`${t('err_too_many_shares')} ${holding.qty} szt.`); return; }
+    if (q > (holding?.qty ?? 0)) { setError(`${t('err_too_many_shares')} ${holding.qty}`); return; }
     if (isNaN(p) || p <= 0) { setError(t('err_enter_sell_price')); return; }
     if (thesis && !verdict) { setError(t('journal_verdict_required')); return; }
     setSaving(true); setError('');
@@ -79,167 +68,86 @@ export default function SellStockModal({ holding, onSave, onClose }) {
       };
       await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL, retro });
       onClose();
-    } catch (e) {
-      setError(e.message || t('save_error'));
+    } catch (err) {
+      setError(err.message || t('save_error'));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div style={overlay}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-          {t('sell_title')} {holding?.symbol}
-        </h2>
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 20 }}>
-          {t('already_own_prefix')} {holding?.qty} {t('already_own_suffix')} {holding?.avgPrice} {holding?.currency}
-        </p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div>
-            <label className="field-label">{t('sell_qty_label')}</label>
-            <input
-              type="number" min="0" step="any"
-              className="field-input"
-              placeholder={`max ${holding?.qty}`}
-              value={qty}
-              onChange={e => setQty(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="field-label">{t('sell_price_label')}</label>
-            <input
-              type="number" min="0" step="any"
-              className="field-input"
-              value={price}
-              onChange={e => setPrice(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div>
-            <label className="field-label">{t('currency_label')}</label>
-            <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="field-label">{t('sell_date_label')}</label>
-            <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
-          <label className="field-label">{t('note_optional')}</label>
-          <input
-            className="field-input"
-            placeholder={t('note_placeholder')}
-            value={note}
-            onChange={e => setNote(e.target.value)}
-          />
+    <Modal
+      title={`${t('sell_title')} ${holding?.symbol ?? ''}`}
+      description={`${t('already_own_prefix')} ${holding?.qty} ${t('already_own_suffix')} ${holding?.avgPrice} ${currency}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button variant="danger" type="submit" form="sell-form" loading={saving}>{t('sell_title')}</Button>
+        </>
+      }
+    >
+      <form id="sell-form" onSubmit={handleSave} className="grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t('sell_qty_label')}>
+            <div className="flex gap-2">
+              <Input type="number" min="0" step="any" inputMode="decimal" className="min-w-0 flex-1" placeholder={`max ${holding?.qty}`} value={qty} onChange={e => setQty(e.target.value)} />
+              <Button size="sm" className="h-9" onClick={() => setQty(String(holding?.qty ?? ''))}>{t('sell_all')}</Button>
+            </div>
+          </Field>
+          <Field label={t('sell_price_label')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} suffix={currency} />
+          </Field>
+          <Field label={t('sell_date_label')}>
+            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </Field>
+          <Field label={t('note_optional')}>
+            <Input placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} />
+          </Field>
         </div>
 
         {calcPL != null && (
-          <div style={{ background: 'var(--bg-3)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12 }}>
+          <div className="rounded-card-sm border border-line bg-panel-2 px-3 py-2.5 text-small">
             {editingPL ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{t('manual_result')}:</span>
-                <input
-                  type="number" step="any"
-                  className="field-input"
-                  style={{ flex: 1, padding: '3px 8px', fontSize: 12 }}
-                  value={manualPL}
-                  onChange={e => setManualPL(e.target.value)}
-                  autoFocus
-                />
-                <span style={{ color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{currency}</span>
-                <button
-                  onClick={resetPL}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 11, padding: '2px 4px', whiteSpace: 'nowrap' }}
-                  title={t('restore_auto')}
-                >
-                  {t('restore_auto')}
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-faint">{t('manual_result')}:</span>
+                <Input type="number" step="any" aria-label={t('manual_result')} className="min-w-0 flex-1" value={manualPL} onChange={e => setManualPL(e.target.value)} suffix={currency} />
+                <Button size="sm" variant="ghost" icon={RotateCcw} onClick={resetPL}>{t('restore_auto')}</Button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <span style={{ color: 'var(--text-faint)' }}>{t('est_result')}: </span>
-                  <span style={{ color: effectivePL >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                    {effectivePL >= 0 ? '+' : ''}{effectivePL.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}
-                    {' '}({(((p - avg) / avg) * 100).toFixed(2)}%)
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <span className="text-faint">{t('est_result')}: </span>
+                  <span className={cx('font-semibold tabular-nums', effectivePL >= 0 ? 'text-up' : 'text-down')}>
+                    {effectivePL >= 0 ? '+' : ''}{fmt(effectivePL)} {currency} ({(((p - avg) / avg) * 100).toFixed(2)}%)
                   </span>
-                </div>
-                <button
-                  onClick={startEditPL}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 11, padding: '2px 6px' }}
-                  title={t('edit_pl')}
-                >
-                  {t('edit_pl')}
-                </button>
+                </span>
+                <Button size="sm" variant="ghost" icon={Pencil} onClick={startEditPL}>{t('edit_pl')}</Button>
               </div>
             )}
           </div>
         )}
 
         {thesis && (
-          <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>📓 {t('journal_thesis_label')}:</p>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: 10, maxHeight: 60, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-              {thesis}
-            </p>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{t('journal_verdict_q')}</p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-              {[
-                ['hit', `✅ ${t('journal_hit')}`],
-                ['partial', `➖ ${t('journal_partial')}`],
-                ['miss', `❌ ${t('journal_miss')}`],
-              ].map(([v, label]) => (
-                <button
-                  key={v}
-                  onClick={() => { setVerdict(verdict === v ? '' : v); setError(''); }}
-                  style={{
-                    fontSize: 11, padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
-                    border: `1px solid ${verdict === v ? 'var(--accent)' : 'var(--border)'}`,
-                    background: verdict === v ? 'var(--accent)' : 'transparent',
-                    color: verdict === v ? '#000' : 'var(--text-dim)',
-                    fontWeight: verdict === v ? 700 : 400,
-                  }}
-                >{label}</button>
-              ))}
-              <button
-                onClick={() => { setVerdict(verdict === 'skip' ? '' : 'skip'); setError(''); }}
-                style={{ fontSize: 11, padding: '5px 6px', background: 'none', border: 'none', cursor: 'pointer', color: verdict === 'skip' ? 'var(--text)' : 'var(--text-faint)', textDecoration: verdict === 'skip' ? 'underline' : 'none' }}
-              >{t('journal_skip')}</button>
-            </div>
+          <div className="grid gap-2 rounded-card-sm border border-line bg-panel-2 px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[11px] text-faint"><BookOpen size={13} aria-hidden />{t('journal_thesis_label')}:</p>
+            <p className="max-h-16 overflow-auto whitespace-pre-wrap text-small italic text-dim">{thesis}</p>
+            <p className="text-small font-semibold text-fg">{t('journal_verdict_q')}</p>
+            <SegmentedControl
+              block
+              aria-label={t('journal_verdict_q')}
+              options={[['hit', 'journal_hit'], ['partial', 'journal_partial'], ['miss', 'journal_miss'], ['skip', 'journal_skip']].map(([value, key]) => ({ value, label: t(key) }))}
+              value={verdict}
+              onChange={v => { setVerdict(verdict === v ? '' : v); setError(''); }}
+            />
             {verdict && verdict !== 'skip' && (
-              <input
-                className="field-input"
-                placeholder={t('journal_retro_note_ph')}
-                value={retroNote}
-                onChange={e => setRetroNote(e.target.value)}
-              />
+              <Input aria-label={t('journal_retro_note_ph')} placeholder={t('journal_retro_note_ph')} value={retroNote} onChange={e => setRetroNote(e.target.value)} />
             )}
           </div>
         )}
 
-        {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
-          <button
-            className="btn"
-            style={{ flex: 1, background: 'var(--down)', color: '#fff', fontWeight: 600 }}
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? t('saving') : t('sell_title')}
-          </button>
-        </div>
-      </div>
-    </div>
+        {error && <p role="alert" className="text-small text-down">{error}</p>}
+      </form>
+    </Modal>
   );
 }

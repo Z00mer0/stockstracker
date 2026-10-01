@@ -17,7 +17,12 @@ import { useT } from '../../context/LanguageContext';
 
 const stack = [];
 
-const WIDTH = { sm: 'md:max-w-sm', md: 'md:max-w-lg', lg: 'md:max-w-2xl', xl: 'md:max-w-4xl' };
+// full — prawie cały ekran (widok spółki „na pełnym ekranie"); na telefonie
+// i tak jest arkuszem od dołu.
+const WIDTH = {
+  sm: 'md:max-w-sm', md: 'md:max-w-lg', lg: 'md:max-w-2xl', xl: 'md:max-w-4xl',
+  full: 'md:h-[calc(100dvh-2rem)] md:max-h-none md:max-w-[calc(100vw-2rem)]',
+};
 
 export default function Modal({
   onClose, title, description, children, footer,

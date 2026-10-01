@@ -1,11 +1,13 @@
 // src/components/layout/Header.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
-import AddStockModal from '../AddStockModal';
-import StockDetailModal from '../StockDetailModal';
+// Okna dociągane dopiero przy otwarciu — okno spółki ciągnie za sobą
+// zakładki finansów, wskaźników i AI, zbędne przy pierwszym wczytaniu.
+const AddStockModal = lazy(() => import('../AddStockModal'));
+const StockDetailModal = lazy(() => import('../StockDetailModal'));
 import NotificationBell from '../NotificationBell';
 import { Sun, Moon, Eye, EyeOff, Search, CalendarDays } from 'lucide-react';
 import { lsSet } from '../../utils/safeStorage.js';
@@ -561,6 +563,7 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
         </div>
       )}
 
+      <Suspense fallback={null}>
       {showAdd && (
         <AddStockModal
           existingPortfolio={portfolio}
@@ -577,6 +580,7 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
           onClose={() => setSelectedStock(null)}
         />
       )}
+      </Suspense>
     </header>
   );
 }

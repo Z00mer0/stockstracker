@@ -59,9 +59,10 @@ class FakeCursor:
             self.rows = [(d,) for (q, d), fx in sorted(SNAPSHOTS.items())
                          if q == pid and not fx]
 
-        elif 'SELECT date::text, total, invested, fx_json FROM portfolio_snapshots' in s:
+        elif 'SELECT date::text, total, invested, fx_json' in s and 'FROM portfolio_snapshots' in s:
             pid = p[0]
-            self.rows = [{'date': d, 'total': 100.0, 'invested': 90.0, 'fx_json': fx}
+            self.rows = [{'date': d, 'total': 100.0, 'invested': 90.0, 'fx_json': fx,
+                          'capital': None, 'capital_native': None}
                          for (q, d), fx in sorted(SNAPSHOTS.items()) if q == pid]
 
         elif 'SELECT id FROM portfolio_list' in s:

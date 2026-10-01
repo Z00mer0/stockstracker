@@ -35,7 +35,7 @@ export default function Stat({
         )}
       </div>
       <div className="flex items-end justify-between gap-3">
-        <div className={cx('min-w-0 truncate text-[21px] font-semibold leading-tight tracking-tight sm:text-kpi', tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : 'text-fg', blur && 'privacy-blur')}>
+        <div className={cx('min-w-0 truncate text-[21px] font-semibold leading-tight tracking-tight sm:text-kpi', tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : tone === 'warn' ? 'text-warn' : 'text-fg', blur && 'privacy-blur')}>
           {value}
         </div>
         {spark && <div className="mb-1 hidden shrink-0 sm:block">{spark}</div>}

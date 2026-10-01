@@ -1,5 +1,7 @@
 // src/components/CandlestickChart.jsx
-import React, { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { useT } from '../context/LanguageContext';
+import { INDICATOR_COLORS as C } from './IndicatorPanel.jsx';
 
 const M = { top: 12, right: 62, bottom: 25, left: 8 };
 const MAIN_H = 280;
@@ -29,8 +31,8 @@ function YAxis({ min, max, height, top, chartRight, count = 5 }) {
         return (
           <g key={i}>
             <line x1={M.left} x2={chartRight} y1={y} y2={y}
-              stroke="#334155" strokeDasharray="3,3" strokeWidth={0.5} />
-            <text x={chartRight + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start">
+              style={{ stroke: 'var(--border)' }} strokeDasharray="3,3" strokeWidth={0.5} />
+            <text x={chartRight + 4} y={y + 4} style={{ fill: 'var(--text-faint)' }} fontSize={10} textAnchor="start">
               {v >= 1000 ? v.toFixed(0) : v.toFixed(2)}
             </text>
           </g>
@@ -40,7 +42,8 @@ function YAxis({ min, max, height, top, chartRight, count = 5 }) {
   );
 }
 
-export default function CandlestickChart({ candles, indicators, technicalData, onCandleClick }) {
+export default function CandlestickChart({ candles, start = 0, indicators, technicalData, onCandleClick }) {
+  const t = useT();
   const containerRef = useRef(null);
   const svgRef       = useRef(null);
   const dragRef      = useRef(null);
@@ -55,12 +58,13 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
     return () => obs.disconnect();
   }, []);
 
-  // Init view to last 80 candles
+  // Na start widać wybrany okres (świece wcześniej to rozbieg wskaźników —
+  // można do nich przewinąć, przeciągając w lewo). Min. 10 świec.
   useEffect(() => {
     if (!candles.length) return;
-    const count = Math.min(80, candles.length);
-    setView({ start: candles.length - count, end: candles.length });
-  }, [candles.length]);
+    const from = Math.max(0, Math.min(start, candles.length - 10));
+    setView({ start: from, end: candles.length });
+  }, [candles, start]);
 
   // Wheel zoom (passive:false required to preventDefault)
   useEffect(() => {
@@ -193,12 +197,14 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
           if (pts.length < 2) return null;
           const upPath = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.up}`).join(' ');
           const loLine = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.lo}`).join(' ');
-          const loPath = [...pts].reverse().map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.lo}`).join(' ');
+          // Dolna krawędź wypełnienia musi ciągnąć ten sam kontur (same L) —
+          // wcześniej zaczynała od M, więc pas rozpadał się na dwa trójkąty.
+          const loPath = [...pts].reverse().map(p => `L${p.x},${p.lo}`).join(' ');
           return (
             <g>
-              <path d={`${upPath} ${loPath} Z`} fill="#6366f1" fillOpacity={0.07} />
-              <path d={upPath} fill="none" stroke="#6366f1" strokeWidth={1} strokeOpacity={0.4} />
-              <path d={loLine} fill="none" stroke="#6366f1" strokeWidth={1} strokeOpacity={0.4} />
+              <path d={`${upPath} ${loPath} Z`} fill={C.bb} fillOpacity={0.07} />
+              <path d={upPath} fill="none" stroke={C.bb} strokeWidth={1} strokeOpacity={0.5} />
+              <path d={loLine} fill="none" stroke={C.bb} strokeWidth={1} strokeOpacity={0.5} />
             </g>
           );
         })()}
@@ -206,23 +212,23 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
         {/* MA20 — yellow */}
         {showMA20 && technicalData.ma20 && (
           <path d={buildPath(visible, i => technicalData.ma20[view.start + i], xScale, yScale)}
-            fill="none" stroke="#eab308" strokeWidth={1.5} />
+            fill="none" stroke={C.ma20} strokeWidth={1.5} />
         )}
         {/* MA50 — orange */}
         {showMA50 && technicalData.ma50 && (
           <path d={buildPath(visible, i => technicalData.ma50[view.start + i], xScale, yScale)}
-            fill="none" stroke="#f97316" strokeWidth={1.5} />
+            fill="none" stroke={C.ma50} strokeWidth={1.5} />
         )}
         {/* EMA21 — blue */}
         {showEMA && technicalData.ema && (
           <path d={buildPath(visible, i => technicalData.ema[view.start + i], xScale, yScale)}
-            fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+            fill="none" stroke={C.ema} strokeWidth={1.5} />
         )}
 
         {/* Candlesticks */}
         {visible.map((c, i) => {
           const isUp    = c.close >= c.open;
-          const color   = isUp ? '#10b981' : '#f43f5e';
+          const color   = isUp ? 'var(--up)' : 'var(--down)';
           const bodyTop = yScale(Math.max(c.open, c.close));
           const bodyBot = yScale(Math.min(c.open, c.close));
           const bodyH   = Math.max(1, bodyBot - bodyTop);
@@ -230,18 +236,19 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
           return (
             <g key={c.timestamp ?? i}>
               <line x1={cx} y1={yScale(c.high ?? c.close)} x2={cx} y2={yScale(c.low ?? c.close)}
-                stroke={color} strokeWidth={1} />
+                style={{ stroke: color }} strokeWidth={1} />
               <rect x={cx - cw / 2} y={bodyTop} width={cw} height={bodyH}
-                fill={color} stroke={color} strokeWidth={0.5} fillOpacity={isUp ? 0.85 : 1} />
+                style={{ fill: color, stroke: color }} strokeWidth={0.5} fillOpacity={isUp ? 0.85 : 1} />
             </g>
           );
         })}
 
         {/* X-axis separator + date labels */}
         <line x1={M.left} x2={chartRight} y1={M.top + MAIN_H} y2={M.top + MAIN_H}
-          stroke="#334155" strokeWidth={0.5} />
-        {dateLabels.map(({ i, label }) => (
-          <text key={i} x={xScale(i)} y={xAxisY - 8} fill="#64748b" fontSize={9} textAnchor="middle">
+          style={{ stroke: 'var(--border)' }} strokeWidth={0.5} />
+        {/* Daty pod ostatnim panelem (wcześniej rysowane na dole panelu MACD). */}
+        {dateLabels.map(({ i, label }, li) => (
+          <text key={i} x={xScale(i)} y={totalH - 8} style={{ fill: 'var(--text-faint)' }} fontSize={9} textAnchor={li === 0 ? 'start' : 'middle'}>
             {label}
           </text>
         ))}
@@ -249,27 +256,27 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
         {/* RSI Panel */}
         {showRSI && technicalData.rsi && (
           <g>
-            <rect x={M.left} y={rsiTop} width={chartW} height={SUB_H} fill="#0f172a" fillOpacity={0.3} />
-            <text x={M.left + 4} y={rsiTop + 12} fill="#94a3b8" fontSize={10} fontWeight="600">RSI (14)</text>
+            <rect x={M.left} y={rsiTop} width={chartW} height={SUB_H} style={{ fill: 'var(--panel-2)' }} />
+            <text x={M.left + 4} y={rsiTop + 12} style={{ fill: 'var(--text-dim)' }} fontSize={10} fontWeight="600">RSI (14)</text>
             {[70, 50, 30].map(lvl => (
               <g key={lvl}>
                 <line x1={M.left} x2={chartRight} y1={rsiScale(lvl)} y2={rsiScale(lvl)}
-                  stroke="#334155" strokeDasharray={lvl === 50 ? '1,4' : '3,3'} strokeWidth={0.5} />
-                <text x={chartRight + 4} y={rsiScale(lvl) + 4} fill="#64748b" fontSize={9}>{lvl}</text>
+                  style={{ stroke: 'var(--border)' }} strokeDasharray={lvl === 50 ? '1,4' : '3,3'} strokeWidth={0.5} />
+                <text x={chartRight + 4} y={rsiScale(lvl) + 4} style={{ fill: 'var(--text-faint)' }} fontSize={9}>{lvl}</text>
               </g>
             ))}
             <path d={buildPath(visible, i => technicalData.rsi[view.start + i], xScale, rsiScale)}
-              fill="none" stroke="#a855f7" strokeWidth={1.5} />
+              fill="none" stroke={C.rsi} strokeWidth={1.5} />
           </g>
         )}
 
         {/* MACD Panel */}
         {showMACD && technicalData.macd && (
           <g>
-            <rect x={M.left} y={macdTop} width={chartW} height={SUB_H} fill="#0f172a" fillOpacity={0.3} />
-            <text x={M.left + 4} y={macdTop + 12} fill="#94a3b8" fontSize={10} fontWeight="600">MACD (12,26,9)</text>
+            <rect x={M.left} y={macdTop} width={chartW} height={SUB_H} style={{ fill: 'var(--panel-2)' }} />
+            <text x={M.left + 4} y={macdTop + 12} style={{ fill: 'var(--text-dim)' }} fontSize={10} fontWeight="600">MACD (12,26,9)</text>
             <line x1={M.left} x2={chartRight} y1={macdScale(0)} y2={macdScale(0)}
-              stroke="#334155" strokeWidth={0.5} />
+              style={{ stroke: 'var(--border)' }} strokeWidth={0.5} />
             {visible.map((_, i) => {
               const v = technicalData.macd.histogram?.[view.start + i];
               if (v == null) return null;
@@ -278,13 +285,13 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
               return (
                 <rect key={i} x={xScale(i) - cw / 2} y={Math.min(y0, y1)}
                   width={cw} height={Math.abs(y0 - y1) || 1}
-                  fill={v >= 0 ? '#10b981' : '#f43f5e'} fillOpacity={0.7} />
+                  style={{ fill: v >= 0 ? 'var(--up)' : 'var(--down)' }} fillOpacity={0.7} />
               );
             })}
             <path d={buildPath(visible, i => technicalData.macd.macd?.[view.start + i], xScale, macdScale)}
-              fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+              fill="none" stroke={C.macd} strokeWidth={1.5} />
             <path d={buildPath(visible, i => technicalData.macd.signal?.[view.start + i], xScale, macdScale)}
-              fill="none" stroke="#f97316" strokeWidth={1.5} />
+              fill="none" stroke={C.signal} strokeWidth={1.5} />
           </g>
         )}
       </svg>
@@ -292,31 +299,31 @@ export default function CandlestickChart({ candles, indicators, technicalData, o
       {/* Hover tooltip */}
       {tooltip && (
         <div
-          className="absolute z-10 bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-xs pointer-events-none shadow-xl"
+          className="pointer-events-none absolute z-10 rounded-card-sm border border-line bg-panel p-2.5 text-[12px] shadow-pop"
           style={{
             left: tooltip.x > svgWidth / 2 ? tooltip.x - 170 : tooltip.x + 12,
             top:  Math.max(4, tooltip.y - 90),
           }}
         >
-          <p className="font-semibold text-slate-200 mb-1.5">
+          <p className="mb-1.5 font-semibold text-fg">
             {tooltip.candle.date}{tooltip.candle.time ? ` ${tooltip.candle.time}` : ''}
           </p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
-            <span>Otwarcie</span>
-            <span className="text-slate-200 text-right">{tooltip.candle.open?.toFixed(2)}</span>
-            <span>Zamknięcie</span>
-            <span className={`text-right font-medium ${tooltip.candle.close >= tooltip.candle.open ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 tabular-nums text-dim">
+            <span>{t('ac_open')}</span>
+            <span className="text-right text-fg">{tooltip.candle.open?.toFixed(2)}</span>
+            <span>{t('ac_close')}</span>
+            <span className={`text-right font-semibold ${tooltip.candle.close >= tooltip.candle.open ? 'text-up' : 'text-down'}`}>
               {tooltip.candle.close?.toFixed(2)}
             </span>
-            <span>Max</span>
-            <span className="text-slate-200 text-right">{(tooltip.candle.high ?? tooltip.candle.close)?.toFixed(2)}</span>
-            <span>Min</span>
-            <span className="text-slate-200 text-right">{(tooltip.candle.low ?? tooltip.candle.close)?.toFixed(2)}</span>
+            <span>{t('ac_high')}</span>
+            <span className="text-right text-fg">{(tooltip.candle.high ?? tooltip.candle.close)?.toFixed(2)}</span>
+            <span>{t('ac_low')}</span>
+            <span className="text-right text-fg">{(tooltip.candle.low ?? tooltip.candle.close)?.toFixed(2)}</span>
             {tooltip.rsi != null && (
-              <><span>RSI</span><span className="text-purple-400 text-right">{tooltip.rsi.toFixed(1)}</span></>
+              <><span>RSI</span><span className="text-right" style={{ color: C.rsi }}>{tooltip.rsi.toFixed(1)}</span></>
             )}
             {tooltip.macd != null && (
-              <><span>MACD</span><span className="text-blue-400 text-right">{tooltip.macd.toFixed(4)}</span></>
+              <><span>MACD</span><span className="text-right" style={{ color: C.macd }}>{tooltip.macd.toFixed(4)}</span></>
             )}
           </div>
         </div>

@@ -21,7 +21,7 @@ from pathlib import Path
 HOLDINGS = {}        # pid -> [{'symbol','qty','avg_price','currency'}]
 CASH = {}            # pid -> [{'currency','amount'}]
 FX_HIST = {}
-SNAPSHOTS_WRITTEN = {}   # (pid, date) -> {'total','invested','fx_json'}
+SNAPSHOTS_WRITTEN = {}   # (pid, date) -> {'total','invested','fx_json','capital','capital_native'}
 SYMBOL_PRICE_CACHE = {}  # symbol -> price (upsertowane przez scheduler)
 CACHE_MAX_AGE_OK = True  # gdy False, _load_symbol_price_cache zwraca {}
 
@@ -54,10 +54,22 @@ class FakeCursor:
             pid = p[0]
             self.rows = [dict(c) for c in CASH.get(pid, [])]
 
+        elif 'SELECT capital, capital_native FROM portfolio_snapshots' in s:
+            pid, date = p
+            prev = sorted((d, v) for (q, d), v in SNAPSHOTS_WRITTEN.items()
+                          if q == pid and d < date and v.get('capital') is not None)
+            if prev:
+                v = prev[-1][1]
+                self.rows = [(v['capital'], v['capital_native'])]
+
         elif 'INSERT INTO portfolio_snapshots' in s:
-            pid, date, total, invested, fx_json = p
+            pid, date, total, invested, fx_json, capital, capital_native = p
+            old = SNAPSHOTS_WRITTEN.get((pid, date), {})
+            # ON CONFLICT ... capital=COALESCE(istniejący, nowy)
             SNAPSHOTS_WRITTEN[(pid, date)] = {
-                'total': float(total), 'invested': float(invested), 'fx_json': fx_json
+                'total': float(total), 'invested': float(invested), 'fx_json': fx_json,
+                'capital': old.get('capital') if old.get('capital') is not None else capital,
+                'capital_native': old.get('capital_native') if old.get('capital_native') is not None else capital_native,
             }
 
         elif 'FROM fx_rates_history' in s:
@@ -367,6 +379,47 @@ server._repair_partial_snapshots_2026()
 check('repair nie tyka 27.07 (nie ma w TARGETS) mimo -18%',
       REPAIR_SNAPSHOTS[('pidA', '2026-07-27')]['total'] == 14000.0,
       REPAIR_SNAPSHOTS[('pidA', '2026-07-27')])
+
+
+# ── 11. Kapitał własny: scheduler przenosi ostatni znany, nie nadpisuje
+#       dzisiejszego zapisu klienta, a bez historii zostawia pusty ────────────
+fake_psycopg2.connect = lambda *a, **k: FakeConn()   # sekcje 7–10 podmieniły bazę na RepairConn
+reset()
+HOLDINGS['pid1'] = [{'symbol': 'AAPL', 'qty': 10, 'avg_price': 150.0, 'currency': 'USD'}]
+PRICES.update({'AAPL': 180.0})
+YESTERDAY = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+SNAPSHOTS_WRITTEN[('pid1', '2020-01-01')] = {'total': 1.0, 'invested': 1.0, 'fx_json': None,
+                                             'capital': 1.0, 'capital_native': '{"PLN": 1}'}
+SNAPSHOTS_WRITTEN[('pid1', YESTERDAY)] = {'total': 6000.0, 'invested': 5700.0, 'fx_json': None,
+                                          'capital': 5800.0, 'capital_native': '{"USD": 1500}'}
+server._run_daily_snapshots()
+snap = SNAPSHOTS_WRITTEN.get(('pid1', TODAY))
+check('scheduler przenosi kapitał z ostatniego dnia (nie z najstarszego)',
+      snap and snap['capital'] == 5800.0 and snap['capital_native'] == '{"USD": 1500}', snap)
+
+SNAPSHOTS_WRITTEN[('pid1', TODAY)]['capital'] = 6100.0   # klient zapisał dziś po wpłacie
+server._run_daily_snapshots()
+check('dzisiejszy kapitał od klienta nie jest nadpisywany',
+      SNAPSHOTS_WRITTEN[('pid1', TODAY)]['capital'] == 6100.0, SNAPSHOTS_WRITTEN[('pid1', TODAY)])
+
+reset()
+HOLDINGS['pid1'] = [{'symbol': 'AAPL', 'qty': 10, 'avg_price': 150.0, 'currency': 'USD'}]
+PRICES.update({'AAPL': 180.0})
+server._run_daily_snapshots()
+check('bez wcześniejszego kapitału — pusty (klient oszacuje)',
+      SNAPSHOTS_WRITTEN[('pid1', TODAY)]['capital'] is None, SNAPSHOTS_WRITTEN[('pid1', TODAY)])
+
+
+# ── 12. Demo: wartość = pozycje + gotówka, zysk = wartość − kapitał zgadza się
+#       z transakcjami (niezrealizowany + zrealizowany + dywidendy) ─────────
+demo = server._demo_seed_data()
+last = max(demo['snapshots'])
+profit = demo['snapshots'][last] - demo['snapshotsCapital'][last]
+unreal = demo['snapshots'][last] - 12631.0 - demo['snapshotsInvested'][last]
+check('demo: zysk z kapitału = niezrealizowany + 460 zrealizowane + 265 dywidend',
+      abs(profit - (unreal + 460 + 265)) < 0.01, f'profit={profit:.2f} unreal={unreal:.2f}')
+check('demo: kapitał i jego składniki na każdy dzień',
+      set(demo['snapshotsCapital']) == set(demo['snapshots']) == set(demo['snapshotsCapitalNative']))
 
 
 print()

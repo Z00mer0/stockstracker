@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, Cell, LabelList, ReferenceLine, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { axisProps } from '../charts/theme.js';
 
 /**
  * Poziomy wykres słupkowy niezrealizowanego P&L per pozycja.
@@ -11,7 +12,7 @@ export default function UnrealizedPnlBar({ rows, currLabel, locale, fmt, onSymbo
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 52, bottom: 4, left: 8 }}>
-        <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false}
+        <XAxis type="number" {...axisProps}
           tickFormatter={v => Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })} />
         <YAxis
           type="category"

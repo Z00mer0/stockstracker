@@ -10,6 +10,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
+import { wizardPending, WIZARD_DONE_EVENT } from '../SetupWizard.jsx';
 import { useApp } from '../../context/AppContext';
 import { lsSet } from '../../utils/safeStorage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
@@ -18,13 +19,17 @@ const THEME_KEY = 'myfund_theme';
 const COLLAPSE_KEY = 'myfund_sidebar_collapsed';
 
 // Strony, które same nie mają nagłówka — bez tego po przejściu z menu nie było
-// widać, gdzie się jest. Strony z własnym tytułem (Dashboard, AI, Newsy,
-// Zamknięte, OKI, Scenario Lab) celowo tu nie występują.
+// widać, gdzie się jest. Strony z własnym tytułem (Dashboard, AI) celowo
+// tu nie występują.
 const PAGE_HEADINGS = {
   '/portfolio':    ['nav_portfolio',    'page_sub_portfolio'],
   '/history':      ['nav_history',      'page_sub_history'],
+  '/closed':       ['closed_positions_title', 'closed_positions_subtitle'],
   '/transactions': ['nav_transactions', 'page_sub_transactions'],
   '/dividends':    ['nav_dividends',    'page_sub_dividends'],
+  '/news':         ['news_title',       'news_subtitle'],
+  '/oki':          ['nav_oki',          'oki_title'],
+  '/scenario':     ['nav_scenario',     'scenario_subtitle'],
   '/calendar':     ['nav_calendar',     'page_sub_calendar'],
   '/watchlist':    ['nav_watchlist',    'page_sub_watchlist'],
   '/alerts':       ['nav_alerts',       'page_sub_alerts'],
@@ -58,11 +63,19 @@ export default function Layout() {
   // Guard against backend errors (503/timeouts): portfolios stays [] on a failed
   // fetch, so we'd otherwise pop the "create portfolio" modal at users who already
   // have data — during a Render cold start, for example.
+  // Nowe konto: najpierw kreator powitalny, potem to okno (wybrana tam
+  // waluta jest domyślną walutą portfela).
+  const [wizardTick, setWizardTick] = useState(0);
   useEffect(() => {
-    if (isAuthenticated && !loading && !error && portfolios.length === 0) {
+    const onDone = () => setWizardTick(n => n + 1);
+    window.addEventListener(WIZARD_DONE_EVENT, onDone);
+    return () => window.removeEventListener(WIZARD_DONE_EVENT, onDone);
+  }, []);
+  useEffect(() => {
+    if (isAuthenticated && !loading && !error && portfolios.length === 0 && !wizardPending()) {
       setShowNewPortfolio(true);
     }
-  }, [isAuthenticated, loading, error, portfolios.length]);
+  }, [isAuthenticated, loading, error, portfolios.length, wizardTick]);
 
   useEffect(() => { lsSet(COLLAPSE_KEY, collapsed ? '1' : '0'); }, [collapsed]);
 

@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { cx } from './cx.js';
 import { nextTabIndex } from './tabsNav.js';
 
-// Zakładki sekcji strony (np. Atrybucja: Ryzyko / Alokacja / Podatki).
+// Zakładki sekcji strony (np. Analiza: Ryzyko / Alokacja / Podatki).
 // Do przełączania widoku jednej karty (1T…MAX) dalej służy SegmentedControl.
 //
 // `id` spina zakładki z panelami: <Tabs id="an" …/> + <TabPanel tabsId="an" value="risk">.

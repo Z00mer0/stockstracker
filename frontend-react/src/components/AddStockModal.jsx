@@ -1,49 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useT } from '../context/LanguageContext';
-import { useIsMobile } from '../hooks/useIsMobile.js';
+import { Button, Field, Input, Modal, Select, SegmentedControl } from './ui';
+import { cx } from './ui/cx.js';
 
 const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
-const overlay = {
-  position: 'fixed', inset: 0,
-  background: 'rgba(0,0,0,0.72)',
-  backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-  zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-};
-
-const card = {
-  background: 'var(--bg-2)', border: '1px solid var(--border)',
-  borderRadius: 12, padding: 24,
-  width: '100%', maxWidth: 400,
-  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-};
-
-function ToggleGroup({ options, value, onChange }) {
-  return (
-    <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--panel-2)', borderRadius: 8 }}>
-      {options.map(([k, l]) => (
-        <button
-          key={k}
-          type="button"
-          onClick={() => onChange(k)}
-          style={{
-            flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600,
-            border: 'none', borderRadius: 6, cursor: 'pointer',
-            background: value === k ? 'var(--bg-2)' : 'transparent',
-            color: value === k ? 'var(--text)' : 'var(--text-dim)',
-            boxShadow: value === k ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-        >
-          {l}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function AddStockModal({ existingPortfolio, onSave, onClose, initialSymbol = '' }) {
-  const isMobile = useIsMobile();
   const t = useT();
   const [symbol, setSymbol]    = useState(initialSymbol);
   const [mode, setMode]        = useState('qty');
@@ -60,6 +22,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
   const [error, setError]      = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSug, setShowSug]  = useState(false);
+  const [activeSug, setActiveSug] = useState(-1);
   const sugRef = useRef(null);
   const justPicked = useRef(false);
 
@@ -72,8 +35,9 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
         if (!res.ok) return;
         const { results } = await res.json();
         setSuggestions(results ?? []);
+        setActiveSug(-1);
         setShowSug((results ?? []).length > 0);
-      } catch {}
+      } catch { /* podpowiedzi są tylko ułatwieniem */ }
     }, 300);
     return () => clearTimeout(id);
   }, [symbol]);
@@ -94,154 +58,129 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
     else if (s.exchange && (s.exchange.includes('NYSE') || s.exchange.includes('NASDAQ') || s.exchange.includes('NasdaqGS') || s.exchange.includes('NasdaqCM'))) setCurrency('USD');
   }
 
+  function onSymbolKey(e) {
+    if (!showSug || !suggestions.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSug(i => Math.min(suggestions.length - 1, i + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSug(i => Math.max(0, i - 1)); }
+    else if (e.key === 'Enter' && activeSug >= 0) { e.preventDefault(); pickSuggestion(suggestions[activeSug]); }
+    else if (e.key === 'Escape') { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); setShowSug(false); }
+  }
+
+  const existing = existingPortfolio.find(h => h.symbol === symbol.trim().toUpperCase());
+  // Dokupienie istniejącej pozycji musi być w jej walucie: średnia cena
+  // i gotówka liczą się w walucie pozycji. Wcześniej „Dokup" z Portfela
+  // otwierał okno z PLN także dla AAPL — zakup w $ zapisywał się jako zł,
+  // a gotówka schodziła z konta złotówkowego.
+  const effCurrency = existing?.currency ?? currency;
+
   const resolvedQty   = mode === 'qty' ? parseFloat(qty) : parseFloat(totalValue) / parseFloat(price);
   const resolvedPrice = parseFloat(price);
 
-  async function handleSave() {
+  async function handleSave(e) {
+    e?.preventDefault();
     const sym = symbol.trim().toUpperCase();
     if (!sym) { setError(t('err_enter_symbol')); return; }
     if (isNaN(resolvedQty) || resolvedQty <= 0) { setError(t('err_enter_qty')); return; }
     if (isNaN(resolvedPrice) || resolvedPrice <= 0) { setError(t('err_enter_price')); return; }
     setSaving(true); setError('');
     try {
-      await onSave({ symbol: sym, qty: resolvedQty, price: resolvedPrice, currency, date, note: note.trim(), funding });
+      await onSave({ symbol: sym, qty: resolvedQty, price: resolvedPrice, currency: effCurrency, date, note: note.trim(), funding });
       onClose();
-    } catch (e) {
-      setError(e.response?.data?.error || e.message || t('save_error'));
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || t('save_error'));
     } finally {
       setSaving(false);
     }
   }
 
-  const existing = existingPortfolio.find(h => h.symbol === symbol.trim().toUpperCase());
-
   return (
-    <div style={overlay}>
-      <div style={card} onClick={e => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-          {t('add_stock_title')}
-        </h2>
-
-        {/* Symbol */}
-        <div style={{ marginBottom: 16, position: 'relative' }} ref={sugRef}>
-          <label className="field-label">{t('ticker_symbol')}</label>
-          <input
-            className="field-input"
-            placeholder="np. AAPL, PKN.WA, MSFT"
-            value={symbol}
-            onChange={e => { setSymbol(e.target.value); setShowSug(true); }}
-            onFocus={() => suggestions.length > 0 && setShowSug(true)}
-            autoFocus
-            autoComplete="off"
-          />
+    <Modal
+      title={t('add_stock_title')}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button variant="primary" type="submit" form="add-stock" loading={saving}>{t('add_to_portfolio')}</Button>
+        </>
+      }
+    >
+      <form id="add-stock" onSubmit={handleSave} className="grid gap-4">
+        <div className="relative" ref={sugRef}>
+          <Field label={t('ticker_symbol')} hint={t('ticker_hint_gpw')}>
+            <Input
+              placeholder={t('ticker_placeholder')}
+              value={symbol}
+              onChange={e => { setSymbol(e.target.value); setShowSug(true); }}
+              onFocus={() => suggestions.length > 0 && setShowSug(true)}
+              onKeyDown={onSymbolKey}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={showSug && suggestions.length > 0}
+              aria-controls="add-stock-sug"
+              aria-activedescendant={activeSug >= 0 ? `add-stock-sug-${activeSug}` : undefined}
+            />
+          </Field>
           {showSug && suggestions.length > 0 && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
-              background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.5)', overflow: 'hidden', marginTop: 2,
-            }}>
-              {suggestions.map(s => (
-                <div
+            <ul id="add-stock-sug" role="listbox" className="absolute inset-x-0 top-[62px] z-10 max-h-64 overflow-y-auto rounded-card-sm border border-line bg-panel py-1 shadow-pop">
+              {suggestions.map((s, i) => (
+                <li
                   key={s.symbol}
+                  id={`add-stock-sug-${i}`}
+                  role="option"
+                  aria-selected={i === activeSug}
                   onMouseDown={() => pickSuggestion(s)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', transition: 'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--panel-2)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  onMouseEnter={() => setActiveSug(i)}
+                  className={cx('flex cursor-pointer items-center gap-2.5 px-3 py-2', i === activeSug && 'bg-panel-hover')}
                 >
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', minWidth: 72, fontFamily: 'var(--font-mono)' }}>{s.symbol}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                  {s.exchange && <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>{s.exchange}</span>}
-                </div>
+                  <span className="min-w-[72px] font-mono text-[12px] font-bold text-accent-text">{s.symbol}</span>
+                  <span className="min-w-0 flex-1 truncate text-[12px] text-dim">{s.name}</span>
+                  {s.exchange && <span className="shrink-0 text-[10px] text-faint">{s.exchange}</span>}
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>
-            {t('ticker_hint_gpw')}
-          </p>
           {existing && (
-            <p style={{ fontSize: 11, color: 'var(--warn)', marginTop: 4 }}>
+            <p className="mt-1.5 text-[12px] text-warn">
               {t('already_own_prefix')} {existing.qty} {t('already_own_suffix')} {existing.avgPrice} {existing.currency} {t('will_average')}
             </p>
           )}
         </div>
 
-        {/* Mode toggle */}
-        <div style={{ marginBottom: 16 }}>
-          <ToggleGroup
-            options={[['qty', t('mode_qty')], ['value', t('mode_value')]]}
-            value={mode}
-            onChange={setMode}
-          />
-        </div>
+        <SegmentedControl block aria-label={t('mode_qty')} options={[{ value: 'qty', label: t('mode_qty') }, { value: 'value', label: t('mode_value') }]} value={mode} onChange={setMode} />
 
-        {/* Qty + Price */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div>
-            <label className="field-label">{mode === 'qty' ? t('qty_label') : t('value_label')}</label>
-            <input
-              type="number" min="0" step="any"
-              className="field-input"
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={mode === 'qty' ? t('qty_label') : t('value_label')}>
+            <Input
+              type="number" min="0" step="any" inputMode="decimal"
               placeholder={mode === 'qty' ? '10' : '1500'}
               value={mode === 'qty' ? qty : totalValue}
-              onChange={e => mode === 'qty' ? setQty(e.target.value) : setTotal(e.target.value)}
+              onChange={e => (mode === 'qty' ? setQty(e.target.value) : setTotal(e.target.value))}
+              suffix={mode === 'value' ? effCurrency : undefined}
             />
-          </div>
-          <div>
-            <label className="field-label">{t('buy_price_label')}</label>
-            <input
-              type="number" min="0" step="any"
-              className="field-input"
-              placeholder="150.00"
-              value={price}
-              onChange={e => setPrice(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Currency + Date */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div>
-            <label className="field-label">{t('currency_label')}</label>
-            <select className="field-input" value={currency} onChange={e => setCurrency(e.target.value)}>
+          </Field>
+          <Field label={t('buy_price_label')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="150.00" value={price} onChange={e => setPrice(e.target.value)} suffix={effCurrency} />
+          </Field>
+          <Field label={t('currency_label')} hint={existing ? t('currency_from_position') : undefined}>
+            <Select value={effCurrency} disabled={!!existing} onChange={e => setCurrency(e.target.value)}>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="field-label">{t('buy_date_label')}</label>
-            <input type="date" className="field-input" value={date} max={today} onChange={e => setDate(e.target.value)} />
-          </div>
+            </Select>
+          </Field>
+          <Field label={t('buy_date_label')}>
+            <Input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} />
+          </Field>
         </div>
 
-        {/* Note */}
-        <div style={{ marginBottom: 16 }}>
-          <label className="field-label">{t('note_label')}</label>
-          <input
-            className="field-input"
-            placeholder={t('note_placeholder')}
-            value={note}
-            onChange={e => setNote(e.target.value)}
-          />
-        </div>
+        <Field label={t('note_label')}>
+          <Input placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} />
+        </Field>
 
-        {/* Funding */}
-        <div style={{ marginBottom: 20 }}>
-          <label className="field-label">{t('source_of_funds')}</label>
-          <ToggleGroup
-            options={[['topup', t('top_up')], ['cash', t('deduct_cash')]]}
-            value={funding}
-            onChange={setFunding}
-          />
-        </div>
+        <Field label={t('source_of_funds')}>
+          <SegmentedControl block aria-label={t('source_of_funds')} options={[{ value: 'topup', label: t('top_up') }, { value: 'cash', label: t('deduct_cash') }]} value={funding} onChange={setFunding} />
+        </Field>
 
-        {error && <p style={{ fontSize: 12, color: 'var(--down)', marginBottom: 12 }}>{error}</p>}
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? t('saving') : t('add_to_portfolio')}
-          </button>
-        </div>
-      </div>
-    </div>
+        {error && <p role="alert" className="text-small text-down">{error}</p>}
+      </form>
+    </Modal>
   );
 }

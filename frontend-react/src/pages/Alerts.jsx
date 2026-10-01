@@ -1,136 +1,82 @@
-import { useEffect, useState, useMemo } from 'react';
+// src/pages/Alerts.jsx
+import { useEffect, useMemo, useState } from 'react';
+import { BellOff, Trash2, WifiOff } from 'lucide-react';
 import { isAuthed } from '../utils/auth.js';
-import Card from '../components/shared/Card';
 import TickerLogo from '../components/shared/TickerLogo';
+import { PageSkeleton } from '../components/RouteFallback';
 import { useT } from '../context/LanguageContext';
-import {
-  apiLoadWatchlist, apiSaveWatchlist,
-  collectAllAlerts, removeAlertFromItems,
-} from '../services/watchlistService';
+import { useToast } from '../context/ToastContext';
+import { Badge, Card, EmptyState, IconButton, Table } from '../components/ui';
+import { apiLoadWatchlist, apiSaveWatchlist, collectAllAlerts, removeAlertFromItems } from '../services/watchlistService';
 
-function fmtAlert(a, t) {
-  if (a.kind === 'dailyChange') {
-    return `${a.type === 'above' ? '↑' : '↓'} ${a.targetPercent}% dziś`;
-  }
-  if (a.kind === 'week52') {
-    return a.type === 'above' ? `52W ↑ (${t('alert_new_high')})` : `52W ↓ (${t('alert_new_low')})`;
-  }
-  return `${a.type === 'above' ? '↑ powyżej' : '↓ poniżej'} ${a.targetPrice?.toFixed(2)}`;
-}
-
-function modeChip(mode, t) {
-  const label = t(`alert_mode_${mode || 'once'}`);
-  const emoji = mode === 'rearm' ? '↻' : mode === 'repeat' ? '🔁' : '·';
-  return `${emoji} ${label}`;
+function condition(a, t) {
+  if (a.kind === 'dailyChange') return `${a.type === 'above' ? '↑' : '↓'} ${a.targetPercent}% ${t('alerts_today')}`;
+  if (a.kind === 'week52') return a.type === 'above' ? `52W ↑ (${t('alert_new_high')})` : `52W ↓ (${t('alert_new_low')})`;
+  return `${a.type === 'above' ? `↑ ${t('alerts_above')}` : `↓ ${t('alerts_below')}`} ${a.targetPrice?.toFixed(2)}`;
 }
 
 export default function Alerts() {
   const t = useT();
-  const [items, setItems]     = useState([]);
+  const { showToast } = useToast();
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!isAuthed()) { setLoading(false); return; }
     apiLoadWatchlist()
-      .then(data => { setItems(Array.isArray(data) ? data : []); })
-      .catch(e => setError(e.message || 'Nie udało się załadować alertów'))
+      .then(data => setItems(Array.isArray(data) ? data : []))
+      .catch(e => setError(e.message || t('alerts_load_error')))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const allAlerts = useMemo(() => collectAllAlerts(items), [items]);
+  // Uzbrojone najpierw, potem wystrzelone.
+  const alerts = useMemo(() => {
+    const all = collectAllAlerts(items);
+    return [...all.filter(a => !a.triggered), ...all.filter(a => a.triggered)];
+  }, [items]);
 
-  const grouped = useMemo(() => {
-    const armed     = allAlerts.filter(a => !a.triggered);
-    const triggered = allAlerts.filter(a => a.triggered);
-    return { armed, triggered };
-  }, [allAlerts]);
-
-  async function handleRemove(itemId, alertId) {
-    const updated = removeAlertFromItems(items, itemId, alertId);
-    setItems(updated);
-    try { await apiSaveWatchlist(updated); }
-    catch { setError('Nie udało się zapisać zmiany'); }
+  async function save(next, prev) {
+    setItems(next);
+    try { await apiSaveWatchlist(next); return true; } catch {
+      // Wcześniej alert znikał z listy, choć zapis się nie udał.
+      setItems(prev);
+      showToast(t('alerts_save_error'), { type: 'error' });
+      return false;
+    }
   }
 
-  function Row({ a }) {
-    return (
-      <tr>
-        <td>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <TickerLogo symbol={a.symbol} />
-            <span className="mono" style={{ fontWeight: 700, fontSize: 13 }}>{a.symbol}</span>
-          </div>
-        </td>
-        <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t(`alert_kind_${a.kind === 'week52' ? 'week52' : a.kind === 'dailyChange' ? 'daily' : 'price'}`)}</td>
-        <td className="mono" style={{ fontSize: 12 }}>{fmtAlert(a, t)}</td>
-        <td style={{ fontSize: 11, color: 'var(--text-faint)' }}>{modeChip(a.mode, t)}</td>
-        <td style={{ fontSize: 11 }}>
-          {a.triggered
-            ? <span className="chip chip-warn">wystrzelony</span>
-            : <span className="chip chip-up">uzbrojony</span>}
-        </td>
-        <td className="right">
-          <button
-            onClick={() => handleRemove(a.itemId, a.id)}
-            className="chip"
-            style={{ cursor: 'pointer', border: 'none', color: 'var(--text-faint)' }}
-            title={t('click_to_remove')}>
-            ✕
-          </button>
-        </td>
-      </tr>
-    );
+  async function handleRemove(a) {
+    const prev = items;
+    if (await save(removeAlertFromItems(items, a.itemId, a.id), prev)) {
+      showToast(t('alerts_removed').replace('{sym}', a.symbol), {
+        type: 'success',
+        action: { label: t('undo'), onClick: () => save(prev, prev) },
+      });
+    }
   }
 
-  if (loading) {
-    return (
-      <Card title="🔔 Wszystkie alerty">
-        <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>Ładowanie…</div>
-      </Card>
-    );
-  }
+  if (loading) return <PageSkeleton />;
+  if (error) return <EmptyState icon={WifiOff} title={error} className="py-16" />;
 
-  if (error) {
-    return (
-      <Card title="🔔 Wszystkie alerty">
-        <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--down)' }}>{error}</div>
-      </Card>
-    );
-  }
-
+  const kind = a => t(`alert_kind_${a.kind === 'week52' ? 'week52' : a.kind === 'dailyChange' ? 'daily' : 'price'}`);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Card title={`🔔 Wszystkie alerty · ${allAlerts.length}`}>
-        {allAlerts.length === 0 ? (
-          <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-faint)' }}>
-            Brak aktywnych alertów. Ustaw pierwszy z menu ⋯ przy pozycji w portfelu albo z zakładki Obserwowane.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Symbol</th>
-                  <th>Typ</th>
-                  <th>Warunek</th>
-                  <th>Tryb</th>
-                  <th>Status</th>
-                  <th className="right"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {grouped.armed.map(a => <Row key={a.id} a={a} />)}
-                {grouped.triggered.map(a => <Row key={a.id} a={a} />)}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div style={{ padding: '10px 20px', fontSize: 11, color: 'var(--text-faint)', borderTop: '1px solid var(--border)' }}>
-          Alerty sprawdzane są po stronie serwera (co kilka minut) i wysyłane jako powiadomienia push.
-          Włącz push na stronie Obserwowane, żeby dostać powiadomienie nawet przy zamkniętej aplikacji.
-        </div>
-      </Card>
-    </div>
+    <Card title={`${t('nav_alerts')} · ${alerts.length}`}>
+      <Table
+        columns={[
+          { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: a => <span className="flex items-center gap-2"><TickerLogo symbol={a.symbol} /><span className="font-semibold text-fg">{a.symbol}</span></span> },
+          { key: 'kind', header: t('col_type'), render: a => <span className="text-dim">{kind(a)}</span> },
+          { key: 'cond', header: t('alerts_condition'), render: a => <span className="font-medium text-fg">{condition(a, t)}</span> },
+          { key: 'mode', header: t('alerts_mode'), render: a => <span className="text-faint">{t(`alert_mode_${a.mode || 'once'}`)}</span> },
+          { key: 'status', header: t('alerts_status'), mobile: 'aside', render: a => (a.triggered ? <Badge tone="warn">{t('alerts_triggered')}</Badge> : <Badge tone="up">{t('alerts_armed')}</Badge>) },
+          { key: 'x', header: '', align: 'right', render: a => <IconButton size="sm" icon={Trash2} label={`${t('delete_btn')} — ${a.symbol}`} onClick={() => handleRemove(a)} className="hover:text-down" /> },
+        ]}
+        rows={alerts}
+        rowKey={a => a.id}
+        empty={<EmptyState icon={BellOff} title={t('alerts_empty_title')} description={t('alerts_empty_hint')} />}
+      />
+      <p className="border-t border-line px-4 py-2.5 text-[11px] leading-relaxed text-faint">{t('alerts_footer')}</p>
+    </Card>
   );
 }

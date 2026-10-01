@@ -1,14 +1,17 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { Wallet, TrendingUp, TrendingDown, Gauge, Trophy, Download, ChartLine, Info } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import HistoryChart from '../components/HistoryChart';
 import ReturnRateChart from '../components/ReturnRateChart';
 import RollingReturnsChart from '../components/RollingReturnsChart';
-import Spinner from '../components/shared/Spinner';
-import SegmentedControl from '../components/shared/SegmentedControl';
-import Card from '../components/shared/Card';
-import { investedInDisplayAt, investedPlnAt, fxForSnapshot } from '../utils/investedAtDate.js';
+import { PageSkeleton } from '../components/RouteFallback';
+import { Button, Callout, Card, EmptyState, SegmentedControl, Select, Spinner, Stat, Table } from '../components/ui';
+import { cx } from '../components/ui/cx.js';
+import { fxForSnapshot } from '../utils/investedAtDate.js';
+import { snapshotRows } from '../utils/capital.js';
+import { historyStats } from '../utils/historyStats.js';
 import { formatPercent } from '../utils/format.js';
 
 function fmt(n, decimals = 0, locale = 'pl-PL') {
@@ -25,27 +28,6 @@ function fmtDate(iso) {
   if (!iso) return '—';
   const [y, m, d] = iso.split('-');
   return `${d}.${m}.${y}`;
-}
-
-function calcMDD(snapshots) {
-  if (snapshots.length < 2) return null;
-  let peak = -Infinity, peakDate = null;
-  let maxDD = 0, ddStart = null, ddEnd = null;
-  for (const s of snapshots) {
-    if ((s.total ?? 0) > peak) {
-      peak = s.total;
-      peakDate = s.date;
-    }
-    if (peak > 0) {
-      const dd = (peak - (s.total ?? 0)) / peak * 100;
-      if (dd > maxDD) {
-        maxDD = dd;
-        ddStart = peakDate;
-        ddEnd = s.date;
-      }
-    }
-  }
-  return maxDD > 0 ? { pct: maxDD, from: ddStart, to: ddEnd } : null;
 }
 
 const PERIODS_BASE = [
@@ -112,7 +94,7 @@ function generateSynthBench(key, startDate, endDate) {
 }
 
 export default function History() {
-  const { snapshots, loading, invested, displayCurrency, fxRates, transactions } = useApp();
+  const { snapshots, loading, displayCurrency, fxRates, transactions, cash } = useApp();
   // Snapshoty rosnąco — potrzebne, żeby dla wpisu bez zapisanych kursów sięgnąć
   // po kursy najbliższego wcześniejszego snapshotu zamiast po dzisiejsze.
   const snapshotsAsc = useMemo(
@@ -128,15 +110,6 @@ export default function History() {
     return (dayFx && dayFx > 0) ? dayFx : (fxRates[displayCurrency] ?? 1);
   };
   const toDispAt = (v, snap) => v == null ? null : v / displayFxFor(snap);
-  // Invested per snapshot: priorytet ma wartość zapisana w snapshotcie (`snap.invested`
-  // w PLN, dzielone przez frozen fx — jak w wykresie). To odzwierciedla, ile było
-  // faktycznie zainwestowane W TEJ DACIE, więc retroaktywne transakcje z dzisiaj
-  // nie zniekształcają starych wierszy.
-  // Fallback do replay transakcji dla starych snapshotów bez `invested`.
-  const investedAt = (snap) => {
-    if (snap?.invested != null) return toDispAt(snap.invested, snap);
-    return investedInDisplayAt(transactions, snap.date, displayCurrency, fxFor(snap));
-  };
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -152,8 +125,8 @@ export default function History() {
     { key: 'URTH',          label: 'MSCI World' },
     { key: 'PL:WIG',        label: 'WIG' },
     { key: 'PL:WIG20',      label: 'WIG20' },
-    { key: 'SYNTH:CPI_PL',  label: 'Inflacja PL' },
-    { key: 'SYNTH:LOK5',    label: 'Lokata 5%' },
+    { key: 'SYNTH:CPI_PL',  label: t('bench_cpi_pl') },
+    { key: 'SYNTH:LOK5',    label: t('bench_deposit5') },
   ];
 
   const [period, setPeriod] = useState('MAX');
@@ -166,65 +139,65 @@ export default function History() {
     [snapshots]
   );
 
+  const cashPLN = Object.entries(cash ?? {}).reduce((sum, [c, a]) => sum + (a || 0) * (fxRates[c] ?? 1), 0);
+
+  // Snapshoty z kursem dnia, kosztem pozycji i kapitałem własnym (wpłaty −
+  // wypłaty). Kapitał liczymy na całej historii, zanim wytniemy okres —
+  // szacunek dla starszych dni opiera się na pierwszym dniu ze znanym
+  // kapitałem, który może leżeć poza okresem.
+  const allRows = useMemo(
+    () => snapshotRows(snapshots, { transactions, fxRates, cashPLN }),
+    [snapshots, transactions, fxRates, cashPLN]
+  );
+
   const filtered = useMemo(() => {
     const p = PERIODS.find(p => p.key === period);
     if (p?.ytd) {
       const jan1 = `${new Date().getFullYear()}-01-01`;
-      return sorted.filter(s => s.date >= jan1);
+      return allRows.filter(s => s.date >= jan1);
     }
-    if (!p?.days) return sorted;
+    if (!p?.days) return allRows;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - p.days);
     const cutStr = cutoff.toISOString().slice(0, 10);
-    return sorted.filter(s => s.date >= cutStr);
-  }, [sorted, period]);
+    return allRows.filter(s => s.date >= cutStr);
+  }, [allRows, period]);
 
   const latest       = sorted[sorted.length - 1];
-  const filteredFirst = filtered[0];
   const filteredLast  = filtered[filtered.length - 1];
 
-  // KPI scoped to selected period
-  const gainPLN = filteredLast && filteredFirst
-    ? (filteredLast.total ?? 0) - (filteredFirst.total ?? 0) : 0;
-  const gainPct = filteredFirst?.total > 0 ? (gainPLN / filteredFirst.total) * 100 : null;
+  // Zysk, stopa zwrotu (ważona czasem), CAGR i obsunięcie bez wpłat i wypłat —
+  // patrz utils/historyStats.js. W walucie wyświetlania, po kursie z dnia.
+  const inDisplay = rows => rows.map(r => ({ date: r.date, total: toDispAt(r.total, r), capital: toDispAt(r.capital, r) }));
+  const stats = useMemo(
+    () => historyStats(inDisplay(filtered)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, displayCurrency, fxRates]
+  );
+  const allSeries = useMemo(
+    () => historyStats(inDisplay(allRows)).series.map(p => ({ date: p.date, total: p.index })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allRows, displayCurrency, fxRates]
+  );
+  const { profit: gainDisp, twrPct, cagr, days, mdd } = stats;
+  // Ostatni dzień okresu z kapitałem szacowanym (sprzed jego zapisywania).
+  const estimatedUntil = [...filtered].reverse().find(r => r.capitalEstimated)?.date ?? null;
 
-  const days = filteredFirst && filteredLast
-    ? Math.round((new Date(filteredLast.date) - new Date(filteredFirst.date)) / 86400000)
-    : 0;
-  // CAGR: annualized return on invested capital (total / invested ratio), min 90d
-  const cagr = days >= 90 && invested > 0 && filteredLast?.total > 0
-    ? (Math.pow(filteredLast.total / invested, 365 / days) - 1) * 100
-    : null;
   const cagrUnlockStr = cagr == null && sorted.length > 0 ? (() => {
     const unlock = new Date(sorted[0].date);
     unlock.setDate(unlock.getDate() + 90);
-    return unlock.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return unlock.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
   })() : null;
 
-  // Snapshot bez zapisanego `invested` (stare wpisy) dostaje wartość z replay
-  // transakcji do TEJ daty, przeliczoną kursami z tej epoki. Wcześniej wchodził
-  // tu `invested` z kontekstu — czyli DZISIEJSZY koszt po DZISIEJSZYCH kursach,
-  // wstawiony w historyczny wiersz i dzielony przez stary kurs w wykresie.
-  // Taki wiersz zmieniał się codziennie mimo braku transakcji.
-  // `fx` też normalizujemy, żeby wykres liczył tymi samymi kursami co tabela —
-  // HistoryChart ma własny fallback do dzisiejszego kursu i bez tego rysowałby
-  // inne wartości niż wiersze pod spodem.
-  const filteredWithInvested = useMemo(
-    () => filtered.map(s => ({
-      ...s,
-      fx: fxFor(s),
-      invested: s.invested ?? investedPlnAt(transactions, s.date, fxFor(s)),
-    })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filtered, transactions, snapshotsAsc, fxRates]
-  );
+  // Wykres wartości: linia przerywana to kapitał własny, nie koszt pozycji —
+  // wartość obejmuje gotówkę, więc przy koszcie różnica między liniami była
+  // „zyskiem + gotówką".
+  const chartRows = useMemo(() => filtered.map(r => ({ ...r, invested: r.capital })), [filtered]);
 
   const ath = useMemo(
     () => sorted.reduce((best, s) => (s.total ?? 0) > (best?.total ?? 0) ? s : best, null),
     [sorted]
   );
-
-  const mdd = useMemo(() => calcMDD(filtered), [filtered]);
 
   useEffect(() => {
     if (!benchmark) { setBenchData([]); return; }
@@ -276,8 +249,12 @@ export default function History() {
   }, [benchmark, sorted]);
 
   function handleExportHistory() {
-    const headers = [t('col_date'), t('value_pln_header'), t('invested_pln_header')];
-    const rows = sorted.map(s => [s.date, s.total ?? '', s.invested ?? '']);
+    const headers = [t('col_date'), t('value_pln_header'), t('invested_pln_header'), t('capital_pln_header'), t('capital_estimated_header')];
+    const rows = allRows.map(s => [
+      s.date, s.total ?? '', s.invested ?? '',
+      s.capital != null ? Math.round(s.capital * 100) / 100 : '',
+      s.capitalEstimated ? t('capital_estimated_yes') : '',
+    ]);
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -286,145 +263,178 @@ export default function History() {
     URL.revokeObjectURL(url);
   }
 
-  if (loading && !snapshots.length) {
-    return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
-  }
+  if (loading && !snapshots.length) return <PageSkeleton />;
 
   if (!snapshots.length) {
-    return (
-      <div className="text-center py-16" style={{ color: 'var(--text-faint)' }}>
-        <div className="text-5xl mb-3">📈</div>
-        <p style={{ color: 'var(--text-dim)' }} className="font-semibold">{t('no_history')}</p>
-        <p className="text-sm mt-1">{t('history_first_refresh')}</p>
-      </div>
-    );
+    return <EmptyState icon={ChartLine} title={t('no_history')} description={t('history_first_refresh')} className="py-16" />;
   }
 
+  // Wiersze tabeli: najnowsze na górze, Δ względem poprzedniego snapshotu.
+  // Zysk = wartość − kapitał własny (wcześniej wartość − koszt pozycji, czyli
+  // z gotówką liczoną jak zysk, a zakup akcji z gotówki jak strata).
+  const rowsDesc = [...filtered].reverse();
+  const tableRows = rowsDesc.map((s, i) => {
+    const capDisp = toDispAt(s.capital, s);
+    const totDisp = toDispAt(s.total, s);
+    const pl      = totDisp != null && capDisp != null ? totDisp - capDisp : null;
+    const pct     = capDisp > 0 && pl != null ? (pl / capDisp) * 100 : null;
+    const prev    = rowsDesc[i + 1];
+    const prevTot = prev != null ? toDispAt(prev.total, prev) : null;
+    const delta   = prevTot != null && totDisp != null ? totDisp - prevTot : null;
+    return { key: s.date + i, date: s.date, totDisp, capDisp, estimated: s.capitalEstimated, pl, pct, delta };
+  });
+
+  const blur = isPrivate ? 'privacy-blur' : undefined;
+  const upDown = v => (v == null ? 'text-faint' : v >= 0 ? 'text-up' : 'text-down');
+  const signed = v => `${v >= 0 ? '+' : ''}${fmt(v, 0, locale)} ${currLabel}`;
+  const columns = [
+    { key: 'date', header: t('col_date'), sortable: true, firstDir: 'desc', mobile: 'title', render: r => <span className="text-dim">{fmtDate(r.date)}</span> },
+    {
+      key: 'totDisp', header: t('col_value'), align: 'right', sortable: true, firstDir: 'desc', mobile: 'aside',
+      render: r => <span className={cx('font-semibold', r.delta == null ? 'text-fg' : upDown(r.delta), blur)}>{fmt(r.totDisp, 0, locale)} {currLabel}</span>,
+    },
+    {
+      key: 'capDisp', header: t('history_capital'), align: 'right', sortable: true, firstDir: 'desc',
+      render: r => (
+        <span className={cx('text-dim', blur)} title={r.estimated ? t('capital_estimated_title') : undefined}>
+          {r.estimated && r.capDisp != null && '≈ '}{fmt(r.capDisp, 0, locale)} {currLabel}
+        </span>
+      ),
+    },
+    {
+      key: 'pl', header: 'P&L', align: 'right', sortable: true, firstDir: 'desc',
+      render: r => (r.pl == null ? <span className="text-faint">—</span> : (
+        <span className={cx('font-medium', upDown(r.pl), blur)}>
+          {signed(r.pl)}
+          <span className="ml-1 text-[11px] opacity-70">({r.pct >= 0 ? '+' : ''}{fmt(r.pct, 1, locale)}%)</span>
+        </span>
+      )),
+    },
+    {
+      key: 'delta', header: 'Δ', align: 'right', sortable: true, firstDir: 'desc',
+      render: r => (r.delta == null ? <span className="text-faint">—</span> : <span className={cx('text-xs', upDown(r.delta), blur)}>{signed(r.delta)}</span>),
+    },
+  ];
+
+  const benchOptions = BENCHMARKS.map(b => ({ value: b.key ?? 'none', label: b.label }));
+
   return (
-    <div className="space-y-5">
-      {/* KPI grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: t('value_filter'), value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDispAt(filteredLast?.total, filteredLast), currLabel, locale)}</span>, sub: null },
-          { label: t('gain_loss_short'), value: <span className={isPrivate ? 'privacy-blur' : ''} style={{ color: gainPLN >= 0 ? 'var(--up)' : 'var(--down)' }}>{fmtMoney(toDispAt(gainPLN, filteredLast), currLabel, locale)}</span>, sub: gainPct != null ? formatPercent(gainPct, { locale, decimals: 2 }) : null },
-          { label: 'CAGR', value: cagr != null ? formatPercent(cagr, { locale, decimals: 1 }) : '—', sub: cagr == null ? <>{t('cagr_min_days')} ({days} {t('days_of_history')}){cagrUnlockStr && <><br /><span style={{ color: '#888' }}>dostępne ~{cagrUnlockStr}</span></>}</> : null },
-          { label: 'ATH', value: <span className={isPrivate ? 'privacy-blur' : ''}>{fmtMoney(toDispAt(ath?.total, ath), currLabel, locale)}</span>, sub: ath?.date ? fmtDate(ath.date) : null },
-          {
-            label: 'Max Drawdown',
-            value: mdd
-              ? <span style={{ color: mdd.pct > 25 ? 'var(--down)' : mdd.pct > 10 ? 'var(--warn)' : 'var(--up)' }}>{formatPercent(-mdd.pct, { locale, decimals: 1, showSign: false })}</span>
-              : <span style={{ color: 'var(--text-faint)' }}>—</span>,
-            sub: mdd ? `${fmtDate(mdd.from)} → ${fmtDate(mdd.to)}` : t('no_data_short'),
-          },
-        ].map(({ label, value, sub }) => (
-          <div key={label} className="kpi-card">
-            <div className="kpi-label">{label}</div>
-            <div className="kpi-value" style={{ fontSize: 22 }}>{value}</div>
-            {sub && <div className="kpi-sub">{sub}</div>}
-          </div>
-        ))}
+    <div className="space-y-4">
+      {/* Okres i benchmark dotyczą całej strony (kafelki, oba wykresy, tabela) —
+          wcześniej siedziały w karcie pierwszego wykresu, a benchmark był
+          powtórzony w drugiej karcie. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SegmentedControl
+          options={PERIODS.map(p => ({ value: p.key, label: p.label }))}
+          value={period}
+          onChange={setPeriod}
+        />
+        <div className="flex items-center gap-2">
+          <label htmlFor="history-bench" className="text-small text-dim">{t('benchmark_label')}</label>
+          <Select
+            id="history-bench"
+            className="w-40"
+            value={benchmark ?? 'none'}
+            onChange={e => setBenchmark(e.target.value === 'none' ? null : e.target.value)}
+          >
+            {benchOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+          {benchLoading && <Spinner size="sm" label={t('loading')} />}
+        </div>
       </div>
 
-      {/* Wykres kapitału */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat
+          blur={isPrivate}
+          icon={Wallet}
+          label={t('value_filter')}
+          value={fmtMoney(toDispAt(filteredLast?.total, filteredLast), currLabel, locale)}
+        />
+        <Stat
+          blur={isPrivate}
+          icon={gainDisp >= 0 ? TrendingUp : TrendingDown}
+          label={t('gain_loss_short')}
+          tone={gainDisp == null ? undefined : gainDisp >= 0 ? 'up' : 'down'}
+          value={fmtMoney(gainDisp, currLabel, locale)}
+          delta={twrPct != null ? formatPercent(twrPct, { locale, decimals: 2 }) : null}
+          deltaTone={twrPct >= 0 ? 'up' : 'down'}
+          hint={t('history_net_of_deposits')}
+        />
+        <Stat
+          icon={Gauge}
+          label="CAGR"
+          value={cagr != null ? formatPercent(cagr, { locale, decimals: 1 }) : '—'}
+          hint={cagr == null ? (
+            <>
+              {t('cagr_min_days')} ({days} {t('days_of_history')})
+              {cagrUnlockStr && <span className="block text-faint">{t('history_cagr_from').replace('{date}', cagrUnlockStr)}</span>}
+            </>
+          ) : null}
+        />
+        <Stat
+          blur={isPrivate}
+          icon={Trophy}
+          label="ATH"
+          value={fmtMoney(toDispAt(ath?.total, ath), currLabel, locale)}
+          hint={ath?.date ? fmtDate(ath.date) : null}
+        />
+        <Stat
+          className="col-span-2 sm:col-span-1"
+          icon={TrendingDown}
+          label={t('max_drawdown_label')}
+          tone={mdd ? (mdd.pct > 25 ? 'down' : mdd.pct > 10 ? 'warn' : 'up') : undefined}
+          value={mdd ? formatPercent(-mdd.pct, { locale, decimals: 1, showSign: false }) : '—'}
+          hint={mdd ? `${fmtDate(mdd.from)} → ${fmtDate(mdd.to)}` : t('no_data_short')}
+        />
+      </div>
+
+      {estimatedUntil && (
+        <Callout tone="info" icon={Info}>
+          {t('history_capital_estimated').replace('{date}', fmtDate(estimatedUntil))}
+        </Callout>
+      )}
+
       <Card title={t('portfolio_value_tf')}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          <SegmentedControl
-            options={PERIODS.map(p => ({ value: p.key, label: p.label }))}
-            value={period}
-            onChange={setPeriod}
+        <div className="px-4 pb-4 pt-2">
+          <HistoryChart
+            data={chartRows}
+            benchData={benchData}
+            benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
+            displayCurrency={displayCurrency}
+            fxRate={fxRates[displayCurrency] ?? 1}
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{t('benchmark_label')}:</span>
-            <SegmentedControl
-              options={BENCHMARKS.map(b => ({ value: b.key ?? 'none', label: b.label + (benchLoading && benchmark === b.key ? ' …' : '') }))}
-              value={benchmark ?? 'none'}
-              onChange={v => setBenchmark(v === 'none' ? null : v)}
-            />
-          </div>
         </div>
-        <HistoryChart
-          data={filteredWithInvested}
-          benchData={benchData}
-          benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
-          displayCurrency={displayCurrency}
-          fxRate={fxRates[displayCurrency] ?? 1}
-        />
       </Card>
 
-      {/* Wykres stopy zwrotu z benchmarkiem */}
       <Card title={t('return_rate')}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{t('benchmark_label')}:</span>
-          <SegmentedControl
-            options={BENCHMARKS.map(b => ({ value: b.key ?? 'none', label: b.label + (benchLoading && benchmark === b.key ? ' …' : '') }))}
-            value={benchmark ?? 'none'}
-            onChange={v => setBenchmark(v === 'none' ? null : v)}
+        <div className="px-4 pb-4 pt-2">
+          {/* Indeks TWR zamiast wartość / pierwsza wartość — wpłaty nie są zwrotem. */}
+          <ReturnRateChart
+            data={stats.series.map(p => ({ date: p.date, total: p.index }))}
+            benchData={benchData}
+            benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
           />
+          <p className="mt-2 text-small text-faint">{t('history_twr_note')}</p>
         </div>
-        <ReturnRateChart
-          data={filteredWithInvested}
-          benchData={benchData}
-          benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
+      </Card>
+
+      <Card title={t('rolling_returns')} collapsible collapseKey="history_rolling">
+        <div className="px-4 pb-4 pt-2">
+          <RollingReturnsChart data={allSeries} />
+        </div>
+      </Card>
+
+      <Card
+        title={`${period === 'MAX' ? t('all_snapshots') : `${t('snapshots_last')} ${PERIODS.find(p => p.key === period)?.label}`} · ${filtered.length}`}
+        actions={<Button size="sm" icon={Download} onClick={handleExportHistory}>{t('tx_export_csv')}</Button>}
+      >
+        <Table
+          columns={columns}
+          rows={tableRows}
+          rowKey={r => r.key}
+          defaultSort={{ key: 'date', dir: 'desc' }}
+          pageSize={50}
         />
-      </Card>
-
-      {/* Rolling Returns */}
-      <Card title={t('rolling_returns')}>
-        <RollingReturnsChart data={sorted} />
-      </Card>
-
-      {/* Tabela */}
-      <Card title={period === 'MAX' ? t('all_snapshots') : `${t('snapshots_last')} ${PERIODS.find(p => p.key === period)?.label}`}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <button onClick={handleExportHistory} className="btn" style={{ fontSize: 11 }}>{t('export_csv')}</button>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 8, alignSelf: 'center' }}>{filtered.length} {t('entries')}</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('col_date')}</th>
-                <th className="right">{t('col_value')}</th>
-                <th className="right">{t('invested_label')}</th>
-                <th className="right">P&L</th>
-                <th className="right">Δ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                const rows = [...filtered].reverse();
-                return rows.map((s, i) => {
-                  // Invested z replay transakcji (nie z zapisanego PLN → nie "oddycha" z fx).
-                  const invDisp = investedAt(s);
-                  const totDisp = toDispAt(s.total, s);
-                  const pl      = totDisp != null && invDisp != null ? totDisp - invDisp : null;
-                  const pct     = invDisp > 0 && pl != null ? (pl / invDisp) * 100 : null;
-                  const prev    = rows[i + 1];
-                  const prevTot = prev != null ? toDispAt(prev.total, prev) : null;
-                  const delta   = prevTot != null && totDisp != null ? totDisp - prevTot : null;
-                  const deltaUp = delta != null && delta >= 0;
-                  const valueUp = prevTot != null && totDisp != null ? totDisp >= prevTot : null;
-                  return (
-                    <tr key={s.date + i}>
-                      <td style={{ color: 'var(--text-dim)' }}>{fmtDate(s.date)}</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{
-                        color: valueUp === true ? 'var(--up)' : valueUp === false ? 'var(--down)' : 'var(--text)',
-                        fontWeight: 600,
-                      }}>{fmt(totDisp, 0, locale)} {currLabel}</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: 'var(--text-dim)' }}>{fmt(invDisp, 0, locale)} {currLabel}</td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ color: pl == null ? 'var(--text-faint)' : pl >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 500 }}>
-                        {pl == null ? '—' : <>{pl >= 0 ? '+' : ''}{fmt(pl, 0, locale)} {currLabel}<span style={{ fontSize: 11, marginLeft: 4, opacity: 0.7 }}>({pct >= 0 ? '+' : ''}{fmt(pct, 1, locale)}%)</span></>}
-                      </td>
-                      <td className={`right mono${isPrivate ? ' privacy-blur' : ''}`} style={{ fontSize: 12, color: delta == null ? 'var(--text-faint)' : deltaUp ? 'var(--up)' : 'var(--down)' }}>
-                        {delta == null ? '—' : `${deltaUp ? '+' : ''}${fmt(delta, 0, locale)} ${currLabel}`}
-                      </td>
-                    </tr>
-                  );
-                });
-              })()}
-            </tbody>
-          </table>
-        </div>
       </Card>
     </div>
   );

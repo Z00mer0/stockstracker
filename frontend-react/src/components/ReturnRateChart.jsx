@@ -79,7 +79,7 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
   const benchPath     = hasBench ? buildPath(benchPct) : null;
   const lastPct       = portfolioPct[portfolioPct.length - 1];
   const isUp          = lastPct >= 0;
-  const lineColor     = isUp ? '#10b981' : '#f43f5e';
+  const lineColor     = isUp ? 'var(--up)' : 'var(--down)';
   const zeroY         = yScale(0);
 
   const areaPath = `${portfolioPath} L${xScale(data.length - 1).toFixed(1)},${zeroY.toFixed(1)} L${M.left.toFixed(1)},${zeroY.toFixed(1)} Z`;
@@ -120,8 +120,8 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
       >
         <defs>
           <linearGradient id="rr-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={lineColor} stopOpacity="0.18" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
+            <stop offset="0%"   style={{ stopColor: lineColor, stopOpacity: 0.18 }} />
+            <stop offset="100%" style={{ stopColor: lineColor, stopOpacity: 0.02 }} />
           </linearGradient>
         </defs>
 
@@ -130,8 +130,8 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
           return (
             <g key={i}>
               <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
-                stroke="#334155" strokeDasharray="3,3" strokeWidth={0.5} />
-              <text x={svgWidth - M.right + 4} y={y + 4} fill="#64748b" fontSize={10} textAnchor="start">
+                stroke="var(--border)" strokeDasharray="3,3" strokeWidth={0.5} />
+              <text x={svgWidth - M.right + 4} y={y + 4} fill="var(--text-faint)" fontSize={10} textAnchor="start">
                 {v >= 0 ? '+' : ''}{v.toFixed(1)}%
               </text>
             </g>
@@ -140,12 +140,12 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
 
         {/* Zero baseline */}
         <line x1={M.left} x2={svgWidth - M.right} y1={zeroY} y2={zeroY}
-          stroke="#475569" strokeWidth={1} />
+          stroke="var(--border-strong)" strokeWidth={1} />
 
         <path d={areaPath} fill="url(#rr-area)" />
 
         {hasBench && benchPath && (
-          <path d={benchPath} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4,2" opacity={0.8} />
+          <path d={benchPath} fill="none" stroke="var(--warn)" strokeWidth={1.5} strokeDasharray="4,2" opacity={0.8} />
         )}
 
         <path d={portfolioPath} fill="none" stroke={lineColor} strokeWidth={2} strokeLinejoin="round" />
@@ -153,17 +153,17 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
         {tooltip && (
           <>
             <line x1={tooltip.x} x2={tooltip.x} y1={M.top} y2={M.top + H}
-              stroke="#64748b" strokeWidth={1} strokeDasharray="2,2" />
+              stroke="var(--text-faint)" strokeWidth={1} strokeDasharray="2,2" />
             <circle cx={tooltip.x} cy={yScale(tooltip.portfolioPct ?? 0)} r={4}
-              fill={lineColor} stroke="#1e293b" strokeWidth={2} />
+              fill={lineColor} stroke="var(--panel)" strokeWidth={2} />
           </>
         )}
 
         <line x1={M.left} x2={svgWidth - M.right} y1={M.top + H} y2={M.top + H}
-          stroke="#334155" strokeWidth={0.5} />
+          stroke="var(--border)" strokeWidth={0.5} />
 
         {dateLabels.map(({ i, date }) => (
-          <text key={i} x={xScale(i)} y={M.top + H + 17} fill="#64748b" fontSize={9} textAnchor="middle">
+          <text key={i} x={xScale(i)} y={M.top + H + 17} fill="var(--text-faint)" fontSize={9} textAnchor="middle">
             {fmtXDate(date)}
           </text>
         ))}
@@ -203,7 +203,7 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
         {hasBench && benchLabel && (
           <div className="flex items-center gap-1.5">
             <svg width="16" height="4">
-              <line x1="0" y1="2" x2="16" y2="2" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4,2" />
+              <line x1="0" y1="2" x2="16" y2="2" stroke="var(--warn)" strokeWidth="1.5" strokeDasharray="4,2" />
             </svg>
             {benchLabel}
           </div>

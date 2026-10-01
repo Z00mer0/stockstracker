@@ -13,6 +13,7 @@ import UnrealizedPnlBar from '../../components/shared/UnrealizedPnlBar';
 import { Button, EmptyState, SegmentedControl } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
 import { fmt } from './positionCells.jsx';
+import { axisProps, tooltipProps } from '../../components/charts/theme.js';
 
 // Karty na górze Portfela, które można przeciągać i zmieniać im rozmiar
 // („Edytuj układ"). Układ zapamiętywany osobno dla portfela i dla telefonu.
@@ -308,13 +309,12 @@ export default function PortfolioOverview({
                             <stop offset="95%" stopColor="var(--down)" stopOpacity={0.02} />
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false}
+                        <XAxis dataKey="date" {...axisProps}
                           tickFormatter={d => { if (!d) return ''; const [, m, day] = d.split('-'); return `${day}.${m}`; }} />
-                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-faint)' }} tickLine={false} axisLine={false} width={60}
+                        <YAxis {...axisProps} width={60}
                           tickFormatter={v => Number(v).toLocaleString(locale, { maximumFractionDigits: 0 })} />
                         <Tooltip
-                          contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                          labelStyle={{ color: 'var(--text-dim)', marginBottom: 4 }}
+                          {...tooltipProps}
                           formatter={v => [`${v >= 0 ? '+' : ''}${fmt(v, 2, locale)} ${portCurrLabel}`, t('pf_pl_cum')]}
                           labelFormatter={d => { if (!d) return ''; const [y, m, day] = d.split('-'); return `${day}.${m}.${y}`; }}
                         />

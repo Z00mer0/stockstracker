@@ -1,10 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, CalendarDays, BarChart3, Coins, Trash2, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useT } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 import useCalendarData from '../hooks/useCalendarData';
 import useDividendEvents from '../hooks/useDividendEvents';
-import Spinner from '../components/shared/Spinner';
-import Card from '../components/shared/Card';
+import { PageSkeleton } from '../components/RouteFallback';
+import { Button, Card, EmptyState, IconButton, Select, Skeleton, Spinner } from '../components/ui';
+import { cx } from '../components/ui/cx.js';
 
 function getMonday(date) {
   const d = new Date(date);
@@ -26,37 +29,27 @@ function addDays(date, n) {
   return d;
 }
 
-function dotColor(ev) {
-  if (ev.type === 'EARN') return 'var(--info)';
-  if (ev.type === 'DIV')  return 'var(--warn)';
-  if (ev.impact === 'High') return 'var(--down)';
-  if (ev.impact === 'Medium') return 'var(--warn)';
-  return 'var(--text-faint)';
+function dotClass(ev) {
+  if (ev.type === 'EARN') return 'bg-info';
+  if (ev.type === 'DIV') return 'bg-warn';
+  if (ev.impact === 'High') return 'bg-down';
+  if (ev.impact === 'Medium') return 'bg-warn';
+  return 'bg-faint';
 }
 
-function impactBar(impact) {
-  if (impact === 'High')   return 'var(--down)';
-  if (impact === 'Medium') return 'var(--warn)';
-  return 'var(--text-faint)';
-}
-
-const IMPACT_OPTS  = ['All', 'High', 'Medium', 'Low'];
-const COUNTRY_OPTS = [
-  { label: 'All',  value: null },
-  { label: 'USD',  value: 'USD' },
-  { label: 'EUR',  value: 'EUR' },
-  { label: 'GBP',  value: 'GBP' },
-  { label: 'PLN',  value: 'PLN' },
-];
+const IMPACT_OPTS = ['All', 'High', 'Medium', 'Low'];
+const COUNTRIES = ['USD', 'EUR', 'GBP', 'PLN'];
 
 export default function Calendar() {
   const t = useT();
+  const { locale } = useLanguage();
+  const { showToast } = useToast();
   const DAY_NAMES  = t('day_names');
   const MONTH_NAMES = t('months');
   const { portfolio, loading: appLoading } = useApp();
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { events: calEvents, loading: calLoading } = useCalendarData(symbols);
-  const { allCalendarEvents: divEvents, loading: divLoading, deleteDividend } = useDividendEvents(symbols);
+  const { allCalendarEvents: divEvents, manualDividends, loading: divLoading, deleteDividend, addDividend } = useDividendEvents(symbols);
 
   // Połącz makro+earnings z dywidendami, posortuj po dacie
   const events = useMemo(() =>
@@ -133,273 +126,153 @@ export default function Calendar() {
 
   const prevMonth = () => setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   const nextMonth = () => setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-  const goToday   = () => {
+  const goToday = () => {
     const d = new Date();
     setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
     setSelectedDay(null);
   };
 
-  if (appLoading && !portfolio.length) {
-    return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  // Ręczna dywidenda znikała jednym kliknięciem „×" — teraz z „Cofnij".
+  function removeDividend(ev) {
+    const original = manualDividends.find(d => d.id === ev.id);
+    deleteDividend(ev.id);
+    if (original) {
+      const { id: _id, addedAt: _a, isManual: _m, ...rest } = original;
+      showToast(t('cal_div_removed').replace('{sym}', ev.symbol), { type: 'success', action: { label: t('undo'), onClick: () => addDividend(rest) } });
+    }
   }
 
+  if (appLoading && !portfolio.length) return <PageSkeleton />;
+
+  const monthLabel = `${Array.isArray(MONTH_NAMES) ? MONTH_NAMES[currentMonth.getMonth()] : ''} ${currentMonth.getFullYear()}`;
+  const fmtDay = iso => new Date(`${iso}T12:00:00`).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
+  const impactLabel = o => (o === 'All' ? t('cal_all') : t(`cal_impact_${o.toLowerCase()}`));
+
   return (
-    <div className="space-y-5">
-      {/* Month grid */}
-      <Card style={{ padding: '1.25rem' }}>
-        {/* Header: navigation */}
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={prevMonth}
-              className="btn btn-ghost w-8 h-8 flex items-center justify-center text-lg"
-            >‹</button>
-            <h2 className="text-sm font-semibold w-36 text-center" style={{ color: 'var(--text)' }}>
-              {Array.isArray(MONTH_NAMES) ? MONTH_NAMES[currentMonth.getMonth()] : ''} {currentMonth.getFullYear()}
-            </h2>
-            <button
-              onClick={nextMonth}
-              className="btn btn-ghost w-8 h-8 flex items-center justify-center text-lg"
-            >›</button>
-          </div>
-          <div className="flex items-center gap-3">
-            {loading && <Spinner size="sm" />}
-            <button
-              onClick={goToday}
-              className="btn"
-            >
-              {t('today')}
-            </button>
-            {selectedDay && (
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="text-xs transition-colors"
-                style={{ color: 'var(--info)' }}
-              >
-                {t('show_all')}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: '320px' }}>
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-1 mb-1">
-              {DAY_NAMES.map(n => (
-                <div key={n} className="text-center text-xs py-0.5" style={{ color: 'var(--text-faint)' }}>{n}</div>
-              ))}
+    <div className="space-y-4">
+      <Card>
+        <div className="p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <IconButton icon={ChevronLeft} label={t('cal_prev_month')} onClick={prevMonth} />
+              <h2 className="w-40 text-center text-[15px] font-semibold text-fg" aria-live="polite">{monthLabel}</h2>
+              <IconButton icon={ChevronRight} label={t('cal_next_month')} onClick={nextMonth} />
             </div>
+            <div className="flex items-center gap-2">
+              {loading && <Spinner size="sm" label={t('loading')} />}
+              <Button size="sm" onClick={goToday}>{t('today')}</Button>
+              {selectedDay && <Button size="sm" variant="ghost" icon={X} onClick={() => setSelectedDay(null)}>{t('show_all').replace(/\s*×$/, '')}</Button>}
+            </div>
+          </div>
 
-            {/* Weeks */}
-            {weeks.map((week, wi) => (
-              <div key={wi} className="grid grid-cols-7 gap-1 mb-1">
-                {week.map(date => {
-                  const dayEvs    = byDate[date] ?? [];
-                  const isToday    = date === today;
-                  const isSelected = date === selectedDay;
-                  const isPast     = date < today;
-                  const inMonth    = date.startsWith(curMonthStr);
+          <div className="grid grid-cols-7 gap-1">
+            {DAY_NAMES.map(n => <div key={n} className="py-0.5 text-center text-[11px] font-semibold uppercase text-faint">{n}</div>)}
+            {weeks.flat().map(date => {
+              const dayEvs = byDate[date] ?? [];
+              const isToday = date === today;
+              const isSelected = date === selectedDay;
+              const inMonth = date.startsWith(curMonthStr);
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${fmtDay(date)}${dayEvs.length ? ` · ${dayEvs.length} ${t('events_label').toLowerCase()}` : ''}`}
+                  onClick={() => setSelectedDay(isSelected ? null : date)}
+                  className={cx(
+                    'rounded-card-sm border px-0.5 py-1.5 text-center transition-colors',
+                    isSelected ? 'border-accent bg-accent text-accent-fg'
+                      : isToday ? 'border-accent bg-panel-2' : 'border-transparent hover:bg-panel-hover',
+                  )}
+                >
+                  <span className={cx('mb-1 block text-xs font-medium', isSelected ? 'text-accent-fg' : !inMonth ? 'text-faint opacity-40' : date < today ? 'text-faint' : 'text-fg')}>
+                    {parseInt(date.slice(8), 10)}
+                  </span>
+                  <span className="flex min-h-2 flex-wrap justify-center gap-0.5">
+                    {dayEvs.slice(0, 4).map((ev, i) => <span key={i} className={cx('h-1.5 w-1.5 rounded-full', dotClass(ev))} />)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-                  let cellStyle;
-                  if (isSelected) {
-                    cellStyle = {
-                      background: 'var(--accent)',
-                      border: '1px solid var(--accent)',
-                      borderRadius: 6,
-                    };
-                  } else if (isToday) {
-                    cellStyle = {
-                      background: 'var(--panel-2)',
-                      border: '1px solid var(--accent)',
-                      borderRadius: 6,
-                    };
-                  } else {
-                    cellStyle = {
-                      border: '1px solid transparent',
-                      borderRadius: 6,
-                    };
-                  }
-
-                  let dayNumColor;
-                  if (!inMonth) {
-                    dayNumColor = 'var(--text-faint)';
-                  } else if (isPast && !isToday) {
-                    dayNumColor = 'var(--text-faint)';
-                  } else if (isSelected) {
-                    dayNumColor = '#fff';
-                  } else {
-                    dayNumColor = 'var(--text)';
-                  }
-
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => setSelectedDay(isSelected ? null : date)}
-                      className="py-1.5 px-0.5 text-center transition-colors"
-                      style={cellStyle}
-                    >
-                      <div
-                        className="text-xs font-medium mb-1"
-                        style={{
-                          color: dayNumColor,
-                          opacity: !inMonth ? 0.35 : undefined,
-                        }}
-                      >
-                        {parseInt(date.slice(8), 10)}
-                      </div>
-                      <div className="flex flex-wrap justify-center gap-0.5 min-h-[8px]">
-                        {dayEvs.slice(0, 4).map((ev, i) => (
-                          <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: dotColor(ev) }} />
-                        ))}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="mt-3 flex flex-wrap gap-4 border-t border-line pt-3 text-xs text-faint">
+            {[['bg-info', 'earn_legend'], ['bg-warn', 'div_macro_legend'], ['bg-down', 'macro_high_legend'], ['bg-faint', 'macro_low_legend']].map(([c, k]) => (
+              <span key={k} className="flex items-center gap-1.5"><span className={cx('h-2 w-2 rounded-full', c)} />{t(k)}</span>
             ))}
           </div>
-        </div>
-
-        {/* Legend */}
-        <div
-          className="flex flex-wrap gap-4 mt-3 pt-3 text-xs"
-          style={{
-            borderTop: '1px solid var(--border)',
-            color: 'var(--text-faint)',
-          }}
-        >
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--info)' }} /> {t('earn_legend')}</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--warn)' }} /> {t('div_macro_legend')}</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--down)' }} /> {t('macro_high_legend')}</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: 'var(--text-faint)' }} /> {t('macro_low_legend')}</div>
         </div>
       </Card>
 
-      {/* Event list */}
-      <Card style={{ overflow: 'hidden', padding: 0 }}>
-        <div
-          className="px-5 py-3 flex flex-wrap items-center gap-3"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <h2 className="text-sm font-semibold mr-auto" style={{ color: 'var(--text)' }}>
-            {selectedDay ? `${t('events_label')}: ${selectedDay}` : `${t('events_label')} — ${Array.isArray(MONTH_NAMES) ? MONTH_NAMES[currentMonth.getMonth()] : ''} ${currentMonth.getFullYear()}`}
-          </h2>
-          {/* Impact filter */}
-          <div className="flex gap-1">
-            {IMPACT_OPTS.map(opt => (
-              <button
-                key={opt}
-                onClick={() => setFilterImpact(opt)}
-                className={filterImpact === opt ? 'btn btn-primary' : 'btn btn-ghost'}
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.625rem' }}
-              >{opt}</button>
-            ))}
+      <Card
+        title={selectedDay ? `${t('events_label')}: ${fmtDay(selectedDay)}` : `${t('events_label')} — ${monthLabel}`}
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Select aria-label={t('cal_impact')} value={filterImpact} onChange={e => setFilterImpact(e.target.value)} className="w-44">
+              {IMPACT_OPTS.map(o => <option key={o} value={o}>{t('cal_impact')}: {impactLabel(o)}</option>)}
+            </Select>
+            <Select aria-label={t('currency_label')} value={filterCountry ?? ''} onChange={e => setFilterCountry(e.target.value || null)} className="w-44">
+              <option value="">{t('currency_label')}: {t('cal_all')}</option>
+              {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </Select>
           </div>
-          {/* Country filter */}
-          <div className="flex gap-1">
-            {COUNTRY_OPTS.map(({ label, value }) => (
-              <button
-                key={label}
-                onClick={() => setFilterCountry(value)}
-                className={filterCountry === value ? 'btn btn-primary' : 'btn btn-ghost'}
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.625rem' }}
-              >{label}</button>
-            ))}
-          </div>
-        </div>
-
+        )}
+      >
         {loading && listEvents.length === 0 ? (
-          <div style={{ padding: '0.75rem 1.25rem' }}>
-            {[...Array(6)].map((_, i) => (
-              <div key={i} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border)', padding: '0.75rem 0', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <div style={{ width: 4, height: 20, borderRadius: 4, background: '#2a2d3a', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ height: 12, borderRadius: 4, background: '#2a2d3a', width: `${45 + (i % 3) * 20}%`, marginBottom: 6 }} />
-                  <div style={{ height: 10, borderRadius: 4, background: '#2a2d3a', width: `${25 + (i % 4) * 10}%` }} />
-                </div>
+          <div className="grid gap-4 px-4 py-4" aria-busy="true">
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-5 w-1" />
+                <div className="grid flex-1 gap-1.5"><Skeleton className={cx('h-3', ['w-1/2', 'w-2/3', 'w-5/6'][i % 3])} /><Skeleton className="h-2.5 w-1/4" /></div>
               </div>
             ))}
           </div>
         ) : groupedList.length === 0 ? (
-          <div className="px-5 py-8 text-center" style={{ color: 'var(--text-faint)' }}>
-            <p>{t('no_events')}</p>
-            {!symbols.length && <p className="text-xs mt-1">{t('add_to_portfolio_hint')}</p>}
-          </div>
+          <EmptyState icon={CalendarDays} title={t('no_events')} description={!symbols.length ? t('add_to_portfolio_hint') : undefined} />
         ) : (
-          <div>
-            {groupedList.map(({ date, items }) => (
-              <div key={date}>
-                <div
-                  className="px-5 py-2 text-xs font-semibold tracking-wide uppercase"
-                  style={
-                    date === today
-                      ? { color: 'var(--info)', background: 'var(--panel-2)' }
-                      : { color: 'var(--text-faint)', background: 'var(--bg)' }
-                  }
-                >
-                  {date}{date === today ? ` — ${t('today')}` : ''}
+          groupedList.map(({ date, items }) => (
+            <section key={date}>
+              <h3 className={cx('px-4 py-2 text-label font-semibold uppercase', date === today ? 'bg-panel-2 text-info' : 'bg-bg text-faint')}>
+                {fmtDay(date)}{date === today ? ` — ${t('today')}` : ''}
+              </h3>
+              {items.map((ev, i) => (
+                <div key={i} className="flex items-start gap-3 border-t border-line px-4 py-3">
+                  {ev.type === 'EARN' ? (
+                    <>
+                      <BarChart3 size={18} aria-hidden className="mt-0.5 shrink-0 text-info" />
+                      <div className="text-[13px]"><span className="font-semibold text-fg">{ev.symbol}</span><span className="ml-2 text-xs text-dim">{t('financial_results')}</span></div>
+                    </>
+                  ) : ev.type === 'DIV' ? (
+                    <>
+                      <Coins size={18} aria-hidden className="mt-0.5 shrink-0 text-warn" />
+                      <div className="min-w-0 flex-1 text-[13px]">
+                        <span className="font-semibold text-fg">{ev.symbol}</span>
+                        <span className="ml-2 text-xs text-dim">{t('ex_dividend')}</span>
+                        {ev.amount != null && <span className="ml-2 text-xs font-medium text-warn">{Number(ev.amount).toFixed(2)} {ev.currency ?? ''}</span>}
+                        {ev.projected && <span className="ml-2 text-xs text-faint">{t('forecast_approx')}</span>}
+                        {ev.isManual && <span className="ml-2 text-xs text-faint">{t('manual_source')}</span>}
+                      </div>
+                      {ev.isManual && <IconButton size="sm" icon={Trash2} label={`${t('delete_btn')} — ${ev.symbol}`} onClick={() => removeDividend(ev)} className="hover:text-down" />}
+                    </>
+                  ) : (
+                    <>
+                      <span className={cx('mt-0.5 h-5 w-1 shrink-0 rounded-full', ev.impact === 'High' ? 'bg-down' : ev.impact === 'Medium' ? 'bg-warn' : 'bg-faint')} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] text-fg">{ev.title}</div>
+                        <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-faint">
+                          {ev.currency && <span className="font-medium text-dim">{ev.currency}</span>}
+                          {ev.time && <span>{ev.time}</span>}
+                          {ev.forecast && <span>{t('forecast_colon')} <span className="text-fg">{ev.forecast}</span></span>}
+                          {ev.previous && <span>{t('previous_colon')} <span className="text-dim">{ev.previous}</span></span>}
+                        </div>
+                      </div>
+                      {ev.actual && <span className="shrink-0 text-[13px] font-semibold text-fg">{ev.actual}</span>}
+                    </>
+                  )}
                 </div>
-                {items.map((ev, i) => (
-                  <div
-                    key={i}
-                    className="px-5 py-3 flex items-start gap-3 transition-colors"
-                    style={{ borderTop: '1px solid var(--border)' }}
-                  >
-                    {ev.type === 'EARN' ? (
-                      <>
-                        <span className="text-lg leading-none mt-0.5">📊</span>
-                        <div>
-                          <span className="font-semibold" style={{ color: 'var(--text)' }}>{ev.symbol}</span>
-                          <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>{t('financial_results')}</span>
-                        </div>
-                      </>
-                    ) : ev.type === 'DIV' ? (
-                      <>
-                        <span className="text-lg leading-none mt-0.5">💰</span>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold" style={{ color: 'var(--text)' }}>{ev.symbol}</span>
-                          <span className="text-xs ml-2" style={{ color: 'var(--text-dim)' }}>{t('ex_dividend')}</span>
-                          {ev.amount != null && (
-                            <span className="text-xs ml-2 font-medium" style={{ color: 'var(--warn)' }}>{Number(ev.amount).toFixed(2)} {ev.currency ?? ''}</span>
-                          )}
-                          {ev.projected && (
-                            <span className="text-xs ml-2" style={{ color: 'var(--text-faint)' }}>{t('forecast_approx')}</span>
-                          )}
-                          {ev.isManual && (
-                            <span className="text-xs ml-2" style={{ color: 'var(--text-faint)' }}>{t('manual_source')}</span>
-                          )}
-                        </div>
-                        {ev.isManual && (
-                          <button
-                            onClick={() => deleteDividend(ev.id)}
-                            style={{ fontSize: 16, lineHeight: 1, color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
-                            title={t('delete_btn')}
-                          >×</button>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-1 h-5 rounded-full shrink-0 mt-0.5" style={{ background: impactBar(ev.impact) }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm" style={{ color: 'var(--text)' }}>{ev.title}</div>
-                          <div className="flex flex-wrap gap-2 text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                            {ev.currency && <span className="font-medium" style={{ color: 'var(--text-dim)' }}>{ev.currency}</span>}
-                            {ev.time && <span>{ev.time}</span>}
-                            {ev.forecast && <span>{t('forecast_colon')} <span style={{ color: 'var(--text)' }}>{ev.forecast}</span></span>}
-                            {ev.previous && <span>{t('previous_colon')} <span style={{ color: 'var(--text-dim)' }}>{ev.previous}</span></span>}
-                          </div>
-                        </div>
-                        {ev.actual ? (
-                          <span className="font-semibold text-sm shrink-0" style={{ color: 'var(--text)' }}>{ev.actual}</span>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+              ))}
+            </section>
+          ))
         )}
       </Card>
     </div>

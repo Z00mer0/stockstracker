@@ -1,6 +1,9 @@
 // src/context/ChartContext.jsx
-import React, { createContext, useContext, useState } from 'react';
-import AdvancedPriceChart from '../components/AdvancedPriceChart';
+import { createContext, lazy, Suspense, useContext, useState } from 'react';
+
+// Wykres zaawansowany dociągany dopiero przy otwarciu — nie obciąża
+// pierwszego wczytania aplikacji.
+const AdvancedPriceChart = lazy(() => import('../components/AdvancedPriceChart'));
 
 const ChartContext = createContext(null);
 
@@ -11,7 +14,9 @@ export function ChartProvider({ children }) {
     <ChartContext.Provider value={{ openChart: setSymbol }}>
       {children}
       {symbol && (
-        <AdvancedPriceChart symbol={symbol} onClose={() => setSymbol(null)} />
+        <Suspense fallback={null}>
+          <AdvancedPriceChart symbol={symbol} onClose={() => setSymbol(null)} />
+        </Suspense>
       )}
     </ChartContext.Provider>
   );
