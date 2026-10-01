@@ -1,6 +1,6 @@
 // src/components/layout/Layout.jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { lazy, useState, useEffect, useRef, useCallback } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Suspense } from 'react';
 import RouteFallback from '../RouteFallback';
 import PageHeader from '../ui/PageHeader.jsx';
@@ -9,11 +9,17 @@ import { useT } from '../../context/LanguageContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
+import OfflineBanner from './OfflineBanner.jsx';
 import NewPortfolioModal from '../NewPortfolioModal.jsx';
 import { wizardPending, WIZARD_DONE_EVENT } from '../SetupWizard.jsx';
 import { useApp } from '../../context/AppContext';
 import { lsSet } from '../../utils/safeStorage.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+
+// Paleta ⌘K i okna, które z niej otwieramy — dociągane dopiero przy użyciu.
+const CommandPalette = lazy(() => import('../CommandPalette.jsx'));
+const StockDetailModal = lazy(() => import('../StockDetailModal.jsx'));
+const AddStockModal = lazy(() => import('../AddStockModal.jsx'));
 
 const THEME_KEY = 'myfund_theme';
 const COLLAPSE_KEY = 'myfund_sidebar_collapsed';
@@ -54,9 +60,36 @@ export default function Layout() {
   const mainRef = useRef(null);
   const lastScrollY = useRef(0);
 
-  const { portfolios, isAuthenticated, loading, error } = useApp();
+  const { portfolios, isAuthenticated, loading, error, portfolio, addPosition, refresh } = useApp();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteStock, setPaletteStock] = useState(null);
+  const [paletteAdd, setPaletteAdd] = useState(false);
+
+  // ⌘K / Ctrl+K — paleta poleceń (wcześniej tylko fokus na wyszukiwarce).
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    const onOpen = () => setPaletteOpen(true);
+    window.addEventListener('myfund-open-palette', onOpen);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('myfund-open-palette', onOpen); };
+  }, []);
   const location = useLocation();
+  const navigate = useNavigate();
   const t = useT();
+
+  // Skróty z ikony aplikacji na telefonie (manifest → shortcuts): /?action=…
+  useEffect(() => {
+    const action = new URLSearchParams(location.search).get('action');
+    if (!action) return;
+    if (action === 'add') setPaletteAdd(true);
+    else if (action === 'search') setPaletteOpen(true);
+    navigate(location.pathname, { replace: true });
+  }, [location.search, location.pathname, navigate]);
   const heading = PAGE_HEADINGS[location.pathname.replace(/\/$/, '')];
 
   // Auto-open new portfolio modal only for genuinely new users (after data loads).
@@ -135,6 +168,7 @@ export default function Layout() {
             z zewnętrznego API i już raz wywrócił całą aplikację ("tickers is
             not iterable"). Jego awaria ma go po prostu ukryć, nie zabierać
             użytkownikowi portfela. */}
+        <OfflineBanner />
         <ErrorBoundary name="header" fallback={null}>
           <Header
             theme={theme}
@@ -170,6 +204,27 @@ export default function Layout() {
       </div>
       {isMobile && <BottomNav onMore={() => setSidebarOpen(o => !o)} moreOpen={sidebarOpen} />}
       {showNewPortfolio && <NewPortfolioModal onClose={() => setShowNewPortfolio(false)} />}
+      <Suspense fallback={null}>
+        {paletteOpen && (
+          <CommandPalette
+            onClose={() => setPaletteOpen(false)}
+            onOpenStock={setPaletteStock}
+            onAddPosition={() => setPaletteAdd(true)}
+            onNewPortfolio={() => setShowNewPortfolio(true)}
+            onToggleTheme={() => setTheme(th => (th === 'dark' ? 'light' : 'dark'))}
+          />
+        )}
+        {paletteStock && (
+          <StockDetailModal item={paletteStock} existingPortfolio={portfolio} onClose={() => setPaletteStock(null)} />
+        )}
+        {paletteAdd && (
+          <AddStockModal
+            existingPortfolio={portfolio}
+            onSave={async data => { await addPosition(data); refresh(); }}
+            onClose={() => setPaletteAdd(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

@@ -179,6 +179,30 @@ before/after screenshots.
 - [ ] Bundle budget (main chunk is 508 KB today)
 - [ ] Lint warnings down gradually
 
+### Feature backlog (agreed 28.09.2026)
+
+Done on branch `claude/features-heatmap-palette`:
+- [x] Portfolio heatmap on the Dashboard (tile size = value, colour = today's move)
+- [x] ⌘K command palette (pages, actions, stocks)
+- [x] Weekly summary push (week's result net of deposits, best/worst position) — opt-in, Saturday morning
+- [x] Phone polish: PWA shortcuts, last-known data offline, offline banner
+
+Next, in order of priority:
+1. [ ] **PIT-38 done right** — NBP rate from the working day before each trade,
+       FIFO cost matching (Polish tax law); today realised P&L uses the current
+       rate and average cost. `fx_rates_history` already stores NBP rates.
+2. [ ] **Stock splits / corporate actions** — adjust quantity, average price
+       and history; ideally detect from price data.
+3. [ ] **Return split: stock vs currency** for foreign holdings.
+4. [ ] **"Where should my next 1,000 zł go?"** — split new money towards target
+       allocation without selling (no tax).
+5. [ ] **You vs benchmark** — clear line and yearly difference vs WIG20 /
+       S&P 500 / MSCI World on TWR.
+6. [ ] **Dividend income forecast** — expected payouts per month, net of the
+       right tax (19% PL, 15% US with W-8BEN), alert the day before ex-date.
+7. [ ] **ETF look-through** — real country/sector exposure inside ETFs
+       (needs a holdings data source).
+
 **Size:** ~20–25 PRs. The biggest visible change lands after Phase 2 +
 Dashboard + Portfolio (~8 PRs).
 

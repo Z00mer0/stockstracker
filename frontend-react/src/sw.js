@@ -3,6 +3,7 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
@@ -24,6 +25,23 @@ registerRoute(
     && url.pathname.startsWith('/assets/')
     && (request.destination === 'script' || url.pathname.endsWith('.mjs')),
   new StaleWhileRevalidate({ cacheName: 'app-chunks' }),
+);
+
+// Ostatnie znane dane portfela na wypadek braku sieci (telefon w metrze).
+// Tylko lista portfeli i dane portfela, tylko 200, i tylko przy błędzie sieci —
+// bez networkTimeoutSeconds: po przekroczeniu czasu aplikacja pokazałaby stare
+// dane jako bieżące, a zapis (cały dokument) nadpisałby nimi nowsze na serwerze.
+// Cache jest czyszczony przy wylogowaniu (AppContext → logout), bo klucz
+// to sam URL — bez tego na wspólnym urządzeniu zostałby portfel poprzedniej osoby.
+registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin
+    && request.method === 'GET'
+    && /^\/api\/portfolios(\/[^/]+\/data)?$/.test(url.pathname),
+  new NetworkFirst({
+    cacheName: 'api-last-known',
+    plugins: [new CacheableResponsePlugin({ statuses: [200] })],
+  }),
 );
 
 // runtime cache NBP — jak dotąd w generateSW

@@ -133,6 +133,8 @@ export function AppProvider({ children }) {
     localStorage.removeItem(DISPLAY_NAME_KEY);
     localStorage.removeItem(DEMO_KEY);
     resetJournalCache();
+    // Dane portfela zapisane przez service worker na czas bez sieci (sw.js).
+    if (typeof caches !== 'undefined') caches.delete('api-last-known').catch(() => {});
     setAuthed(false);
     setRawData(null);
     setDisplayName('');
