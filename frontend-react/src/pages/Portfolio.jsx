@@ -9,7 +9,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Briefcase, Plus, Upload, TriangleAlert, WifiOff, RefreshCw } from 'lucide-react';
 import { isAuthed } from '../utils/auth.js';
 import { useApp } from '../context/AppContext';
-import { useT } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import AddStockModal from '../components/AddStockModal';
 import SellStockModal from '../components/SellStockModal';
@@ -42,10 +42,11 @@ const CsvImportModal = lazy(() => import('../components/CsvImportModal'));
 export default function Portfolio() {
   const {
     portfolio, transactions, snapshots, loading, error, fxRates, fxStale,
-    saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, removePosition, sellPosition,
+    saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, applySplit, removePosition, sellPosition,
     refresh, displayCurrency, activePortfolioId, watchlistMigrationPending,
   } = useApp();
   const t = useT();
+  const { locale } = useLanguage();
   const { showToast } = useToast();
 
   const [showImport, setShowImport] = useState(false);
@@ -77,6 +78,15 @@ export default function Portfolio() {
 
   const { addDividend } = useDividendEvents(portfolio.map(p => p.symbol));
   const { alerts: splitAlerts, dismissAlert } = useSplitDetector(portfolio, transactions);
+  const fmtNum = v => (v == null ? '—' : Number(v).toLocaleString(locale, { maximumFractionDigits: 4 }));
+  async function applySplitAlert(alert) {
+    try {
+      await applySplit({ symbol: alert.symbol, date: alert.date, ratio: alert.ratio, label: alert.label });
+      showToast(`${alert.symbol}: split ${alert.label}`, { type: 'success' });
+    } catch (e) {
+      showToast(e.message, { type: 'error' });
+    }
+  }
   const { enrichPosition, metricsLoading } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const divBySymbol = useMemo(() => {
@@ -383,9 +393,19 @@ export default function Portfolio() {
           tone="warn"
           icon={TriangleAlert}
           title={alert.symbol}
-          action={<Button size="sm" onClick={() => dismissAlert(alert.key)}>{t('understood')}</Button>}
+          action={(
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="primary" disabled={activePortfolioId === 'all'} onClick={() => applySplitAlert(alert)}>{t('split_apply')}</Button>
+              <Button size="sm" onClick={() => dismissAlert(alert.key)}>{t('split_already')}</Button>
+            </div>
+          )}
         >
-          {t('split_alert_msg').replace('{ratio}', alert.ratio).replace('{date}', alert.date).replace('{qty}', alert.qty)}
+          {t('split_alert_msg')
+            .replace('{ratio}', alert.label).replace('{date}', alert.date)
+            .replace('{qty}', fmtNum(alert.qty)).replace('{avg}', fmtNum(alert.avgPrice))
+            .replace('{newQty}', fmtNum(alert.qty * alert.ratio)).replace('{newAvg}', fmtNum(alert.avgPrice / alert.ratio))
+            .replace(/\{cur\}/g, alert.currency ?? '')}
+          {activePortfolioId === 'all' && <span className="block text-faint">{t('split_pick_portfolio')}</span>}
         </Callout>
       ))}
 

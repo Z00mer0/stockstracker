@@ -187,14 +187,14 @@ Done on branch `claude/features-heatmap-palette`:
 - [x] Weekly summary push (week's result net of deposits, best/worst position) — opt-in, Saturday morning
 - [x] Phone polish: PWA shortcuts, last-known data offline, offline banner
 
-Next, in order of priority:
-1. [ ] **PIT-38 done right** — NBP rate from the working day before each trade,
+Next, in order of priority (1–4 done on branch `claude/features-tax-splits`):
+1. [x] **PIT-38 done right** — NBP rate from the working day before each trade,
        FIFO cost matching (Polish tax law); today realised P&L uses the current
        rate and average cost. `fx_rates_history` already stores NBP rates.
-2. [ ] **Stock splits / corporate actions** — adjust quantity, average price
+2. [x] **Stock splits / corporate actions** — adjust quantity, average price
        and history; ideally detect from price data.
-3. [ ] **Return split: stock vs currency** for foreign holdings.
-4. [ ] **"Where should my next 1,000 zł go?"** — split new money towards target
+3. [x] **Return split: stock vs currency** for foreign holdings.
+4. [x] **"Where should my next 1,000 zł go?"** — split new money towards target
        allocation without selling (no tax).
 5. [ ] **You vs benchmark** — clear line and yearly difference vs WIG20 /
        S&P 500 / MSCI World on TWR.

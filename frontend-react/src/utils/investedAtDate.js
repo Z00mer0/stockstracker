@@ -3,11 +3,13 @@
 // Nie używa fx, nie przelicza — dopiero caller mnoży przez fx dla waluty wyświetlania.
 // Zaleta: dla USD-only portfela wyświetlanego w USD, invested nie "oddycha" z NBP.
 import { weightedAvg } from './weightedAvg.js';
+import { splitAdjusted } from './splits.js';
 
 // Zwraca { CCY: sumOfQtyTimesAvgPrice } po zastosowaniu transakcji <= date.
 // Kolejność w obrębie dnia: BUY przed SELL (żeby same-day sprzedaż miała pokrycie).
 export function investedByCurrencyAt(transactions, date) {
-  const relevant = (transactions || [])
+  // Po splicie ilości w jednych jednostkach; wartość qty × cena się nie zmienia.
+  const relevant = splitAdjusted(transactions || [])
     // fromClosedPosition BUY-e są fabrykowane pod SELL z importu — nie ruszają holdings.
     .filter(tx => (tx.type === 'BUY' || tx.type === 'SELL') && tx.qty > 0
               && (tx.date || '') <= date && !tx.fromClosedPosition)

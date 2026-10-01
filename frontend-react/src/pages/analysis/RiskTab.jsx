@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Activity, TrendingDown, Gauge, ShieldCheck, Sigma, Hourglass } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
+import { usePrivacy } from '../../context/PrivacyContext';
 import { useFxBreakdown } from '../../hooks/useFxBreakdown';
 import { Card, EmptyState, Stat, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
@@ -106,6 +107,7 @@ function FxBreakdownCard({ enriched }) {
   const t = useT();
   const { locale } = useLanguage();
   const { transactions, fxRates } = useApp();
+  const { isPrivate } = usePrivacy();
   // Kursy z dat zakupu pobieramy dopiero po wejściu na tę zakładkę.
   const { breakdown, fxLoading } = useFxBreakdown(enriched, transactions, fxRates);
   const rows = enriched.filter(p => p.currency && p.currency !== 'PLN' && p.price != null);
@@ -114,6 +116,15 @@ function FxBreakdownCard({ enriched }) {
   const pct = v => (v == null ? '—' : formatPercent(v, { locale, decimals: 2 }));
   const tone = v => (v == null ? 'text-faint' : v >= 0 ? 'text-up' : 'text-down');
   const pending = fxLoading ? '…' : '—';
+  const zl = v => (v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString(locale, { maximumFractionDigits: 0 })} zł`);
+  const both = (pctKey, plnKey, bold) => p => cell(p, pctKey, v => (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span className={cx(bold ? 'font-bold' : 'font-semibold', tone(v))}>{pct(v)}</span>
+      <span className={cx('text-[11px] text-faint', isPrivate && 'privacy-blur')}>{zl(breakdown[p.symbol][plnKey])}</span>
+    </span>
+  ));
+  const done = rows.map(p => breakdown[p.symbol]).filter(Boolean);
+  const sum = k => done.reduce((s, b) => s + b[k], 0);
   const cell = (p, k, render) => {
     const bd = breakdown[p.symbol];
     return bd ? render(bd[k]) : <span className="text-faint">{pending}</span>;
@@ -122,15 +133,22 @@ function FxBreakdownCard({ enriched }) {
   return (
     <Card title={t('fx_decomp')}>
       <p className="px-4 pt-3 text-small text-faint">{t('fx_description')}</p>
+      {done.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 px-4 pt-3">
+          <Stat blur={isPrivate} label={t('fx_sum_stock')} value={zl(sum('stockPLN'))} tone={sum('stockPLN') >= 0 ? 'up' : 'down'} />
+          <Stat blur={isPrivate} label={t('fx_sum_fx')} value={zl(sum('fxPLN'))} tone={sum('fxPLN') >= 0 ? 'up' : 'down'} />
+          <Stat blur={isPrivate} label={t('fx_sum_total')} value={zl(sum('totalPLN'))} tone={sum('totalPLN') >= 0 ? 'up' : 'down'} />
+        </div>
+      )}
       <Table
         columns={[
           { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: p => <span className="font-semibold text-fg">{p.symbol}</span> },
           { key: 'currency', header: t('col_currency'), render: p => <span className="text-dim">{p.currency}</span> },
           { key: 'buy', header: t('col_buy_rate'), align: 'right', render: p => cell(p, 'purchaseFx', v => <span className="text-dim">{v?.toFixed(4) ?? '—'}</span>) },
           { key: 'cur', header: t('col_current_rate'), align: 'right', render: p => cell(p, 'currentFx', v => <span className="text-dim">{v?.toFixed(4) ?? '—'}</span>) },
-          { key: 'asset', header: t('col_asset_return'), align: 'right', render: p => cell(p, 'assetReturn', v => <span className={cx('font-semibold', tone(v))}>{pct(v)}</span>) },
-          { key: 'fx', header: t('col_fx_impact'), align: 'right', render: p => cell(p, 'fxReturn', v => <span className={cx('font-semibold', tone(v))}>{pct(v)}</span>) },
-          { key: 'total', header: t('col_total_pln'), align: 'right', mobile: 'aside', render: p => cell(p, 'totalReturn', v => <span className={cx('font-bold', tone(v))}>{pct(v)}</span>) },
+          { key: 'asset', header: t('col_asset_return'), align: 'right', render: both('assetReturn', 'stockPLN') },
+          { key: 'fx', header: t('col_fx_impact'), align: 'right', render: both('fxReturn', 'fxPLN') },
+          { key: 'total', header: t('col_total_pln'), align: 'right', mobile: 'aside', render: both('totalReturn', 'totalPLN', true) },
         ]}
         rows={rows}
         rowKey={p => p.symbol}

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Download, Pencil, Save, Scale, CheckCircle2 } from 'lucide-react';
+import { Download, Pencil, Save, Scale, CheckCircle2, PiggyBank } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import TickerLogo from '../../components/shared/TickerLogo';
-import { Badge, Button, Card, SegmentedControl, Table } from '../../components/ui';
+import { Badge, Button, Card, Input, SegmentedControl, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
 import { lsSet } from '../../utils/safeStorage.js';
-import { rebalanceOrders } from '../../utils/rebalance.js';
+import { rebalanceOrders, allocateNewMoney } from '../../utils/rebalance.js';
 
 const SECTOR_KEY_MAP = {
   'Technology': 'sector_Technology',
@@ -163,10 +163,9 @@ function ConcentrationCard({ enriched, total }) {
   );
 }
 
-function RebalanceCard({ positions, total }) {
+function RebalanceCard({ positions, total, targets, setTargets }) {
   const t = useT();
   const { fmt, money } = useDisplay();
-  const [targets, setTargets] = useState(loadTargets);
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState({});
 
@@ -273,9 +272,56 @@ function RebalanceCard({ positions, total }) {
   );
 }
 
+// „Gdzie wpłacić kolejne pieniądze?" — tylko zakupy, w stronę celów z karty
+// rebalansowania (bez sprzedaży, więc bez podatku).
+function NewMoneyCard({ positions, total, targets }) {
+  const t = useT();
+  const { fmt, money } = useDisplay();
+  const [amount, setAmount] = useState('1000');
+  const sumOk = Math.abs(Object.values(targets).reduce((s, v) => s + (v || 0), 0) - 100) < 1;
+  const value = parseFloat(String(amount).replace(',', '.')) || 0;
+  const { orders, leftover } = allocateNewMoney(positions, targets, total, value);
+
+  return (
+    <Card title={t('newmoney_title')}>
+      <div className="grid gap-3 p-4">
+        <p className="text-small text-dim">{t('newmoney_desc')}</p>
+        <label className="flex items-center gap-3 text-small text-dim">
+          {t('newmoney_amount')}
+          <Input type="number" min="0" step="100" inputMode="decimal" suffix="zł" value={amount} onChange={e => setAmount(e.target.value)} className="w-40" />
+        </label>
+        {!sumOk ? (
+          <p className="flex items-center gap-2 text-small text-faint"><Scale size={15} aria-hidden />{t('newmoney_need_targets')}</p>
+        ) : orders.length === 0 ? (
+          value > 0 && <p className="text-small text-faint">{t('newmoney_too_small')}</p>
+        ) : (
+          <>
+            <Table
+              columns={[
+                { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: o => <span className="font-semibold text-fg">{o.symbol}</span> },
+                { key: 'shares', header: t('newmoney_shares'), align: 'right', mobile: 'aside', render: o => (o.shares > 0 ? <Badge tone="up">{`+${o.shares}`}</Badge> : <span className="text-faint">—</span>) },
+                { key: 'cost', header: t('col_amount_pln'), align: 'right', render: o => money(o.cost) },
+                { key: 'pricePLN', header: t('col_price_per_share'), align: 'right', render: o => money(o.pricePLN, 2) },
+                { key: 'afterPct', header: t('newmoney_after'), align: 'right', render: o => `${fmt(o.afterPct, 1)}%` },
+              ]}
+              rows={orders}
+              rowKey={o => o.symbol}
+            />
+            <p className="flex items-center gap-2 text-small text-dim">
+              <PiggyBank size={15} aria-hidden />
+              {t('newmoney_leftover').replace('{amount}', money(leftover))}
+            </p>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export default function AllocationTab({ enriched, totalValue }) {
   const positions = enriched.filter(p => p.valuePLN != null && p.valuePLN > 0);
   const total = totalValue || positions.reduce((s, p) => s + p.valuePLN, 0);
+  const [targets, setTargets] = useState(loadTargets); // wspólne dla rebalansowania i nowych wpłat
   return (
     <div className="space-y-4">
       {positions.length > 0 && <SectorCard positions={positions} total={total} />}
@@ -283,7 +329,8 @@ export default function AllocationTab({ enriched, totalValue }) {
         <ConcentrationCard enriched={enriched} total={totalValue} />
         <CurrencyCard enriched={enriched} total={totalValue} />
       </div>
-      <RebalanceCard positions={positions} total={total} />
+      <RebalanceCard positions={positions} total={total} targets={targets} setTargets={setTargets} />
+      <NewMoneyCard positions={positions} total={total} targets={targets} />
     </div>
   );
 }

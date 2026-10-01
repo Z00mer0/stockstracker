@@ -4725,6 +4725,20 @@ class Handler(SimpleHTTPRequestHandler):
                 log.warning(f'[espi/top] {_top_e}\n{traceback.format_exc()}')
                 self.send_json(500, {'error': str(_top_e)})
 
+        elif path == '/api/splits':
+            # Podziały akcji z Yahoo (events=split). Front (useSplitDetector)
+            # wołał ten adres od dawna, ale serwer go nie miał — 404 i cisza.
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            symbols = [s for s in dict.fromkeys(x.strip().upper() for x in qs.get('symbols', '').split(','))
+                       if re.match(r'^[A-Z0-9.\-^=]{1,20}$', s)][:60]
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=6) as ex:
+                found = dict(zip(symbols, ex.map(_fetch_splits, symbols)))
+            self.send_json(200, {s: v for s, v in found.items() if v})
+
         elif path == '/api/fx-rate':
             username = get_username(self)
             if not username:
@@ -6218,6 +6232,43 @@ def _fetch_prices_batch(symbols):
     except Exception as e:
         log.warning(f'[snapshot] v7/quote batch error: {e}')
         return {}
+
+
+_SPLITS_CACHE = {}
+
+
+def _parse_splits(chart_json):
+    """events.splits z odpowiedzi v8/chart → [{date, numerator, denominator, ratio}] rosnąco."""
+    res = (chart_json.get('chart', {}).get('result') or [{}])[0] or {}
+    out = []
+    for ev in ((res.get('events') or {}).get('splits') or {}).values():
+        num, den = ev.get('numerator'), ev.get('denominator')
+        if not num or not den or not ev.get('date'):
+            continue
+        num, den = float(num), float(den)
+        out.append({
+            'date': datetime.datetime.fromtimestamp(int(ev['date']), datetime.timezone.utc).date().isoformat(),
+            'numerator': num, 'denominator': den,
+            'ratio': f'{num:g}:{den:g}',
+        })
+    return sorted(out, key=lambda s: s['date'])
+
+
+def _fetch_splits(symbol):
+    hit = _SPLITS_CACHE.get(symbol)
+    if hit and time.time() - hit[0] < 12 * 3600:
+        return hit[1]
+    url = (f'https://query1.finance.yahoo.com/v8/finance/chart/'
+           f'{urllib.parse.quote(symbol)}?range=10y&interval=1mo&events=split')
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            splits = _parse_splits(json.loads(r.read().decode()))
+    except Exception as e:
+        log.warning(f'[splits] {symbol}: {e}')
+        return []  # bez cache — kolejna próba przy następnym wejściu
+    _SPLITS_CACHE[symbol] = (time.time(), splits)
+    return splits
 
 
 def _fetch_price_chart(symbol):

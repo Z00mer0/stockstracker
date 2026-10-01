@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { authHeader } from '../utils/auth.js';
+import { splitAdjusted } from '../utils/splits.js';
 
 // Fetches a { date: rate } map for one currency in a single batched backend call.
 // Backend caches historical rates permanently in Postgres.
-async function fetchFxRates(currency, dates) {
+export async function fetchFxRates(currency, dates) {
   const base = import.meta.env.VITE_API_URL ?? '';
   try {
     const res = await fetch(
@@ -16,6 +17,15 @@ async function fetchFxRates(currency, dates) {
   } catch {
     return {};
   }
+}
+
+// Zysk w zł rozbity na część ze spółki i część z waluty (sumują się dokładnie):
+//   spółka = ilość × (cena − średnia) × kurs z zakupu
+//   waluta = ilość × cena × (kurs dziś − kurs z zakupu)
+export function fxDecompose({ qty, price, avgPrice, purchaseFx, currentFx }) {
+  const stockPLN = qty * (price - avgPrice) * purchaseFx;
+  const fxPLN = qty * price * (currentFx - purchaseFx);
+  return { stockPLN, fxPLN, totalPLN: stockPLN + fxPLN };
 }
 
 // Accepts enriched positions (with .price, .avgPrice, .currency, .symbol)
@@ -43,7 +53,7 @@ export function useFxBreakdown(enrichedPositions, transactions, fxRates) {
     const datesByCurrency = {};
     const buysByPosition = {};
     fxPositions.forEach(pos => {
-      const buys = transactions.filter(
+      const buys = splitAdjusted(transactions).filter(
         t => t.symbol === pos.symbol && t.type === 'BUY' && (t.qty ?? 0) > 0 && (t.price ?? 0) > 0
       );
       buysByPosition[pos.symbol] = buys;
@@ -85,7 +95,10 @@ export function useFxBreakdown(enrichedPositions, transactions, fxRates) {
         // Combined PLN return (multiplicative, not additive)
         const totalReturn = ((1 + assetReturn / 100) * (1 + fxReturn / 100) - 1) * 100;
 
-        map[pos.symbol] = { symbol: pos.symbol, currency: pos.currency, purchaseFx, currentFx, assetReturn, fxReturn, totalReturn };
+        map[pos.symbol] = {
+          symbol: pos.symbol, currency: pos.currency, purchaseFx, currentFx, assetReturn, fxReturn, totalReturn,
+          ...fxDecompose({ qty: pos.qty ?? 0, price: pos.price, avgPrice: pos.avgPrice, purchaseFx, currentFx }),
+        };
       });
       if (cancelled) return;
       setBreakdown(map);
