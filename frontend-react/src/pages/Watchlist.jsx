@@ -269,7 +269,7 @@ export default function Watchlist() {
         />
       )}
       {selectedItem && (
-        <StockDetailModal item={selectedItem} existingPortfolio={portfolio} onSave={async () => {}} onClose={() => setSelectedItem(null)} />
+        <StockDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
       )}
     </div>
   );

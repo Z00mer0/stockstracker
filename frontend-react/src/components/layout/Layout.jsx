@@ -215,7 +215,7 @@ export default function Layout() {
           />
         )}
         {paletteStock && (
-          <StockDetailModal item={paletteStock} existingPortfolio={portfolio} onClose={() => setPaletteStock(null)} />
+          <StockDetailModal item={paletteStock} onClose={() => setPaletteStock(null)} />
         )}
         {paletteAdd && (
           <AddStockModal

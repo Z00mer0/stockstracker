@@ -4,7 +4,7 @@ import { TriangleAlert, Info } from 'lucide-react';
 import { axisProps, gridProps, legendProps, tooltipProps } from '../components/charts/theme.js';
 import { Callout, Card, Field, Input } from '../components/ui';
 import { useLanguage, useT } from '../context/LanguageContext';
-import { simulateOki, OKI_LIMIT, OKI_RATE, BELKA_RATE } from '../utils/okiCalc.js';
+import { simulateOki, OKI_LIMIT } from '../utils/okiCalc.js';
 
 function fmtMoney(v, locale) {
   const n = Math.round(Number(v) || 0);

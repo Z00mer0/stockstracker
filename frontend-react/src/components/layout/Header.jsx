@@ -1,5 +1,5 @@
 // src/components/layout/Header.jsx
-import React, { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
@@ -117,7 +117,7 @@ const MoonIcon = () => <Moon size={15} aria-hidden />;
 const EyeIcon  = ({ closed }) => closed ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />;
 
 export default function Header({ theme, onThemeToggle, isMobile, compact = false }) {
-  const { refresh, loading, portfolio, addPosition } = useApp();
+  const { refresh, portfolio, addPosition } = useApp();
   const { isPrivate, toggle: togglePrivacy } = usePrivacy();
   const { language, locale, toggle: toggleLanguage } = useLanguage();
   const t = useT();
@@ -576,8 +576,6 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
       {selectedStock && (
         <StockDetailModal
           item={selectedStock}
-          existingPortfolio={portfolio}
-          onSave={async (data) => { await addPosition(data); refresh(); }}
           onClose={() => setSelectedStock(null)}
         />
       )}

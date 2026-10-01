@@ -208,7 +208,7 @@ function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', curr
   );
 }
 
-export default function StockDetailModal({ item, existingPortfolio, totalPortfolioValue = 0, onSave, onClose }) {
+export default function StockDetailModal({ item, totalPortfolioValue = 0, onClose }) {
   const { locale } = useLanguage();
   const t = useT();
   const { displayCurrency, fxRates } = useApp();

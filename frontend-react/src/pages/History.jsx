@@ -117,9 +117,7 @@ export default function History() {
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
-  const histFx = fxRates[displayCurrency] ?? 1;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
-  const toDisp = v => v == null ? null : v / histFx;
   const PERIODS = PERIODS_BASE.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
 
   const BENCHMARKS = [
@@ -168,7 +166,6 @@ export default function History() {
     return allRows.filter(s => s.date >= cutStr);
   }, [allRows, period]);
 
-  const latest       = sorted[sorted.length - 1];
   const filteredLast  = filtered[filtered.length - 1];
 
   // Zysk, stopa zwrotu (ważona czasem), CAGR i obsunięcie bez wpłat i wypłat —

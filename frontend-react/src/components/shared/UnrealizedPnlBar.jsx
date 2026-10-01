@@ -1,4 +1,3 @@
-import React from 'react';
 import { BarChart, Bar, Cell, LabelList, ReferenceLine, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { axisProps } from '../charts/theme.js';
 
@@ -7,7 +6,7 @@ import { axisProps } from '../charts/theme.js';
  * rows: [{ symbol, pl }] w walucie wyświetlania, posortowane malejąco.
  * onSymbolClick(symbol) — klik na słupku (na mobile tooltip zasłaniał wykres).
  */
-export default function UnrealizedPnlBar({ rows, currLabel, locale, fmt, onSymbolClick }) {
+export default function UnrealizedPnlBar({ rows, locale, onSymbolClick }) {
   const clickable = typeof onSymbolClick === 'function';
   return (
     <ResponsiveContainer width="100%" height="100%">

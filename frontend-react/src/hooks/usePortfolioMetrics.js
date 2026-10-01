@@ -246,19 +246,6 @@ const US_SECTOR_MAP = {
   'F': 'Consumer Cyclical', 'GM': 'Consumer Cyclical',
 };
 
-async function fetchFinnhubEarningsTs(sym) {
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const future = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
-    const url = `/api/finnhub/v1/calendar/earnings?from=${today}&to=${future}&symbol=${sym}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000), headers: authHeader() });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const events = json?.earningsCalendar ?? [];
-    return events.length > 0 ? new Date(events[0].date).getTime() / 1000 : null;
-  } catch { return null; }
-}
-
 // ── Finnhub fetch (with Yahoo Finance fallback for missing prices) ────────────
 // Returns results map; symbols with notFound:true are definitely unavailable (skip retry)
 async function fetchAllMetrics(symbols) {

@@ -325,9 +325,7 @@ export default function Portfolio() {
       {selectedItem && (
         <StockDetailModal
           item={selectedItem}
-          existingPortfolio={portfolio}
           totalPortfolioValue={positionsValuePLN}
-          onSave={async data => { await addPosition(data); refresh(); }}
           onClose={() => setSelectedItem(null)}
         />
       )}

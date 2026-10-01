@@ -1,5 +1,4 @@
 // src/components/shared/Sparkline.jsx
-import React from 'react';
 
 export default function Sparkline({ data = [], width = 80, height = 28, fluid = false }) {
   if (data.length < 2) return <span style={{ width: fluid ? '100%' : width, display: 'inline-block' }} />;

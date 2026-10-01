@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   meanValueOverYear, okiTaxForYear, simulateOki,
-  OKI_LIMIT, OKI_RATE, BELKA_RATE,
+  OKI_LIMIT,
 } from './okiCalc.js';
 
 describe('meanValueOverYear', () => {

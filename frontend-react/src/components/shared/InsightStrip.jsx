@@ -1,4 +1,3 @@
-import React from 'react';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 

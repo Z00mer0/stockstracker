@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
 const M = { top: 10, right: 56, bottom: 28, left: 10 };

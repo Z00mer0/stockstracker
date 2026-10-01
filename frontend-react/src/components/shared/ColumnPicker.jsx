@@ -1,5 +1,5 @@
 // frontend-react/src/components/shared/ColumnPicker.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { COLUMN_DEFS, getColLabel } from '../../utils/portfolioColumns';
 import { useT } from '../../context/LanguageContext';
 
