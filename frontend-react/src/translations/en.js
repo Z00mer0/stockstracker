@@ -1115,6 +1115,8 @@ export default {
   save_btn:             'Save',
   delete_btn:           'Delete',
   cancel_btn:           'Cancel',
+  sheet_expand:         'Expand to full screen',
+  sheet_collapse:       'Back to normal height',
   close_btn:            'Close',
   show_more:            'Show {n} more ({left} left)',
   add_btn:              '+ Add',
