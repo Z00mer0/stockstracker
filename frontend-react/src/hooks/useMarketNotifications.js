@@ -80,7 +80,25 @@ export function quoteFromEntry(symbol, entry) {
   if (!(price > 0) || changePct == null) return null;
   const dp = Number(changePct);
   const prev = price / (1 + dp / 100);
-  return { symbol, price, changePct: dp, changeAbs: price - prev };
+  return { symbol, price, changePct: dp, changeAbs: price - prev, marketTime: q.regularMarketTime ?? null, tz: q.exchangeTimezoneName ?? null };
+}
+
+const dayIn = (date, timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+const CRYPTO_RE = /-(USD|USDT|USDC|EUR|PLN)$/;
+
+// Czy „zmiana dziś" dotyczy dzisiejszej sesji. W weekend i w święta notowanie
+// niesie zmianę z ostatniej sesji — dzwonek pokazywał w sobotę piątkowe ruchy.
+// Ta sama reguła co _quote_is_current w server.py: data ostatniej transakcji
+// w strefie giełdy, a bez niej — przynajmniej nie w weekend (poza krypto).
+export function isQuoteCurrent(q, now = new Date()) {
+  if (q.marketTime) {
+    let tz = q.tz || 'Europe/Warsaw';
+    try { dayIn(now, tz); } catch { tz = 'Europe/Warsaw'; }
+    return dayIn(new Date(q.marketTime * 1000), tz) === dayIn(now, tz);
+  }
+  if (CRYPTO_RE.test(q.symbol || '')) return true;
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Warsaw', weekday: 'short' }).format(now);
+  return wd !== 'Sat' && wd !== 'Sun';
 }
 
 export async function fetchQuotes(symbols) {
@@ -188,6 +206,7 @@ export function useMarketNotifications() {
     const fresh = [];
     for (const q of quotes) {
       if (!shouldNotify(q.changePct)) continue;
+      if (!isQuoteCurrent(q)) continue;
       const bucket = getPriceChangeBucket(q.changePct);
       const dedupeKey = `${today}:${q.symbol}:${bucket}`;
       if (mutedRef.current.has(dedupeKey)) continue;

@@ -2275,8 +2275,35 @@ def _quote_from_entry(entry):
             'changePct': q.get('regularMarketChangePercent'),
             'high52': q.get('fiftyTwoWeekHigh'),
             'low52': q.get('fiftyTwoWeekLow'),
+            'marketTime': q.get('regularMarketTime'),
+            'tz': q.get('exchangeTimezoneName'),
         }
     return None
+
+
+_CRYPTO_RE = re.compile(r'-(USD|USDT|USDC|EUR|PLN)$')
+
+
+def _quote_is_current(symbol, quote, now=None):
+    """Czy „zmiana dziś" w notowaniu dotyczy dzisiejszej sesji.
+
+    W weekend i w święta giełdowe notowanie dalej niesie zmianę z ostatniej
+    sesji — push „XTB −5% dziś" przychodził w sobotę i w niedzielę z piątkowym
+    ruchem. Gdy znamy czas ostatniej transakcji, porównujemy jej datę z dzisiejszą
+    w strefie giełdy (to łapie też święta i poniedziałek przed otwarciem). Bez
+    niego (zapas stooq/Finnhub, starsza wersja api/quotes.js) — przynajmniej nie
+    w sobotę i niedzielę, poza kryptowalutami, które notowane są cały tydzień."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    mt = (quote or {}).get('marketTime')
+    if mt:
+        try:
+            tz = ZoneInfo(quote.get('tz') or 'Europe/Warsaw')
+        except Exception:
+            tz = _WARSAW
+        return datetime.datetime.fromtimestamp(int(mt), tz).date() == now.astimezone(tz).date()
+    if _CRYPTO_RE.search(symbol or ''):
+        return True
+    return now.astimezone(_WARSAW).weekday() < 5
 
 
 _QUOTES_CHUNK = 60   # MAX_SYMBOLS po stronie api/quotes.js
@@ -2333,6 +2360,8 @@ def _fetch_quote(symbol):
                         'changePct': q.get('regularMarketChangePercent'),
                         'high52': q.get('fiftyTwoWeekHigh'),
                         'low52': q.get('fiftyTwoWeekLow'),
+                        'marketTime': q.get('regularMarketTime'),
+                        'tz': q.get('exchangeTimezoneName'),
                     }
     except Exception as e:
         log.warning(f'[push] price quotes {symbol}: {e}')
@@ -2346,7 +2375,8 @@ def _fetch_quote(symbol):
                 with urllib.request.urlopen(req, timeout=6) as r:
                     q = json.loads(r.read())
                 if (q.get('c') or 0) > 0:
-                    return {'price': float(q['c']), 'changePct': q.get('dp'), 'high52': None, 'low52': None}
+                    return {'price': float(q['c']), 'changePct': q.get('dp'), 'high52': None, 'low52': None,
+                            'marketTime': q.get('t'), 'tz': 'America/New_York' if q.get('t') else None}
         except Exception as e:
             log.warning(f'[push] price finnhub {symbol}: {e}')
     return None
@@ -3284,6 +3314,8 @@ def _run_push_checks():
                     chg = quote.get('changePct')
                     if chg is None or abs(chg) < _big_move_threshold():
                         continue
+                    if not _quote_is_current(sym, quote):
+                        continue  # ruch z ostatniej sesji (weekend, święto) — nie „dziś"
                     direction = 'up' if chg >= 0 else 'down'
                     key = f'move:{today_iso}:{sym}:{direction}:{tone}:{lang}'
                     if _already_sent(username, key):
@@ -6042,6 +6074,8 @@ async function doRecover() {
                             continue
                         chg = quote.get('changePct')
                         if chg is None or abs(chg) < _big_move_threshold():
+                            continue
+                        if not _quote_is_current(sym, quote):
                             continue
                         qualifying += 1
                         title = _big_move_title(sym, chg, lang)
