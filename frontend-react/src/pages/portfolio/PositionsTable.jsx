@@ -347,7 +347,7 @@ export default function PositionsTable({
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
                 {gridCols.map(key => (
                   <div key={key} className="flex min-w-0 justify-between gap-2">
-                    <dt className="truncate text-faint">{getColLabel(key, t)}</dt>
+                    <dt className="truncate text-faint">{getColLabel(key, t, { short: true })}</dt>
                     <dd className={cx('shrink-0 text-right', blurCls(key))}>{renderCell(key, pos, fxRates, divBySymbol, locale, displayCurrency)}</dd>
                   </div>
                 ))}

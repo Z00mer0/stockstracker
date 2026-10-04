@@ -1098,6 +1098,7 @@ export default {
   // ── Portfolio column headers ──────────────────────────────────
   col_qty_lbl:          'Ilość',
   col_avg_price_lbl:    'Śr. Zakup',
+  col_price_short:      'Cena',
   col_price_lbl:        'Cena Teraz',
   col_daily_chg_lbl:    'Zmiana Dz.',
   col_cost_pln_lbl:     'Wart. Zakupu',

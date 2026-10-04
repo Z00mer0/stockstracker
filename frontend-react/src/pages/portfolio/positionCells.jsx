@@ -18,7 +18,8 @@ export function renderCell(key, pos, fxRates, divBySymbol, locale, displayCurren
 
   switch (key) {
     case 'qty':
-      return <span className="text-fg">{fmt(pos.qty, pos.qty % 1 === 0 ? 0 : 4, locale)}</span>;
+      // Do 4 miejsc, bez zer na końcu: 24,65 zamiast 24,6500 obok 60.
+      return <span className="text-fg">{pos.qty == null ? '—' : pos.qty.toLocaleString(locale, { maximumFractionDigits: 4 })}</span>;
     case 'avgPrice':
       return <span className="text-dim">{fmt(pos.avgPrice, 2, locale)} <span className="text-xs">{flag}</span></span>;
     case 'price':

@@ -7,7 +7,7 @@ import { lsSet } from './safeStorage.js';
 export const COLUMN_DEFS = [
   { key: 'qty',      tKey: 'col_qty_lbl',       fixed: true, private: true },
   { key: 'avgPrice', tKey: 'col_avg_price_lbl', private: true },
-  { key: 'price',    tKey: 'col_price_lbl' },
+  { key: 'price',    tKey: 'col_price_lbl', tKeyShort: 'col_price_short' },
   { key: 'dailyChg', tKey: 'col_daily_chg_lbl' },
   { key: 'costPLN',  tKey: 'col_cost_pln_lbl', private: true },
   { key: 'valuePLN', tKey: 'col_value_pln_lbl', private: true },
@@ -23,9 +23,12 @@ export const COLUMN_DEFS = [
 
 export const PRIVATE_COLS = new Set(COLUMN_DEFS.filter(c => c.private).map(c => c.key));
 
-export function getColLabel(key, t) {
+// short: krótsza etykieta do kart na telefonie — „Cena Teraz" przy cenie
+// czterocyfrowej (MELI 1696,56) ucinała się do „Cena Te…".
+export function getColLabel(key, t, { short = false } = {}) {
   const def = COLUMN_DEFS.find(c => c.key === key);
   if (!def) return key;
+  if (short && def.tKeyShort) return t(def.tKeyShort);
   return def.tKey ? t(def.tKey) : (def.label ?? key);
 }
 
