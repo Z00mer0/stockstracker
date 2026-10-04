@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   fetchQuotes,
   quoteFromEntry,
+  isQuoteCurrent,
   scanSignature,
   readScanCache,
   writeScanCache,
@@ -128,5 +129,32 @@ describe('wspoldzielony cache skanu', () => {
     expect(readScanCache(scanSignature(['AMD']), 300_000, 1_000_000)).toBeNull();
     store['myfund_notif_scan'] = JSON.stringify({ ts: 1, sig: 'AMD' });
     expect(readScanCache('AMD', 300_000, 100)).toBeNull();
+  });
+});
+
+describe('isQuoteCurrent', () => {
+  const t = iso => Math.floor(new Date(iso).getTime() / 1000);
+  const SUN = new Date('2026-10-04T17:45:00Z');   // niedziela 19:45 w Warszawie
+  const FRI = new Date('2026-10-02T15:00:00Z');
+
+  it('piątkowy ruch nie jest „dziś" w weekend', () => {
+    const xtb = { symbol: 'XTB.WA', marketTime: t('2026-10-02T15:00:00Z'), tz: 'Europe/Warsaw' };
+    expect(isQuoteCurrent(xtb, FRI)).toBe(true);
+    expect(isQuoteCurrent(xtb, SUN)).toBe(false);
+  });
+
+  it('krypto notowane w niedzielę jest bieżące', () => {
+    expect(isQuoteCurrent({ symbol: 'BTC-USD', marketTime: t('2026-10-04T17:40:00Z'), tz: 'UTC' }, SUN)).toBe(true);
+  });
+
+  it('bez czasu transakcji: nie w weekend, poza krypto', () => {
+    expect(isQuoteCurrent({ symbol: 'SPCX' }, SUN)).toBe(false);
+    expect(isQuoteCurrent({ symbol: 'SPCX' }, FRI)).toBe(true);
+    expect(isQuoteCurrent({ symbol: 'ETH-USD' }, SUN)).toBe(true);
+  });
+
+  it('czas transakcji trafia z notowania do obiektu', () => {
+    const q = quoteFromEntry('XTB.WA', { quote: { regularMarketPrice: 50, regularMarketChangePercent: -5.37, regularMarketTime: 123, exchangeTimezoneName: 'Europe/Warsaw' } });
+    expect(q).toMatchObject({ marketTime: 123, tz: 'Europe/Warsaw' });
   });
 });

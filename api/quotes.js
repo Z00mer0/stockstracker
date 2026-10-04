@@ -32,6 +32,10 @@ async function fetchOne(sym) {
         regularMarketChangePercent: prev > 0 ? ((price - prev) / prev) * 100 : null,
         fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? null,
         fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? null,
+        // Kiedy była ostatnia transakcja i w jakiej strefie notuje giełda —
+        // bez tego w sobotę „zmiana dziś" to wciąż zmiana z piątku.
+        regularMarketTime: meta.regularMarketTime ?? null,
+        exchangeTimezoneName: meta.exchangeTimezoneName ?? null,
       },
     };
   } catch (e1) {
