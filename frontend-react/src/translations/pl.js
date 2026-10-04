@@ -1115,6 +1115,8 @@ export default {
   save_btn:             'Zapisz',
   delete_btn:           'Usuń',
   cancel_btn:           'Anuluj',
+  sheet_expand:         'Rozwiń na pełny ekran',
+  sheet_collapse:       'Zwiń do zwykłej wysokości',
   close_btn:            'Zamknij',
   show_more:            'Pokaż kolejne {n} (zostało {left})',
   add_btn:              '+ Dodaj',
