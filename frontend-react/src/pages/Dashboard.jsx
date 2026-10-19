@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase,
+  Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase, Scale,
   ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -23,6 +23,8 @@ import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.j
 import { todayCapital, withCapital } from '../utils/capital.js';
 import { normalizeType, txAmount, txFee, divNet } from '../utils/transactions.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
+import { driftAlerts, loadTargets, loadDriftThreshold } from '../utils/rebalance.js';
+import { lsSet } from '../utils/safeStorage.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
   Button, Callout, Card, EmptyState, Field, Input, Modal, PageHeader, SegmentedControl, Stat,
@@ -374,6 +376,12 @@ export default function Dashboard() {
   const gainUp = currentGainPLN >= 0;
 
   const notFound = allPositions.filter(p => p.notFound).map(p => p.symbol);
+  // Odchylenie od docelowych udziałów (Analiza → Alokacja), gdy wszystkie
+  // pozycje mają cenę — przy brakach udziały byłyby fałszywe.
+  const priced = allPositions.filter(p => p.valuePLN > 0);
+  const drift = kpi.pricesLoaded
+    ? driftAlerts(priced, loadTargets(), priced.reduce((s, p) => s + p.valuePLN, 0), loadDriftThreshold())
+    : [];
   const TF_OPTIONS = ['1T', '1M', '3M', '6M', '1R', 'MAX'];
 
   return (
@@ -406,6 +414,18 @@ export default function Dashboard() {
           className="mb-4"
         >
           {t('ticker_not_found_hint')}
+        </Callout>
+      )}
+
+      {drift.length > 0 && (
+        <Callout
+          tone="warn"
+          icon={Scale}
+          title={t('drift_title')}
+          onClick={() => { lsSet('myfund_analysis_tab', 'allocation'); navigate('/analysis'); }}
+          className="mb-4"
+        >
+          {drift.map(d => `${d.symbol} ${d.dev > 0 ? '+' : '−'}${Math.abs(d.dev).toFixed(1)} ${t('pp_short')}`).join(' · ')} — {t('drift_hint')}
         </Callout>
       )}
 
