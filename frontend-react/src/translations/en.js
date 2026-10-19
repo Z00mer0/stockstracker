@@ -310,6 +310,10 @@ export default {
   source_of_funds:      'Source of funds',
   top_up:               'Top up',
   deduct_cash:          'Deduct from cash',
+  fee_label:            'Commission',
+  div_tax_label:        'Tax withheld',
+  div_tax_hint:         'In total, as deducted by the broker. Without it, net is estimated from the usual rate.',
+  div_payout:           'Dividend payout',
   sale_proceeds:        'Sale proceeds',
   proceeds_to_cash:     'Add to cash',
   proceeds_out:         'Withdrawn',
@@ -1250,7 +1254,7 @@ export default {
   pit38_missing_rates:       'No NBP rate for {n} sales — they are left out of the totals. Try refreshing later.',
   pit38_uncovered:           '{n} sales have no full purchase in the history — cost is understated. Add the missing buy transactions.',
   pit38_empty:               'No sales in {year}.',
-  pit38_method_note:         'Cost by FIFO (oldest purchases first, separately per portfolio), NBP average rates from the last business day before each trade, base and tax rounded to whole złoty. IKE/IKZE accounts excluded. Commissions, prior-year losses and foreign dividends are not included. Check against your broker\'s PIT-8C.',
+  pit38_method_note:         'Cost by FIFO (oldest purchases first, separately per portfolio), NBP average rates from the last business day before each trade, base and tax rounded to whole złoty. IKE/IKZE accounts excluded. Commissions entered with transactions are included in the cost. Prior-year losses and foreign dividends are not included. Check against your broker\'s PIT-8C.',
 
   // ── Newsfeed ──────────────────────────────────────────────────
   news_title:                'Newsfeed',

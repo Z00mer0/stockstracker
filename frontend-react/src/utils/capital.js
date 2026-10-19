@@ -10,10 +10,11 @@
 //   ⇒ kapitał = koszt pozycji + gotówka − zrealizowany − dywidendy
 // Wycena pozycji się skraca, więc do kapitału nie potrzeba cen.
 import { computeRealizedTrades } from './realizedPL.js';
-import { normalizeType } from './transactions.js';
+import { normalizeType, divNet } from './transactions.js';
 import { investedPlnAt, fxForSnapshot } from './investedAtDate.js';
 
-const divAmount = tx => (tx.price || 0) * (tx.qty || 1);
+// Dywidenda po podatku u źródła — tyle faktycznie wpłynęło.
+const divAmount = tx => divNet({ ...tx, qty: tx.qty || 1, price: tx.price || 0 });
 
 // Składniki kapitału per waluta, w jej jednostkach (bez kursów).
 export function capitalNative({ holdings = [], cash = {}, transactions = [] }) {

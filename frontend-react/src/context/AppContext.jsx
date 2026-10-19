@@ -458,7 +458,7 @@ export function AppProvider({ children }) {
   }
 
   // toCash — przychód zostaje na rachunku jako gotówka.
-  async function sellPosition({ symbol, qty, price, currency, date, note, overridePL, toCash = false }) {
+  async function sellPosition({ symbol, qty, price, currency, date, note, overridePL, toCash = false, fee }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby sprzedać pozycję');
     assertLoaded();
     const rd = rawDataRef.current;
@@ -468,6 +468,7 @@ export function AppProvider({ children }) {
     const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
       id: txId,
       type: 'SELL', symbol, qty, price, currency, date, note,
+      ...(fee > 0 ? { fee } : {}),
       ...(overridePL != null ? { overridePL } : {}),
     }, { cash: toCash });
     const updated = {
@@ -480,7 +481,7 @@ export function AppProvider({ children }) {
     return txId;
   }
 
-  async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType }) {
+  async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType, fee }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać pozycję');
     assertLoaded();
     const rd = rawDataRef.current;
@@ -489,6 +490,7 @@ export function AppProvider({ children }) {
     const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
       id: Math.random().toString(36).slice(2, 10),
       type: 'BUY', symbol, qty, price, currency, date, note,
+      ...(fee > 0 ? { fee } : {}),
     }, { cash: funding === 'cash' });
     const newHoldings = isNew && assetType
       ? r.holdings.map(h => h.symbol === symbol ? { ...h, assetType } : h)

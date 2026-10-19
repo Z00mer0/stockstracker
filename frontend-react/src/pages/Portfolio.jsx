@@ -42,7 +42,7 @@ const CsvImportModal = lazy(() => import('../components/CsvImportModal'));
 export default function Portfolio() {
   const {
     portfolio, transactions, snapshots, loading, error, fxRates, fxStale,
-    saveHoldings, saveTransactions, renameSymbol, addPosition, editPosition, applySplit, removePosition, sellPosition,
+    saveHoldings, saveTransactions, addTransaction, renameSymbol, addPosition, editPosition, applySplit, removePosition, sellPosition,
     refresh, displayCurrency, activePortfolioId, watchlistMigrationPending,
   } = useApp();
   const t = useT();
@@ -293,7 +293,7 @@ export default function Portfolio() {
         <AddDividendModal
           isOpen={!!divTarget}
           initialData={{ symbol: divTarget, exDate: '', payDate: '', amount: '' }}
-          onSave={async data => {
+          onSave={async ({ tax, toCash, ...data }) => {
             const heldQty = portfolio.find(p => p.symbol === divTarget)?.qty;
             const newTx = {
               id: Math.random().toString(36).slice(2, 10),
@@ -304,8 +304,9 @@ export default function Portfolio() {
               qty: heldQty != null && heldQty > 0 ? heldQty : 1,
               currency: data.currency,
               note: data.note || '',
+              ...(tax != null ? { tax } : {}),
             };
-            await saveTransactions(prev => [...prev, newTx]);
+            await addTransaction(newTx, { positions: false, cash: toCash });
             addDividend(data);
             setDivTarget(null);
             showToast(t('pf_div_saved').replace('{symbol}', divTarget), { type: 'success' });

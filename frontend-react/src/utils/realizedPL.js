@@ -6,6 +6,7 @@
 // zakupu w historii nadal jest pomijana (nie znamy kosztu).
 import { weightedAvg } from './weightedAvg.js';
 import { splitAdjusted } from './splits.js';
+import { buyUnitCost, txFee } from './transactions.js';
 
 function backfillCostBasis(transactions) {
   const bySym = new Map();
@@ -25,7 +26,7 @@ function backfillCostBasis(transactions) {
     let qty = 0, avg = 0;
     for (const tx of sorted) {
       if (tx.type === 'BUY') {
-        avg = weightedAvg(qty, avg, tx.qty, tx.price);
+        avg = weightedAvg(qty, avg, tx.qty, buyUnitCost(tx));
         qty = qty + tx.qty;
       } else {
         if (tx.costBasis == null && qty >= tx.qty) filled.set(tx, avg);
@@ -51,11 +52,14 @@ export function computeRealizedTrades(rawTransactions = [], fxRates = {}) {
 function mapTrade(tx, fxRates) {
     const qty        = tx.qty   ?? 0;
     const sellPrice  = tx.price ?? 0;
+    // Koszt zawiera prowizję zakupu (średnia z buyUnitCost), wynik — minus
+    // prowizja sprzedaży. Wynik wpisany ręcznie (overridePL) jest ostateczny.
+    const fee        = tx.overridePL != null ? 0 : txFee(tx);
     const costBasis  = tx.overridePL != null ? (sellPrice - tx.overridePL / qty) : (tx.costBasis ?? 0);
-    const plNative   = (sellPrice - costBasis) * qty;          // in tx.currency
+    const plNative   = (sellPrice - costBasis) * qty - fee;    // in tx.currency
     const rate       = fxRates[tx.currency] ?? 1;
     const plPLN      = plNative * rate;
-    const pct        = costBasis > 0 ? ((sellPrice - costBasis) / costBasis) * 100 : 0;
+    const pct        = costBasis > 0 && qty > 0 ? (plNative / (costBasis * qty)) * 100 : 0;
     return {
       id:        tx.id,
       symbol:    tx.symbol,
@@ -63,6 +67,7 @@ function mapTrade(tx, fxRates) {
       qty,
       sellPrice,
       costBasis,
+      fee,
       currency:  tx.currency ?? 'PLN',
       plNative,
       plPLN,

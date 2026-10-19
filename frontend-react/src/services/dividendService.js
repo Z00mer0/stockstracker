@@ -22,6 +22,18 @@ export function getTaxRate(symbol, currency, accountType) {
   return accountType === 'IKE' || accountType === 'IKZE' ? wht : Math.max(wht, 0.19);
 }
 
+// Stawka dla zapisanej dywidendy: podatek faktycznie pobrany (tx.tax)
+// wygrywa z szacunkiem. Za granicą na zwykłym rachunku do 19% dopłaca się
+// w Polsce, więc niższy podatek u źródła nie obniża stawki poniżej 19%.
+export function dividendTaxRate(tx, accountType) {
+  const gross = (tx.price || 0) * (tx.qty || 1);
+  if (tx.tax == null || tx.tax === '' || !(gross > 0)) return getTaxRate(tx.symbol, tx.currency, accountType);
+  const withheld = Math.min(1, Math.max(0, Number(tx.tax) / gross));
+  const foreign = !(tx.symbol?.includes('.WA') || tx.currency === 'PLN');
+  const taxFree = accountType === 'IKE' || accountType === 'IKZE';
+  return foreign && !taxFree ? Math.max(withheld, 0.19) : withheld;
+}
+
 export async function fetchDividendHistory(symbol) {
   const cacheKey = CACHE_PREFIX + symbol;
   try {

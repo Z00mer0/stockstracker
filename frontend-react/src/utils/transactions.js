@@ -11,6 +11,16 @@ export function normalizeType(type) {
 // Kwota transakcji w jej własnej walucie (CASH nie ma ilości).
 export const txAmount = tx => (tx.qty ?? 1) * (tx.price ?? 0);
 
+// Prowizja kupna/sprzedaży (tx.fee) — łącznie, w walucie transakcji.
+export const txFee = tx => Number(tx.fee) || 0;
+
+// Koszt jednej akcji z zakupu razem z prowizją — z tego liczy się średnia
+// cena pozycji, a więc i wynik sprzedaży.
+export const buyUnitCost = tx => (tx.price ?? 0) + (tx.qty > 0 ? txFee(tx) / tx.qty : 0);
+
+// Podatek pobrany od dywidendy (tx.tax) — łącznie, w walucie dywidendy.
+export const divNet = tx => txAmount(tx) - (Number(tx.tax) || 0);
+
 // Sumy kupna / sprzedaży / dywidend / gotówki z ostatnich 30 dni w walucie
 // wyświetlania. Wcześniej kwoty w różnych walutach były dodawane wprost
 // i podpisane walutą wyświetlania — zakup za 1110 $ liczył się jako 1110 zł.

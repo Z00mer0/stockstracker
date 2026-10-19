@@ -93,7 +93,7 @@ describe('computePit38', () => {
   it('CSV zawiera zakupy FIFO i podsumowanie', () => {
     const csv = pit38CSV(computePit38(txs, { year: 2025, rates: RATES }));
     expect(csv).toContain('2024-03-05 × 9 @ 100,00 USD, 4,0000 | 2024-06-10 × 6 @ 200,00 USD, 3,9000');
-    expect(csv).toContain('Podatek 19% (zł);;;;;;;;;1324;');
+    expect(csv).toContain('Podatek 19% (zł);;;;;;;;;;1324;');
   });
 });
 

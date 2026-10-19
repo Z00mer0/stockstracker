@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useT } from '../context/LanguageContext';
-import { Button, Field, Input, Modal, Select } from './ui';
+import { Button, Field, Input, Modal, SegmentedControl, Select } from './ui';
 
-const EMPTY = { symbol: '', exDate: '', payDate: '', amount: '', currency: 'PLN', note: '' };
+const EMPTY = { symbol: '', exDate: '', payDate: '', amount: '', currency: 'PLN', note: '', tax: '', toCash: true };
 
 export default function AddDividendModal({ isOpen, onClose, onSave, initialData = null }) {
   const { portfolio } = useApp();
@@ -22,7 +22,8 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
       setForm(initialData
         ? { symbol: initialData.symbol ?? '', exDate: initialData.exDate ?? '', payDate: initialData.payDate ?? '',
             amount: String(initialData.amount ?? ''),
-            currency: initialData.currency ?? currencyOf(initialData.symbol) ?? 'PLN', note: initialData.note ?? '' }
+            currency: initialData.currency ?? currencyOf(initialData.symbol) ?? 'PLN', note: initialData.note ?? '',
+            tax: '', toCash: true }
         : EMPTY
       );
     }
@@ -35,7 +36,10 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
   // jej nie zawierała i pole spółki wyglądało na puste.
   const symbols = [...new Set([...portfolio.map(p => p.symbol), form.symbol].filter(Boolean))].sort();
   const amount = parseFloat(form.amount);
-  const valid = form.symbol && form.exDate && amount > 0;
+  const tax = parseFloat(form.tax);
+  const valid = form.symbol && form.exDate && amount > 0 && !(tax < 0);
+  // Podatek i gotówka dotyczą nowej wypłaty — edycja zmienia tylko wpis w kalendarzu.
+  const isNew = !initialData?.id;
 
   function set(field, value) { setForm(prev => ({ ...prev, [field]: value })); }
 
@@ -55,6 +59,8 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
         payDate: form.payDate || null,
         amount,
         currency: form.currency, note: form.note.trim(),
+        ...(isNew && tax >= 0 ? { tax } : {}),
+        ...(isNew ? { toCash: form.toCash } : {}),
       });
       onClose();
     } catch (err) {
@@ -101,6 +107,16 @@ export default function AddDividendModal({ isOpen, onClose, onSave, initialData 
             </Select>
           </Field>
         </div>
+        {isNew && (
+          <>
+            <Field label={t('div_tax_label')} hint={t('div_tax_hint')}>
+              <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={form.currency} value={form.tax} onChange={e => set('tax', e.target.value)} />
+            </Field>
+            <Field label={t('div_payout')}>
+              <SegmentedControl block aria-label={t('div_payout')} options={[{ value: 'cash', label: t('proceeds_to_cash') }, { value: 'out', label: t('proceeds_out') }]} value={form.toCash ? 'cash' : 'out'} onChange={v => set('toCash', v === 'cash')} />
+            </Field>
+          </>
+        )}
         <Field label={t('note_label')}>
           <Input type="text" maxLength={120} placeholder={t('dividend_note_ph')} value={form.note} onChange={e => set('note', e.target.value)} />
         </Field>

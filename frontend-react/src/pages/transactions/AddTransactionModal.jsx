@@ -17,6 +17,8 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
     currency: 'PLN',
     date: new Date().toISOString().slice(0, 10),
     note: '',
+    fee: '',
+    tax: '',
     ...initial,
   });
   const [positions, setPositions] = useState(initial?.positions ?? true);
@@ -29,7 +31,8 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
   const isCash = form.type === 'CASH';
   const isTrade = form.type === 'BUY' || form.type === 'SELL';
-  const cashOn = toCash ?? form.type === 'SELL';
+  const isDiv = form.type === 'DIV';
+  const cashOn = toCash ?? (form.type === 'SELL' || isDiv);
 
   async function handleSave() {
     if (!isCash && !form.symbol.trim()) { setError(t('err_enter_symbol')); return; }
@@ -37,6 +40,9 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
     const price = parseFloat(form.price);
     if (!isCash && (isNaN(qty) || qty <= 0)) { setError(t('err_enter_qty_short')); return; }
     if (isNaN(price) || price < 0) { setError(t('err_enter_price_short')); return; }
+    const fee = isTrade ? parseFloat(form.fee) : NaN;
+    const tax = isDiv ? parseFloat(form.tax) : NaN;
+    if (fee < 0 || tax < 0) { setError(t('err_enter_price_short')); return; }
     setSaving(true);
     setError('');
     try {
@@ -50,7 +56,9 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
         currency: form.currency,
         date: form.date,
         note: form.note.trim(),
-      }, { positions: isTrade && positions, cash: isTrade && cashOn });
+        ...(fee > 0 ? { fee } : {}),
+        ...(tax >= 0 ? { tax } : {}),
+      }, { positions: isTrade && positions, cash: (isTrade || isDiv) && cashOn });
       onClose();
     } catch (e) {
       setError(e.response?.data?.error || e.message || t('save_error'));
@@ -118,22 +126,34 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
             <Input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
           </Field>
         </div>
+        {isTrade && (
+          <Field label={t('fee_label')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={form.currency} value={form.fee} onChange={e => set('fee', e.target.value)} />
+          </Field>
+        )}
+        {isDiv && (
+          <Field label={t('div_tax_label')} hint={t('div_tax_hint')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={form.currency} value={form.tax} onChange={e => set('tax', e.target.value)} />
+          </Field>
+        )}
         <Field label={t('note_optional')}>
           <Input value={form.note} onChange={e => set('note', e.target.value)} />
         </Field>
+        {(isTrade || isDiv) && (
+          <Field label={form.type === 'BUY' ? t('source_of_funds') : form.type === 'SELL' ? t('sale_proceeds') : t('div_payout')}>
+            <SegmentedControl
+              block
+              aria-label={form.type === 'BUY' ? t('source_of_funds') : form.type === 'SELL' ? t('sale_proceeds') : t('div_payout')}
+              options={form.type === 'BUY'
+                ? [{ value: 'out', label: t('top_up') }, { value: 'cash', label: t('deduct_cash') }]
+                : [{ value: 'cash', label: t('proceeds_to_cash') }, { value: 'out', label: t('proceeds_out') }]}
+              value={cashOn ? 'cash' : 'out'}
+              onChange={v => setToCash(v === 'cash')}
+            />
+          </Field>
+        )}
         {isTrade && (
           <>
-            <Field label={form.type === 'BUY' ? t('source_of_funds') : t('sale_proceeds')}>
-              <SegmentedControl
-                block
-                aria-label={form.type === 'BUY' ? t('source_of_funds') : t('sale_proceeds')}
-                options={form.type === 'BUY'
-                  ? [{ value: 'out', label: t('top_up') }, { value: 'cash', label: t('deduct_cash') }]
-                  : [{ value: 'cash', label: t('proceeds_to_cash') }, { value: 'out', label: t('proceeds_out') }]}
-                value={cashOn ? 'cash' : 'out'}
-                onChange={v => setToCash(v === 'cash')}
-              />
-            </Field>
             <label className="flex cursor-pointer items-start gap-3">
               <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--accent)]" checked={positions} onChange={e => setPositions(e.target.checked)} />
               <span>
