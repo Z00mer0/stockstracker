@@ -311,6 +311,8 @@ export default {
   top_up:               'Top up',
   deduct_cash:          'Deduct from cash',
   price_close_on:       'Closing price on {date} — you can enter your own',
+  held_since:           'held since {date} ({days} days)',
+  with_dividends:       'Including dividends',
   fee_label:            'Commission',
   div_tax_label:        'Tax withheld',
   div_tax_hint:         'In total, as deducted by the broker. Without it, net is estimated from the usual rate.',
