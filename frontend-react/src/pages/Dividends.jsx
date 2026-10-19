@@ -12,6 +12,7 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { lsSet } from '../utils/safeStorage.js';
 import { normalizeType } from '../utils/transactions.js';
+import { dividendsByYear } from '../utils/dividendYears.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
   Button, Callout, Card, EmptyState, Field, IconButton, Input, SegmentedControl, Spinner, Stat, Table, Tabs, TabPanel,
@@ -155,6 +156,13 @@ export default function Dividends() {
   const grossPLN = d => (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1);
   const netPLN = d => grossPLN(d) * (1 - dividendTaxRate(d, accountType));
   const dispPLN = d => (isNet ? netPLN(d) : grossPLN(d));
+
+  // Dochód z dywidend rok po roku (brutto/netto jak reszta strony).
+  const divYears = useMemo(
+    () => dividendsByYear(dividends, dispPLN),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dividends, fxRates, isNet],
+  );
 
   const annualDivPLN = useMemo(() =>
     dividends.filter(d => d.date >= yearCutoff).reduce((s, d) => s + dispPLN(d), 0),
@@ -444,6 +452,21 @@ export default function Dividends() {
       </div>
 
       <DividendForecastCard forecast={forecast} isNet={isNet} dispFx={dispFx} currency={dCurr} loading={yocLoading} />
+
+      {divYears.length > 0 && (
+        <Card title={`${t('div_by_year')} · ${modeLabel}`}>
+          <Table
+            columns={[
+              { key: 'year', header: t('col_year'), mobile: 'title', render: r => <span className="font-semibold text-fg">{r.year}{r.partial && <span className="ml-1.5 text-[11px] font-normal text-faint">{t('div_ytd')}</span>}</span> },
+              { key: 'total', header: t('col_value'), align: 'right', mobile: 'aside', render: r => <span className={cx('font-semibold', blur)}>{fmt(r.total / dispFx, 2, locale)} {dCurr}</span> },
+              { key: 'growth', header: t('div_yoy'), align: 'right', render: r => <Chip value={r.growthPct} decimals={1} /> },
+            ]}
+            rows={[...divYears].reverse()}
+            rowKey={r => r.year}
+          />
+          <p className="px-4 pb-3 pt-2 text-[11px] text-faint">{t('div_yoy_note')}</p>
+        </Card>
+      )}
 
       {goalCard}
 
