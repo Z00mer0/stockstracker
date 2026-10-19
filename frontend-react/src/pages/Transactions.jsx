@@ -149,12 +149,15 @@ export default function Transactions() {
 
   return (
     <div className="space-y-4">
+      {/* Bez ruchu w ostatnich 30 dniach cztery zera nic nie mówią. */}
+      {(stats.buy || stats.sell || stats.div || stats.cash) !== 0 && (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat blur={isPrivate} icon={ShoppingCart} label={t('buys_30d')} value={`${fmt(stats.buy, 2, locale)} ${currLabel}`} />
         <Stat blur={isPrivate} icon={HandCoins} label={t('sells_30d')} value={`${fmt(stats.sell, 2, locale)} ${currLabel}`} />
         <Stat blur={isPrivate} icon={Coins} label={t('divs_30d')} value={`${fmt(stats.div, 2, locale)} ${currLabel}`} />
         <Stat blur={isPrivate} icon={Wallet} label={t('cash_30d')} value={`${fmt(stats.cash, 2, locale)} ${currLabel}`} />
       </div>
+      )}
 
       {/* W widoku „Wszystkie" zapis i tak jest zablokowany (AppContext) —
           wcześniej użytkownik dowiadywał się o tym dopiero po wypełnieniu

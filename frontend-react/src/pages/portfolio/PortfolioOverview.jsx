@@ -75,6 +75,10 @@ export default function PortfolioOverview({
   const t = useT();
   const { locale } = useLanguage();
   const year = new Date().getFullYear();
+  const unrealized = positionsValuePLN > 0 ? positionsValuePLN - totalCostPLN : null;
+  const largest = positionsValuePLN > 0
+    ? positions.reduce((best, p) => ((p.valuePLN ?? 0) > (best?.valuePLN ?? 0) ? p : best), null)
+    : null;
 
   const [dashLayout, setDashLayout] = useState(DASH_DEFAULT_LAYOUT);
   const [editMode, setEditMode] = useState(false);
@@ -205,6 +209,23 @@ export default function PortfolioOverview({
                       {dailyChangePLN == null
                         ? <span className="rs-val text-faint">—</span>
                         : <span className={cx('rs-val', dailyChangePLN >= 0 ? 'text-up' : 'text-down')}>{dailyChangePLN >= 0 ? '+' : ''}{fmt(portToDisp(dailyChangePLN), 2, locale)} {portCurrLabel}</span>}
+                    </div>
+                    {/* Zysk na otwartych pozycjach i udział największej —
+                        wcześniej karta była w połowie pusta. */}
+                    <div className="rail-stat">
+                      <span className="rs-lbl">{t('stats_unrealized')}</span>
+                      {unrealized == null
+                        ? <span className="rs-val text-faint">—</span>
+                        : <span className={cx('rs-val', unrealized >= 0 ? 'text-up' : 'text-down')}>
+                            {unrealized >= 0 ? '+' : ''}{fmt(portToDisp(unrealized), 2, locale)} {portCurrLabel}
+                            {totalCostPLN > 0 && <span className="font-normal opacity-80"> ({unrealized >= 0 ? '+' : ''}{fmt(unrealized / totalCostPLN * 100, 1, locale)}%)</span>}
+                          </span>}
+                    </div>
+                    <div className="rail-stat">
+                      <span className="rs-lbl">{t('stats_largest')}</span>
+                      {largest
+                        ? <span className="rs-val">{largest.symbol} · {fmt(largest.valuePLN / positionsValuePLN * 100, 1, locale)}%</span>
+                        : <span className="rs-val text-faint">—</span>}
                     </div>
                     <div className="rail-stat">
                       <span className="rs-lbl">{t('stats_positions')}</span>

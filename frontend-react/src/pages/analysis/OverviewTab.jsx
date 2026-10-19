@@ -75,14 +75,22 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card title={t('best_positions')}>
-          <Table columns={perfColumns} rows={best5} rowKey={p => p.id ?? p.symbol} />
+      {/* Przy ≤ 10 pozycjach „najlepsze 5" i „najgorsze 5" to te same spółki
+          w odwrotnej kolejności — wtedy jedna posortowana lista. */}
+      {byReturn.length > 10 ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card title={t('best_positions')}>
+            <Table columns={perfColumns} rows={best5} rowKey={p => p.id ?? p.symbol} />
+          </Card>
+          <Card title={t('worst_positions')}>
+            <Table columns={perfColumns} rows={worst5} rowKey={p => p.id ?? p.symbol} />
+          </Card>
+        </div>
+      ) : (
+        <Card title={t('positions_by_return')}>
+          <Table columns={perfColumns} rows={byReturn} rowKey={p => p.id ?? p.symbol} defaultSort={{ key: 'returnPct', dir: 'desc' }} />
         </Card>
-        <Card title={t('worst_positions')}>
-          <Table columns={perfColumns} rows={worst5} rowKey={p => p.id ?? p.symbol} />
-        </Card>
-      </div>
+      )}
 
       {insights.length > 0 && (
         <Card title={<span className="inline-flex items-center gap-2"><Sparkles size={15} aria-hidden className="text-accent-text" />{t('smart_insights')}</span>}>
