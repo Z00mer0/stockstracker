@@ -310,6 +310,7 @@ export default {
   source_of_funds:      'Source of funds',
   top_up:               'Top up',
   deduct_cash:          'Deduct from cash',
+  price_close_on:       'Closing price on {date} — you can enter your own',
   fee_label:            'Commission',
   div_tax_label:        'Tax withheld',
   div_tax_hint:         'In total, as deducted by the broker. Without it, net is estimated from the usual rate.',

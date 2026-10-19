@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useT } from '../../context/LanguageContext';
+import { useApp } from '../../context/AppContext';
 import { Button, Field, Input, Modal, SegmentedControl, Select } from '../../components/ui';
+import SymbolInput from '../../components/shared/SymbolInput.jsx';
+import { usePriceOnDate } from '../../hooks/usePriceOnDate.js';
+import { currencyForSymbol } from '../../utils/priceOnDate.js';
 
 const TYPES = ['BUY', 'SELL', 'DIV', 'CASH'];
 const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 'type_cash' };
@@ -9,6 +13,7 @@ const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 
 // initial: wstępne wypełnienie (uzupełnianie historii pozycji z portfela).
 export default function AddTransactionModal({ onSave, onClose, initial = null }) {
   const t = useT();
+  const { portfolio = [] } = useApp();
   const [form, setForm] = useState({
     type: 'BUY',
     symbol: '',
@@ -34,10 +39,23 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
   const isDiv = form.type === 'DIV';
   const cashOn = toCash ?? (form.type === 'SELL' || isDiv);
 
+  // Waluta: pozycji, jeśli ją masz, inaczej z notowań albo sufiksu symbolu.
+  // Cena kupna/sprzedaży: zamknięcie z dnia transakcji. Obie podpowiedzi
+  // znikają, gdy użytkownik wpisze własną wartość.
+  const [currencyTouched, setCurrencyTouched] = useState(!!initial?.currency);
+  const [priceTouched, setPriceTouched] = useState(!!initial?.price);
+  const quote = usePriceOnDate(form.symbol, form.date, isTrade);
+  const held = portfolio.find(h => h.symbol === form.symbol.trim().toUpperCase());
+  const currency = currencyTouched || isCash
+    ? form.currency
+    : held?.currency ?? (isTrade ? quote?.currency : null) ?? currencyForSymbol(form.symbol) ?? form.currency;
+  const autoPrice = isTrade && !priceTouched && quote ? String(+quote.price.toFixed(4)) : null;
+  const priceVal = autoPrice ?? form.price;
+
   async function handleSave() {
     if (!isCash && !form.symbol.trim()) { setError(t('err_enter_symbol')); return; }
     const qty = isCash ? null : parseFloat(form.qty);
-    const price = parseFloat(form.price);
+    const price = parseFloat(priceVal);
     if (!isCash && (isNaN(qty) || qty <= 0)) { setError(t('err_enter_qty_short')); return; }
     if (isNaN(price) || price < 0) { setError(t('err_enter_price_short')); return; }
     const fee = isTrade ? parseFloat(form.fee) : NaN;
@@ -53,7 +71,7 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
         qty,
         // Gotówka: znak w kwocie, wypłata ujemna (jak w imporcie brokera).
         price: isCash && withdrawal ? -price : price,
-        currency: form.currency,
+        currency,
         date: form.date,
         note: form.note.trim(),
         ...(fee > 0 ? { fee } : {}),
@@ -97,14 +115,13 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
             onChange={v => setWithdrawal(v === 'out')}
           />
         ) : (
-          <Field label={t('col_symbol')}>
-            <Input
-              placeholder={t('pf_eg').replace('{v}', 'AAPL, CDR.WA')}
-              autoCapitalize="characters"
-              value={form.symbol}
-              onChange={e => set('symbol', e.target.value.toUpperCase())}
-            />
-          </Field>
+          <SymbolInput
+            id="add-tx"
+            label={t('col_symbol')}
+            placeholder={t('pf_eg').replace('{v}', 'AAPL, CDR.WA')}
+            value={form.symbol}
+            onChange={v => set('symbol', v.toUpperCase())}
+          />
         )}
         <div className={isCash ? 'grid gap-4' : 'grid gap-4 sm:grid-cols-2'}>
           {!isCash && (
@@ -112,13 +129,13 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
               <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0" value={form.qty} onChange={e => set('qty', e.target.value)} />
             </Field>
           )}
-          <Field label={isCash ? t('col_value') : t('price_label')}>
-            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" value={form.price} onChange={e => set('price', e.target.value)} />
+          <Field label={isCash ? t('col_value') : t('price_label')} hint={autoPrice ? t('price_close_on').replace('{date}', quote.date) : undefined}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" value={priceVal} onChange={e => { set('price', e.target.value); setPriceTouched(true); }} />
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('currency_label')}>
-            <Select value={form.currency} onChange={e => set('currency', e.target.value)}>
+            <Select value={currency} onChange={e => { set('currency', e.target.value); setCurrencyTouched(true); }}>
               {['PLN', 'USD', 'EUR', 'GBP'].map(c => <option key={c}>{c}</option>)}
             </Select>
           </Field>
@@ -128,12 +145,12 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
         </div>
         {isTrade && (
           <Field label={t('fee_label')}>
-            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={form.currency} value={form.fee} onChange={e => set('fee', e.target.value)} />
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={currency} value={form.fee} onChange={e => set('fee', e.target.value)} />
           </Field>
         )}
         {isDiv && (
           <Field label={t('div_tax_label')} hint={t('div_tax_hint')}>
-            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={form.currency} value={form.tax} onChange={e => set('tax', e.target.value)} />
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" suffix={currency} value={form.tax} onChange={e => set('tax', e.target.value)} />
           </Field>
         )}
         <Field label={t('note_optional')}>
