@@ -23,6 +23,7 @@ import {
   calcAnnualDivPerShare,
   calcYoC,
   getTaxRate,
+  dividendTaxRate,
   DIV_MODE_KEY,
 } from '../services/dividendService';
 
@@ -40,7 +41,7 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
 }
 
 export default function Dividends() {
-  const { transactions, loading, fxRates, portfolio, saveTransactions, activePortfolio, displayCurrency } = useApp();
+  const { transactions, loading, fxRates, portfolio, addTransaction, activePortfolio, displayCurrency } = useApp();
   const accountType = activePortfolio?.accountType;
   // Kwoty liczone są wewnętrznie w PLN — wyświetlamy w walucie portfela
   const dispFx = fxRates[displayCurrency] ?? 1;
@@ -152,7 +153,7 @@ export default function Dividends() {
   );
 
   const grossPLN = d => (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1);
-  const netPLN = d => grossPLN(d) * (1 - getTaxRate(d.symbol, d.currency, accountType));
+  const netPLN = d => grossPLN(d) * (1 - dividendTaxRate(d, accountType));
   const dispPLN = d => (isNet ? netPLN(d) : grossPLN(d));
 
   const annualDivPLN = useMemo(() =>
@@ -239,7 +240,7 @@ export default function Dividends() {
 
   function openAdd() { setEditTarget(null); setModalOpen(true); }
   function openEdit(div) { setEditTarget(div); setModalOpen(true); }
-  async function handleSave(formData) {
+  async function handleSave({ tax, toCash, ...formData }) {
     if (editTarget) {
       editDividend(editTarget.id, formData);
     } else {
@@ -253,8 +254,9 @@ export default function Dividends() {
         qty: heldQty != null && heldQty > 0 ? heldQty : 1,
         currency: formData.currency,
         note: formData.note || '',
+        ...(tax != null ? { tax } : {}),
       };
-      await saveTransactions(prev => [...prev, newTx]);
+      await addTransaction(newTx, { positions: false, cash: toCash });
       addDividend(formData);
     }
     setEditTarget(null);
@@ -384,7 +386,7 @@ export default function Dividends() {
     },
     {
       key: 'perShare', header: t('div_per_share').replace('{mode}', modeLabel), align: 'right',
-      render: d => <span className={cx('font-semibold text-warn', blur)}>{fmt(isNet ? d.price * (1 - getTaxRate(d.symbol, d.currency, accountType)) : d.price, 2, locale)} {CUR_SYMBOLS[d.currency] ?? d.currency}</span>,
+      render: d => <span className={cx('font-semibold text-warn', blur)}>{fmt(isNet ? d.price * (1 - dividendTaxRate(d, accountType)) : d.price, 2, locale)} {CUR_SYMBOLS[d.currency] ?? d.currency}</span>,
     },
     { key: 'qty', header: t('qty_short'), align: 'right', render: d => <span className="text-dim">{d.qty ?? '—'}</span> },
     {

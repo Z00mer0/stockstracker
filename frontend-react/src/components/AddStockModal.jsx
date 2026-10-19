@@ -17,6 +17,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const [date, setDate]        = useState(today);
   const [note, setNote]        = useState('');
+  const [fee, setFee]          = useState('');
   const [funding, setFunding]  = useState('topup');
   const [saving, setSaving]    = useState(false);
   const [error, setError]      = useState('');
@@ -82,9 +83,11 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
     if (!sym) { setError(t('err_enter_symbol')); return; }
     if (isNaN(resolvedQty) || resolvedQty <= 0) { setError(t('err_enter_qty')); return; }
     if (isNaN(resolvedPrice) || resolvedPrice <= 0) { setError(t('err_enter_price')); return; }
+    const feeNum = parseFloat(fee);
+    if (feeNum < 0) { setError(t('err_enter_price')); return; }
     setSaving(true); setError('');
     try {
-      await onSave({ symbol: sym, qty: resolvedQty, price: resolvedPrice, currency: effCurrency, date, note: note.trim(), funding });
+      await onSave({ symbol: sym, qty: resolvedQty, price: resolvedPrice, currency: effCurrency, date, note: note.trim(), funding, ...(feeNum > 0 ? { fee: feeNum } : {}) });
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || err.message || t('save_error'));
@@ -171,9 +174,14 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
           </Field>
         </div>
 
-        <Field label={t('note_label')}>
-          <Input placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} />
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t('fee_label')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" value={fee} onChange={e => setFee(e.target.value)} suffix={effCurrency} />
+          </Field>
+          <Field label={t('note_label')}>
+            <Input placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} />
+          </Field>
+        </div>
 
         <Field label={t('source_of_funds')}>
           <SegmentedControl block aria-label={t('source_of_funds')} options={[{ value: 'topup', label: t('top_up') }, { value: 'cash', label: t('deduct_cash') }]} value={funding} onChange={setFunding} />

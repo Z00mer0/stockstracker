@@ -9,10 +9,12 @@
 // - podstawa i podatek zaokrąglone do pełnych złotych (Ordynacja, art. 63).
 // Konta IKE/IKZE nie wchodzą do PIT-38.
 //
-// Czego tu nie ma: prowizji (aplikacja ich nie zapisuje), strat z lat
-// poprzednich i dywidend zagranicznych — mówi o tym opis na karcie.
+// Prowizje (tx.fee) są kosztem: prowizja zakupu proporcjonalnie do
+// sprzedanych z partii akcji, prowizja sprzedaży — po kursie dnia sprzedaży.
+// Czego tu nie ma: strat z lat poprzednich i dywidend zagranicznych — mówi
+// o tym opis na karcie.
 // Data transakcji to data zawarcia (tak ją zapisuje aplikacja).
-import { normalizeType } from './transactions.js';
+import { normalizeType, txFee } from './transactions.js';
 import { splitAdjusted } from './splits.js';
 
 export const PIT_RATE = 0.19;
@@ -63,7 +65,7 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
     const lots = [];
     for (const t of txs) {
       if (t.type === 'BUY') {
-        lots.push({ date: t.date, qty: t.qty, price: t.price ?? 0, currency: t.currency || 'PLN' });
+        lots.push({ date: t.date, qty: t.qty, price: t.price ?? 0, feePerShare: txFee(t) / t.qty, currency: t.currency || 'PLN' });
         continue;
       }
       let left = t.qty;
@@ -71,7 +73,7 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
       while (left > 1e-9 && lots.length) {
         const lot = lots[0];
         const take = Math.min(lot.qty, left);
-        used.push({ date: lot.date, qty: take, price: lot.price, currency: lot.currency, rate: rateAt(lot.currency, lot.date) });
+        used.push({ date: lot.date, qty: take, price: lot.price, fee: take * lot.feePerShare, currency: lot.currency, rate: rateAt(lot.currency, lot.date) });
         lot.qty -= take;
         left -= take;
         if (lot.qty <= 1e-9) lots.shift();
@@ -82,7 +84,11 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
       const rate = rateAt(t.currency, t.date);
       const missingRate = rate == null || used.some(u => u.rate == null);
       const revenuePLN = rate == null ? null : t.qty * (t.price ?? 0) * rate;
-      const costPLN = used.some(u => u.rate == null) ? null : used.reduce((s, u) => s + u.qty * u.price * u.rate, 0);
+      const sellFee = txFee(t);
+      const feesPLN = used.some(u => u.rate == null) || (sellFee && rate == null)
+        ? null
+        : (sellFee ? sellFee * rate : 0) + used.reduce((s, u) => s + u.fee * u.rate, 0);
+      const costPLN = feesPLN == null ? null : used.reduce((s, u) => s + u.qty * u.price * u.rate, 0) + feesPLN;
       rows.push({
         id: t.id,
         symbol: t.symbol,
@@ -97,6 +103,7 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
         missingRate,
         revenuePLN,
         costPLN,
+        feesPLN,
         gainPLN: revenuePLN != null && costPLN != null ? revenuePLN - costPLN : null,
       });
     }
@@ -128,19 +135,19 @@ export function pit38CSV({ year, rows, totals }) {
   const sep = ';';
   const lines = [[
     'Data sprzedaży', 'Spółka', 'Portfel', 'Ilość', 'Cena', 'Waluta', 'Kurs NBP (dzień przed)',
-    'Przychód (PLN)', 'Koszt FIFO (PLN)', 'Dochód/Strata (PLN)', 'Zakupy (data × ilość @ cena, kurs)',
+    'Przychód (PLN)', 'Koszt FIFO (PLN)', 'w tym prowizje (PLN)', 'Dochód/Strata (PLN)', 'Zakupy (data × ilość @ cena, kurs)',
   ].join(sep)];
   for (const r of rows) {
     lines.push([
       r.date, r.symbol, r.portfolio, String(r.qty).replace('.', ','), num(r.price), r.currency, rate4(r.rate),
-      num(r.revenuePLN), num(r.costPLN), num(r.gainPLN),
+      num(r.revenuePLN), num(r.costPLN), num(r.feesPLN), num(r.gainPLN),
       r.lots.map(l => `${l.date} × ${String(+l.qty.toFixed(6)).replace('.', ',')} @ ${num(l.price)} ${l.currency}, ${rate4(l.rate)}`).join(' | ')
         + (r.uncoveredQty > 0 ? ` | BRAK ZAKUPU dla ${String(r.uncoveredQty).replace('.', ',')} szt.` : ''),
     ].join(sep));
   }
   lines.push('');
-  lines.push([`PIT-38 ${year}`, '', '', '', '', '', '', num(totals.revenue), num(totals.cost), num(totals.income), ''].join(sep));
-  lines.push(['Podstawa opodatkowania (zł)', '', '', '', '', '', '', '', '', String(totals.base), ''].join(sep));
-  lines.push(['Podatek 19% (zł)', '', '', '', '', '', '', '', '', String(totals.tax), ''].join(sep));
+  lines.push([`PIT-38 ${year}`, '', '', '', '', '', '', num(totals.revenue), num(totals.cost), '', num(totals.income), ''].join(sep));
+  lines.push(['Podstawa opodatkowania (zł)', '', '', '', '', '', '', '', '', '', String(totals.base), ''].join(sep));
+  lines.push(['Podatek 19% (zł)', '', '', '', '', '', '', '', '', '', String(totals.tax), ''].join(sep));
   return '﻿' + lines.join('\r\n');
 }

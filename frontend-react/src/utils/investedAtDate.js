@@ -4,6 +4,7 @@
 // Zaleta: dla USD-only portfela wyświetlanego w USD, invested nie "oddycha" z NBP.
 import { weightedAvg } from './weightedAvg.js';
 import { splitAdjusted } from './splits.js';
+import { buyUnitCost } from './transactions.js';
 
 // Pozycje odtworzone z historii: Map symbol → { qty, avg, currency } po
 // transakcjach <= date. Kolejność w obrębie dnia: BUY przed SELL (żeby
@@ -35,7 +36,7 @@ export function holdingsAt(transactions, date = '9999-12-31') {
         h.avg = tx.price;
         h.currency = cur;
       } else {
-        h.avg = weightedAvg(h.qty, h.avg, tx.qty, tx.price);
+        h.avg = weightedAvg(h.qty, h.avg, tx.qty, buyUnitCost(tx));
         h.qty = h.qty + tx.qty;
         h.currency = h.currency || cur;
       }

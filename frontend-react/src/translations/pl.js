@@ -310,6 +310,10 @@ export default {
   source_of_funds:      'Źródło środków',
   top_up:               'Dopłata',
   deduct_cash:          'Odejmij od gotówki',
+  fee_label:            'Prowizja',
+  div_tax_label:        'Podatek pobrany',
+  div_tax_hint:         'Łącznie, tyle ile potrąciło biuro. Bez tego netto liczy się z szacunku stawki.',
+  div_payout:           'Wypłata dywidendy',
   sale_proceeds:        'Przychód ze sprzedaży',
   proceeds_to_cash:     'Dodaj do gotówki',
   proceeds_out:         'Wypłacony',
@@ -1250,7 +1254,7 @@ export default {
   pit38_missing_rates:       'Brak kursu NBP dla {n} sprzedaży — nie są wliczone do sumy. Spróbuj odświeżyć później.',
   pit38_uncovered:           '{n} sprzedaży nie ma w historii pełnego zakupu — koszt jest zaniżony. Dodaj brakujące transakcje kupna.',
   pit38_empty:               'Brak sprzedaży w {year} r.',
-  pit38_method_note:         'Koszt metodą FIFO (najpierw najstarsze zakupy, osobno dla każdego portfela), kursy średnie NBP z ostatniego dnia roboczego przed datą transakcji, podstawa i podatek zaokrąglone do pełnych złotych. Konta IKE/IKZE pominięte. Nie uwzględnia prowizji, strat z lat poprzednich ani dywidend zagranicznych. Sprawdź z PIT-8C od biura maklerskiego.',
+  pit38_method_note:         'Koszt metodą FIFO (najpierw najstarsze zakupy, osobno dla każdego portfela), kursy średnie NBP z ostatniego dnia roboczego przed datą transakcji, podstawa i podatek zaokrąglone do pełnych złotych. Konta IKE/IKZE pominięte. Prowizje wpisane przy transakcjach są wliczone w koszt. Nie uwzględnia strat z lat poprzednich ani dywidend zagranicznych. Sprawdź z PIT-8C od biura maklerskiego.',
 
   // ── Newsfeed ──────────────────────────────────────────────────
   news_title:                'Newsfeed',

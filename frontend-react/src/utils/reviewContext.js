@@ -1,7 +1,7 @@
 // Dane portfela wysyłane do przeglądu AI („przegląd menedżera").
 // Wyliczenia wydzielone z PortfolioReview, żeby dało się je przetestować.
 import { normalizeType } from './transactions.js';
-import { getTaxRate } from '../services/dividendService';
+import { dividendTaxRate } from '../services/dividendService';
 
 // bonds: [{ type, valuePLN, maturity? }] — już wycenione (CPI) przez wołającego.
 export function buildReviewContext({
@@ -46,7 +46,7 @@ export function buildReviewContext({
   const divs = transactions.filter(tx => normalizeType(tx.type) === 'DIV' && tx.date >= cutoffStr);
   const gross = d => toPLN((d.price || 0) * (d.qty || 1), d.currency);
   const divGrossPLN = divs.reduce((s, d) => s + gross(d), 0);
-  const divNetPLN = divs.reduce((s, d) => s + gross(d) * (1 - getTaxRate(d.symbol, d.currency, accountType)), 0);
+  const divNetPLN = divs.reduce((s, d) => s + gross(d) * (1 - dividendTaxRate(d, accountType)), 0);
 
   return {
     totalValuePLN: Math.round(totalPLN),

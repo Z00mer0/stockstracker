@@ -23,6 +23,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   const [verdict, setVerdict]     = useState('');
   const [retroNote, setRetroNote] = useState('');
   const [proceeds, setProceeds]   = useState('cash');
+  const [fee, setFee]             = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -33,8 +34,9 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   const q   = parseFloat(qty);
   const p   = parseFloat(price);
   const avg = holding?.avgPrice;
+  const feeNum = parseFloat(fee) || 0;
   const calcPL = (!isNaN(q) && q > 0 && !isNaN(p) && p > 0 && avg)
-    ? (p - avg) * q
+    ? (p - avg) * q - feeNum
     : null;
 
   function startEditPL() {
@@ -67,7 +69,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
         ...(verdict && verdict !== 'skip' ? { verdict } : {}),
         ...(retroNote.trim() ? { note: retroNote.trim() } : {}),
       };
-      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL, retro, toCash: proceeds === 'cash' });
+      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL, retro, toCash: proceeds === 'cash', ...(feeNum > 0 ? { fee: feeNum } : {}) });
       onClose();
     } catch (err) {
       setError(err.message || t('save_error'));
@@ -102,6 +104,9 @@ export default function SellStockModal({ holding, onSave, onClose }) {
           <Field label={t('sell_date_label')}>
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </Field>
+          <Field label={t('fee_label')}>
+            <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" value={fee} onChange={e => setFee(e.target.value)} suffix={currency} />
+          </Field>
           <Field label={t('note_optional')}>
             <Input placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} />
           </Field>
@@ -124,7 +129,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
                 <span>
                   <span className="text-faint">{t('est_result')}: </span>
                   <span className={cx('font-semibold tabular-nums', effectivePL >= 0 ? 'text-up' : 'text-down')}>
-                    {effectivePL >= 0 ? '+' : ''}{fmt(effectivePL)} {currency} ({(((p - avg) / avg) * 100).toFixed(2)}%)
+                    {effectivePL >= 0 ? '+' : ''}{fmt(effectivePL)} {currency} ({((effectivePL / (avg * q)) * 100).toFixed(2)}%)
                   </span>
                 </span>
                 <Button size="sm" variant="ghost" icon={Pencil} onClick={startEditPL}>{t('edit_pl')}</Button>

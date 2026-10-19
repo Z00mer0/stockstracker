@@ -9,7 +9,7 @@
 //   effect: { qty?: akcje dodane (+) / zdjęte (−), ratio?: split,
 //             cash?: zmiana gotówki w walucie transakcji }
 import { weightedAvg } from './weightedAvg.js';
-import { normalizeType } from './transactions.js';
+import { normalizeType, txAmount, txFee, buyUnitCost, divNet } from './transactions.js';
 import { holdingsAt } from './investedAtDate.js';
 
 const EPS = 1e-9;
@@ -21,11 +21,12 @@ export function baseSymbol(sym) {
 }
 
 // Kwota, o jaką transakcja zmienia gotówkę (CASH: znak w cenie, wpłata +).
+// Prowizja idzie z gotówki, dywidenda wpływa po podatku pobranym u źródła.
 export function cashAmount(tx) {
   const type = normalizeType(tx.type);
-  const gross = (tx.qty ?? 1) * (tx.price ?? 0);
-  if (type === 'BUY') return -gross;
-  if (type === 'SELL' || type === 'DIV') return gross;
+  if (type === 'BUY') return -(txAmount(tx) + txFee(tx));
+  if (type === 'SELL') return txAmount(tx) - txFee(tx);
+  if (type === 'DIV') return divNet(tx);
   if (type === 'CASH') return Number(tx.price) || 0;
   return 0;
 }
@@ -48,8 +49,8 @@ export function applyTransaction({ holdings = [], cash = {} }, tx, { positions =
     }
     if (type === 'BUY') {
       nextHoldings = h
-        ? holdings.map(x => x === h ? { ...x, qty: x.qty + tx.qty, avgPrice: weightedAvg(x.qty, x.avgPrice, tx.qty, tx.price) } : x)
-        : [...holdings, { id: newId(), symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur, date: tx.date, name: '' }];
+        ? holdings.map(x => x === h ? { ...x, qty: x.qty + tx.qty, avgPrice: weightedAvg(x.qty, x.avgPrice, tx.qty, buyUnitCost(tx)) } : x)
+        : [...holdings, { id: newId(), symbol: tx.symbol, qty: tx.qty, avgPrice: buyUnitCost(tx), currency: cur, date: tx.date, name: '' }];
       effect.qty = tx.qty;
     } else if (type === 'SELL') {
       if (!h || tx.qty > h.qty + EPS) throw new Error(`Za mało akcji ${tx.symbol} w portfelu (jest ${h?.qty ?? 0})`);
@@ -96,7 +97,7 @@ export function revertTransaction({ holdings = [], cash = {} }, tx) {
     } else {
       // Średnia bez tego zakupu; dokładna, o ile pozycja nie zmieniała się
       // w inny sposób niż sprzedażą (sprzedaż średniej nie rusza).
-      const avg = (h.qty * h.avgPrice - e.qty * tx.price) / left;
+      const avg = (h.qty * h.avgPrice - e.qty * buyUnitCost(tx)) / left;
       nextHoldings = holdings.map(x => x === h ? { ...x, qty: left, avgPrice: avg > 0 ? avg : x.avgPrice } : x);
     }
   } else if (e.qty < 0) {
