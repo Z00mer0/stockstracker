@@ -21,7 +21,7 @@ import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
 import { todayCapital, withCapital } from '../utils/capital.js';
-import { normalizeType } from '../utils/transactions.js';
+import { normalizeType, txAmount, txFee, divNet } from '../utils/transactions.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
@@ -202,7 +202,7 @@ export default function Dashboard() {
     };
   }, [allPositions, snapshots, transactions, fxRates, cash, otherAssets, invested]);
 
-  // ── Portfolio IRR — requires ≥30 days of history ──────────────────────────
+  // ── Portfolio IRR — od pełnego roku historii ─────────────────────────────
   const { portfolioIrr } = useMemo(() => {
     const symbolsWithBuy = new Set(
       transactions.filter(t => t.type === 'BUY').map(t => t.symbol)
@@ -214,18 +214,20 @@ export default function Dashboard() {
     const cashflows = transactions
       .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DIV')
       .map(t => ({
-        amount: t.type === 'BUY'
-          ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
-          :  +(t.qty * t.price * (fxRates[t.currency] ?? 1)),
+        // Prowizje i podatek od dywidendy — przepływ to to, co faktycznie
+        // wyszło z rachunku i na niego wpłynęło.
+        amount: (t.type === 'BUY' ? -(txAmount(t) + txFee(t)) : t.type === 'SELL' ? txAmount(t) - txFee(t) : divNet(t))
+          * (fxRates[t.currency] ?? 1),
         date: t.date,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (!cashflows.length) return { portfolioIrr: null, irrMissingSymbols: missingSymbols, irrDaySpan: 0 };
 
-    // Require at least 30 days of history — shorter periods give misleading annualized rates
+    // Stopa roczna z krótszego okresu to fikcja (demo: +646%/r po kilku
+    // miesiącach) — do roku wynik okresu pokazuje karta „Obecny zysk”.
     const daySpan = Math.round((Date.now() - new Date(cashflows[0].date).getTime()) / 86400000);
-    if (daySpan < 30) return { portfolioIrr: null, irrMissingSymbols: missingSymbols, irrDaySpan: daySpan };
+    if (daySpan < 365) return { portfolioIrr: null, irrMissingSymbols: missingSymbols, irrDaySpan: daySpan };
 
     // Only include positions with documented BUY transactions to avoid inflating IRR
     const terminalValue = allPositions

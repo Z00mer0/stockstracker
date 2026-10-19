@@ -30,7 +30,10 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
   const byReturn = [...withReturn].sort((a, b) => b.returnPct - a.returnPct);
   const best5 = byReturn.slice(0, 5);
   const worst5 = [...byReturn].reverse().slice(0, 5);
-  const avgReturn = withReturn.length ? withReturn.reduce((s, p) => s + p.returnPct, 0) / withReturn.length : null;
+  // Ważony kosztem: zwykła średnia liczyła pozycję za 500 zł tak samo jak
+  // tę za 50 000 zł.
+  const costSum = withReturn.reduce((s, p) => s + p.costPLN, 0);
+  const avgReturn = costSum > 0 ? withReturn.reduce((s, p) => s + (p.plPLN ?? 0), 0) / costSum * 100 : null;
   const profitable = withReturn.filter(p => (p.plPLN ?? 0) >= 0).length;
   const losing = withReturn.filter(p => (p.plPLN ?? 0) < 0).length;
 

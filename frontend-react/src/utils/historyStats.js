@@ -11,7 +11,8 @@
 //   stopa zwrotu — ważona czasem (TWR): dzienne stopy z wartości po odjęciu
 //                  wpłat tego dnia, przemnożone. Wpłata nie jest zyskiem,
 //                  a duża wpłata nie „rozwadnia" wcześniejszych wyników.
-//   CAGR        — TWR w skali roku, od 90 dni
+//   CAGR        — TWR w skali roku, od pełnego roku (krótszy okres w skali
+//                 roku daje fikcję: +25% w 2 miesiące to „+280% rocznie”)
 //   obsunięcie  — liczone na indeksie TWR, nie na wartości (wypłata to nie strata)
 //
 // rows: rosnąco po dacie, { date, total, capital } w jednej walucie.
@@ -57,7 +58,7 @@ export function historyStats(rows) {
   return {
     profit: p0 != null && p1 != null ? p1 - p0 : null,
     twrPct: rows.length > 1 ? twr * 100 : null,
-    cagr: days >= 90 && twr > -1 ? (Math.pow(1 + twr, 365 / days) - 1) * 100 : null,
+    cagr: days >= 365 && twr > -1 ? (Math.pow(1 + twr, 365 / days) - 1) * 100 : null,
     days,
     mdd: maxDrawdown(series),
     series,
