@@ -151,3 +151,40 @@ export function pit38CSV({ year, rows, totals }) {
   lines.push(['Podatek 19% (zł)', '', '', '', '', '', '', '', '', '', String(totals.tax), ''].join(sep));
   return '﻿' + lines.join('\r\n');
 }
+
+// Straty z lat poprzednich (art. 9 ust. 3 ustawy o PIT): stratę ze sprzedaży
+// papierów odlicza się w ciągu 5 kolejnych lat, w jednym roku najwyżej 50%
+// jej kwoty. Zakładamy, że w każdym roku z dochodem odliczono tyle, ile się
+// dało, najpierw najstarsze straty. Jednorazowego odliczenia do 5 mln zł
+// (inna metoda) nie liczymy. Tylko straty widoczne w aplikacji — z innych
+// rachunków trzeba doliczyć samemu.
+//   incomes: { rok: dochód (ujemny = strata) }, z computePit38
+// Zwraca dla `year`: { deduction, base, tax, losses: [{ year, amount, remaining }] }
+// — losses to straty, które w `year` jeszcze wolno odliczać (po odliczeniu w nim).
+export function lossCarryForward(incomes, year) {
+  const losses = [];
+  let deduction = 0;
+  for (const y of Object.keys(incomes).map(Number).filter(y => y <= year).sort((a, b) => a - b)) {
+    const income = incomes[y] ?? 0;
+    if (income < 0) {
+      if (y < year) losses.push({ year: y, amount: -income, remaining: -income });
+      continue;
+    }
+    let room = income;
+    let ded = 0;
+    for (const l of losses) {
+      if (y - l.year > 5 || l.remaining <= 0 || room <= 0) continue;
+      const take = Math.min(l.remaining, l.amount * 0.5, room);
+      l.remaining -= take; room -= take; ded += take;
+    }
+    if (y === year) deduction = ded;
+  }
+  const income = incomes[year] ?? 0;
+  const base = Math.round(Math.max(0, income - deduction));
+  return {
+    deduction,
+    base,
+    tax: Math.round(base * PIT_RATE),
+    losses: losses.filter(l => year - l.year <= 5 && l.remaining > 0.005),
+  };
+}

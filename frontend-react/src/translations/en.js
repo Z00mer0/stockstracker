@@ -1301,6 +1301,10 @@ export default {
   pit38_missing_rates:       'No NBP rate for {n} sales — they are left out of the totals. Try refreshing later.',
   pit38_uncovered:           '{n} sales have no full purchase in the history — cost is understated. Add the missing buy transactions.',
   pit38_empty:               'No sales in {year}.',
+  pit38_tax_before_loss: 'before deducting losses: {v} zł',
+  pit38_loss_deducted:  'Losses from previous years deducted: {v} zł — tax base after deduction {base} zł.',
+  pit38_loss_left:      'Losses still deductible in later years:',
+  pit38_loss_note:      'A loss is deductible over 5 years, at most 50% of it in a single year (the one-off deduction of up to 5 million zł is not modelled). Only losses from transactions in this app — add losses from other accounts yourself.',
   pit38_method_note:         'Cost by FIFO (oldest purchases first, separately per portfolio), NBP average rates from the last business day before each trade, base and tax rounded to whole złoty. IKE/IKZE accounts excluded. Commissions entered with transactions are included in the cost. Prior-year losses and foreign dividends are not included. Check against your broker\'s PIT-8C.',
 
   // ── Newsfeed ──────────────────────────────────────────────────
