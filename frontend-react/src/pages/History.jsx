@@ -8,6 +8,8 @@ import ReturnRateChart from '../components/ReturnRateChart';
 import RollingReturnsChart from '../components/RollingReturnsChart';
 import BenchmarkCompareCard from '../components/BenchmarkCompareCard.jsx';
 import { benchInPLN, compareWithBenchmark } from '../utils/benchmarkCompare.js';
+import { parseMix, blendSeries } from '../utils/benchmarkMix.js';
+import { lsSet } from '../utils/safeStorage.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import { Button, Callout, Card, EmptyState, SegmentedControl, Select, Spinner, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
@@ -98,7 +100,7 @@ function generateSynthBench(key, startDate, endDate) {
 const USD_BENCHMARKS = new Set(['^GSPC', '^IXIC', 'URTH']);
 
 export default function History() {
-  const { snapshots, loading, displayCurrency, fxRates, transactions, cash } = useApp();
+  const { snapshots, loading, displayCurrency, fxRates, transactions, cash, activePortfolioId } = useApp();
   // Snapshoty rosnąco — potrzebne, żeby dla wpisu bez zapisanych kursów sięgnąć
   // po kursy najbliższego wcześniejszego snapshotu zamiast po dzisiejsze.
   const snapshotsAsc = useMemo(
@@ -129,10 +131,19 @@ export default function History() {
     { key: 'PL:WIG20',      label: 'WIG20' },
     { key: 'SYNTH:CPI_PL',  label: t('bench_cpi_pl') },
     { key: 'SYNTH:LOK5',    label: t('bench_deposit5') },
+    { key: 'MIX:URTH*60+SYNTH:LOK5*40',   label: t('bench_mix_world') },
+    { key: 'MIX:PL:WIG*60+SYNTH:LOK5*40', label: t('bench_mix_wig') },
   ];
 
   const [period, setPeriod] = useState('MAX');
-  const [benchmark, setBenchmark] = useState(null);
+  // Wybór benchmarku zapamiętany osobno dla każdego portfela.
+  const benchStoreKey = `myfund_benchmark:${activePortfolioId}`;
+  const readBench = k => {
+    try { const v = localStorage.getItem(k); return BENCHMARKS.some(b => b.key === v) ? v : null; } catch { return null; }
+  };
+  const [benchState, setBenchState] = useState(() => ({ key: benchStoreKey, value: readBench(benchStoreKey) }));
+  const benchmark = benchState.key === benchStoreKey ? benchState.value : readBench(benchStoreKey);
+  const setBenchmark = v => { lsSet(benchStoreKey, v ?? ''); setBenchState({ key: benchStoreKey, value: v }); };
   const [benchData, setBenchData] = useState([]);
   const [benchLoading, setBenchLoading] = useState(false);
   const [benchInPln, setBenchInPln] = useState(true);
@@ -217,52 +228,64 @@ export default function History() {
 
   useEffect(() => {
     if (!benchmark) { setBenchData([]); return; }
+    let cancelled = false;
     setBenchLoading(true);
-    const authHeader = { };
+    const startDate = sorted.length ? sorted[0].date : new Date(Date.now() - 5 * 365 * 86400000).toISOString().slice(0, 10);
+    const endDate   = new Date().toISOString().slice(0, 10);
 
-    if (benchmark === 'SYNTH:CPI_PL') {
-      // Fetch live HICP index from Eurostat (auto-updated monthly), fall back to hardcoded
-      const startDate = sorted.length ? sorted[0].date : new Date(Date.now() - 5 * 365 * 86400000).toISOString().slice(0, 10);
-      const endDate   = new Date().toISOString().slice(0, 10);
-      fetch('/api/cpi-pl', { signal: AbortSignal.timeout(12000), headers: authHeader })
-        .then(r => r.json())
-        .then(json => { if (Array.isArray(json) && json.length) setBenchData(json); else setBenchData(generateSynthBench('SYNTH:CPI_PL', startDate, endDate)); })
-        .catch(() => setBenchData(generateSynthBench('SYNTH:CPI_PL', startDate, endDate)))
-        .finally(() => setBenchLoading(false));
-    } else if (benchmark.startsWith('SYNTH:')) {
-      // SYNTH:LOK5 and other synthetic benchmarks — generated locally
-      const startDate = sorted.length ? sorted[0].date : new Date(Date.now() - 5 * 365 * 86400000).toISOString().slice(0, 10);
-      const endDate   = new Date().toISOString().slice(0, 10);
-      setBenchData(generateSynthBench(benchmark, startDate, endDate));
-      setBenchLoading(false);
-    } else if (benchmark.startsWith('PL:')) {
-      const sym = benchmark.slice(3);
-      fetch(`/api/bench-pl?s=${sym}`, { signal: AbortSignal.timeout(15000), headers: authHeader })
-        .then(r => r.json())
-        .then(json => { if (Array.isArray(json)) setBenchData(json); else setBenchData([]); })
-        .catch(() => setBenchData([]))
-        .finally(() => setBenchLoading(false));
-    } else {
-      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(benchmark)}?interval=1d&range=5y`;
-      fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000), headers: authHeader })
+    // Notowania jednego benchmarku: [{ date, price }] (pusto przy błędzie).
+    function loadBench(key) {
+      if (key === 'SYNTH:CPI_PL') {
+        // Fetch live HICP index from Eurostat (auto-updated monthly), fall back to hardcoded
+        return fetch('/api/cpi-pl', { signal: AbortSignal.timeout(12000) })
+          .then(r => r.json())
+          .then(json => (Array.isArray(json) && json.length ? json : generateSynthBench('SYNTH:CPI_PL', startDate, endDate)))
+          .catch(() => generateSynthBench('SYNTH:CPI_PL', startDate, endDate));
+      }
+      if (key.startsWith('SYNTH:')) {
+        // SYNTH:LOK5 and other synthetic benchmarks — generated locally
+        return Promise.resolve(generateSynthBench(key, startDate, endDate));
+      }
+      if (key.startsWith('PL:')) {
+        return fetch(`/api/bench-pl?s=${key.slice(3)}`, { signal: AbortSignal.timeout(15000) })
+          .then(r => r.json())
+          .then(json => (Array.isArray(json) ? json : []))
+          .catch(() => []);
+      }
+      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(key)}?interval=1d&range=5y`;
+      return fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) })
         .then(r => r.json())
         .then(json => {
           const result = json?.chart?.result?.[0];
-          if (!result) return;
+          if (!result) return [];
           const timestamps = result.timestamp ?? [];
           const closes = result.indicators?.quote?.[0]?.close ?? [];
-          const pts = timestamps
-            .map((ts, i) => ({
-              date: new Date(ts * 1000).toISOString().slice(0, 10),
-              price: closes[i],
-            }))
+          return timestamps
+            .map((ts, i) => ({ date: new Date(ts * 1000).toISOString().slice(0, 10), price: closes[i] }))
             .filter(p => p.price != null);
-          setBenchData(pts);
         })
-        .catch(() => setBenchData([]))
-        .finally(() => setBenchLoading(false));
+        .catch(() => []);
     }
-  }, [benchmark, sorted]);
+
+    // Mieszanka: składniki w dolarach przeliczone na złote (jak pojedynczy
+    // indeks), potem codziennie równoważone wagi (utils/benchmarkMix.js).
+    const legs = parseMix(benchmark);
+    const load = legs
+      ? Promise.all(legs.map(l => loadBench(l.key))).then(series => {
+          const fxSeries = sorted.filter(x => x.fx?.USD > 0).map(x => ({ date: x.date, rate: x.fx.USD }));
+          const fx = fxSeries.length ? fxSeries : [{ date: '1970-01-01', rate: fxRates.USD ?? 1 }];
+          return blendSeries(legs.map((l, i) => ({
+            series: USD_BENCHMARKS.has(l.key) && benchInPln ? benchInPLN(series[i], fx) : series[i],
+            weight: l.weight,
+          })));
+        })
+      : loadBench(benchmark);
+    load
+      .then(pts => { if (!cancelled) setBenchData(pts); })
+      .finally(() => { if (!cancelled) setBenchLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [benchmark, sorted, benchInPln]);
 
   function handleExportHistory() {
     const headers = [t('col_date'), t('value_pln_header'), t('invested_pln_header'), t('capital_pln_header'), t('capital_estimated_header')];
@@ -436,7 +459,8 @@ export default function History() {
         <BenchmarkCompareCard
           cmp={benchCmp}
           label={BENCHMARKS.find(b => b.key === benchmark)?.label}
-          usdIndex={usdIndex}
+          // Mieszanka z MSCI World też ma przełącznik — przelicza ją efekt ładowania.
+          usdIndex={usdIndex || !!parseMix(benchmark)?.some(l => USD_BENCHMARKS.has(l.key))}
           inPLN={benchInPln}
           onInPLN={setBenchInPln}
         />

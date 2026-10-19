@@ -54,6 +54,8 @@ export default {
   sidebar_expand:       'Rozwiń menu',
   page_sub_portfolio:     'Twoje pozycje, ich wartość i wyniki',
   page_sub_history:       'Jak zmieniała się wartość portfela w czasie',
+  bench_mix_world:      '60% MSCI World / 40% lokata',
+  bench_mix_wig:        '60% WIG / 40% lokata',
   bench_cpi_pl:          'Inflacja PL',
   bench_deposit5:        'Lokata 5%',
   history_cagr_from:     'dostępne od ~{date}',
