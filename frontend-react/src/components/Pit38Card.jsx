@@ -3,7 +3,7 @@ import { Download, Info, TriangleAlert } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { usePit38 } from '../hooks/usePit38.js';
-import { pit38CSV } from '../utils/pit38.js';
+import { pit38CSV, lossCarryForward } from '../utils/pit38.js';
 import { Button, Callout, Card, EmptyState, Select, Stat, Table } from './ui';
 import { cx } from './ui/cx.js';
 
@@ -24,6 +24,12 @@ export default function Pit38Card() {
   const year = picked ?? defaultYear(saleYears);
   const pit = useMemo(() => forYear(year), [forYear, year]);
   const { rows, totals } = pit;
+  // Straty z poprzednich lat widoczne w aplikacji — odliczenie w wybranym roku.
+  const carry = useMemo(
+    () => lossCarryForward(Object.fromEntries(saleYears.map(y => [y, forYear(y).totals.income])), year),
+    [forYear, saleYears, year],
+  );
+  const taxAfter = carry.deduction > 0 ? carry.tax : totals.tax;
 
   const fmt = (v, d = 2) => (v == null ? '—' : v.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
   const years = useMemo(() => [...new Set([year, ...saleYears])].sort((a, b) => b - a), [year, saleYears]);
@@ -54,9 +60,24 @@ export default function Pit38Card() {
           <Stat blur={isPrivate} label={t('pit38_revenue')} value={`${fmt(totals.revenue)} zł`} />
           <Stat blur={isPrivate} label={t('pit38_cost')} value={`${fmt(totals.cost)} zł`} />
           <Stat blur={isPrivate} label={t('pit38_income')} value={`${totals.income >= 0 ? '' : '−'}${fmt(Math.abs(totals.income))} zł`} tone={totals.income >= 0 ? 'up' : 'down'} />
-          <Stat blur={isPrivate} label={t('pit38_tax')} value={`${fmt(totals.tax, 0)} zł`} tone={totals.tax > 0 ? 'warn' : undefined} />
+          <Stat
+            blur={isPrivate}
+            label={t('pit38_tax')}
+            value={`${fmt(taxAfter, 0)} zł`}
+            tone={taxAfter > 0 ? 'warn' : undefined}
+            hint={carry.deduction > 0 ? t('pit38_tax_before_loss').replace('{v}', fmt(totals.tax, 0)) : undefined}
+          />
         </div>
         {loading && <p className="text-small text-faint">{t('pit38_loading_rates')}</p>}
+        {(carry.deduction > 0 || carry.losses.length > 0) && (
+          <Callout tone="info" icon={Info}>
+            {carry.deduction > 0 && <p>{t('pit38_loss_deducted').replace('{v}', fmt(carry.deduction)).replace('{base}', fmt(carry.base, 0))}</p>}
+            {carry.losses.length > 0 && (
+              <p>{t('pit38_loss_left')} {carry.losses.map(l => `${l.year}: ${fmt(l.remaining)} zł`).join(', ')}.</p>
+            )}
+            <p className="mt-1 text-[11px] text-faint">{t('pit38_loss_note')}</p>
+          </Callout>
+        )}
         {!loading && totals.missingRates > 0 && (
           <Callout tone="warn" icon={TriangleAlert}>{t('pit38_missing_rates').replace('{n}', totals.missingRates)}</Callout>
         )}

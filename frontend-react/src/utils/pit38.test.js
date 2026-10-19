@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computePit38, dayBefore, pit38RateDates, pit38CSV } from './pit38.js';
+import { computePit38, dayBefore, pit38RateDates, pit38CSV, lossCarryForward } from './pit38.js';
 import { splitAdjusted } from './splits.js';
 
 const RATES = { USD: { '2024-03-04': 4.0, '2024-06-09': 3.9, '2025-02-13': 4.2, '2025-05-04': 4.1 } };
@@ -111,5 +111,24 @@ describe('splitAdjusted', () => {
     expect(out[1]).toMatchObject({ qty: 2, price: 100 });
     expect(out[2]).toMatchObject({ qty: 5, price: 20 });
     expect(out[3]).toMatchObject({ qty: 1, price: 7 });
+  });
+});
+
+describe('lossCarryForward', () => {
+  it('najwyżej 50% straty rocznie, przez 5 lat, najstarsze najpierw', () => {
+    const incomes = { 2021: -10000, 2022: 3000, 2023: 20000, 2024: 1000 };
+    // 2022: odliczone 3000 (limit 5000) → zostaje 7000
+    expect(lossCarryForward(incomes, 2022)).toMatchObject({ deduction: 3000, base: 0, tax: 0 });
+    // 2023: limit 50% = 5000 → odliczone 5000, zostaje 2000
+    const r23 = lossCarryForward(incomes, 2023);
+    expect(r23).toMatchObject({ deduction: 5000, base: 15000, tax: 2850 });
+    expect(r23.losses).toEqual([{ year: 2021, amount: 10000, remaining: 2000 }]);
+    // 2024: reszta 2000, ale dochód tylko 1000
+    expect(lossCarryForward(incomes, 2024)).toMatchObject({ deduction: 1000, base: 0 });
+  });
+
+  it('strata starsza niż 5 lat przepada; rok ze stratą nie płaci podatku', () => {
+    expect(lossCarryForward({ 2018: -10000, 2024: 5000 }, 2024)).toMatchObject({ deduction: 0, base: 5000, tax: 950, losses: [] });
+    expect(lossCarryForward({ 2025: -300 }, 2025)).toMatchObject({ deduction: 0, base: 0, tax: 0 });
   });
 });
