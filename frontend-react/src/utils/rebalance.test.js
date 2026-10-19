@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rebalanceOrders, allocateNewMoney } from './rebalance.js';
+import { rebalanceOrders, allocateNewMoney, driftAlerts } from './rebalance.js';
 
 // 10 000 zł: PKO 7 000 zł (70%), AAPL 3 000 zł = 5 akcji po 150 $ przy 4 zł/$.
 const positions = [
@@ -58,5 +58,18 @@ describe('allocateNewMoney', () => {
 
   it('bez celów sumujących się do 100% nic nie proponuje', () => {
     expect(allocateNewMoney(positions, { AAPL: 30 }, 10000, 1000).orders).toEqual([]);
+  });
+});
+
+describe('driftAlerts', () => {
+  const pos = [{ symbol: 'A', valuePLN: 600 }, { symbol: 'B', valuePLN: 300 }, { symbol: 'C', valuePLN: 100 }];
+  const targets = { A: 50, B: 30, C: 20 };
+  it('pozycje poza progiem, od największego odchylenia', () => {
+    expect(driftAlerts(pos, targets, 1000, 5)).toEqual([{ symbol: 'A', dev: 10 }, { symbol: 'C', dev: -10 }]);
+    expect(driftAlerts(pos, targets, 1000, 11)).toEqual([]);
+  });
+  it('wyłączone przy progu 0 albo celach nie sumujących się do 100%', () => {
+    expect(driftAlerts(pos, targets, 1000, 0)).toEqual([]);
+    expect(driftAlerts(pos, { A: 50, B: 30 }, 1000, 5)).toEqual([]);
   });
 });

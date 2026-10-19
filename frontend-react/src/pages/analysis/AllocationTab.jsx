@@ -7,7 +7,7 @@ import TickerLogo from '../../components/shared/TickerLogo';
 import { Badge, Button, Card, Input, SegmentedControl, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
 import { lsSet } from '../../utils/safeStorage.js';
-import { rebalanceOrders, allocateNewMoney } from '../../utils/rebalance.js';
+import { rebalanceOrders, allocateNewMoney, REBAL_KEY, DRIFT_KEY, loadTargets, loadDriftThreshold } from '../../utils/rebalance.js';
 import { lookThrough, sectorLookThrough } from '../../utils/lookThrough.js';
 import { authHeader } from '../../utils/auth.js';
 
@@ -31,10 +31,6 @@ const SECTOR_COLORS = [
   '#14b8a6', '#f97316', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16',
 ];
 
-const REBAL_KEY = 'myfund_rebalance_targets';
-function loadTargets() {
-  try { return JSON.parse(localStorage.getItem(REBAL_KEY) || '{}'); } catch { return {}; }
-}
 
 function useDisplay() {
   const { locale } = useLanguage();
@@ -193,6 +189,7 @@ function RebalanceCard({ positions, total, targets, setTargets }) {
   const { fmt, money } = useDisplay();
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState({});
+  const [drift, setDrift] = useState(loadDriftThreshold);
 
   const hasTargets = Object.keys(targets).length > 0;
   const targetSum = Object.values(targets).reduce((s, v) => s + (v || 0), 0);
@@ -230,6 +227,19 @@ function RebalanceCard({ positions, total, targets, setTargets }) {
       )}
     >
       <div className="grid gap-3 p-4">
+        {hasTargets && (
+          // Próg ostrzeżenia na Dashboardzie; 0 wyłącza.
+          <label className="flex flex-wrap items-center gap-2 text-small text-dim">
+            {t('drift_threshold_label')}
+            <Input
+              type="number" min="0" step="1" inputMode="decimal" className="w-20" suffix={t('pp_short')}
+              aria-label={t('drift_threshold_label')}
+              value={drift}
+              onChange={e => { const v = e.target.value; setDrift(v); lsSet(DRIFT_KEY, String(parseFloat(v) || 0)); }}
+            />
+            <span className="text-[11px] text-faint">{t('drift_threshold_hint')}</span>
+          </label>
+        )}
         {hasTargets && (
           <p className={cx('text-small', sumOk ? 'text-up' : 'text-warn')}>
             {t('rebal_target_sum')}: {fmt(targetSum, 1)}%{!sumOk && ` ${t('rebal_should_be_100')}`}

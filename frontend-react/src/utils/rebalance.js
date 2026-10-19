@@ -1,3 +1,34 @@
+// Docelowe udziały (Analiza → Alokacja) i próg ostrzeżenia o odchyleniu —
+// zapisane w przeglądarce, wspólne dla wszystkich portfeli.
+export const REBAL_KEY = 'myfund_rebalance_targets';
+export const DRIFT_KEY = 'myfund_drift_threshold';
+export const DEFAULT_DRIFT = 5;
+
+export function loadTargets() {
+  try { return JSON.parse(localStorage.getItem(REBAL_KEY) || '{}'); } catch { return {}; }
+}
+
+export function loadDriftThreshold() {
+  try {
+    const v = parseFloat(localStorage.getItem(DRIFT_KEY));
+    return Number.isFinite(v) && v >= 0 ? v : DEFAULT_DRIFT;
+  } catch { return DEFAULT_DRIFT; }
+}
+
+// Pozycje odbiegające od celu o co najmniej `threshold` pkt proc. — do
+// ostrzeżenia na Dashboardzie. Pusto, gdy cele nie sumują się do 100%
+// (niedokończone ustawienia) albo próg = 0 (ostrzeżenie wyłączone).
+//   zwraca [{ symbol, dev }] od największego odchylenia
+export function driftAlerts(positions, targets, total, threshold = DEFAULT_DRIFT) {
+  const keys = Object.keys(targets);
+  const sum = keys.reduce((s, k) => s + (targets[k] || 0), 0);
+  if (!(threshold > 0) || !keys.length || Math.abs(sum - 100) >= 1 || !(total > 0)) return [];
+  return positions
+    .map(p => ({ symbol: p.symbol, dev: (p.valuePLN / total) * 100 - (targets[p.symbol] ?? 0) }))
+    .filter(d => Math.abs(d.dev) >= threshold)
+    .sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev));
+}
+
 // Zlecenia rebalansujące: przy docelowych udziałach sumujących się do 100%
 // każda pozycja odbiegająca o ≥ 2 pkt proc. dostaje zlecenie kupna/sprzedaży.
 //
