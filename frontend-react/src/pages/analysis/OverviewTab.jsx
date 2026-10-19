@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Layers, TrendingUp, TrendingDown, Percent, TriangleAlert, Sparkles, Info } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import TickerLogo from '../../components/shared/TickerLogo';
-import { Card, Stat, Table } from '../../components/ui';
+import { Card, SegmentedControl, Stat, Table } from '../../components/ui';
+import { attribution } from '../../utils/attribution.js';
 import { cx } from '../../components/ui/cx.js';
 import { buildInsights } from './insights.js';
 
@@ -19,7 +20,9 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
   const t = useT();
   const { locale } = useLanguage();
   const { isPrivate } = usePrivacy();
-  const { displayCurrency, fxRates } = useApp();
+  const { displayCurrency, fxRates, transactions = [] } = useApp();
+  const [attrBy, setAttrBy] = useState('positions');
+  const attr = useMemo(() => attribution(enriched, transactions, fxRates), [enriched, transactions, fxRates]);
   const dispFx = fxRates[displayCurrency] ?? 1;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const fmt = (n, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -91,6 +94,42 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
           <Table columns={perfColumns} rows={byReturn} rowKey={p => p.id ?? p.symbol} defaultSort={{ key: 'returnPct', dir: 'desc' }} />
         </Card>
       )}
+
+      {attr.positions.length > 0 && (() => {
+        const items = attrBy === 'positions'
+          ? attr.positions.map(r => ({ key: r.symbol, label: r.symbol, total: r.total, parts: r }))
+          : attr.sectors.map(r => ({ key: r.sector || '-', label: r.sector || t('attr_no_sector'), total: r.total }));
+        const maxAbs = Math.max(...items.map(i => Math.abs(i.total)), 1);
+        return (
+          <Card
+            title={t('attr_title')}
+            actions={<SegmentedControl aria-label={t('attr_title')} options={[{ value: 'positions', label: t('attr_by_positions') }, { value: 'sectors', label: t('attr_by_sectors') }]} value={attrBy} onChange={setAttrBy} />}
+          >
+            <div className="grid gap-2 px-4 py-3">
+              <p className="text-[11px] text-faint">{t('attr_desc')}</p>
+              {items.map(i => (
+                <div key={i.key} className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_auto] items-center gap-3 text-small">
+                  <span className="truncate font-semibold text-fg">{i.label}</span>
+                  <span className="h-2.5 overflow-hidden rounded-full bg-panel-2" aria-hidden>
+                    <span className={cx('block h-full rounded-full', i.total >= 0 ? 'bg-up' : 'bg-down')} style={{ width: `${Math.abs(i.total) / maxAbs * 100}%` }} />
+                  </span>
+                  <span
+                    className={cx('text-right tabular-nums font-semibold', i.total >= 0 ? 'text-up' : 'text-down', blur)}
+                    title={i.parts ? `${t('attr_unrealized')} ${fmt(i.parts.unrealized / dispFx)} · ${t('attr_realized')} ${fmt(i.parts.realized / dispFx)} · ${t('attr_dividends')} ${fmt(i.parts.dividends / dispFx)} ${currLabel}` : undefined}
+                  >
+                    {sign(i.total)}{fmt(i.total / dispFx)} {currLabel}
+                    {attr.total > 0 && <span className="ml-1.5 font-normal text-faint">{fmt(i.total / attr.total * 100, 0)}%</span>}
+                  </span>
+                </div>
+              ))}
+              <div className="mt-1 flex justify-between border-t border-line pt-2 text-small">
+                <span className="text-dim">{t('attr_total')}</span>
+                <span className={cx('font-semibold tabular-nums', attr.total >= 0 ? 'text-up' : 'text-down', blur)}>{sign(attr.total)}{fmt(attr.total / dispFx)} {currLabel}</span>
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
 
       {insights.length > 0 && (
         <Card title={<span className="inline-flex items-center gap-2"><Sparkles size={15} aria-hidden className="text-accent-text" />{t('smart_insights')}</span>}>
