@@ -62,13 +62,14 @@ export function exportPositions(positions, t, format) {
 // Nagłówki i wiersze transakcji osobno od pobierania — test sprawdza, że
 // to, co eksportujemy, da się z powrotem zaimportować (utils/transactionsCsv).
 export function transactionHeaders(t) {
-  return [t('col_date'), t('col_type'), 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note')];
+  return [t('col_date'), t('col_type'), 'Symbol', t('col_qty'), t('col_price'), t('col_currency'), t('col_note'), t('fee_label'), t('div_tax_label')];
 }
 export function transactionRows(transactions) {
   return transactions.map(tx => [
     tx.date ?? '', tx.type ?? '', tx.symbol ?? '',
     tx.qty != null ? tx.qty : '', tx.price != null ? tx.price : '',
     tx.currency ?? '', tx.note ?? '',
+    tx.fee ?? '', tx.tax ?? '',
   ]);
 }
 
