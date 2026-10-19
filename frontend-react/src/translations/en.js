@@ -60,6 +60,8 @@ export default {
   sidebar_expand:       'Expand menu',
   page_sub_portfolio:     'Your holdings, their value and performance',
   page_sub_history:       'How your portfolio value changed over time',
+  bench_mix_world:      '60% MSCI World / 40% deposit',
+  bench_mix_wig:        '60% WIG / 40% deposit',
   bench_cpi_pl:          'PL inflation',
   bench_deposit5:        '5% deposit',
   history_cagr_from:     'available from ~{date}',
