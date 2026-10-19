@@ -574,6 +574,7 @@ export default function Dashboard() {
       {selectedStock && (
         <StockDetailModal
           item={selectedStock}
+          totalPortfolioValue={kpi.positionsValue ?? 0}
           onClose={() => setSelectedStock(null)}
         />
       )}
