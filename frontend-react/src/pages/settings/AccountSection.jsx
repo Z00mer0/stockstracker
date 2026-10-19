@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { RefreshCw, LogOut, KeyRound, Download, Copy, Check, ShieldCheck } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { api } from '../../hooks/useApi';
 import { Button, Card, Field, Input, SegmentedControl } from '../../components/ui';
 import { Row, Note, download } from './common.jsx';
+import ConfirmModal from '../../components/ConfirmModal';
+import { buildBackup, parseBackup } from '../../utils/backup.js';
 
 function AccountCard() {
   const t = useT();
@@ -123,27 +125,71 @@ function RecoveryCodesCard() {
 
 function ExportDataCard() {
   const t = useT();
+  const { restorePortfolios } = useApp();
   const [error, setError] = useState(null);
+  const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [pending, setPending] = useState(null);
+  const fileRef = useRef(null);
 
+  // Każdy portfel osobno (utils/backup.js) — widok „Wszystkie" miał już
+  // zsumowane pozycje i gotówkę, więc z niego nie dało się nic odtworzyć.
   async function exportAll() {
-    setError(null); setLoading(true);
+    setError(null); setInfo(null); setLoading(true);
     try {
-      const [list, data] = await Promise.all([api.get('/api/portfolios'), api.get('/api/portfolios/all/data')]);
-      const payload = { exported_at: new Date().toISOString(), app: 'MyFund / StocksTracker', portfolios: list.data, data: data.data };
+      const list = (await api.get('/api/portfolios')).data;
+      const datas = await Promise.all(list.map(p => api.get(`/api/portfolios/${p.id}/data`).then(r => r.data)));
+      const payload = buildBackup(list, Object.fromEntries(list.map((p, i) => [p.id, datas[i]])));
       download(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `myfund-export-${new Date().toISOString().slice(0, 10)}.json`);
     } catch {
       setError(t('export_error'));
     } finally { setLoading(false); }
   }
 
+  function readFile(file) {
+    if (!file) return;
+    setError(null); setInfo(null);
+    file.text()
+      .then(text => setPending(parseBackup(JSON.parse(text), t('restore_combined_name'))))
+      .catch(() => setError(t('restore_bad_file')))
+      .finally(() => { if (fileRef.current) fileRef.current.value = ''; });
+  }
+
+  async function restore() {
+    const entries = pending;
+    setPending(null); setRestoring(true);
+    try {
+      const n = await restorePortfolios(entries);
+      setInfo(t('restore_done').replace('{n}', n));
+    } catch (e) {
+      setError(`${t('restore_error')} ${e.message ?? ''}`.trim());
+    } finally { setRestoring(false); }
+  }
+
   return (
     <Card title={t('export_title')}>
       <div className="grid gap-3 p-4">
         <p className="text-small text-dim">{t('export_desc')}</p>
+        <p className="text-small text-dim">{t('restore_desc')}</p>
         <Note tone="err">{error}</Note>
-        <Button variant="primary" icon={Download} loading={loading} onClick={exportAll} className="justify-self-start">{t('export_btn')}</Button>
+        {info && <p role="status" className="text-small text-up">{info}</p>}
+        <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={e => readFile(e.target.files[0])} />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" icon={Download} loading={loading} onClick={exportAll}>{t('export_btn')}</Button>
+          <Button icon={Upload} loading={restoring} onClick={() => fileRef.current?.click()}>{t('restore_btn')}</Button>
+        </div>
       </div>
+      {pending && (
+        <ConfirmModal
+          danger={false}
+          message={t('restore_confirm').replace('{n}', pending.length)}
+          detail={`${pending.map(p => p.name).join(', ')}. ${t('restore_confirm_detail')}`}
+          confirmLabel={t('restore_btn')}
+          onConfirm={restore}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </Card>
   );
 }

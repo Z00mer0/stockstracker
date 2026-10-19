@@ -252,6 +252,23 @@ export function AppProvider({ children }) {
     switchPortfolio(newP.id);
   }
 
+  // Odtworzenie kopii (utils/backup.js): każdy portfel z pliku jako NOWY
+  // portfel — istniejących nie ruszamy. Zwraca liczbę utworzonych.
+  async function restorePortfolios(entries) {
+    const created = [];
+    try {
+      for (const e of entries) {
+        const res = await api.post('/api/portfolios', { name: e.name, currency: e.currency, account_type: e.accountType });
+        created.push(res.data);
+        await api.post(`/api/portfolios/${res.data.id}/data`, e.data);
+      }
+    } finally {
+      // Także po błędzie w połowie — to, co już powstało, ma być widać.
+      if (created.length) setPortfolios(prev => [...prev, ...created]);
+    }
+    return created.length;
+  }
+
   async function updatePortfolio(id, name, currency, accountType = '') {
     const res = await api.post(`/api/portfolios/${id}`, { name, currency, account_type: accountType, _method: 'PUT' });
     setPortfolios(prev => prev.map(p => p.id === id ? res.data : p));
@@ -876,6 +893,7 @@ export function AppProvider({ children }) {
     displayCurrency: portfolios.find(p => p.id === activePortfolioId)?.currency || 'PLN',
     switchPortfolio,
     createPortfolio,
+    restorePortfolios,
     updatePortfolio,
     deletePortfolio,
     canWrite,
