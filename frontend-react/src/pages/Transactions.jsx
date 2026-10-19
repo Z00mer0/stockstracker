@@ -1,14 +1,17 @@
 // src/pages/Transactions.jsx
 import { useMemo, useState } from 'react';
-import { ShoppingCart, HandCoins, Coins, Wallet, Download, Upload, Plus, ArrowLeftRight, Info } from 'lucide-react';
+import { ShoppingCart, HandCoins, Coins, Wallet, Download, Upload, Plus, ArrowLeftRight, Info, Trash2, TriangleAlert } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import TickerLogo from '../components/shared/TickerLogo';
 import { PageSkeleton } from '../components/RouteFallback';
-import { Badge, Button, Callout, Card, EmptyState, Stat, Table, Tabs, TabPanel } from '../components/ui';
+import { Badge, Button, Callout, Card, EmptyState, IconButton, Stat, Table, Tabs, TabPanel } from '../components/ui';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../context/ToastContext';
 import { normalizeType, txAmount, last30Totals } from '../utils/transactions.js';
 import { exportTransactions } from '../utils/exporters.js';
+import { positionMismatches } from '../utils/ledger.js';
 import AddTransactionModal from './transactions/AddTransactionModal.jsx';
 import ImportCsvModal from './transactions/ImportCsvModal.jsx';
 
@@ -27,12 +30,15 @@ function fmt(n, decimals, locale) {
 }
 
 export default function Transactions() {
-  const { transactions = [], loading, saveTransactions, activePortfolioId, displayCurrency, fxRates, canWrite } = useApp();
+  const { transactions = [], portfolio = [], loading, saveTransactions, addTransaction, deleteTransaction, activePortfolioId, displayCurrency, fxRates, canWrite } = useApp();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
   const [filter, setFilter] = useState('all');
+  // true albo wstępne wypełnienie formularza (uzupełnianie historii).
   const [showAdd, setShowAdd] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const { showToast } = useToast();
   const [showImport, setShowImport] = useState(false);
 
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
@@ -49,6 +55,13 @@ export default function Transactions() {
     const base = filter === 'all' ? transactions : transactions.filter(tx => normalizeType(tx.type) === filter);
     return [...base].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
   }, [transactions, filter]);
+
+  // W widoku „Wszystkie" pozycje różnych portfeli są zsumowane — porównanie
+  // ma sens tylko dla jednego portfela.
+  const mismatches = useMemo(
+    () => (canWrite ? positionMismatches(transactions, portfolio) : []),
+    [canWrite, transactions, portfolio],
+  );
 
   if (loading && !transactions.length) return <PageSkeleton />;
 
@@ -102,7 +115,23 @@ export default function Transactions() {
       render: tx => <span className={`font-semibold ${blur ?? ''}`}>{fmt(txAmount(tx), 2, locale)} {CUR_SYMBOLS[tx.currency] ?? tx.currency ?? ''}</span>,
     },
     { key: 'note', header: t('col_note'), render: tx => <span className="text-[11px] text-faint">{tx.note || '—'}</span> },
+    ...(canWrite ? [{
+      key: 'actions', header: <span className="sr-only">{t('delete')}</span>, align: 'right',
+      render: tx => tx.id && <IconButton size="sm" icon={Trash2} label={t('delete')} onClick={() => setConfirmDel(tx)} />,
+    }] : []),
   ];
+
+  const fmtQty = n => fmt(n, n % 1 === 0 ? 0 : 4, locale);
+  // Brakujący zakup albo sprzedaż — tylko do historii, pozycja bez zmian.
+  const fillHistory = m => setShowAdd({
+    type: m.portfolio > m.history ? 'BUY' : 'SELL',
+    symbol: m.symbol,
+    qty: String(+Math.abs(m.portfolio - m.history).toFixed(8)),
+    price: m.portfolio > m.history && m.avgPrice != null ? String(m.avgPrice) : '',
+    currency: m.currency || 'PLN',
+    positions: false,
+    cash: false,
+  });
 
   const empty = (
     <EmptyState
@@ -132,6 +161,23 @@ export default function Transactions() {
           formularza. */}
       {!canWrite && <Callout tone="info" icon={Info}>{t('tx_pick_portfolio')}</Callout>}
 
+      {mismatches.length > 0 && (
+        <Callout tone="warn" icon={TriangleAlert} title={t('tx_mismatch_title')}>
+          <p>{t('tx_mismatch_desc')}</p>
+          <ul className="mt-2 divide-y divide-line">
+            {mismatches.map(m => (
+              <li key={m.symbol} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span>
+                  <span className="font-semibold text-fg">{m.symbol}</span>
+                  <span className="ml-2 text-faint">{t('tx_mismatch_row').replace('{h}', fmtQty(m.history)).replace('{p}', fmtQty(m.portfolio))}</span>
+                </span>
+                <Button size="sm" onClick={() => fillHistory(m)}>{t('tx_mismatch_fix')}</Button>
+              </li>
+            ))}
+          </ul>
+        </Callout>
+      )}
+
       <Card
         title={`${t('transactions_label')} · ${sorted.length}`}
         actions={
@@ -159,8 +205,21 @@ export default function Transactions() {
 
       {showAdd && (
         <AddTransactionModal
-          onSave={async tx => { await saveTransactions(prev => [...prev, tx]); }}
+          initial={showAdd === true ? null : showAdd}
+          onSave={addTransaction}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+      {confirmDel && (
+        <ConfirmModal
+          message={t('tx_delete_confirm')
+            .replace('{type}', (TYPE_LABEL[normalizeType(confirmDel.type)] ? t(TYPE_LABEL[normalizeType(confirmDel.type)]) : confirmDel.type).toLowerCase())
+            .replace('{symbol}', confirmDel.symbol || t('type_cash'))
+            .replace('{date}', fmtDate(confirmDel.date, locale))}
+          detail={confirmDel.effect ? t('tx_delete_reverts') : t('tx_delete_history_only')}
+          confirmLabel={t('delete_btn')}
+          onConfirm={() => { const id = confirmDel.id; setConfirmDel(null); deleteTransaction(id).catch(e => showToast(e.message, { type: 'error' })); }}
+          onCancel={() => setConfirmDel(null)}
         />
       )}
       {showImport && (

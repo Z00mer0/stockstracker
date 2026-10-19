@@ -22,6 +22,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
   const [thesis, setThesis]       = useState('');
   const [verdict, setVerdict]     = useState('');
   const [retroNote, setRetroNote] = useState('');
+  const [proceeds, setProceeds]   = useState('cash');
 
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +67,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
         ...(verdict && verdict !== 'skip' ? { verdict } : {}),
         ...(retroNote.trim() ? { note: retroNote.trim() } : {}),
       };
-      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL, retro });
+      await onSave({ symbol: holding.symbol, qty: q, price: p, currency, date, note: note.trim(), overridePL, retro, toCash: proceeds === 'cash' });
       onClose();
     } catch (err) {
       setError(err.message || t('save_error'));
@@ -105,6 +106,10 @@ export default function SellStockModal({ holding, onSave, onClose }) {
             <Input placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} />
           </Field>
         </div>
+
+        <Field label={t('sale_proceeds')}>
+          <SegmentedControl block aria-label={t('sale_proceeds')} options={[{ value: 'cash', label: t('proceeds_to_cash') }, { value: 'out', label: t('proceeds_out') }]} value={proceeds} onChange={setProceeds} />
+        </Field>
 
         {calcPL != null && (
           <div className="rounded-card-sm border border-line bg-panel-2 px-3 py-2.5 text-small">

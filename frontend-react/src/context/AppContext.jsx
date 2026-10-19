@@ -3,6 +3,7 @@ import { api } from '../hooks/useApi';
 import { resetJournalCache } from '../services/journalService';
 import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 import { weightedAvg } from '../utils/weightedAvg.js';
+import { applyTransaction, revertTransaction, baseSymbol } from '../utils/ledger.js';
 import { lsSet } from '../utils/safeStorage.js';
 
 export const AppContext = createContext(null);
@@ -345,6 +346,38 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
+  // Transakcja razem z jej wpływem na pozycję i gotówkę (utils/ledger.js) —
+  // jednym zapisem, żeby historia i portfel się nie rozjeżdżały.
+  async function addTransaction(tx, opts) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać transakcję');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const r = applyTransaction({ holdings: rd?.portfolio?.holdings ?? [], cash: rd?.cash ?? {} }, tx, opts);
+    await postUpdate({
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: r.holdings },
+      transactions: [...(rd.transactions ?? []), r.tx],
+      cash: r.cash,
+    });
+    return r.tx;
+  }
+
+  // Usuwa transakcję i cofa to, co zmieniła w pozycji i gotówce.
+  async function deleteTransaction(id) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć transakcję');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const tx = (rd.transactions ?? []).find(x => x.id === id);
+    if (!tx) return;
+    const r = revertTransaction({ holdings: rd?.portfolio?.holdings ?? [], cash: rd?.cash ?? {} }, tx);
+    await postUpdate({
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: r.holdings },
+      transactions: rd.transactions.filter(x => x !== tx),
+      cash: r.cash,
+    });
+  }
+
   async function renameSymbol(oldSymbol, newSymbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zmienić symbol');
     assertLoaded();
@@ -399,17 +432,15 @@ export function AppProvider({ children }) {
     const holdings = rd?.portfolio?.holdings ?? [];
     const existing = holdings.find(h => h.symbol === symbol);
     if (!existing) throw new Error('Nie znaleziono pozycji');
+    const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
+      id: Math.random().toString(36).slice(2, 10),
+      type: 'SPLIT', symbol, date, ratio, qty: null, price: 0,
+      currency: existing.currency, note: `Split ${label ?? ratio}`,
+    });
     const updated = {
       ...rd,
-      portfolio: {
-        ...rd.portfolio,
-        holdings: holdings.map(h => h.symbol === symbol ? { ...h, qty: h.qty * ratio, avgPrice: h.avgPrice / ratio } : h),
-      },
-      transactions: [...(rd.transactions ?? []), {
-        id: Math.random().toString(36).slice(2, 10),
-        type: 'SPLIT', symbol, date, ratio, qty: null, price: 0,
-        currency: existing.currency, note: `Split ${label ?? ratio}`,
-      }],
+      portfolio: { ...rd.portfolio, holdings: r.holdings },
+      transactions: [...(rd.transactions ?? []), r.tx],
     };
     await postUpdate(updated);
   }
@@ -426,28 +457,24 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
-  async function sellPosition({ symbol, qty, price, currency, date, note, overridePL }) {
+  // toCash — przychód zostaje na rachunku jako gotówka.
+  async function sellPosition({ symbol, qty, price, currency, date, note, overridePL, toCash = false }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby sprzedać pozycję');
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
-    const transactions = rd?.transactions ?? [];
-    const existing = holdings.find(h => h.symbol === symbol);
-    if (!existing) throw new Error('Nie znaleziono pozycji');
-    const newQty = existing.qty - qty;
-    const newHoldings = newQty <= 0
-      ? holdings.filter(h => h.symbol !== symbol)
-      : holdings.map(h => h.symbol === symbol ? { ...h, qty: newQty } : h);
+    if (!holdings.some(h => h.symbol === symbol)) throw new Error('Nie znaleziono pozycji');
     const txId = Math.random().toString(36).slice(2, 10);
+    const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
+      id: txId,
+      type: 'SELL', symbol, qty, price, currency, date, note,
+      ...(overridePL != null ? { overridePL } : {}),
+    }, { cash: toCash });
     const updated = {
       ...rd,
-      portfolio: { ...rd.portfolio, holdings: newHoldings },
-      transactions: [...transactions, {
-        id: txId,
-        type: 'SELL', symbol, qty, price, currency, date, note,
-        costBasis: existing.avgPrice,
-        ...(overridePL != null ? { overridePL } : {}),
-      }],
+      portfolio: { ...rd.portfolio, holdings: r.holdings },
+      transactions: [...(rd?.transactions ?? []), r.tx],
+      cash: r.cash,
     };
     await postUpdate(updated);
     return txId;
@@ -458,54 +485,20 @@ export function AppProvider({ children }) {
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
-    const transactions = rd?.transactions ?? [];
-    const cash = rd?.cash ?? {};
-
-    // Update holding (weighted average if exists)
-    let newHoldings;
-    const existing = holdings.find(h => h.symbol === symbol);
-    if (existing) {
-      newHoldings = holdings.map(h => {
-        if (h.symbol !== symbol) return h;
-        return { ...h, qty: h.qty + qty, avgPrice: weightedAvg(h.qty, h.avgPrice, qty, price) };
-      });
-    } else {
-      newHoldings = [...holdings, {
-        id: Math.random().toString(36).slice(2, 10),
-        symbol,
-        qty,
-        avgPrice: price,
-        currency,
-        date,
-        name: '',
-        ...(assetType ? { assetType } : {}),
-      }];
-    }
-
-    // Add BUY transaction
-    const newTransaction = {
+    const isNew = !holdings.some(h => h.symbol === symbol);
+    const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
       id: Math.random().toString(36).slice(2, 10),
-      type: 'BUY',
-      symbol,
-      qty,
-      price,
-      currency,
-      date,
-      note,
-    };
-
-    // Optionally subtract from cash
-    let newCash = cash;
-    if (funding === 'cash') {
-      const spent = qty * price;
-      newCash = { ...cash, [currency]: Math.max(0, (cash[currency] ?? 0) - spent) };
-    }
+      type: 'BUY', symbol, qty, price, currency, date, note,
+    }, { cash: funding === 'cash' });
+    const newHoldings = isNew && assetType
+      ? r.holdings.map(h => h.symbol === symbol ? { ...h, assetType } : h)
+      : r.holdings;
 
     const updated = {
       ...rd,
       portfolio: { ...rd.portfolio, holdings: newHoldings },
-      transactions: [...transactions, newTransaction],
-      cash: newCash,
+      transactions: [...(rd?.transactions ?? []), r.tx],
+      cash: r.cash,
     };
     await postUpdate(updated);
   }
@@ -516,10 +509,7 @@ export function AppProvider({ children }) {
     const importId = `imp_${Date.now()}`;
     const tagged = newTxs.map(t => ({ ...t, importId }));
 
-    // Normalize symbol for matching: strip exchange suffixes so XTB.PL matches XTB.WA
-    function baseSymbol(sym) {
-      return String(sym).replace(/\.(WA|PL|US|UK|DE|FR|NL|IT|ES|SE|DK|NO|FI|BE|AT|CH)$/i, '').toUpperCase();
-    }
+    // XTB.PL i XTB.WA to ta sama pozycja (baseSymbol).
     function findHolding(arr, symbol) {
       return arr.findIndex(h => h.symbol === symbol || baseSymbol(h.symbol) === baseSymbol(symbol));
     }
@@ -834,6 +824,8 @@ export function AppProvider({ children }) {
     saveCash,
     saveHoldings,
     saveTransactions,
+    addTransaction,
+    deleteTransaction,
     saveSnapshot,
     saveBatchSnapshots,
     setSnapshot,

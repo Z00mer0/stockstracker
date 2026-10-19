@@ -5,9 +5,10 @@
 import { weightedAvg } from './weightedAvg.js';
 import { splitAdjusted } from './splits.js';
 
-// Zwraca { CCY: sumOfQtyTimesAvgPrice } po zastosowaniu transakcji <= date.
-// Kolejność w obrębie dnia: BUY przed SELL (żeby same-day sprzedaż miała pokrycie).
-export function investedByCurrencyAt(transactions, date) {
+// Pozycje odtworzone z historii: Map symbol → { qty, avg, currency } po
+// transakcjach <= date. Kolejność w obrębie dnia: BUY przed SELL (żeby
+// same-day sprzedaż miała pokrycie).
+export function holdingsAt(transactions, date = '9999-12-31') {
   // Po splicie ilości w jednych jednostkach; wartość qty × cena się nie zmienia.
   const relevant = splitAdjusted(transactions || [])
     // fromClosedPosition BUY-e są fabrykowane pod SELL z importu — nie ruszają holdings.
@@ -44,9 +45,13 @@ export function investedByCurrencyAt(transactions, date) {
     }
     holdings.set(tx.symbol, h);
   }
+  return holdings;
+}
 
+// Zwraca { CCY: sumOfQtyTimesAvgPrice } po zastosowaniu transakcji <= date.
+export function investedByCurrencyAt(transactions, date) {
   const byCur = {};
-  for (const h of holdings.values()) {
+  for (const h of holdingsAt(transactions, date).values()) {
     if (h.qty <= 0 || h.avg <= 0) continue;
     byCur[h.currency] = (byCur[h.currency] || 0) + h.qty * h.avg;
   }
