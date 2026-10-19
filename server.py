@@ -2892,6 +2892,48 @@ IKE_LIMITS = {  # roczne limity wpłat w PLN (jak w IkeLimitCard.jsx)
 ALERT_REPEAT_COOLDOWN_H = 24  # minimalny odstęp między pushami alertu cyklicznego
 
 
+def _alert_hit(alert, quote, avg_cost=None):
+    """Czy warunek alertu jest spełniony: True/False, None = brak danych w tym cyklu.
+    fromCost: zysk (above) lub strata (below) co najmniej targetPercent % od
+    średniej ceny zakupu pozycji (avg_cost; None, gdy pozycji nie ma)."""
+    price = quote['price']
+    kind = alert.get('kind') or 'price'
+    above = alert.get('type') == 'above'
+    if kind == 'price':
+        target = alert.get('targetPrice')
+        return price >= target if above else price <= target
+    if kind in ('dailyChange', 'fromCost'):
+        tp = float(alert.get('targetPercent') or 0)
+        if tp <= 0:
+            return None
+        if kind == 'dailyChange':
+            chg = quote.get('changePct')
+        else:
+            # Zaokrąglenie: 120/100 − 1 daje 19,999…%, więc próg 20% by nie zadziałał.
+            chg = round((price / avg_cost - 1) * 100, 6) if avg_cost else None
+        if chg is None:
+            return None  # brak danych w tym cyklu (stooq) albo pozycji
+        return chg >= tp if above else chg <= -tp
+    if kind == 'week52':
+        bound = quote.get('high52') if above else quote.get('low52')
+        if bound is None:
+            return None
+        return price >= bound if above else price <= bound
+    return None
+
+
+def _avg_costs(holdings):
+    """[(symbol, qty, avg_price)] → {symbol: średnia ważona ilością}; ta sama
+    spółka w kilku portfelach liczy się razem."""
+    tot = {}
+    for sym, qty, avg in holdings:
+        q, a = float(qty or 0), float(avg or 0)
+        if q > 0 and a > 0:
+            cq, cv = tot.get(sym, (0.0, 0.0))
+            tot[sym] = (cq + q, cv + q * a)
+    return {sym: v / q for sym, (q, v) in tot.items()}
+
+
 def _cooldown_passed(last_sent):
     if not last_sent:
         return True
@@ -3087,6 +3129,7 @@ def _run_push_checks():
         # ── 1. Alerty cenowe (co wywołanie) ──────────────────────────────
         items = None
         dirty = False
+        avg_costs = None
         try:
             items = load_watchlist(username)
             _prefill_quotes([i.get('symbol', '') for i in items], price_cache)
@@ -3104,25 +3147,17 @@ def _run_push_checks():
                             continue
                         price = quote['price']
                         kind = alert.get('kind') or 'price'
-                        # ── warunek zadziałania per rodzaj ──
-                        if kind == 'price':
-                            target = alert.get('targetPrice')
-                            hit = ((alert.get('type') == 'above' and price >= target) or
-                                   (alert.get('type') == 'below' and price <= target))
-                        elif kind == 'dailyChange':
-                            chg = quote.get('changePct')
-                            if chg is None:
-                                continue  # brak danych w tym cyklu (stooq)
-                            tp = float(alert.get('targetPercent') or 0)
-                            if tp <= 0:
-                                continue
-                            hit = (chg >= tp) if alert.get('type') == 'above' else (chg <= -tp)
-                        elif kind == 'week52':
-                            bound = quote.get('high52') if alert.get('type') == 'above' else quote.get('low52')
-                            if bound is None:
-                                continue  # brak danych w tym cyklu
-                            hit = (price >= bound) if alert.get('type') == 'above' else (price <= bound)
-                        else:
+                        avg_cost = None
+                        if kind == 'fromCost':
+                            if avg_costs is None:
+                                with _conn() as c, c.cursor() as cur:
+                                    cur.execute("""SELECT h.symbol, h.qty, h.avg_price FROM portfolio_holdings h
+                                                   JOIN portfolio_list p ON h.portfolio_id = p.id
+                                                   WHERE p.user_id=%s""", (username,))
+                                    avg_costs = _avg_costs(cur.fetchall())
+                            avg_cost = avg_costs.get(sym)
+                        hit = _alert_hit(alert, quote, avg_cost)
+                        if hit is None:
                             continue
                         if mode == 'rearm' and alert.get('triggered'):
                             if not hit:  # warunek ustał — uzbrój ponownie
@@ -3137,7 +3172,11 @@ def _run_push_checks():
                         cur_lbl = item.get('currency') or ''
                         if kind == 'price':
                             arrow = '↑' if alert.get('type') == 'above' else '↓'
-                            title = f'🔔 {sym} {arrow} {target:g} {cur_lbl}'.strip()
+                            title = f"🔔 {sym} {arrow} {alert.get('targetPrice'):g} {cur_lbl}".strip()
+                        elif kind == 'fromCost':
+                            pct = (price / avg_cost - 1) * 100
+                            title = (f'🎯 {sym} {pct:+.1f}% od Twojej ceny zakupu' if alert.get('type') == 'above'
+                                     else f'⚠️ {sym} {pct:+.1f}% od Twojej ceny zakupu')
                         elif kind == 'dailyChange':
                             chg = quote['changePct']
                             title = (f'📈 {sym} +{chg:.1f}% dziś' if alert.get('type') == 'above'
