@@ -30,7 +30,7 @@ function fmt(n, decimals, locale) {
 }
 
 export default function Transactions() {
-  const { transactions = [], portfolio = [], loading, saveTransactions, addTransaction, deleteTransaction, activePortfolioId, displayCurrency, fxRates, canWrite } = useApp();
+  const { transactions = [], portfolio = [], loading, importTransactions, addTransaction, deleteTransaction, activePortfolioId, displayCurrency, fxRates, canWrite } = useApp();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -224,8 +224,7 @@ export default function Transactions() {
       )}
       {showImport && (
         <ImportCsvModal
-          existingTransactions={transactions}
-          onSave={saveTransactions}
+          onSave={importTransactions}
           onClose={() => setShowImport(false)}
         />
       )}

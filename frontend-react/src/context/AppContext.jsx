@@ -362,6 +362,35 @@ export function AppProvider({ children }) {
     return r.tx;
   }
 
+  // Import z pliku: same wpisy do historii albo (apply) z wpływem na pozycje
+  // i gotówkę, nakładane po kolei od najstarszych — kupno przed sprzedażą
+  // z tego samego dnia. Błąd w którymkolwiek wierszu przerywa cały import.
+  async function importTransactions(txs, { apply = false } = {}) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zaimportować transakcje');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    let state = { holdings: rd?.portfolio?.holdings ?? [], cash: rd?.cash ?? {} };
+    let added = txs;
+    if (apply) {
+      const order = t => (t.type === 'SELL' ? 1 : 0);
+      added = [];
+      for (const tx of [...txs].sort((a, b) => (a.date || '').localeCompare(b.date || '') || order(a) - order(b))) {
+        try {
+          state = applyTransaction(state, tx, { positions: true, cash: true });
+        } catch (e) {
+          throw new Error(`${tx.date} ${tx.symbol}: ${e.message}`, { cause: e });
+        }
+        added.push(state.tx);
+      }
+    }
+    await postUpdate({
+      ...rd,
+      portfolio: { ...rd.portfolio, holdings: state.holdings },
+      transactions: [...(rd.transactions ?? []), ...added],
+      cash: state.cash,
+    });
+  }
+
   // Usuwa transakcję i cofa to, co zmieniła w pozycji i gotówce.
   async function deleteTransaction(id) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć transakcję');
@@ -828,6 +857,7 @@ export function AppProvider({ children }) {
     saveTransactions,
     addTransaction,
     deleteTransaction,
+    importTransactions,
     saveSnapshot,
     saveBatchSnapshots,
     setSnapshot,
