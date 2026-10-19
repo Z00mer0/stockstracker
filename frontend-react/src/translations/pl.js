@@ -310,6 +310,7 @@ export default {
   source_of_funds:      'Źródło środków',
   top_up:               'Dopłata',
   deduct_cash:          'Odejmij od gotówki',
+  price_close_on:       'Kurs zamknięcia z {date} — możesz wpisać własny',
   fee_label:            'Prowizja',
   div_tax_label:        'Podatek pobrany',
   div_tax_hint:         'Łącznie, tyle ile potrąciło biuro. Bez tego netto liczy się z szacunku stawki.',
