@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import { useChart } from '../context/ChartContext';
 import { getThesis, setThesis } from '../services/journalService';
 import { alignBenchmark } from '../utils/benchmark.js';
+import { positionStats } from '../utils/positionStats.js';
 import { Button, IconButton, Modal, SegmentedControl, Spinner, Tabs, TabPanel } from './ui';
 import { cx } from './ui/cx.js';
 
@@ -29,8 +30,11 @@ const BENCH_OPTS = [
 const CM = { top: 8, right: 8, bottom: 22, left: 56 };
 const DEFAULT_CHART_H = 200;
 
-function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', currency = '', isIntraday = false, height: CHART_H = DEFAULT_CHART_H }) {
+// avgPrice i trades (utils/positionStats.js) — średnia cena pozycji jako
+// linia przerywana i Twoje kupna/sprzedaże jako znaczniki na wykresie dziennym.
+function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', currency = '', isIntraday = false, height: CHART_H = DEFAULT_CHART_H, avgPrice = null, trades = [] }) {
   const { locale } = useLanguage();
+  const t = useT();
   const containerRef = useRef(null);
   const [width, setWidth] = useState(440);
   const [hoverIdx, setHoverIdx] = useState(null);
@@ -72,7 +76,20 @@ function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', curr
   const stockValues = showBench ? aligned.stockPct.slice(start) : filtered.map(d => d.price);
   const benchValues = showBench ? aligned.benchPct.slice(start) : [];
 
-  const allValues = showBench ? [...stockValues, ...benchValues] : stockValues;
+  const showAvg = !showBench && !isIntraday && avgPrice > 0;
+  // Transakcje z okresu wykresu, przypięte do pierwszej sesji w dniu
+  // transakcji lub po nim (weekendowy wpis trafia na poniedziałek).
+  const marks = [];
+  if (!showBench && !isIntraday) {
+    const first = filtered[0].date, last = filtered[filtered.length - 1].date;
+    for (const tr of trades) {
+      if (tr.date < first || tr.date > last) continue;
+      const i = filtered.findIndex(d => d.date >= tr.date);
+      if (i >= 0) marks.push({ ...tr, i });
+    }
+  }
+  const allValues = showBench ? [...stockValues, ...benchValues]
+    : [...stockValues, ...(showAvg ? [avgPrice] : []), ...marks.map(m => m.price)];
   const minP = Math.min(...allValues);
   const maxP = Math.max(...allValues);
   const range = maxP - minP || 1;
@@ -163,6 +180,20 @@ function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', curr
         {benchPath && <path d={benchPath} fill="none" style={{ stroke: muted }} strokeWidth={1.5} strokeDasharray="4,3" strokeLinejoin="round" />}
         <path d={linePath} fill="none" style={{ stroke: lineColor }} strokeWidth={1.5} strokeLinejoin="round" />
         <circle cx={xScale(filtered.length - 1)} cy={yScale(stockValues[stockValues.length - 1])} r={3} style={{ fill: lineColor }} />
+        {showAvg && (
+          <g>
+            <line x1={CM.left} x2={CM.left + chartW} y1={yScale(avgPrice)} y2={yScale(avgPrice)} style={{ stroke: 'var(--accent)' }} strokeWidth={1} strokeDasharray="5,4" />
+            <text x={CM.left + 4} y={yScale(avgPrice) - 4} style={{ fill: 'var(--accent-text, var(--accent))' }} fontSize={9}>
+              {t('avg_abbr')} {avgPrice.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </text>
+          </g>
+        )}
+        {marks.map((m, k) => {
+          const x = xScale(m.i), y = yScale(m.price);
+          // Kupno: trójkąt w górę, sprzedaż: w dół — rozróżnialne bez koloru.
+          const d = m.type === 'BUY' ? `M${x},${y - 6} L${x + 5},${y + 3} L${x - 5},${y + 3} Z` : `M${x},${y + 6} L${x + 5},${y - 3} L${x - 5},${y - 3} Z`;
+          return <path key={k} d={d} style={{ fill: m.type === 'BUY' ? 'var(--up)' : 'var(--down)', stroke: 'var(--panel)' }} strokeWidth={1.5} />;
+        })}
         {hasVol && (() => {
           const maxVol = Math.max(...volData, 1);
           const barW = Math.max(1, chartW / filtered.length * 0.7);
@@ -196,6 +227,13 @@ function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', curr
                 : d.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (currency ? ` ${currency}` : '')}
             </div>
             {showBench && <div className="font-mono text-faint">{benchLabel} {signedPct(benchValues[hoverIdx])}</div>}
+            {/* Przy roku na wąskim ekranie dzień ma ułamek piksela — łapiemy
+                znaczniki w promieniu ok. 4 px od kursora. */}
+            {marks.filter(m => Math.abs(xScale(m.i) - xScale(hoverIdx)) <= 4).map((m, k) => (
+              <div key={k} className={cx('mt-0.5 font-semibold', m.type === 'BUY' ? 'text-up' : 'text-down')}>
+                {t(m.type === 'BUY' ? 'type_buy' : 'type_sell')} {m.qty.toLocaleString(locale, { maximumFractionDigits: 4 })} × {m.price.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            ))}
             {hasVol && d.volume > 0 && (
               <div className="mt-0.5 text-faint">
                 {d.volume >= 1_000_000 ? (d.volume / 1_000_000).toFixed(1) + 'M' : d.volume >= 1000 ? Math.round(d.volume / 1000) + 'K' : String(d.volume)}
@@ -211,8 +249,9 @@ function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', curr
 export default function StockDetailModal({ item, totalPortfolioValue = 0, onClose }) {
   const { locale } = useLanguage();
   const t = useT();
-  const { displayCurrency, fxRates } = useApp();
+  const { displayCurrency, fxRates, transactions = [] } = useApp();
   const { openChart } = useChart();
+  const stats = useMemo(() => positionStats(transactions, item.symbol, fxRates), [transactions, item.symbol, fxRates]);
   const dispFx = fxRates?.[displayCurrency] ?? 1;
   const dispCurrLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const PERIODS = PERIODS_BASE.map(p => ({ ...p, label: locale === 'pl-PL' ? p.pl : p.en }));
@@ -422,6 +461,11 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
               {item.valuePLN != null && totalPortfolioValue > 0 && (
                 <> · {((item.valuePLN / totalPortfolioValue) * 100).toFixed(1)}% {t('of_portfolio')}</>
               )}
+              {item.qty > 0 && stats.since && (
+                <> · {t('held_since')
+                  .replace('{date}', new Date(`${stats.since}T12:00:00`).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }))
+                  .replace('{days}', Math.max(0, Math.round((Date.now() - Date.parse(`${stats.since}T12:00:00`)) / 86400000)))}</>
+              )}
             </span>
             {item.plPLN != null && (
               <span className={cx('ml-auto font-semibold tabular-nums', item.plPLN >= 0 ? 'text-up' : 'text-down')}>
@@ -429,6 +473,20 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
                 {plPct != null && <span className="font-normal opacity-80"> ({plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%)</span>}
               </span>
             )}
+            {/* Wynik z dywidendami — sam kurs nie mówi, ile pozycja zarobiła. */}
+            {item.plPLN != null && stats.dividendsPLN > 0 && (() => {
+              const total = item.plPLN + stats.dividendsPLN;
+              const pct = item.costPLN > 0 ? (total / item.costPLN) * 100 : null;
+              return (
+                <span className="basis-full text-right text-[11px]">
+                  {t('with_dividends')} ({fmt2(stats.dividendsPLN / dispFx)} {dispCurrLabel}):{' '}
+                  <span className={cx('font-semibold tabular-nums', total >= 0 ? 'text-up' : 'text-down')}>
+                    {total >= 0 ? '+' : ''}{fmt2(total / dispFx)} {dispCurrLabel}
+                    {pct != null && <span className="font-normal opacity-80"> ({pct >= 0 ? '+' : ''}{pct.toFixed(1)}%)</span>}
+                  </span>
+                </span>
+              );
+            })()}
           </div>
         )}
 
@@ -461,6 +519,8 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
                       currency={currency}
                       isIntraday={isIntraday}
                       height={isFullscreen ? 440 : DEFAULT_CHART_H}
+                      avgPrice={item.qty > 0 ? item.avgPrice : null}
+                      trades={stats.trades}
                     />
                   )}
                 <div className="flex flex-wrap items-center gap-2">
