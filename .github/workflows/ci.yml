@@ -72,6 +72,8 @@ jobs:
       - run: python test_big_move_text.py
       # W weekend notowanie niesie zmianę z piątku — push „dziś” nie może jej wysłać.
       - run: python test_big_move_stale.py
+      # Warunki alertów — także nowy „od ceny zakupu” (zysk/strata od średniej).
+      - run: python test_alert_kinds.py
       # IRR publicznego portfela pomijał dywidendy „DIVIDEND" / małe litery
       # z importu brokera i dywidendy bez ilości. Test pilnuje przepływów.
       - run: python test_share_irr.py

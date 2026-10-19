@@ -11,6 +11,7 @@ import { apiLoadWatchlist, apiSaveWatchlist, collectAllAlerts, removeAlertFromIt
 
 function condition(a, t) {
   if (a.kind === 'dailyChange') return `${a.type === 'above' ? '↑' : '↓'} ${a.targetPercent}% ${t('alerts_today')}`;
+  if (a.kind === 'fromCost') return `${a.type === 'above' ? '↑ +' : '↓ −'}${a.targetPercent}% ${t('alerts_from_cost')}`;
   if (a.kind === 'week52') return a.type === 'above' ? `52W ↑ (${t('alert_new_high')})` : `52W ↓ (${t('alert_new_low')})`;
   return `${a.type === 'above' ? `↑ ${t('alerts_above')}` : `↓ ${t('alerts_below')}`} ${a.targetPrice?.toFixed(2)}`;
 }
@@ -60,7 +61,7 @@ export default function Alerts() {
   if (loading) return <PageSkeleton />;
   if (error) return <EmptyState icon={WifiOff} title={error} className="py-16" />;
 
-  const kind = a => t(`alert_kind_${a.kind === 'week52' ? 'week52' : a.kind === 'dailyChange' ? 'daily' : 'price'}`);
+  const kind = a => t(`alert_kind_${a.kind === 'week52' ? 'week52' : a.kind === 'dailyChange' ? 'daily' : a.kind === 'fromCost' ? 'cost' : 'price'}`);
   return (
     <Card title={`${t('nav_alerts')} · ${alerts.length}`}>
       <Table

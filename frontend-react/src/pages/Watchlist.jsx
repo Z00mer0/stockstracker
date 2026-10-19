@@ -40,6 +40,7 @@ const genId = () => Math.random().toString(36).slice(2, 10);
 function alertLabel(a, t) {
   const base = a.kind === 'dailyChange'
     ? `${a.type === 'above' ? '↑' : '↓'}${a.targetPercent}% ${t('alerts_today')}`
+    : a.kind === 'fromCost' ? `${a.type === 'above' ? '+' : '−'}${a.targetPercent}% ${t('alerts_from_cost')}`
     : a.kind === 'week52' ? `52W ${a.type === 'above' ? '↑' : '↓'}` : `${a.type === 'above' ? '↑' : '↓'} ${a.targetPrice?.toFixed(2)}`;
   return base + (a.mode === 'rearm' ? ' ↻' : a.mode === 'repeat' ? ' ⟳' : '');
 }
