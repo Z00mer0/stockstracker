@@ -201,7 +201,7 @@ export default function History() {
 
   const cagrUnlockStr = cagr == null && sorted.length > 0 ? (() => {
     const unlock = new Date(sorted[0].date);
-    unlock.setDate(unlock.getDate() + 90);
+    unlock.setDate(unlock.getDate() + 365);
     return unlock.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
   })() : null;
 

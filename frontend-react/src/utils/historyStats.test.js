@@ -44,7 +44,14 @@ describe('historyStats', () => {
     // drodze dawał +74% dla okresu z wynikiem +2,3%.
     const s = historyStats([row('2026-01-01', 10000, 10000), row('2026-04-01', 30690, 30000)]);
     expect(s.twrPct).toBeCloseTo(6.9, 10);
-    expect(s.cagr).toBeCloseTo((Math.pow(1.069, 365 / 90) - 1) * 100, 8);
+    // Poniżej roku stopa w skali roku byłaby fikcją — CAGR nie ma.
+    expect(s.cagr).toBeNull();
+  });
+
+  it('CAGR od pełnego roku', () => {
+    const s = historyStats([row('2025-01-01', 10000, 10000), row('2026-07-02', 12100, 10000)]);
+    expect(s.days).toBe(547);
+    expect(s.cagr).toBeCloseTo((Math.pow(1.21, 365 / 547) - 1) * 100, 8);
   });
 
   it('pusta lista', () => {

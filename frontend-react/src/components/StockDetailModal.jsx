@@ -358,6 +358,13 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
   const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : null;
   const prevClose = chartData.length > 1 ? chartData[chartData.length - 2].price : null;
   const dayChangePct = currentPrice != null && prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : null;
+  // Ostatnia sesja nie dzisiaj (weekend, święto, przed otwarciem) — zmiana
+  // jest z tamtego dnia. Bez daty wyglądała na dzisiejszą, a Portfel w tym
+  // samym czasie pokazuje „—" (dziś zmiany nie ma).
+  const lastSession = chartData.length > 0 ? chartData[chartData.length - 1].date : null;
+  const pastSession = lastSession && lastSession !== new Date().toLocaleDateString('sv-SE')
+    ? new Date(`${lastSession}T12:00:00`).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
+    : null;
   const firstPrice = chartData.length > 0 ? chartData[0].price : null;
   const yearChangePct = currentPrice != null && firstPrice != null && firstPrice > 0
     ? ((currentPrice - firstPrice) / firstPrice) * 100 : null;
@@ -379,8 +386,9 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
         <span className="shrink-0 text-right">
           <span className="block font-mono text-[18px] font-bold tracking-tight text-fg">{fmt2(currentPrice)} {currency}</span>
           {dayChangePct != null && (
-            <span className={cx('block text-[13px] font-semibold', dayChangePct >= 0 ? 'text-up' : 'text-down')}>
+            <span className={cx('block text-[13px] font-semibold', pastSession ? 'text-faint' : dayChangePct >= 0 ? 'text-up' : 'text-down')}>
               {dayChangePct >= 0 ? '▲' : '▼'} {Math.abs(dayChangePct).toFixed(2)}%
+              {pastSession && <span className="font-normal"> · {pastSession}</span>}
             </span>
           )}
         </span>

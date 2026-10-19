@@ -406,9 +406,10 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       ? Math.max(0, Math.round((Date.now() - new Date(firstDate).getTime()) / 86400000))
       : null;
 
-    // IRR via XIRR — only meaningful when holding period >= 30 days
+    // IRR via XIRR — w skali roku dopiero od roku trzymania; wcześniej
+    // wynik pozycji pokazuje kolumna zwrotu.
     let irr = null;
-    if (txs.length > 0 && currentPrice != null && periodDays != null && periodDays >= 30) {
+    if (txs.length > 0 && currentPrice != null && periodDays != null && periodDays >= 365) {
       const flows = txs
         .filter(t => t.qty != null && t.price != null && t.qty > 0 && t.price > 0)
         .map(t => ({

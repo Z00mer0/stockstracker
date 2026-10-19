@@ -2792,7 +2792,8 @@ def _build_shared_payload(username, portfolio_id):
         if cfs and total_val > 0:
             cfs.sort(key=lambda x: x[1])
             day_span = (datetime.date.today() - datetime.date.fromisoformat(cfs[0][1])).days
-            if day_span >= 30:
+            # Stopa roczna z krótszego okresu to fikcja — jak na Dashboardzie.
+            if day_span >= 365:
                 cfs.append((total_val, datetime.date.today().isoformat()))
                 irr = _xirr(cfs)
                 if irr is not None:
