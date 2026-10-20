@@ -13,7 +13,11 @@
 // sprzedanych z partii akcji, prowizja sprzedaży — po kursie dnia sprzedaży.
 // Czego tu nie ma: strat z lat poprzednich i dywidend zagranicznych — mówi
 // o tym opis na karcie.
-// Data transakcji to data zawarcia (tak ją zapisuje aplikacja).
+// Data podatkowa: domyślnie dzień rozliczenia (przychód powstaje z chwilą
+// rozliczenia transakcji) — T+2 dni robocze, w USA T+1 od 28.05.2024,
+// kryptowaluty tego samego dnia. Święta giełdowe nie są liczone (tylko
+// weekendy); kurs NBP serwer i tak bierze z ostatniej tabeli przed tą datą.
+// Do wyboru też data zawarcia (tak transakcje zapisuje aplikacja).
 import { normalizeType, txFee } from './transactions.js';
 import { splitAdjusted } from './splits.js';
 
@@ -27,17 +31,40 @@ export function dayBefore(iso) {
 
 const inScope = (t, excluded) => !excluded.has(t._portfolioId ?? '');
 
+const isCrypto = sym => /-(USD|USDT|USDC|EUR|PLN)$/i.test(sym ?? '');
+const isUs = t => (t.currency || 'PLN') === 'USD' && !String(t.symbol ?? '').includes('.');
+
+function addBusinessDays(iso, n) {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  while (n > 0) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) n--;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+// Dzień rozliczenia transakcji z dnia zawarcia.
+export function settlementDate(t) {
+  const date = t.date.slice(0, 10);
+  if (isCrypto(t.symbol)) return date;
+  return addBusinessDays(date, isUs(t) && date >= '2024-05-28' ? 1 : 2);
+}
+
+// basis: 'settlement' (domyślnie) albo 'trade'.
+export const taxDate = (t, basis = 'settlement') => (basis === 'trade' ? t.date.slice(0, 10) : settlementDate(t));
+
 // Daty kursów do pobrania: { USD: Set('2025-03-06', …) } — dzień przed każdą
 // transakcją kupna/sprzedaży w walucie. Serwer (/api/fx-rate) cofa się sam
 // przez weekend i święta do ostatniego dnia z tabelą NBP.
-export function pit38RateDates(transactions = [], excluded = new Set()) {
+export function pit38RateDates(transactions = [], excluded = new Set(), basis = 'settlement') {
   const out = {};
   for (const t of transactions) {
     const type = normalizeType(t.type);
     if ((type !== 'BUY' && type !== 'SELL') || !t.date || !inScope(t, excluded)) continue;
     const ccy = t.currency || 'PLN';
     if (ccy === 'PLN') continue;
-    (out[ccy] ??= new Set()).add(dayBefore(t.date));
+    (out[ccy] ??= new Set()).add(dayBefore(taxDate(t, basis)));
   }
   return out;
 }
@@ -45,7 +72,7 @@ export function pit38RateDates(transactions = [], excluded = new Set()) {
 // rates: { USD: { '2025-03-06': 4.01, … } } — klucze to daty z pit38RateDates.
 // excluded: Set(_portfolioId) kont, których nie liczymy (IKE/IKZE); w widoku
 // jednego portfela transakcje nie mają _portfolioId, stąd klucz ''.
-export function computePit38(transactions = [], { year, rates = {}, excluded = new Set() } = {}) {
+export function computePit38(transactions = [], { year, rates = {}, excluded = new Set(), basis = 'settlement' } = {}) {
   const rateAt = (ccy, date) => ((ccy || 'PLN') === 'PLN' ? 1 : rates[ccy]?.[dayBefore(date)] ?? null);
 
   const groups = new Map();
@@ -65,7 +92,7 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
     const lots = [];
     for (const t of txs) {
       if (t.type === 'BUY') {
-        lots.push({ date: t.date, qty: t.qty, price: t.price ?? 0, feePerShare: txFee(t) / t.qty, currency: t.currency || 'PLN' });
+        lots.push({ date: t.date, taxDate: taxDate(t, basis), qty: t.qty, price: t.price ?? 0, feePerShare: txFee(t) / t.qty, currency: t.currency || 'PLN' });
         continue;
       }
       let left = t.qty;
@@ -73,15 +100,18 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
       while (left > 1e-9 && lots.length) {
         const lot = lots[0];
         const take = Math.min(lot.qty, left);
-        used.push({ date: lot.date, qty: take, price: lot.price, fee: take * lot.feePerShare, currency: lot.currency, rate: rateAt(lot.currency, lot.date) });
+        used.push({ date: lot.date, qty: take, price: lot.price, fee: take * lot.feePerShare, currency: lot.currency, rate: rateAt(lot.currency, lot.taxDate) });
         lot.qty -= take;
         left -= take;
         if (lot.qty <= 1e-9) lots.shift();
       }
-      const y = Number(t.date.slice(0, 4));
+      // Rok podatkowy i kurs — wg daty podatkowej (rozliczenie zakupu z
+      // 30.12 i sprzedaży z 30.12 przechodzi na styczeń).
+      const sellTaxDate = taxDate(t, basis);
+      const y = Number(sellTaxDate.slice(0, 4));
       years.add(y);
       if (y !== year) continue;
-      const rate = rateAt(t.currency, t.date);
+      const rate = rateAt(t.currency, sellTaxDate);
       const missingRate = rate == null || used.some(u => u.rate == null);
       const revenuePLN = rate == null ? null : t.qty * (t.price ?? 0) * rate;
       const sellFee = txFee(t);
@@ -94,6 +124,7 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
         symbol: t.symbol,
         portfolio: t._portfolioName ?? '',
         date: t.date,
+        taxDate: sellTaxDate,
         qty: t.qty,
         price: t.price ?? 0,
         currency: t.currency || 'PLN',
@@ -134,21 +165,21 @@ const rate4 = v => (v == null ? '' : v.toFixed(4).replace('.', ','));
 export function pit38CSV({ year, rows, totals }) {
   const sep = ';';
   const lines = [[
-    'Data sprzedaży', 'Spółka', 'Portfel', 'Ilość', 'Cena', 'Waluta', 'Kurs NBP (dzień przed)',
+    'Data sprzedaży', 'Data podatkowa', 'Spółka', 'Portfel', 'Ilość', 'Cena', 'Waluta', 'Kurs NBP (dzień przed)',
     'Przychód (PLN)', 'Koszt FIFO (PLN)', 'w tym prowizje (PLN)', 'Dochód/Strata (PLN)', 'Zakupy (data × ilość @ cena, kurs)',
   ].join(sep)];
   for (const r of rows) {
     lines.push([
-      r.date, r.symbol, r.portfolio, String(r.qty).replace('.', ','), num(r.price), r.currency, rate4(r.rate),
+      r.date, r.taxDate, r.symbol, r.portfolio, String(r.qty).replace('.', ','), num(r.price), r.currency, rate4(r.rate),
       num(r.revenuePLN), num(r.costPLN), num(r.feesPLN), num(r.gainPLN),
       r.lots.map(l => `${l.date} × ${String(+l.qty.toFixed(6)).replace('.', ',')} @ ${num(l.price)} ${l.currency}, ${rate4(l.rate)}`).join(' | ')
         + (r.uncoveredQty > 0 ? ` | BRAK ZAKUPU dla ${String(r.uncoveredQty).replace('.', ',')} szt.` : ''),
     ].join(sep));
   }
   lines.push('');
-  lines.push([`PIT-38 ${year}`, '', '', '', '', '', '', num(totals.revenue), num(totals.cost), '', num(totals.income), ''].join(sep));
-  lines.push(['Podstawa opodatkowania (zł)', '', '', '', '', '', '', '', '', '', String(totals.base), ''].join(sep));
-  lines.push(['Podatek 19% (zł)', '', '', '', '', '', '', '', '', '', String(totals.tax), ''].join(sep));
+  lines.push([`PIT-38 ${year}`, '', '', '', '', '', '', '', num(totals.revenue), num(totals.cost), '', num(totals.income), ''].join(sep));
+  lines.push(['Podstawa opodatkowania (zł)', '', '', '', '', '', '', '', '', '', '', String(totals.base), ''].join(sep));
+  lines.push(['Podatek 19% (zł)', '', '', '', '', '', '', '', '', '', '', String(totals.tax), ''].join(sep));
   return '﻿' + lines.join('\r\n');
 }
 

@@ -5,10 +5,16 @@ import { computePit38, pit38RateDates } from '../utils/pit38.js';
 
 const TAX_FREE = new Set(['IKE', 'IKZE']);
 
+// Data podatkowa: 'settlement' (dzień rozliczenia, domyślnie) albo 'trade'.
+export const PIT38_BASIS_KEY = 'myfund_pit38_basis';
+export function loadPit38Basis() {
+  try { return localStorage.getItem(PIT38_BASIS_KEY) === 'trade' ? 'trade' : 'settlement'; } catch { return 'settlement'; }
+}
+
 // PIT-38 dla bieżącego widoku (jeden portfel albo „Wszystkie" bez IKE/IKZE).
 // Kursy NBP z dnia przed każdą transakcją pobierane raz, paczkami;
 // forYear(rok) liczy zestawienie bez ponownego pobierania.
-export function usePit38() {
+export function usePit38(basis = loadPit38Basis()) {
   const { transactions, portfolios, activePortfolioId } = useApp();
   const excluded = useMemo(() => {
     if (activePortfolioId !== 'all') {
@@ -18,7 +24,7 @@ export function usePit38() {
     return new Set(portfolios.filter(p => TAX_FREE.has(p.accountType)).map(p => p.id));
   }, [portfolios, activePortfolioId]);
 
-  const need = useMemo(() => pit38RateDates(transactions, excluded), [transactions, excluded]);
+  const need = useMemo(() => pit38RateDates(transactions, excluded, basis), [transactions, excluded, basis]);
   const needKey = JSON.stringify(Object.entries(need).map(([c, s]) => [c, [...s].sort()]));
   const [rates, setRates] = useState({});
   const [loading, setLoading] = useState(false);
@@ -44,7 +50,7 @@ export function usePit38() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needKey]);
 
-  const forYear = useCallback(year => computePit38(transactions, { year, rates, excluded }), [transactions, rates, excluded]);
+  const forYear = useCallback(year => computePit38(transactions, { year, rates, excluded, basis }), [transactions, rates, excluded, basis]);
   const years = useMemo(() => forYear(0).years, [forYear]);
   return { forYear, years, loading };
 }

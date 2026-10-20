@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computePit38, dayBefore, pit38RateDates, pit38CSV, lossCarryForward } from './pit38.js';
+import { computePit38, dayBefore, pit38RateDates, pit38CSV, lossCarryForward, settlementDate } from './pit38.js';
 import { splitAdjusted } from './splits.js';
 
 const RATES = { USD: { '2024-03-04': 4.0, '2024-06-09': 3.9, '2025-02-13': 4.2, '2025-05-04': 4.1 } };
@@ -25,7 +25,7 @@ describe('computePit38', () => {
     // AAPL: sprzedaż 2024-12-01 zjada 1 szt. z pierwszego zakupu (9 zostaje).
     // Sprzedaż 15 szt. 2025-02-14: 9 × 100 × 4.0 + 6 × 200 × 3.9 = 3600 + 4680 = 8280 kosztu,
     // przychód 15 × 250 × 4.2 = 15750 → dochód 7470.
-    const r = computePit38(txs, { year: 2025, rates: RATES });
+    const r = computePit38(txs, { basis: 'trade', year: 2025, rates: RATES });
     const aapl = r.rows.find(x => x.id === 's1');
     expect(aapl.rate).toBe(4.2);
     expect(aapl.lots.map(l => [l.date, l.qty, l.rate])).toEqual([['2024-03-05', 9, 4.0], ['2024-06-10', 6, 3.9]]);
@@ -41,7 +41,7 @@ describe('computePit38', () => {
   });
 
   it('strata → podstawa i podatek 0', () => {
-    const r = computePit38(txs.filter(t => t.symbol === 'PKO.WA'), { year: 2025 });
+    const r = computePit38(txs.filter(t => t.symbol === 'PKO.WA'), { basis: 'trade', year: 2025 });
     expect(r.totals.income).toBeCloseTo(-500, 6);
     expect(r.totals.base).toBe(0);
     expect(r.totals.tax).toBe(0);
@@ -55,9 +55,9 @@ describe('computePit38', () => {
       { type: 'SELL', symbol: 'X', qty: 1, price: 60, currency: 'PLN', date: '2025-01-05', _portfolioId: 'a' },
     ];
     // Wspólna kolejka dałaby portfelowi b koszt 10 zł; osobne kolejki: b → 50, a → 10.
-    const r = computePit38(multi, { year: 2025 });
+    const r = computePit38(multi, { basis: 'trade', year: 2025 });
     expect(r.totals.income).toBeCloseTo(10 + 50, 6);
-    const ike = computePit38(multi, { year: 2025, excluded: new Set(['a']) });
+    const ike = computePit38(multi, { basis: 'trade', year: 2025, excluded: new Set(['a']) });
     expect(ike.totals.income).toBeCloseTo(10, 6);
   });
 
@@ -65,7 +65,7 @@ describe('computePit38', () => {
     const r = computePit38([
       { type: 'BUY', symbol: 'M', qty: 1, price: 10, currency: 'USD', date: '2024-01-02' },
       { type: 'SELL', symbol: 'M', qty: 3, price: 20, currency: 'USD', date: '2025-01-05' },
-    ], { year: 2025, rates: {} });
+    ], { basis: 'trade', year: 2025, rates: {} });
     expect(r.rows[0].missingRate).toBe(true);
     expect(r.rows[0].uncoveredQty).toBe(2);
     expect(r.totals.missingRates).toBe(1);
@@ -78,22 +78,22 @@ describe('computePit38', () => {
       { type: 'BUY', symbol: 'NVDA', qty: 1, price: 1000, currency: 'PLN', date: '2024-01-02' },
       { type: 'SPLIT', symbol: 'NVDA', ratio: 10, date: '2024-06-10' },
       { type: 'SELL', symbol: 'NVDA', qty: 5, price: 120, currency: 'PLN', date: '2025-01-05' },
-    ], { year: 2025 });
+    ], { basis: 'trade', year: 2025 });
     expect(r.rows[0].costPLN).toBeCloseTo(500, 6);
     expect(r.rows[0].gainPLN).toBeCloseTo(100, 6);
     expect(r.rows[0].uncoveredQty).toBe(0);
   });
 
   it('daty kursów do pobrania: dzień przed transakcją, bez PLN', () => {
-    const d = pit38RateDates(txs);
+    const d = pit38RateDates(txs, undefined, 'trade');
     expect([...d.USD].sort()).toEqual(['2024-03-04', '2024-06-09', '2024-11-30', '2025-02-13']);
     expect(d.PLN).toBeUndefined();
   });
 
   it('CSV zawiera zakupy FIFO i podsumowanie', () => {
-    const csv = pit38CSV(computePit38(txs, { year: 2025, rates: RATES }));
+    const csv = pit38CSV(computePit38(txs, { basis: 'trade', year: 2025, rates: RATES }));
     expect(csv).toContain('2024-03-05 × 9 @ 100,00 USD, 4,0000 | 2024-06-10 × 6 @ 200,00 USD, 3,9000');
-    expect(csv).toContain('Podatek 19% (zł);;;;;;;;;;1324;');
+    expect(csv).toContain('Podatek 19% (zł);;;;;;;;;;;1324;');
   });
 });
 
@@ -130,5 +130,32 @@ describe('lossCarryForward', () => {
   it('strata starsza niż 5 lat przepada; rok ze stratą nie płaci podatku', () => {
     expect(lossCarryForward({ 2018: -10000, 2024: 5000 }, 2024)).toMatchObject({ deduction: 0, base: 5000, tax: 950, losses: [] });
     expect(lossCarryForward({ 2025: -300 }, 2025)).toMatchObject({ deduction: 0, base: 0, tax: 0 });
+  });
+});
+
+describe('data rozliczenia', () => {
+  it('T+2 dni robocze, USA T+1 od 28.05.2024, krypto tego samego dnia', () => {
+    expect(settlementDate({ symbol: 'PKO.WA', currency: 'PLN', date: '2026-10-15' })).toBe('2026-10-19'); // czw → pon
+    expect(settlementDate({ symbol: 'PKO.WA', currency: 'PLN', date: '2026-10-19' })).toBe('2026-10-21');
+    expect(settlementDate({ symbol: 'AAPL', currency: 'USD', date: '2026-10-16' })).toBe('2026-10-19'); // pt → pon
+    expect(settlementDate({ symbol: 'AAPL', currency: 'USD', date: '2024-05-20' })).toBe('2024-05-22');
+    expect(settlementDate({ symbol: 'BTC-USD', currency: 'USD', date: '2026-10-18' })).toBe('2026-10-18');
+  });
+
+  it('sprzedaż z końca grudnia rozliczona w styczniu idzie do następnego roku, kurs z dnia przed rozliczeniem', () => {
+    const txs = [
+      { type: 'BUY', symbol: 'AAPL', qty: 1, price: 100, currency: 'USD', date: '2025-06-02' },
+      { type: 'SELL', symbol: 'AAPL', qty: 1, price: 150, currency: 'USD', date: '2025-12-31' },
+    ];
+    const rates = { USD: { '2025-06-02': 4.0, '2025-12-31': 3.6 } };
+    // Święta nie są liczone: rozliczenie 1.01 (pierwszy dzień roboczy po środzie 31.12).
+    expect(pit38RateDates(txs).USD).toEqual(new Set(['2025-06-02', '2025-12-31']));
+    expect(computePit38(txs, { year: 2025, rates }).rows).toEqual([]);
+    const [row] = computePit38(txs, { year: 2026, rates }).rows;
+    expect(row.taxDate).toBe('2026-01-01');
+    expect(row.revenuePLN).toBeCloseTo(150 * 3.6);
+    expect(row.costPLN).toBeCloseTo(100 * 4.0);
+    // Według daty zawarcia ta sama sprzedaż należy do 2025.
+    expect(computePit38(txs, { year: 2025, rates: {}, basis: 'trade' }).rows).toHaveLength(1);
   });
 });

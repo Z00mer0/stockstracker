@@ -52,7 +52,7 @@ describe('prowizje', () => {
     const usdBuy = { id: 'ub', type: 'BUY', symbol: 'AAPL', qty: 10, price: 100, fee: 2, currency: 'USD', date: '2025-01-10' };
     const usdSell = { id: 'us', type: 'SELL', symbol: 'AAPL', qty: 5, price: 120, fee: 1, currency: 'USD', date: '2025-03-10' };
     const rates = { USD: { '2025-01-09': 4.0, '2025-03-09': 3.8 } };
-    const r = computePit38([usdBuy, usdSell], { year: 2025, rates });
+    const r = computePit38([usdBuy, usdSell], { basis: 'trade', year: 2025, rates });
     const row = r.rows[0];
     // koszt: 5 × 100 × 4,0 + (5/10 × 2) × 4,0 + 1 × 3,8 = 2000 + 4 + 3,8
     expect(row.feesPLN).toBeCloseTo(7.8);
@@ -63,7 +63,7 @@ describe('prowizje', () => {
   it('PIT-38: brak kursu dla prowizji sprzedaży nie liczy kosztu', () => {
     const usdBuy = { id: 'ub', type: 'BUY', symbol: 'AAPL', qty: 1, price: 100, currency: 'USD', date: '2025-01-10' };
     const usdSell = { id: 'us', type: 'SELL', symbol: 'AAPL', qty: 1, price: 120, fee: 1, currency: 'USD', date: '2025-03-10' };
-    const row = computePit38([usdBuy, usdSell], { year: 2025, rates: { USD: { '2025-01-09': 4.0 } } }).rows[0];
+    const row = computePit38([usdBuy, usdSell], { basis: 'trade', year: 2025, rates: { USD: { '2025-01-09': 4.0 } } }).rows[0];
     expect(row.costPLN).toBeNull();
     expect(row.gainPLN).toBeNull();
   });
