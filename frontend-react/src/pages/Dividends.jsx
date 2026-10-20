@@ -25,6 +25,7 @@ import {
   calcYoC,
   getTaxRate,
   dividendTaxRate,
+  US_TAX_KEY,
   DIV_MODE_KEY,
 } from '../services/dividendService';
 
@@ -60,6 +61,10 @@ export default function Dividends() {
   }
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
+  // Odpowiedź na pytanie o W-8BEN (15% podatku w USA zamiast 30%); null —
+  // jeszcze nie padła. Zmiana przelicza kwoty netto na stronie.
+  const [w8ben, setW8ben] = useState(() => { try { return localStorage.getItem(US_TAX_KEY); } catch { return null; } });
+  function answerW8ben(rate) { lsSet(US_TAX_KEY, rate); setW8ben(rate); }
 
   // Pozycje z ceną rynkową. Surowe pozycje z useApp nie mają pola price, więc
   // `pos.price ?? pos.avgPrice` zawsze brało cenę zakupu — stopa dywidendy
@@ -161,19 +166,19 @@ export default function Dividends() {
   const divYears = useMemo(
     () => dividendsByYear(dividends, dispPLN),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dividends, fxRates, isNet],
+    [dividends, fxRates, isNet, w8ben],
   );
 
   const annualDivPLN = useMemo(() =>
     dividends.filter(d => d.date >= yearCutoff).reduce((s, d) => s + dispPLN(d), 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dividends, fxRates, isNet, yearCutoff]
+    [dividends, fxRates, isNet, w8ben, yearCutoff]
   );
 
   const totalPLN = useMemo(() =>
     dividends.reduce((s, d) => s + dispPLN(d), 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dividends, fxRates, isNet]
+    [dividends, fxRates, isNet, w8ben]
   );
 
   const forecast = useMemo(() => forecastDividends({
@@ -231,7 +236,7 @@ export default function Dividends() {
     });
     return Object.values(map).sort((a, b) => b.totalPLN - a.totalPLN);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dividends, fxRates, isNet]);
+  }, [dividends, fxRates, isNet, w8ben]);
 
   const timeline = useMemo(() => {
     const byMonth = {};
@@ -244,7 +249,7 @@ export default function Dividends() {
     });
     return Object.values(byMonth).sort((a, b) => b.ym.localeCompare(a.ym));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dividends, fxRates, isNet]);
+  }, [dividends, fxRates, isNet, w8ben]);
 
   function openAdd() { setEditTarget(null); setModalOpen(true); }
   function openEdit(div) { setEditTarget(div); setModalOpen(true); }
@@ -420,6 +425,24 @@ export default function Dividends() {
       </div>
 
       {hasGpw && <Callout tone="info" icon={Info}>{t('div_gpw_note')}</Callout>}
+
+      {/* Spółki zagraniczne, a nikt jeszcze nie odpowiedział o W-8BEN —
+          pytamy wprost, zamiast po cichu zakładać 15%. */}
+      {!w8ben && (symbols.some(s => !s.endsWith('.WA')) || dividends.some(d => d.currency && d.currency !== 'PLN')) && (
+        <Callout
+          tone="warn"
+          icon={Info}
+          title={t('w8ben_q')}
+          action={(
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="primary" onClick={() => answerW8ben('15')}>{t('w8ben_yes')}</Button>
+              <Button size="sm" onClick={() => answerW8ben('30')}>{t('w8ben_no')}</Button>
+            </div>
+          )}
+        >
+          {t('w8ben_desc')}
+        </Callout>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat
