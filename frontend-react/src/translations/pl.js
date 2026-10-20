@@ -1305,7 +1305,10 @@ export default {
   pit38_loss_deducted:  'Odliczone straty z lat poprzednich: {v} zł — podstawa po odliczeniu {base} zł.',
   pit38_loss_left:      'Straty do odliczenia w kolejnych latach:',
   pit38_loss_note:      'Strata odliczana przez 5 lat, w jednym roku najwyżej 50% jej kwoty (wariant jednorazowego odliczenia do 5 mln zł nie jest liczony). Tylko straty z transakcji w aplikacji — straty z innych rachunków dolicz samodzielnie.',
-  pit38_method_note:         'Koszt metodą FIFO (najpierw najstarsze zakupy, osobno dla każdego portfela), kursy średnie NBP z ostatniego dnia roboczego przed datą transakcji, podstawa i podatek zaokrąglone do pełnych złotych. Konta IKE/IKZE pominięte. Prowizje wpisane przy transakcjach są wliczone w koszt. Nie uwzględnia strat z lat poprzednich ani dywidend zagranicznych. Sprawdź z PIT-8C od biura maklerskiego.',
+  pit38_basis:          'Data podatkowa',
+  pit38_basis_settlement: 'Data rozliczenia',
+  pit38_basis_trade:    'Data zawarcia',
+  pit38_method_note:         'Koszt metodą FIFO (najpierw najstarsze zakupy, osobno dla każdego portfela), kursy średnie NBP z ostatniego dnia roboczego przed datą podatkową — domyślnie dniem rozliczenia (T+2, w USA T+1 od 28.05.2024; święta giełdowe nie są liczone), do wyboru data zawarcia. Podstawa i podatek zaokrąglone do pełnych złotych. Konta IKE/IKZE pominięte. Prowizje wpisane przy transakcjach są wliczone w koszt, straty z lat poprzednich odliczane. Nie uwzględnia dywidend zagranicznych. Sprawdź z PIT-8C od biura maklerskiego.',
 
   // ── Newsfeed ──────────────────────────────────────────────────
   news_title:                'Newsfeed',

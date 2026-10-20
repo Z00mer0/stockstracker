@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Download, Info, TriangleAlert } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
-import { usePit38 } from '../hooks/usePit38.js';
+import { usePit38, loadPit38Basis, PIT38_BASIS_KEY } from '../hooks/usePit38.js';
+import { lsSet } from '../utils/safeStorage.js';
 import { pit38CSV, lossCarryForward } from '../utils/pit38.js';
 import { Button, Callout, Card, EmptyState, Select, Stat, Table } from './ui';
 import { cx } from './ui/cx.js';
@@ -20,7 +21,8 @@ export default function Pit38Card() {
   const { isPrivate } = usePrivacy();
   const blur = isPrivate ? 'privacy-blur' : undefined;
   const [picked, setPicked] = useState(null);
-  const { forYear, years: saleYears, loading } = usePit38();
+  const [basis, setBasis] = useState(loadPit38Basis);
+  const { forYear, years: saleYears, loading } = usePit38(basis);
   const year = picked ?? defaultYear(saleYears);
   const pit = useMemo(() => forYear(year), [forYear, year]);
   const { rows, totals } = pit;
@@ -48,6 +50,10 @@ export default function Pit38Card() {
       title={t('pit38_title')}
       actions={(
         <div className="flex items-center gap-2">
+          <Select aria-label={t('pit38_basis')} value={basis} onChange={e => { setBasis(e.target.value); lsSet(PIT38_BASIS_KEY, e.target.value); }} className="w-40">
+            <option value="settlement">{t('pit38_basis_settlement')}</option>
+            <option value="trade">{t('pit38_basis_trade')}</option>
+          </Select>
           <Select aria-label={t('pit38_year')} value={year} onChange={e => setPicked(Number(e.target.value))} className="w-24">
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </Select>
