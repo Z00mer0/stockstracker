@@ -482,7 +482,7 @@ export default {
   an_tab_allocation:     'Allocation',
   an_tab_risk:           'Risk',
   an_tab_tax:            'Tax',
-  risk_twr_note:         'Based on daily time-weighted returns — deposits and withdrawals are not counted as gains or losses.',
+  risk_twr_note:         'Based on daily time-weighted returns — deposits and withdrawals are not counted as gains or losses. Annualised by the number of snapshots per year (they are also saved at weekends).',
   drift_title:          'Portfolio has drifted from target weights',
   drift_hint:           'see rebalancing.',
   drift_threshold_label: 'Warn on the Dashboard when drift reaches',
@@ -540,7 +540,7 @@ export default {
 
   // Risk section metric labels
   volatility_label:     'Volatility (ann.)',
-  volatility_sub:       'Std dev × √252',
+  volatility_sub:       'Annualised std dev',
   max_drawdown_label:   'Max Drawdown',
   max_drawdown_sub:     'Largest decline',
   sharpe_label:         'Sharpe Ratio',

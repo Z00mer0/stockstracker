@@ -482,7 +482,7 @@ export default {
   an_tab_allocation:     'Alokacja',
   an_tab_risk:           'Ryzyko',
   an_tab_tax:            'Podatki',
-  risk_twr_note:         'Liczone na dziennych stopach zwrotu ważonych czasem — wpłaty i wypłaty nie są traktowane jak zysk ani strata.',
+  risk_twr_note:         'Liczone na dziennych stopach zwrotu ważonych czasem — wpłaty i wypłaty nie są traktowane jak zysk ani strata. Skala roczna według liczby zapisów na rok (zapisują się też w weekendy).',
   drift_title:          'Portfel odbiega od docelowych udziałów',
   drift_hint:           'zobacz rebalansowanie.',
   drift_threshold_label: 'Ostrzegaj na Dashboardzie przy odchyleniu od',
@@ -540,7 +540,7 @@ export default {
 
   // Risk section metric labels
   volatility_label:     'Zmienność (rok.)',
-  volatility_sub:       'Odch. std. × √252',
+  volatility_sub:       'Odch. std. w skali roku',
   max_drawdown_label:   'Max Drawdown',
   max_drawdown_sub:     'Największy spadek',
   sharpe_label:         'Sharpe Ratio',
