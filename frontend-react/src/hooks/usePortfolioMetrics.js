@@ -6,6 +6,7 @@ import { useHistoricalFx } from './useHistoricalFx.js';
 import { replayFx, cashflowPLN } from '../utils/fxHistory.js';
 import { splitAdjusted } from '../utils/splits.js';
 import { normalizeType } from '../utils/transactions.js';
+import { CRYPTO_SYMBOLS } from '../utils/crypto.js';
 
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -322,12 +323,6 @@ async function fetchAllMetrics(symbols) {
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
-const CRYPTO_SYMBOLS = new Set([
-  'BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','SHIB',
-  'AVAX','LINK','UNI','LTC','BCH','ATOM','XLM','NEAR','APT','ARB',
-  'OP','INJ','SUI','TRX','TON','PEPE','WIF',
-]);
-
 export function usePortfolioMetrics(portfolio, transactions, fxRates) {
   const [marketData, setMarketData] = useState({});
   const [metricsLoading, setMetricsLoading] = useState(false);

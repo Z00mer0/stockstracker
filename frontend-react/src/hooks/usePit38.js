@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { fetchFxRates } from './useFxBreakdown.js';
 import { computePit38, pit38RateDates } from '../utils/pit38.js';
+import { getUsTaxRate } from '../services/dividendService.js';
 
 const TAX_FREE = new Set(['IKE', 'IKZE']);
 
@@ -15,7 +16,10 @@ export function loadPit38Basis() {
 // Kursy NBP z dnia przed każdą transakcją pobierane raz, paczkami;
 // forYear(rok) liczy zestawienie bez ponownego pobierania.
 export function usePit38(basis = loadPit38Basis()) {
-  const { transactions, portfolios, activePortfolioId } = useApp();
+  const { transactions, portfolios, activePortfolioId, portfolio } = useApp();
+  // Symbole dodane jako krypto (np. własny token spoza listy) — osobna część PIT-38.
+  const cryptoKey = portfolio.filter(h => h.assetType === 'crypto').map(h => String(h.symbol).toUpperCase()).sort().join(',');
+  const crypto = useMemo(() => new Set(cryptoKey ? cryptoKey.split(',') : []), [cryptoKey]);
   const excluded = useMemo(() => {
     if (activePortfolioId !== 'all') {
       const acc = portfolios.find(p => p.id === activePortfolioId)?.accountType;
@@ -24,7 +28,7 @@ export function usePit38(basis = loadPit38Basis()) {
     return new Set(portfolios.filter(p => TAX_FREE.has(p.accountType)).map(p => p.id));
   }, [portfolios, activePortfolioId]);
 
-  const need = useMemo(() => pit38RateDates(transactions, excluded, basis), [transactions, excluded, basis]);
+  const need = useMemo(() => pit38RateDates(transactions, excluded, basis, crypto), [transactions, excluded, basis, crypto]);
   const needKey = JSON.stringify(Object.entries(need).map(([c, s]) => [c, [...s].sort()]));
   const [rates, setRates] = useState({});
   const [loading, setLoading] = useState(false);
@@ -50,7 +54,10 @@ export function usePit38(basis = loadPit38Basis()) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needKey]);
 
-  const forYear = useCallback(year => computePit38(transactions, { year, rates, excluded, basis }), [transactions, rates, excluded, basis]);
+  const forYear = useCallback(
+    year => computePit38(transactions, { year, rates, excluded, basis, crypto, withholding: getUsTaxRate() }),
+    [transactions, rates, excluded, basis, crypto],
+  );
   const years = useMemo(() => forYear(0).years, [forYear]);
   return { forYear, years, loading };
 }

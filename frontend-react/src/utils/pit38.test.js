@@ -159,3 +159,63 @@ describe('data rozliczenia', () => {
     expect(computePit38(txs, { year: 2025, rates: {}, basis: 'trade' }).rows).toHaveLength(1);
   });
 });
+
+describe('kryptowaluty — osobna część PIT-38', () => {
+  const R = { USD: { '2024-03-04': 4.0, '2024-11-30': 4.0, '2025-02-13': 4.0, '2025-06-09': 4.0 } };
+  const txs = [
+    { type: 'BUY', symbol: 'BTC', qty: 1, price: 1000, fee: 10, currency: 'USD', date: '2024-03-05' },  // koszt 2024: 4040
+    { type: 'SELL', symbol: 'BTC', qty: 0.5, price: 600, currency: 'USD', date: '2024-12-01' },         // przychód 2024: 1200
+    { type: 'SELL', symbol: 'BTC', qty: 0.5, price: 3000, currency: 'USD', date: '2025-02-14' },        // przychód 2025: 6000
+    { type: 'BUY', symbol: 'AAPL', qty: 10, price: 100, currency: 'USD', date: '2024-03-05' },
+    { type: 'SELL', symbol: 'AAPL', qty: 10, price: 90, currency: 'USD', date: '2025-06-10' },          // akcje: −400
+  ];
+
+  it('nie trafia do akcji; nadwyżka kosztów przechodzi na następny rok', () => {
+    const r24 = computePit38(txs, { year: 2024, rates: R, basis: 'trade' });
+    expect(r24.rows).toHaveLength(0);
+    expect(r24.crypto).toMatchObject({ revenue: 1200, cost: 4040, carriedIn: 0, tax: 0 });
+    expect(r24.crypto.carryOut).toBeCloseTo(2840, 6);
+
+    const r25 = computePit38(txs, { year: 2025, rates: R, basis: 'trade' });
+    // Strata na akcjach nie obniża podatku od krypto.
+    expect(r25.totals.income).toBeCloseTo(-400, 6);
+    expect(r25.crypto.carriedIn).toBeCloseTo(2840, 6);
+    expect(r25.crypto.income).toBeCloseTo(6000 - 2840, 6);
+    expect(r25.crypto.tax).toBe(Math.round(3160 * 0.19));
+    expect(r25.years).toEqual([2025, 2024]);
+  });
+
+  it('krypto rozliczane w dniu transakcji, także symbol oznaczony w pozycjach', () => {
+    const d = pit38RateDates([{ type: 'SELL', symbol: 'MYTOKEN', qty: 1, price: 1, currency: 'USD', date: '2025-02-14' }], new Set(), 'settlement', new Set(['MYTOKEN']));
+    expect([...d.USD]).toEqual(['2025-02-13']);
+  });
+});
+
+describe('dywidendy zagraniczne w PIT-38', () => {
+  const R = { USD: { '2025-03-31': 4.0, '2025-06-30': 4.0 } };
+  const txs = [
+    { type: 'DIV', symbol: 'AAPL', qty: 1, price: 100, tax: 15, currency: 'USD', date: '2025-04-01' },   // 15% → dopłata 4%
+    { type: 'DIVIDEND', symbol: 'KO', qty: 1, price: 50, tax: 15, currency: 'USD', date: '2025-07-01' },  // 30% → nic, limit 19%
+    { type: 'DIV', symbol: 'PKO.WA', qty: 1, price: 500, currency: 'PLN', date: '2025-07-01' },          // polska — poza PIT-38
+  ];
+
+  it('19% od brutto minus podatek z zagranicy (najwyżej 19%)', () => {
+    const r = computePit38(txs, { year: 2025, rates: R });
+    expect(r.dividends.count).toBe(2);
+    expect(r.dividends.grossPLN).toBeCloseTo(600, 6);
+    expect(r.dividends.tax19).toBeCloseTo(114, 6);
+    expect(r.dividends.paidAbroad).toBeCloseTo(60 + 38, 6);
+    expect(r.dividends.due).toBe(16);
+    expect(r.years).toContain(2025);
+  });
+
+  it('bez wpisanego podatku — założona stawka, oznaczone jako szacunek', () => {
+    const r = computePit38([{ type: 'DIV', symbol: 'AAPL', qty: 1, price: 100, currency: 'USD', date: '2025-04-01' }], { year: 2025, rates: R, withholding: 0.30 });
+    expect(r.dividends.estimated).toBe(1);
+    expect(r.dividends.due).toBe(0);
+  });
+
+  it('kursy: dzień przed wypłatą', () => {
+    expect([...pit38RateDates(txs).USD].sort()).toEqual(['2025-03-31', '2025-06-30']);
+  });
+});

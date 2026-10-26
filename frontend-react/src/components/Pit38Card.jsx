@@ -25,13 +25,16 @@ export default function Pit38Card() {
   const { forYear, years: saleYears, loading } = usePit38(basis);
   const year = picked ?? defaultYear(saleYears);
   const pit = useMemo(() => forYear(year), [forYear, year]);
-  const { rows, totals } = pit;
+  const { rows, totals, crypto, dividends } = pit;
+  const hasCrypto = crypto.sales > 0 || crypto.cost > 0 || crypto.carriedIn > 0;
+  const hasDivs = dividends.count > 0;
   // Straty z poprzednich lat widoczne w aplikacji — odliczenie w wybranym roku.
   const carry = useMemo(
     () => lossCarryForward(Object.fromEntries(saleYears.map(y => [y, forYear(y).totals.income])), year),
     [forYear, saleYears, year],
   );
   const taxAfter = carry.deduction > 0 ? carry.tax : totals.tax;
+  const taxAll = taxAfter + crypto.tax + dividends.due;
 
   const fmt = (v, d = 2) => (v == null ? '—' : v.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
   const years = useMemo(() => [...new Set([year, ...saleYears])].sort((a, b) => b - a), [year, saleYears]);
@@ -57,11 +60,12 @@ export default function Pit38Card() {
           <Select aria-label={t('pit38_year')} value={year} onChange={e => setPicked(Number(e.target.value))} className="w-24">
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </Select>
-          <Button size="sm" variant="primary" icon={Download} disabled={!rows.length || loading} onClick={download}>CSV</Button>
+          <Button size="sm" variant="primary" icon={Download} disabled={(!rows.length && !hasCrypto && !hasDivs) || loading} onClick={download}>CSV</Button>
         </div>
       )}
     >
       <div className="grid gap-3 px-4 pb-4 pt-3">
+        {(hasCrypto || hasDivs) && <h4 className="text-[13px] font-semibold text-fg">{t('pit38_shares')}</h4>}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat blur={isPrivate} label={t('pit38_revenue')} value={`${fmt(totals.revenue)} zł`} />
           <Stat blur={isPrivate} label={t('pit38_cost')} value={`${fmt(totals.cost)} zł`} />
@@ -89,6 +93,51 @@ export default function Pit38Card() {
         )}
         {totals.uncovered > 0 && (
           <Callout tone="warn" icon={TriangleAlert}>{t('pit38_uncovered').replace('{n}', totals.uncovered)}</Callout>
+        )}
+        {hasCrypto && (
+          <section className="grid gap-2 border-t border-line pt-3" aria-label={t('pit38_crypto')}>
+            <h4 className="text-[13px] font-semibold text-fg">{t('pit38_crypto')}</h4>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat blur={isPrivate} label={t('pit38_revenue')} value={`${fmt(crypto.revenue)} zł`} />
+              <Stat
+                blur={isPrivate} label={t('pit38_cost')} value={`${fmt(crypto.cost + crypto.carriedIn)} zł`}
+                hint={crypto.carriedIn > 0 ? t('pit38_crypto_carried_in').replace('{v}', fmt(crypto.carriedIn)) : undefined}
+              />
+              <Stat blur={isPrivate} label={t('pit38_income')} value={`${crypto.income >= 0 ? '' : '−'}${fmt(Math.abs(crypto.income))} zł`} tone={crypto.income >= 0 ? 'up' : 'down'} />
+              <Stat blur={isPrivate} label={t('pit38_tax')} value={`${fmt(crypto.tax, 0)} zł`} tone={crypto.tax > 0 ? 'warn' : undefined} />
+            </div>
+            <p className="text-[11px] leading-relaxed text-faint">
+              {t('pit38_crypto_note')}
+              {crypto.carryOut > 0 && <> {t('pit38_crypto_carry_out').replace('{v}', fmt(crypto.carryOut))}</>}
+            </p>
+            {!loading && crypto.missingRates > 0 && (
+              <Callout tone="warn" icon={TriangleAlert}>{t('pit38_missing_rates_any').replace('{n}', crypto.missingRates)}</Callout>
+            )}
+          </section>
+        )}
+        {hasDivs && (
+          <section className="grid gap-2 border-t border-line pt-3" aria-label={t('pit38_divs')}>
+            <h4 className="text-[13px] font-semibold text-fg">{t('pit38_divs')}</h4>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat blur={isPrivate} label={t('pit38_divs_gross')} value={`${fmt(dividends.grossPLN)} zł`} />
+              <Stat blur={isPrivate} label={t('pit38_divs_tax19')} value={`${fmt(dividends.tax19)} zł`} />
+              <Stat blur={isPrivate} label={t('pit38_divs_paid')} value={`${fmt(dividends.paidAbroad)} zł`} />
+              <Stat blur={isPrivate} label={t('pit38_divs_due')} value={`${fmt(dividends.due, 0)} zł`} tone={dividends.due > 0 ? 'warn' : undefined} />
+            </div>
+            <p className="text-[11px] leading-relaxed text-faint">{t('pit38_divs_note')}</p>
+            {dividends.estimated > 0 && (
+              <Callout tone="info" icon={Info}>{t('pit38_divs_estimated').replace('{n}', dividends.estimated)}</Callout>
+            )}
+            {!loading && dividends.missingRates > 0 && (
+              <Callout tone="warn" icon={TriangleAlert}>{t('pit38_missing_rates_any').replace('{n}', dividends.missingRates)}</Callout>
+            )}
+          </section>
+        )}
+        {(hasCrypto || hasDivs) && (
+          <p className="flex flex-wrap items-baseline justify-between gap-2 border-t border-line pt-3 text-[13px]">
+            <span className="text-dim">{t('pit38_total_due')}</span>
+            <span className={cx('text-base font-bold', taxAll > 0 ? 'text-warn' : 'text-fg', blur)}>{fmt(taxAll, 0)} zł</span>
+          </p>
         )}
       </div>
       {rows.length === 0 ? (
