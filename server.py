@@ -23,6 +23,7 @@ import http.cookiejar
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from zoneinfo import ZoneInfo
+import market_summary as _ms
 
 # Harmonogram snapshotów liczył offset Warszawy z miesiąca (`2 if 4 <= month <= 10`).
 # Polska przestawia zegar w ostatnią niedzielę marca i października, więc dwa
@@ -1444,6 +1445,8 @@ if DATABASE_URL:
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS us_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS gpw_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS weekly_summary BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS market_gpw BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS market_us BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_language TEXT DEFAULT 'pl'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_hour INT DEFAULT 16")
@@ -2277,6 +2280,8 @@ def _quote_from_entry(entry):
             'low52': q.get('fiftyTwoWeekLow'),
             'marketTime': q.get('regularMarketTime'),
             'tz': q.get('exchangeTimezoneName'),
+            'volume': q.get('regularMarketVolume'),
+            'name': q.get('shortName'),
         }
     return None
 
@@ -3114,8 +3119,55 @@ def _weekly_summary_text(summary, movers, lang):
     return title, '\n'.join(lines)
 
 
+_MARKET_CACHE = {}       # rynek → (czas pobrania, podsumowanie)
+_MARKET_UNIVERSE = None
+
+
+def _market_summary(market):
+    """Podsumowanie ostatniej sesji (market_summary.py). Notowania spółek
+    paczkami przez /api/quotes, indeksy z wykresem dnia przez /api/chart.
+    W trakcie sesji cache 10 min; po zamknięciu — do końca dnia."""
+    global _MARKET_UNIVERSE
+    hit = _MARKET_CACHE.get(market)
+    if hit and (time.time() - hit[0] < 600 or (hit[1].get('closed') and time.time() - hit[0] < 6 * 3600)):
+        return hit[1]
+    if _MARKET_UNIVERSE is None:
+        _MARKET_UNIVERSE = _ms.load_universe()
+    symbols = _MARKET_UNIVERSE[market]
+    quotes = {}
+    _prefill_quotes(symbols, quotes)
+    indices = []
+    for name, sym in _ms.MARKETS[market]['indices']:
+        chart = None
+        try:
+            url = f'{QUOTES_BASE}/api/chart?symbol={urllib.parse.quote(sym)}&interval=5m&range=1d'
+            req = urllib.request.Request(url, headers={'User-Agent': _YF_UA, 'Accept': 'application/json'})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                chart = json.loads(r.read())
+        except Exception as e:
+            log.warning(f'[market] indeks {sym}: {e}')
+        indices.append(_ms.index_from_chart(name, chart))
+    summary = _ms.summarize(market, quotes, indices, len(symbols))
+    log.info(f'[market] {market}: {len(quotes)}/{len(symbols)} notowań, sesja {summary and summary["date"]}')
+    if summary:
+        _MARKET_CACHE[market] = (time.time(), summary)
+    return summary
+
+
+def _market_push_due(market, now=None):
+    """Klucz powiadomienia, gdy właśnie trwa okno po zamknięciu sesji
+    w dniu sesyjnym, inaczej None."""
+    cfg = _ms.MARKETS[market]
+    now = (now or datetime.datetime.now(datetime.timezone.utc)).astimezone(ZoneInfo(cfg['tz']))
+    if not _ms.is_trading_day(now.date(), cfg['calendar']):
+        return None
+    if not (cfg['close'] <= (now.hour, now.minute) < cfg['until']):
+        return None
+    return f'mkt:{market}:{now.date().isoformat()}'
+
+
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0, 'market': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -3408,6 +3460,29 @@ def _run_push_checks():
         except Exception as e:
             log.warning(f'[push] weekly {username}: {e}')
 
+        # ── 1f. Podsumowanie sesji rynku (opt-in): GPW po 17:10, USA po 16:10 ET
+        try:
+            due = [(m, k) for m in ('gpw', 'us') if (k := _market_push_due(m))]
+            if due:
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("SELECT market_gpw, market_us, notification_language FROM portfolio_alerts WHERE username=%s",
+                                (username,))
+                    mrow = cur.fetchone()
+                for market, key in due:
+                    if not (mrow and mrow[0 if market == 'gpw' else 1]) or _already_sent(username, key):
+                        continue
+                    summary = _market_summary(market)
+                    # Tylko dzisiejsza, zamknięta sesja i większość spółek z notowaniem.
+                    if (not summary or not summary['closed'] or summary['date'] != key.rsplit(':', 1)[1]
+                            or summary['universe']['priced'] < summary['universe']['size'] / 2):
+                        continue
+                    title, body = _ms.push_text(summary, mrow[2] or 'pl')
+                    if _send_push(username, title, body, f'/market/{market}'):
+                        _mark_sent(username, key)
+                        stats['market'] += 1
+        except Exception as e:
+            log.warning(f'[push] market summary {username}: {e}')
+
         # ── 2 + 3. Sekcje dzienne ────────────────────────────────────────
         daily_key = f'daily:{today.isoformat()}'
         try:
@@ -3630,15 +3705,34 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             if not DATABASE_URL:
                 # Tryb plikowy (lokalny dev/demo): brak tabeli portfolio_alerts — zwróć domyślne
-                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False}); return
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False,
+                                     'marketGpw': False, 'marketUs': False}); return
             with _conn() as c, c.cursor() as cur:
-                cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary, weekly_summary FROM portfolio_alerts WHERE username=%s", (username,))
+                cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary, weekly_summary, market_gpw, market_us FROM portfolio_alerts WHERE username=%s", (username,))
                 row = cur.fetchone()
             if row:
                 self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1]),
-                                     'usSummary': bool(row[2]), 'gpwSummary': bool(row[3]), 'weeklySummary': bool(row[4])})
+                                     'usSummary': bool(row[2]), 'gpwSummary': bool(row[3]), 'weeklySummary': bool(row[4]),
+                                     'marketGpw': bool(row[5]), 'marketUs': bool(row[6])})
             else:
-                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False})
+                self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False,
+                                     'marketGpw': False, 'marketUs': False})
+            return
+
+        elif path == '/api/market-summary':
+            if not get_username(self):
+                self.send_json(401, {'error': 'unauthorized'}); return
+            market = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else '')).get('market', '')
+            if market not in _ms.MARKETS:
+                self.send_json(400, {'error': 'market must be gpw or us'}); return
+            try:
+                summary = _market_summary(market)
+            except Exception as e:
+                log.warning(f'[market] {market}: {e}')
+                summary = None
+            if not summary:
+                self.send_json(503, {'error': 'no data'}); return
+            self.send_json(200, summary)
             return
 
         elif path == '/api/notification-tone':
@@ -6154,25 +6248,30 @@ async function doRecover() {
                 gpw_summary = bool(body.get('gpwSummary'))
                 # Opcjonalne — starszy klient go nie wysyła i nie może go kasować.
                 weekly = bool(body['weeklySummary']) if 'weeklySummary' in body else None
+                market_gpw = bool(body['marketGpw']) if 'marketGpw' in body else None
+                market_us = bool(body['marketUs']) if 'marketUs' in body else None
                 if enabled and not (0.5 <= threshold <= 90):
                     self.send_json(400, {'error': 'thresholdPct must be 0.5-90'}); return
                 with _conn() as c, c.cursor() as cur:
                     # reset pomiaru ATH tylko gdy zmienia się konfiguracja drawdownu —
                     # przełączanie samych podsumowań nie może kasować szczytu
                     cur.execute("""
-                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled, us_summary, gpw_summary, weekly_summary)
-                        VALUES (%s, %s, %s, %s, %s, COALESCE(%s, FALSE))
+                        INSERT INTO portfolio_alerts (username, threshold_pct, enabled, us_summary, gpw_summary, weekly_summary, market_gpw, market_us)
+                        VALUES (%s, %s, %s, %s, %s, COALESCE(%s, FALSE), COALESCE(%s, FALSE), COALESCE(%s, FALSE))
                         ON CONFLICT (username) DO UPDATE
                         SET threshold_pct=EXCLUDED.threshold_pct, enabled=EXCLUDED.enabled,
                             us_summary=EXCLUDED.us_summary, gpw_summary=EXCLUDED.gpw_summary,
                             weekly_summary=COALESCE(%s, portfolio_alerts.weekly_summary),
+                            market_gpw=COALESCE(%s, portfolio_alerts.market_gpw),
+                            market_us=COALESCE(%s, portfolio_alerts.market_us),
                             triggered=CASE WHEN portfolio_alerts.threshold_pct=EXCLUDED.threshold_pct
                                                 AND portfolio_alerts.enabled=EXCLUDED.enabled
                                            THEN portfolio_alerts.triggered ELSE FALSE END,
                             ath_value=CASE WHEN portfolio_alerts.threshold_pct=EXCLUDED.threshold_pct
                                                 AND portfolio_alerts.enabled=EXCLUDED.enabled
                                            THEN portfolio_alerts.ath_value ELSE NULL END
-                    """, (username, threshold or 10, enabled, us_summary, gpw_summary, weekly, weekly))
+                    """, (username, threshold or 10, enabled, us_summary, gpw_summary, weekly, market_gpw, market_us,
+                          weekly, market_gpw, market_us))
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 log.warning(f'[push] portfolio-alert save: {e}')

@@ -36,6 +36,9 @@ async function fetchOne(sym) {
         // bez tego w sobotę „zmiana dziś" to wciąż zmiana z piątku.
         regularMarketTime: meta.regularMarketTime ?? null,
         exchangeTimezoneName: meta.exchangeTimezoneName ?? null,
+        // Do podsumowania sesji (obrót = cena × wolumen, nazwa spółki).
+        regularMarketVolume: meta.regularMarketVolume ?? null,
+        shortName: meta.shortName ?? meta.longName ?? null,
       },
     };
   } catch (e1) {
