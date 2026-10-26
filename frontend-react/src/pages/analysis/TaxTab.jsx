@@ -6,6 +6,7 @@ import { useLanguage, useT } from '../../context/LanguageContext';
 import { Callout, Card, EmptyState, Stat, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
 import { usePit38 } from '../../hooks/usePit38.js';
+import { isCryptoSymbol } from '../../utils/crypto.js';
 
 // Optymalizator podatku Belki (tax-loss harvesting) — logika bez zmian:
 // straty z otwartych pozycji rozdzielane na zrealizowany zysk w roku,
@@ -26,8 +27,9 @@ export default function TaxTab({ enriched, realizedYtdPLN: avgCostYtd, accountTy
   const realizedYtdPLN = exact ? pit.totals.income : avgCostYtd;
   const fmt = (n, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
 
+  // Bez kryptowalut: ich strata nie obniża podatku od akcji (osobna część PIT-38).
   const losers = useMemo(() => enriched
-    .filter(p => (p.plPLN ?? 0) < -0.005)
+    .filter(p => (p.plPLN ?? 0) < -0.005 && p.assetType !== 'crypto' && !isCryptoSymbol(p.symbol))
     .map(p => ({ symbol: p.symbol, lossPLN: -p.plPLN }))
     .sort((a, b) => b.lossPLN - a.lossPLN), [enriched]);
 
