@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { fetchFxRates } from './useFxBreakdown.js';
 import { computePit38, pit38RateDates } from '../utils/pit38.js';
-import { getUsTaxRate } from '../services/dividendService.js';
+import { withholdingRate } from '../services/dividendService.js';
 
 const TAX_FREE = new Set(['IKE', 'IKZE']);
 
@@ -55,7 +55,7 @@ export function usePit38(basis = loadPit38Basis()) {
   }, [needKey]);
 
   const forYear = useCallback(
-    year => computePit38(transactions, { year, rates, excluded, basis, crypto, withholding: getUsTaxRate() }),
+    year => computePit38(transactions, { year, rates, excluded, basis, crypto, withholding: t => withholdingRate(t.symbol, t.currency) }),
     [transactions, rates, excluded, basis, crypto],
   );
   const years = useMemo(() => forYear(0).years, [forYear]);
