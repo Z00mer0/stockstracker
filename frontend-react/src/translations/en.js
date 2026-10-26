@@ -1326,7 +1326,7 @@ export default {
   pit38_divs_note: '19% of the gross amount minus tax withheld abroad (counted up to 19%), NBP rates from the day before payment. Dividends from WSE companies are settled by the broker and are not included.',
   pit38_divs_estimated: 'Dividends without withheld tax entered: {n} — the usual withholding rate for the company\'s country was assumed (US — per W-8BEN). Enter the actual tax on the dividend for an exact result.',
   pit38_total_due: 'Total to pay in PIT-38',
-  pit38_method_note:         'Cost by FIFO (oldest purchases first, separately per portfolio), NBP average rates from the last business day before the tax date — the settlement date by default (T+2, T+1 in the US since 28.05.2024; exchange holidays are not counted), or the trade date if chosen. Base and tax rounded to whole złoty. IKE/IKZE accounts excluded. Commissions entered with transactions are included in the cost and prior-year losses are deducted. Check against your broker\'s PIT-8C.',
+  pit38_method_note:         'Cost by FIFO (oldest purchases first, separately per portfolio), NBP average rates from the last business day before the tax date — the settlement date by default (T+2, T+1 in the US since 28.05.2024; WSE and NYSE holidays skipped), or the trade date if chosen. Base and tax rounded to whole złoty. IKE/IKZE accounts excluded. Commissions entered with transactions are included in the cost and prior-year losses are deducted. Check against your broker\'s PIT-8C.',
 
   // ── Newsfeed ──────────────────────────────────────────────────
   news_title:                'Newsfeed',

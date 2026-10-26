@@ -142,17 +142,27 @@ describe('data rozliczenia', () => {
     expect(settlementDate({ symbol: 'BTC-USD', currency: 'USD', date: '2026-10-18' })).toBe('2026-10-18');
   });
 
+  it('święta giełdy spółki nie są dniami rozliczenia', () => {
+    // GPW: Wigilia i Boże Narodzenie zamknięte, 26.12 to sobota
+    expect(settlementDate({ symbol: 'PKO.WA', currency: 'PLN', date: '2026-12-23' })).toBe('2026-12-29');
+    // NYSE: Święto Dziękczynienia, ale 11.11 normalny dzień w USA
+    expect(settlementDate({ symbol: 'AAPL', currency: 'USD', date: '2026-11-25' })).toBe('2026-11-27');
+    expect(settlementDate({ symbol: 'AAPL', currency: 'USD', date: '2026-11-10' })).toBe('2026-11-11');
+    // Inne rynki — tylko weekendy
+    expect(settlementDate({ symbol: 'SAP.DE', currency: 'EUR', date: '2026-12-23' })).toBe('2026-12-25');
+  });
+
   it('sprzedaż z końca grudnia rozliczona w styczniu idzie do następnego roku, kurs z dnia przed rozliczeniem', () => {
     const txs = [
       { type: 'BUY', symbol: 'AAPL', qty: 1, price: 100, currency: 'USD', date: '2025-06-02' },
       { type: 'SELL', symbol: 'AAPL', qty: 1, price: 150, currency: 'USD', date: '2025-12-31' },
     ];
-    const rates = { USD: { '2025-06-02': 4.0, '2025-12-31': 3.6 } };
-    // Święta nie są liczone: rozliczenie 1.01 (pierwszy dzień roboczy po środzie 31.12).
-    expect(pit38RateDates(txs).USD).toEqual(new Set(['2025-06-02', '2025-12-31']));
+    const rates = { USD: { '2025-06-02': 4.0, '2026-01-01': 3.6 } };
+    // Nowy Rok na NYSE zamknięty: rozliczenie 2.01, kurs z tabeli sprzed tego dnia.
+    expect(pit38RateDates(txs).USD).toEqual(new Set(['2025-06-02', '2026-01-01']));
     expect(computePit38(txs, { year: 2025, rates }).rows).toEqual([]);
     const [row] = computePit38(txs, { year: 2026, rates }).rows;
-    expect(row.taxDate).toBe('2026-01-01');
+    expect(row.taxDate).toBe('2026-01-02');
     expect(row.revenuePLN).toBeCloseTo(150 * 3.6);
     expect(row.costPLN).toBeCloseTo(100 * 4.0);
     // Według daty zawarcia ta sama sprzedaż należy do 2025.

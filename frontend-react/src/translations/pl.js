@@ -1326,7 +1326,7 @@ export default {
   pit38_divs_note: '19% od kwoty brutto minus podatek pobrany za granicą (wliczany najwyżej do 19%), kursy NBP z dnia przed wypłatą. Dywidendy ze spółek z GPW rozlicza biuro maklerskie — ich tu nie ma.',
   pit38_divs_estimated: 'Dywidendy bez wpisanego podatku pobranego za granicą: {n} — przyjęto typową stawkę u źródła dla kraju spółki (USA — wg W-8BEN). Wpisz faktyczny podatek przy dywidendzie, żeby wynik był dokładny.',
   pit38_total_due: 'Łącznie do zapłaty w PIT-38',
-  pit38_method_note:         'Koszt metodą FIFO (najpierw najstarsze zakupy, osobno dla każdego portfela), kursy średnie NBP z ostatniego dnia roboczego przed datą podatkową — domyślnie dniem rozliczenia (T+2, w USA T+1 od 28.05.2024; święta giełdowe nie są liczone), do wyboru data zawarcia. Podstawa i podatek zaokrąglone do pełnych złotych. Konta IKE/IKZE pominięte. Prowizje wpisane przy transakcjach są wliczone w koszt, straty z lat poprzednich odliczane. Sprawdź z PIT-8C od biura maklerskiego.',
+  pit38_method_note:         'Koszt metodą FIFO (najpierw najstarsze zakupy, osobno dla każdego portfela), kursy średnie NBP z ostatniego dnia roboczego przed datą podatkową — domyślnie dniem rozliczenia (T+2, w USA T+1 od 28.05.2024; z pominięciem świąt GPW i NYSE), do wyboru data zawarcia. Podstawa i podatek zaokrąglone do pełnych złotych. Konta IKE/IKZE pominięte. Prowizje wpisane przy transakcjach są wliczone w koszt, straty z lat poprzednich odliczane. Sprawdź z PIT-8C od biura maklerskiego.',
 
   // ── Newsfeed ──────────────────────────────────────────────────
   news_title:                'Newsfeed',

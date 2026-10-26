@@ -24,6 +24,7 @@ import { todayCapital, withCapital } from '../utils/capital.js';
 import { normalizeType, divNet } from '../utils/transactions.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
 import { cashflowPLN } from '../utils/fxHistory.js';
+import { isTradingDay } from '../utils/marketCalendar.js';
 import { driftAlerts, loadTargets, loadDriftThreshold } from '../utils/rebalance.js';
 import { lsSet } from '../utils/safeStorage.js';
 import { PageSkeleton } from '../components/RouteFallback';
@@ -352,7 +353,10 @@ export default function Dashboard() {
   const fmtDisp = (n, d = 0) => fmtVal(n == null ? null : n / dispFx, d);
   const sign = v => (v >= 0 ? '+' : '');
 
-  const isWeekend = [0, 6].includes(new Date().getDay());
+  // „Rynek zamknięty”, gdy dziś nie ma sesji ani na GPW, ani w USA
+  // (weekend albo święto na obu giełdach).
+  const dayIn = tz => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+  const isWeekend = !isTradingDay(dayIn('Europe/Warsaw'), 'GPW') && !isTradingDay(dayIn('America/New_York'), 'NYSE');
 
   // Niezrealizowany P&L per pozycja (waluta wyświetlania) — top 5 + worst 5
   const unrealRows = (() => {

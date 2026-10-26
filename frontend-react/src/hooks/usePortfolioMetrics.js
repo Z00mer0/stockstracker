@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { authHeader } from '../utils/auth.js';
 import { lsSet } from '../utils/safeStorage.js';
+import { isTodaysSession } from '../utils/marketCalendar.js';
 import { useHistoricalFx } from './useHistoricalFx.js';
 import { replayFx, cashflowPLN } from '../utils/fxHistory.js';
 import { splitAdjusted } from '../utils/splits.js';
@@ -109,7 +110,8 @@ async function fetchYahooBatch(symbols) {
         const q = e.quote;
         out[sym] = q?.regularMarketPrice
           ? { price: q.regularMarketPrice, dailyChg: q.regularMarketChangePercent ?? null,
-              pe: null, peFwd: null, pb: null, sector: null, earningsTs: null }
+              pe: null, peFwd: null, pb: null, sector: null, earningsTs: null,
+              marketTime: q.regularMarketTime ?? null, tz: q.exchangeTimezoneName ?? null }
           : null;
       }
     } catch {
@@ -277,6 +279,8 @@ async function fetchAllMetrics(symbols) {
       pb:         yq?.pb         ?? null,
       sector:     sector ?? US_SECTOR_MAP[sym] ?? WA_SECTOR_MAP[sym] ?? null,
       earningsTs: yq?.earningsTs ?? null,
+      marketTime: yq?.marketTime ?? null,
+      tz:         yq?.tz         ?? null,
     };
   }
 
@@ -294,6 +298,8 @@ async function fetchAllMetrics(symbols) {
       pb:         m?.pbAnnual            ?? null,
       sector:     null,
       earningsTs: null,
+      marketTime: (q?.t > 0) ? q.t : null,
+      tz:         null,
     };
     rows[sym] = row;
     // Tylko brak ceny. Warunek na pe/sector wygladal sensownie, ale byl nie do
@@ -315,6 +321,8 @@ async function fetchAllMetrics(symbols) {
       row.pb         = row.pb         ?? yq.pb         ?? null;
       row.sector     = row.sector     ?? yq.sector     ?? null;
       row.earningsTs = row.earningsTs ?? yq.earningsTs ?? null;
+      row.marketTime = row.marketTime ?? yq.marketTime ?? null;
+      row.tz         = row.tz         ?? yq.tz         ?? null;
     }
     row.sector = row.sector ?? US_SECTOR_MAP[sym] ?? WA_SECTOR_MAP[sym] ?? null;
     results[sym] = row;
@@ -436,14 +444,20 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       }
     }
 
+    // Zmiana dnia tylko z dzisiejszej sesji giełdy: przed otwarciem, w weekend
+    // i w święto notowanie niesie ruch z poprzedniej sesji (w poniedziałek
+    // rano piątkowy ruch był pokazywany jako „dziś”). Bez czasu notowania —
+    // przynajmniej nie w weekend.
     const dow = new Date().getDay(); // 0=Sun, 6=Sat
     const isWeekend = dow === 0 || dow === 6;
     const isCrypto  = m.sector === 'Cryptocurrency';
+    const tz = m.tz || (pos.symbol.endsWith('.WA') ? 'Europe/Warsaw' : 'America/New_York');
+    const staleChg = !isCrypto && (m.marketTime ? !isTodaysSession(m.marketTime, tz) : isWeekend);
 
     return {
       ...pos,
       price:       m.price       ?? null,
-      dailyChg:    (isWeekend && !isCrypto) ? null : (m.dailyChg ?? null),
+      dailyChg:    staleChg ? null : (m.dailyChg ?? null),
       pe:          m.pe          ?? null,
       peFwd:       m.peFwd       ?? null,
       pb:          m.pb          ?? null,
