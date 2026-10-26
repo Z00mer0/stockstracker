@@ -132,9 +132,16 @@ export default function Dashboard() {
   );
 
   const topMovers = useMemo(() => {
-    const withChg = allPositions.filter(p => p.dailyChg != null);
-    const sorted = [...withChg].sort((a, b) => b.dailyChg - a.dailyChg);
-    return { gainers: sorted.slice(0, 3), losers: sorted.slice(-3).reverse() };
+    // Spółka z kilku portfeli (widok „Wszystkie”) raz, a do najgorszych
+    // trafiają tylko spadki — przy kilku pozycjach ta sama spółka na +0,3%
+    // stała wcześniej w obu listach.
+    const bySymbol = new Map();
+    for (const p of allPositions) if (p.dailyChg != null && !bySymbol.has(p.symbol)) bySymbol.set(p.symbol, p);
+    const sorted = [...bySymbol.values()].sort((a, b) => b.dailyChg - a.dailyChg);
+    return {
+      gainers: sorted.filter(p => p.dailyChg > 0).slice(0, 3),
+      losers: sorted.filter(p => p.dailyChg < 0).slice(-3).reverse(),
+    };
   }, [allPositions]);
 
   // ── KPI — real-time values from live positions, not stale snapshots ────────
@@ -155,16 +162,17 @@ export default function Dashboard() {
 
     // normalizeType: „DIVIDEND" z importu brokera to też dywidenda — wcześniej
     // kafelek i ROI ją pomijały (Transakcje i Dywidendy już ją liczą).
+    // Kwoty po podatku pobranym u źródła — tyle wpłynęło na rachunek.
     const dividendsPLN = transactions
       .filter(t => normalizeType(t.type) === 'DIV')
-      .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
+      .reduce((sum, d) => sum + divNet({ ...d, qty: d.qty || 1, price: d.price || 0 }) * toPlnRate(d.currency, fxRates), 0);
 
     const yearAgo = new Date();
     yearAgo.setFullYear(yearAgo.getFullYear() - 1);
     const yearCutStr = yearAgo.toISOString().slice(0, 10);
     const annualDivPLN = transactions
       .filter(t => normalizeType(t.type) === 'DIV' && t.date >= yearCutStr)
-      .reduce((sum, d) => sum + (d.price || 0) * (d.qty || 1) * toPlnRate(d.currency, fxRates), 0);
+      .reduce((sum, d) => sum + divNet({ ...d, qty: d.qty || 1, price: d.price || 0 }) * toPlnRate(d.currency, fxRates), 0);
 
     const jan1 = `${new Date().getFullYear()}-01-01`;
     const ytdRealizedPLN = transactions
@@ -213,12 +221,14 @@ export default function Dashboard() {
       .filter(p => !symbolsWithBuy.has(p.symbol))
       .map(p => p.symbol);
 
+    // normalizeType: dywidendy z importu brokera mają typ „DIVIDEND".
     const cashflows = transactions
+      .map(t => ({ ...t, type: normalizeType(t.type) }))
       .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DIV')
       .map(t => ({
         // Prowizje i podatek od dywidendy — przepływ to to, co faktycznie
         // wyszło z rachunku i na niego wpłynęło.
-        amount: (t.type === 'BUY' ? -(txAmount(t) + txFee(t)) : t.type === 'SELL' ? txAmount(t) - txFee(t) : divNet(t))
+        amount: (t.type === 'BUY' ? -(txAmount(t) + txFee(t)) : t.type === 'SELL' ? txAmount(t) - txFee(t) : divNet({ ...t, qty: t.qty || 1, price: t.price || 0 }))
           * (fxRates[t.currency] ?? 1),
         date: t.date,
       }))

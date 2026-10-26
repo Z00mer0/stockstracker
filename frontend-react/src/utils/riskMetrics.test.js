@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dailyReturns, volatility, sharpe, sortino, beta } from './riskMetrics.js';
+import { dailyReturns, volatility, sharpe, sortino, beta, periodsPerYear } from './riskMetrics.js';
 import { twrSeries } from './historyStats.js';
 
 const day = i => `2026-01-${String(i + 1).padStart(2, '0')}`;
@@ -26,8 +26,8 @@ describe('dailyReturns', () => {
 describe('volatility / sharpe / sortino', () => {
   const alt = Array.from({ length: 10 }, (_, i) => ({ date: day(i), prevDate: day(i), r: i % 2 ? -0.01 : 0.01 }));
 
-  it('zmienność = odch. std. próbkowe · √252', () => {
-    expect(volatility(alt)).toBeCloseTo(Math.sqrt((10 * 0.0001 / 9) * 252) * 100, 10);
+  it('zmienność = odch. std. próbkowe · √(stóp na rok)', () => {
+    expect(volatility(alt, 252)).toBeCloseTo(Math.sqrt((10 * 0.0001 / 9) * 252) * 100, 10);
   });
 
   it('za mało danych → null', () => {
@@ -37,9 +37,23 @@ describe('volatility / sharpe / sortino', () => {
   });
 
   it('Sharpe i Sortino ze średniej rocznej minus stopa wolna od ryzyka', () => {
-    const vol = volatility(alt) / 100;
-    expect(sharpe(alt)).toBeCloseTo((0 - 0.045) / vol, 10);
-    expect(sortino(alt)).toBeCloseTo((0 - 0.045) / Math.sqrt(0.0001 * 252), 10);
+    const vol = volatility(alt, 252) / 100;
+    expect(sharpe(alt, 0.045, 252)).toBeCloseTo((0 - 0.045) / vol, 10);
+    expect(sortino(alt, 0.045, 252)).toBeCloseTo((0 - 0.045) / Math.sqrt(0.0001 * 252), 10);
+  });
+
+  it('snapshoty codzienne z weekendami: rok to ~365 stóp, nie 252', () => {
+    // Rok sesji: 5 dni ±1%, weekend bez ruchu — 364 stopy na 364 dni.
+    const rs = [];
+    for (let i = 1; i <= 364; i++) {
+      const d = new Date(Date.UTC(2025, 0, 1 + i)), p = new Date(Date.UTC(2025, 0, i));
+      const wd = d.getUTCDay();
+      rs.push({ date: d.toISOString().slice(0, 10), prevDate: p.toISOString().slice(0, 10), r: wd % 6 ? (i % 2 ? 0.01 : -0.01) : 0 });
+    }
+    expect(periodsPerYear(rs)).toBeCloseTo(365, 6);
+    // Ta sama zmienność co z samych sesji: ~260 stóp ±1% na rok → ~16%.
+    const sessions = rs.filter(x => x.r !== 0);
+    expect(volatility(rs)).toBeCloseTo(volatility(sessions, sessions.length), 0);
   });
 });
 

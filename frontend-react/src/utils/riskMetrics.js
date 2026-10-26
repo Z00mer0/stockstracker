@@ -3,9 +3,11 @@
 // Wcześniej każda wpłata była „wzrostem", a wypłata „spadkiem": zmienność,
 // Sharpe, Sortino i obsunięcie mierzyły też ruchy pieniędzy użytkownika.
 //
-// Wzory bez zmian względem poprzedniej wersji Analizy: zmienność = odch.
-// std. (próbkowe) · √252, Sharpe/Sortino z rocznej średniej (· 252) i stopy
-// wolnej od ryzyka 4,5%.
+// Zmienność = odch. std. (próbkowe) · √(stóp na rok), Sharpe/Sortino z
+// rocznej średniej i stopy wolnej od ryzyka 4,5%. Stóp na rok nie zakładamy
+// na sztywno 252: snapshoty zapisują się codziennie, także w weekendy, więc
+// rok to ~365 stóp, z czego weekendowe są prawie zerowe. Mnożnik 252
+// zaniżał wtedy zmienność o ~17%, a średnią roczną o ~30%.
 
 const MAX_DAILY_MOVE = 0.5; // |r| > 50% dziennie = uszkodzony snapshot, nie rynek
 
@@ -22,28 +24,37 @@ export function dailyReturns(series) {
 }
 
 const mean = xs => xs.reduce((s, x) => s + x, 0) / xs.length;
+const DAY = 86400000;
 
-export function volatility(returns) {
+// Ile stóp przypada na rok w tej serii: liczba stóp / lata, które obejmują.
+// Bez dat (albo z zerowym okresem) — 252 sesje.
+export function periodsPerYear(returns) {
+  const t0 = Date.parse(returns[0]?.prevDate), t1 = Date.parse(returns[returns.length - 1]?.date);
+  const years = (t1 - t0) / DAY / 365;
+  return years > 0 ? returns.length / years : 252;
+}
+
+export function volatility(returns, ppy = periodsPerYear(returns)) {
   const r = returns.map(x => x.r);
   if (r.length < 10) return null;
   const m = mean(r);
   const variance = r.reduce((s, x) => s + (x - m) ** 2, 0) / (r.length - 1);
-  return Math.sqrt(variance * 252) * 100;
+  return Math.sqrt(variance * ppy) * 100;
 }
 
-export function sharpe(returns, rf = 0.045) {
+export function sharpe(returns, rf = 0.045, ppy = periodsPerYear(returns)) {
   if (returns.length < 10) return null;
-  const vol = volatility(returns) / 100;
-  return vol > 0 ? (mean(returns.map(x => x.r)) * 252 - rf) / vol : null;
+  const vol = volatility(returns, ppy) / 100;
+  return vol > 0 ? (mean(returns.map(x => x.r)) * ppy - rf) / vol : null;
 }
 
-export function sortino(returns, rf = 0.045) {
+export function sortino(returns, rf = 0.045, ppy = periodsPerYear(returns)) {
   const r = returns.map(x => x.r);
   if (r.length < 10) return null;
   const downside = r.filter(x => x < 0);
   if (!downside.length) return null;
-  const downVol = Math.sqrt(downside.reduce((s, x) => s + x ** 2, 0) / downside.length * 252);
-  return downVol > 0 ? (mean(r) * 252 - rf) / downVol : null;
+  const downVol = Math.sqrt(downside.reduce((s, x) => s + x ** 2, 0) / downside.length * ppy);
+  return downVol > 0 ? (mean(r) * ppy - rf) / downVol : null;
 }
 
 // Beta względem benchmarku. Stopa benchmarku liczona dokładnie między tymi
