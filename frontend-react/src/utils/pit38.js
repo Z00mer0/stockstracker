@@ -23,12 +23,14 @@
 // z dnia przed wypłatą. Dywidendy z Polski rozlicza płatnik — ich tu nie ma.
 // Data podatkowa: domyślnie dzień rozliczenia (przychód powstaje z chwilą
 // rozliczenia transakcji) — T+2 dni robocze, w USA T+1 od 28.05.2024,
-// kryptowaluty tego samego dnia. Święta giełdowe nie są liczone (tylko
-// weekendy); kurs NBP serwer i tak bierze z ostatniej tabeli przed tą datą.
+// kryptowaluty tego samego dnia. Dni robocze bez weekendów i świąt giełdy
+// spółki (GPW / NYSE, utils/marketCalendar.js); inne rynki — bez weekendów.
+// Kurs NBP serwer i tak bierze z ostatniej tabeli przed tą datą.
 // Do wyboru też data zawarcia (tak transakcje zapisuje aplikacja).
 import { normalizeType, txFee, txAmount } from './transactions.js';
 import { splitAdjusted } from './splits.js';
 import { isCryptoSymbol } from './crypto.js';
+import { isTradingDay, marketOf } from './marketCalendar.js';
 
 export const PIT_RATE = 0.19;
 
@@ -46,12 +48,11 @@ const isUs = t => (t.currency || 'PLN') === 'USD' && !String(t.symbol ?? '').inc
 // Dywidenda opodatkowana w PIT-38: zagraniczna (polską rozlicza płatnik).
 const isForeignDiv = t => (t.currency || 'PLN') !== 'PLN' && !String(t.symbol ?? '').toUpperCase().endsWith('.WA');
 
-function addBusinessDays(iso, n) {
+function addBusinessDays(iso, n, market) {
   const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
   while (n > 0) {
     d.setUTCDate(d.getUTCDate() + 1);
-    const wd = d.getUTCDay();
-    if (wd !== 0 && wd !== 6) n--;
+    if (isTradingDay(d.toISOString().slice(0, 10), market)) n--;
   }
   return d.toISOString().slice(0, 10);
 }
@@ -60,7 +61,7 @@ function addBusinessDays(iso, n) {
 export function settlementDate(t, extra) {
   const date = t.date.slice(0, 10);
   if (isCrypto(t, extra)) return date;
-  return addBusinessDays(date, isUs(t) && date >= '2024-05-28' ? 1 : 2);
+  return addBusinessDays(date, isUs(t) && date >= '2024-05-28' ? 1 : 2, marketOf(t.symbol, t.currency || 'PLN'));
 }
 
 // basis: 'settlement' (domyślnie) albo 'trade'.
