@@ -1,5 +1,5 @@
 // src/components/layout/navItems.jsx
-import { Activity, ArrowLeftRight, Bell, Briefcase, Calculator, CalendarDays, ChartPie, Coins, Eye, FlaskConical, LayoutGrid, Newspaper, Settings, Sparkles, SquareCheckBig } from 'lucide-react';
+import { Activity, ArrowLeftRight, BarChart3, Bell, Briefcase, Calculator, CalendarDays, ChartPie, Coins, Eye, FlaskConical, LayoutGrid, Newspaper, Settings, Sparkles, SquareCheckBig } from 'lucide-react';
 
 // Jeden rozmiar i grubość dla całej nawigacji (docs/REDESIGN-PLAN.md).
 const ICON = { size: 18, strokeWidth: 2, 'aria-hidden': true };
@@ -12,6 +12,7 @@ export function getNavItems(t) {
     { to: '/transactions', icon: <ArrowLeftRight {...ICON} />, group: 'portfolio', label: t('nav_transactions') },
     { to: '/closed',       icon: <SquareCheckBig {...ICON} />, group: 'portfolio', label: t('nav_closed') },
     { to: '/dividends',    icon: <Coins {...ICON} />, group: 'portfolio', label: t('nav_dividends') },
+    { to: '/market',       icon: <BarChart3 {...ICON} />, group: 'market', label: t('nav_market') },
     { to: '/calendar',     icon: <CalendarDays {...ICON} />, group: 'market', label: t('nav_calendar') },
     { to: '/watchlist',    icon: <Eye {...ICON} />, group: 'market', label: t('nav_watchlist') },
     { to: '/alerts',       icon: <Bell {...ICON} />, group: 'market', label: t('nav_alerts') },

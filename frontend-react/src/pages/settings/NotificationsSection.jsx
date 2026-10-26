@@ -19,6 +19,8 @@ function PortfolioAlertCard() {
   const [usSummary, setUsSummary] = useState(false);
   const [gpwSummary, setGpwSummary] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState(false);
+  const [marketGpw, setMarketGpw] = useState(false);
+  const [marketUs, setMarketUs] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [hasSub, setHasSub] = useState(true); // true, dopóki nie sprawdzimy — bez fałszywego ostrzeżenia
@@ -26,7 +28,7 @@ function PortfolioAlertCard() {
   useEffect(() => {
     fetch('/api/portfolio-alert', { headers: authHeader() })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); setWeeklySummary(!!d.weeklySummary); } })
+      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); setWeeklySummary(!!d.weeklySummary); setMarketGpw(!!d.marketGpw); setMarketUs(!!d.marketUs); } })
       .catch(() => {});
     getPushSubscription().then(sub => setHasSub(!!sub));
   }, []);
@@ -34,7 +36,9 @@ function PortfolioAlertCard() {
   const isEnabling = next => (next.enabled === true && !enabled)
     || (next.usSummary === true && !usSummary)
     || (next.gpwSummary === true && !gpwSummary)
-    || (next.weeklySummary === true && !weeklySummary);
+    || (next.weeklySummary === true && !weeklySummary)
+    || (next.marketGpw === true && !marketGpw)
+    || (next.marketUs === true && !marketUs);
 
   async function save(next) {
     // Bez subskrypcji push przełącznik nic by nie dawał — najpierw zgoda.
@@ -46,7 +50,7 @@ function PortfolioAlertCard() {
       setHasSub(true); setMsg('');
     }
     setBusy(true); setMsg('');
-    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, weeklySummary, ...next };
+    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, weeklySummary, marketGpw, marketUs, ...next };
     try {
       const r = await fetch('/api/portfolio-alert', {
         method: 'POST',
@@ -55,6 +59,7 @@ function PortfolioAlertCard() {
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setEnabled(cfg.enabled); setThreshold(cfg.thresholdPct); setUsSummary(cfg.usSummary); setGpwSummary(cfg.gpwSummary); setWeeklySummary(cfg.weeklySummary);
+      setMarketGpw(cfg.marketGpw); setMarketUs(cfg.marketUs);
       setMsg(t('pa_saved'));
     } catch {
       setMsg(t('pa_error'));
@@ -68,7 +73,7 @@ function PortfolioAlertCard() {
     if (r.ok) { setHasSub(true); setMsg(t('pa_saved')); } else setMsg(r.reason === 'denied' ? t('push_denied') : t('pa_push_failed'));
   }
 
-  const showSubWarn = pushSupported && !hasSub && (enabled || usSummary || gpwSummary || weeklySummary);
+  const showSubWarn = pushSupported && !hasSub && (enabled || usSummary || gpwSummary || weeklySummary || marketGpw || marketUs);
 
   return (
     <Card title={t('pa_title')}>
@@ -98,6 +103,16 @@ function PortfolioAlertCard() {
             </Button>
             <Button size="sm" variant={gpwSummary ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ gpwSummary: !gpwSummary })}>
               🇵🇱 {gpwSummary ? t('pa_summary_off') : t('pa_summary_on')}
+            </Button>
+          </div>
+        </Row>
+        <Row label={t('pa_market_desc')}>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant={marketGpw ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ marketGpw: !marketGpw })}>
+              🇵🇱 GPW · 17:10 {marketGpw ? t('pa_summary_off') : t('pa_summary_on')}
+            </Button>
+            <Button size="sm" variant={marketUs ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ marketUs: !marketUs })}>
+              🇺🇸 {t('pa_market_us_time')} {marketUs ? t('pa_summary_off') : t('pa_summary_on')}
             </Button>
           </div>
         </Row>

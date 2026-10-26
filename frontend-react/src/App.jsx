@@ -19,6 +19,7 @@ const History         = React.lazy(() => import('./pages/History'));
 const Transactions    = React.lazy(() => import('./pages/Transactions'));
 const Dividends       = React.lazy(() => import('./pages/Dividends'));
 const Calendar        = React.lazy(() => import('./pages/Calendar'));
+const MarketSummary   = React.lazy(() => import('./pages/MarketSummary'));
 const Watchlist       = React.lazy(() => import('./pages/Watchlist'));
 const Alerts          = React.lazy(() => import('./pages/Alerts'));
 const ScenarioLab     = React.lazy(() => import('./pages/ScenarioLab'));
@@ -74,6 +75,7 @@ function AppRoutes() {
           <Route path="closed"      element={<ClosedPositions />} />
           <Route path="dividends"   element={<Dividends />} />
           <Route path="calendar"    element={<Calendar />} />
+          <Route path="market/:market?" element={<MarketSummary />} />
           <Route path="watchlist"   element={<Watchlist />} />
           <Route path="alerts"      element={<Alerts />} />
           <Route path="scenario"    element={<ScenarioLab />} />

@@ -90,3 +90,5 @@ jobs:
       - run: python test_splits.py
       # ETF look-through: skład funduszu z Yahoo (topHoldings).
       - run: python test_etf_holdings.py
+      # Podsumowanie sesji GPW/USA: szerokość rynku, liderzy, kalendarz świąt, okno pusha.
+      - run: python test_market_summary.py
