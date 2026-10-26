@@ -6,6 +6,7 @@ import { useLanguage, useT } from '../../context/LanguageContext';
 import TickerLogo from '../../components/shared/TickerLogo';
 import { Card, SegmentedControl, Stat, Table } from '../../components/ui';
 import { attribution } from '../../utils/attribution.js';
+import { useHistoricalFx } from '../../hooks/useHistoricalFx.js';
 import { cx } from '../../components/ui/cx.js';
 import { buildInsights } from './insights.js';
 
@@ -22,7 +23,8 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
   const { isPrivate } = usePrivacy();
   const { displayCurrency, fxRates, transactions = [] } = useApp();
   const [attrBy, setAttrBy] = useState('positions');
-  const attr = useMemo(() => attribution(enriched, transactions, fxRates), [enriched, transactions, fxRates]);
+  const histFx = useHistoricalFx(transactions);
+  const attr = useMemo(() => attribution(enriched, transactions, fxRates, histFx), [enriched, transactions, fxRates, histFx]);
   const dispFx = fxRates[displayCurrency] ?? 1;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const fmt = (n, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));

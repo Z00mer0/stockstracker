@@ -7,6 +7,7 @@
 import { weightedAvg } from './weightedAvg.js';
 import { splitAdjusted } from './splits.js';
 import { buyUnitCost, txFee } from './transactions.js';
+import { replayFx, rateOn } from './fxHistory.js';
 
 function backfillCostBasis(transactions) {
   const bySym = new Map();
@@ -38,18 +39,25 @@ function backfillCostBasis(transactions) {
   return filled;
 }
 
-export function computeRealizedTrades(rawTransactions = [], fxRates = {}) {
+// hist (opcjonalnie, z useHistoricalFx): kursy z dni transakcji — wtedy
+// wynik w PLN liczy przychód po kursie z dnia sprzedaży, a koszt po średnim
+// kursie zakupu, więc zawiera zysk albo stratę na walucie. Bez kursów
+// (jeszcze nie pobrane) — wszystko po dzisiejszym kursie, jak wcześniej.
+export function computeRealizedTrades(rawTransactions = [], fxRates = {}, hist = null) {
   // Sprzedaż po splicie ma ilość w nowych jednostkach — zakupy sprzed niego też.
   const transactions = splitAdjusted(rawTransactions);
   const filled = backfillCostBasis(transactions);
+  const costFx = hist ? replayFx(transactions, hist).atSell : null;
   const sells = transactions.filter(tx => tx.type === 'SELL' && (tx.costBasis != null || filled.has(tx)));
   return sells.map(txRaw => {
     const tx = txRaw.costBasis != null ? txRaw : { ...txRaw, costBasis: filled.get(txRaw) };
-    return mapTrade(tx, fxRates);
+    const sellRate = hist ? rateOn(hist, tx.currency, tx.date) : null;
+    const buyRate = costFx?.get(txRaw) ?? null;
+    return mapTrade(tx, fxRates, sellRate != null && buyRate != null ? { sellRate, buyRate } : null);
   }).sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function mapTrade(tx, fxRates) {
+function mapTrade(tx, fxRates, histRates) {
     const qty        = tx.qty   ?? 0;
     const sellPrice  = tx.price ?? 0;
     // Koszt zawiera prowizję zakupu (średnia z buyUnitCost), wynik — minus
@@ -58,8 +66,13 @@ function mapTrade(tx, fxRates) {
     const costBasis  = tx.overridePL != null ? (sellPrice - tx.overridePL / qty) : (tx.costBasis ?? 0);
     const plNative   = (sellPrice - costBasis) * qty - fee;    // in tx.currency
     const rate       = fxRates[tx.currency] ?? 1;
-    const plPLN      = plNative * rate;
-    const pct        = costBasis > 0 && qty > 0 ? (plNative / (costBasis * qty)) * 100 : 0;
+    // Z kursami z dni transakcji: przychód po kursie sprzedaży, koszt po
+    // kursie zakupu. Wynik wpisany ręcznie — po kursie z dnia sprzedaży.
+    const plPLN      = !histRates ? plNative * rate
+      : tx.overridePL != null ? plNative * histRates.sellRate
+      : ((sellPrice * qty - fee) * histRates.sellRate) - costBasis * qty * histRates.buyRate;
+    const costPLN    = costBasis * qty * (histRates ? histRates.buyRate : rate);
+    const pct        = costPLN > 0 ? (plPLN / costPLN) * 100 : 0;
     return {
       id:        tx.id,
       symbol:    tx.symbol,
@@ -71,6 +84,7 @@ function mapTrade(tx, fxRates) {
       currency:  tx.currency ?? 'PLN',
       plNative,
       plPLN,
+      costPLN,
       pct,
       note:      tx.note ?? '',
     };
@@ -94,11 +108,13 @@ export function groupBySymbol(trades) {
   return Object.values(map).map(g => {
     const cost = g.trades.reduce((s, t) => s + t.costBasis * t.qty, 0);
     const sell = g.trades.reduce((s, t) => s + t.sellPrice * t.qty, 0);
+    // % od kosztu w PLN — ten sam wynik co kolumna zł (z walutą, gdy są kursy).
+    const costPLN = g.trades.reduce((s, t) => s + t.costPLN, 0);
     return {
       ...g,
       avgCost: g.totalQty > 0 ? cost / g.totalQty : 0,
       avgSell: g.totalQty > 0 ? sell / g.totalQty : 0,
-      pct: cost > 0 ? (g.plNative / cost) * 100 : 0,
+      pct: costPLN > 0 ? (g.plPLN / costPLN) * 100 : 0,
     };
   }).sort((a, b) => b.plPLN - a.plPLN);
 }

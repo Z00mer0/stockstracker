@@ -6,7 +6,8 @@ import { computeRealizedTrades } from './realizedPL.js';
 import { normalizeType, divNet } from './transactions.js';
 import { baseSymbol } from './ledger.js';
 
-export function attribution(positions = [], transactions = [], fxRates = {}) {
+// hist: kursy z dni transakcji (useHistoricalFx) — zrealizowany wynik z walutą.
+export function attribution(positions = [], transactions = [], fxRates = {}, hist = null) {
   const rows = new Map();
   const row = (sym, sector) => {
     const k = baseSymbol(sym);
@@ -18,7 +19,7 @@ export function attribution(positions = [], transactions = [], fxRates = {}) {
   // Każda pozycja zapisuje sektor, także bez ceny (bez zysku papierowego) —
   // inaczej jej dywidendy trafiałyby do grupy „bez sektora”.
   for (const p of positions) row(p.symbol, p.sector).unrealized += p.plPLN ?? 0;
-  for (const tr of computeRealizedTrades(transactions, fxRates)) row(tr.symbol).realized += tr.plPLN;
+  for (const tr of computeRealizedTrades(transactions, fxRates, hist)) row(tr.symbol).realized += tr.plPLN;
   for (const tx of transactions) {
     if (normalizeType(tx.type) !== 'DIV' || !tx.symbol) continue;
     row(tx.symbol).dividends += divNet({ ...tx, qty: tx.qty || 1, price: tx.price || 0 }) * (fxRates[tx.currency] ?? 1);
