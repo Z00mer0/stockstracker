@@ -30,7 +30,7 @@ export default function Analysis() {
   const { portfolio, transactions, fxRates, loading, activePortfolio } = useApp();
   const t = useT();
   const [tab, setTab] = useState(loadTab);
-  const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
+  const { enrichPosition, histFx } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const enriched = useMemo(
     () => portfolio.map(pos => enrichPosition(pos)),
@@ -42,10 +42,10 @@ export default function Analysis() {
   // Zrealizowany wynik w tym roku — wspólny dla zakładki Podatki i wniosków.
   const realizedYtdPLN = useMemo(() => {
     const jan1 = `${new Date().getFullYear()}-01-01`;
-    return computeRealizedTrades(transactions, fxRates)
+    return computeRealizedTrades(transactions, fxRates, histFx)
       .filter(tr => tr.date >= jan1)
       .reduce((s, tr) => s + tr.plPLN, 0);
-  }, [transactions, fxRates]);
+  }, [transactions, fxRates, histFx]);
   const accountType = activePortfolio?.accountType;
   const taxable = accountType !== 'IKE' && accountType !== 'IKZE';
 

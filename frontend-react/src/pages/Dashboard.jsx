@@ -21,8 +21,9 @@ import HistoryChart from '../components/HistoryChart';
 import UnrealizedPnlBar from '../components/shared/UnrealizedPnlBar';
 import { computePortfolioValue, dailyChangePLN } from '../utils/portfolioValue.js';
 import { todayCapital, withCapital } from '../utils/capital.js';
-import { normalizeType, txAmount, txFee, divNet } from '../utils/transactions.js';
+import { normalizeType, divNet } from '../utils/transactions.js';
 import { computeRealizedTrades } from '../utils/realizedPL.js';
+import { cashflowPLN } from '../utils/fxHistory.js';
 import { driftAlerts, loadTargets, loadDriftThreshold } from '../utils/rebalance.js';
 import { lsSet } from '../utils/safeStorage.js';
 import { PageSkeleton } from '../components/RouteFallback';
@@ -117,7 +118,7 @@ export default function Dashboard() {
   const [cashEdit, setCashEdit] = useState({});
   const [savingCash, setSavingCash] = useState(false);
   const [wlMode, setWlMode] = useState('pct');
-  const { enrichPosition } = usePortfolioMetrics(portfolio, transactions, fxRates);
+  const { enrichPosition, histFx } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { allCalendarEvents } = useDividendEvents(symbols);
@@ -157,7 +158,7 @@ export default function Dashboard() {
     // computeRealizedTrades odtwarza koszt nabycia z historii BUY (ta sama
     // srednia wazona co avgPrice w portfelu) i pomija tylko te sprzedaze,
     // dla ktorych naprawde nie ma pokrycia w zakupach.
-    const realizedPLN = computeRealizedTrades(transactions, fxRates)
+    const realizedPLN = computeRealizedTrades(transactions, fxRates, histFx)
       .reduce((sum, t) => sum + t.plPLN, 0);
 
     // normalizeType: „DIVIDEND" z importu brokera to też dywidenda — wcześniej
@@ -196,7 +197,9 @@ export default function Dashboard() {
       computePortfolioValue(allPositions, snapshots, cashValue + otherAssetsValue);
 
     // Unrealized P&L / ROI: sumuje po pozycjach z ceną (bez ceny → 0).
-    const costBasis  = invested ?? 0;
+    // Koszt jak w pozycjach (po kursie zakupu) — inaczej % zysku dzielił
+    // wynik z walutą przez koszt po dzisiejszym kursie.
+    const costBasis  = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
     const unrealPLN  = allPositions.reduce((s, p) => s + (p.plPLN ?? 0), 0);
     const unrealPct  = pricesLoaded && costBasis > 0 ? (unrealPLN / costBasis) * 100 : null;
     const totalROI   = pricesLoaded && costBasis > 0
@@ -210,7 +213,7 @@ export default function Dashboard() {
       ytdRealizedPLN,
       sparkValues, pricesLoaded, staleTotal, partialPrices,
     };
-  }, [allPositions, snapshots, transactions, fxRates, cash, otherAssets, invested]);
+  }, [allPositions, snapshots, transactions, fxRates, cash, otherAssets, histFx]);
 
   // ── Portfolio IRR — od pełnego roku historii ─────────────────────────────
   const { portfolioIrr } = useMemo(() => {
@@ -227,9 +230,8 @@ export default function Dashboard() {
       .filter(t => t.type === 'BUY' || t.type === 'SELL' || t.type === 'DIV')
       .map(t => ({
         // Prowizje i podatek od dywidendy — przepływ to to, co faktycznie
-        // wyszło z rachunku i na niego wpłynęło.
-        amount: (t.type === 'BUY' ? -(txAmount(t) + txFee(t)) : t.type === 'SELL' ? txAmount(t) - txFee(t) : divNet({ ...t, qty: t.qty || 1, price: t.price || 0 }))
-          * (fxRates[t.currency] ?? 1),
+        // wyszło z rachunku i na niego wpłynęło; w PLN po kursie z jego dnia.
+        amount: cashflowPLN(t, histFx, fxRates),
         date: t.date,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -249,7 +251,7 @@ export default function Dashboard() {
 
     cashflows.push({ amount: terminalValue, date: new Date().toISOString().slice(0, 10) });
     return { portfolioIrr: xirr(cashflows), irrMissingSymbols: missingSymbols, irrDaySpan: daySpan };
-  }, [transactions, fxRates, allPositions]);
+  }, [transactions, fxRates, allPositions, histFx]);
 
   // ── Snapshot — only save when ALL positions are priced ──────────────────
   // `.some` zapisywał częściowy total gdy tylko jedna pozycja miała cenę
@@ -266,7 +268,7 @@ export default function Dashboard() {
     const fxSnapshot = { ...fxRates };
     const totalValue = allPositions.reduce((s, p) => s + (p.valuePLN ?? 0), 0)
       + Object.entries(cash).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0);
-    const investedValue = allPositions.reduce((s, p) => s + (p.costPLN ?? 0), 0);
+    const investedValue = allPositions.reduce((s, p) => s + (p.costPLNNow ?? 0), 0);
     if (!(totalValue > 0 && investedValue > 0)) return;
     // Kapitał własny (wpłaty − wypłaty) — Historia odejmuje go od wartości,
     // żeby wpłaty i zakupy nie liczyły się jako zysk. Patrz utils/capital.js.

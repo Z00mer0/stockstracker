@@ -87,7 +87,7 @@ export default function Portfolio() {
       showToast(e.message, { type: 'error' });
     }
   }
-  const { enrichPosition, metricsLoading } = usePortfolioMetrics(portfolio, transactions, fxRates);
+  const { enrichPosition, metricsLoading, histFx } = usePortfolioMetrics(portfolio, transactions, fxRates);
 
   const divBySymbol = useMemo(() => {
     const map = {};
@@ -111,7 +111,7 @@ export default function Portfolio() {
     // importu brokera — u realnego uzytkownika 636 z 640 SELL-ow ni ma
     // costBasis, wiec karta pokazywala +114 zamiast +1927. Sortujemy
     // rosnaco (computeRealizedTrades zwraca od najnowszych).
-    const trades = computeRealizedTrades(transactions, fxRates)
+    const trades = computeRealizedTrades(transactions, fxRates, histFx)
       .filter(tr => tr.date >= jan1)
       .sort((a, b) => a.date.localeCompare(b.date));
     let cum = 0;
@@ -124,7 +124,7 @@ export default function Portfolio() {
       else points.push({ date: tr.date, pl: parseFloat(cum.toFixed(2)) });
     }
     return points;
-  }, [transactions, fxRates, displayCurrency]);
+  }, [transactions, fxRates, displayCurrency, histFx]);
 
   const enriched = useMemo(
     () => portfolio.map(pos => enrichPosition(pos)),

@@ -3,7 +3,7 @@ import { groupBySymbol } from './realizedPL.js';
 
 const trade = (qty, costBasis, sellPrice) => ({
   symbol: 'ABC', currency: 'PLN', qty, costBasis, sellPrice,
-  plNative: (sellPrice - costBasis) * qty, plPLN: (sellPrice - costBasis) * qty,
+  plNative: (sellPrice - costBasis) * qty, plPLN: (sellPrice - costBasis) * qty, costPLN: costBasis * qty,
   pct: (sellPrice / costBasis - 1) * 100,
 });
 

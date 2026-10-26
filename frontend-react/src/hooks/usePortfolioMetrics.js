@@ -1,7 +1,11 @@
 // frontend-react/src/hooks/usePortfolioMetrics.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { authHeader } from '../utils/auth.js';
 import { lsSet } from '../utils/safeStorage.js';
+import { useHistoricalFx } from './useHistoricalFx.js';
+import { replayFx, cashflowPLN } from '../utils/fxHistory.js';
+import { splitAdjusted } from '../utils/splits.js';
+import { normalizeType } from '../utils/transactions.js';
 import { CRYPTO_SYMBOLS } from '../utils/crypto.js';
 
 const CACHE_KEY = 'portfolio_metrics_cache';
@@ -324,6 +328,9 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
   const [metricsLoading, setMetricsLoading] = useState(false);
 
   const symbolsKey = portfolio.map(p => p.symbol).sort().join(',');
+  // Kursy z dni transakcji: koszt pozycji w PLN po kursie zakupu, nie dzisiejszym.
+  const histFx = useHistoricalFx(transactions);
+  const purchaseFx = useMemo(() => replayFx(splitAdjusted(transactions), histFx).bySymbol, [transactions, histFx]);
 
   useEffect(() => {
     if (!portfolio.length) return;
@@ -385,14 +392,21 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
 
     const currentPrice = m.price ?? null;
     const notFound = m.notFound ?? false;
-    const costPLN  = pos.qty * pos.avgPrice * fx;
+    // Koszt po średnim kursie zakupu (z historii transakcji), więc wynik
+    // w PLN zawiera zysk albo stratę na walucie. Pozycja bez historii albo
+    // przed pobraniem kursów — po dzisiejszym kursie, jak wcześniej.
+    // costPLNNow (dzisiejszy kurs) zostaje dla snapshotów — tak liczony jest
+    // zapisany w nich „invested”.
+    const pfx      = pos.currency && pos.currency !== 'PLN' ? purchaseFx.get(pos.symbol) ?? null : null;
+    const costPLNNow = pos.qty * pos.avgPrice * fx;
+    const costPLN  = pfx != null ? pos.qty * pos.avgPrice * pfx : costPLNNow;
     const valuePLN = currentPrice != null ? pos.qty * currentPrice * fx : null;
     const plPLN    = valuePLN != null ? valuePLN - costPLN : null;
     const moic     = currentPrice != null && pos.avgPrice > 0 ? currentPrice / pos.avgPrice : null;
 
     // Period: days since earliest BUY transaction (or holding date as fallback)
     const txs = transactions.filter(
-      t => t.symbol === pos.symbol && (t.type === 'BUY' || t.type === 'SELL')
+      t => t.symbol === pos.symbol && (normalizeType(t.type) === 'BUY' || normalizeType(t.type) === 'SELL')
     );
     const firstDate = txs.length > 0
       ? txs.map(t => t.date).sort()[0]
@@ -405,14 +419,13 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
     // wynik pozycji pokazuje kolumna zwrotu.
     let irr = null;
     if (txs.length > 0 && currentPrice != null && periodDays != null && periodDays >= 365) {
-      const flows = txs
-        .filter(t => t.qty != null && t.price != null && t.qty > 0 && t.price > 0)
-        .map(t => ({
-          date:   t.date,
-          amount: t.type === 'BUY'
-            ? -(t.qty * t.price * (fxRates[t.currency] ?? 1))
-            : +(t.qty * t.price * (fxRates[t.currency] ?? 1)),
-        }));
+      // Przepływy po kursach z ich dni, z prowizjami i dywidendami (netto) —
+      // wcześniej dywidendy i prowizje nie wchodziły, a wszystko szło po
+      // dzisiejszym kursie.
+      const divs = transactions.filter(t => t.symbol === pos.symbol && normalizeType(t.type) === 'DIV' && t.date);
+      const flows = [...txs.filter(t => t.qty > 0 && t.price > 0), ...divs]
+        .map(t => ({ date: t.date, amount: cashflowPLN(t, histFx, fxRates) }))
+        .filter(f => f.amount);
       if (flows.length > 0) {
         flows.push({
           date:   new Date().toISOString().slice(0, 10),
@@ -438,6 +451,7 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       earningsTs:  m.earningsTs  ?? null,
       notFound,
       costPLN,
+      costPLNNow,
       valuePLN,
       plPLN,
       moic,
@@ -446,5 +460,5 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
     };
   }
 
-  return { enrichPosition, metricsLoading };
+  return { enrichPosition, metricsLoading, histFx };
 }

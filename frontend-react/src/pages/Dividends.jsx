@@ -19,6 +19,7 @@ import {
 } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
 import { axisProps, tooltipProps } from '../components/charts/theme.js';
+import { isCryptoSymbol } from '../utils/crypto.js';
 import {
   fetchDividendHistory,
   calcAnnualDivPerShare,
@@ -426,9 +427,10 @@ export default function Dividends() {
 
       {hasGpw && <Callout tone="info" icon={Info}>{t('div_gpw_note')}</Callout>}
 
-      {/* Spółki zagraniczne, a nikt jeszcze nie odpowiedział o W-8BEN —
-          pytamy wprost, zamiast po cichu zakładać 15%. */}
-      {!w8ben && (symbols.some(s => !s.endsWith('.WA')) || dividends.some(d => d.currency && d.currency !== 'PLN')) && (
+      {/* Spółki z USA, a nikt jeszcze nie odpowiedział o W-8BEN — pytamy
+          wprost, zamiast po cichu zakładać 15%. Inne rynki mają własne
+          stawki (withholdingRate), formularz W-8BEN ich nie dotyczy. */}
+      {!w8ben && (symbols.some(s => !s.includes('.') && !isCryptoSymbol(s)) || dividends.some(d => d.currency === 'USD')) && (
         <Callout
           tone="warn"
           icon={Info}

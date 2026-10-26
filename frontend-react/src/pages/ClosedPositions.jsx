@@ -9,6 +9,7 @@ import { PageSkeleton } from '../components/RouteFallback';
 import { Card, EmptyState, Input, SegmentedControl, Stat, Table } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
 import { computeRealizedTrades, groupBySymbol } from '../utils/realizedPL';
+import { useHistoricalFx } from '../hooks/useHistoricalFx.js';
 import Pit38Card from '../components/Pit38Card.jsx';
 import { loadJournal } from '../services/journalService';
 
@@ -24,7 +25,9 @@ export default function ClosedPositions() {
   const [filter, setFilter] = useState('');
   const [journal, setJournal] = useState(null);
 
-  const trades = useMemo(() => computeRealizedTrades(transactions, fxRates), [transactions, fxRates]);
+  // Kursy z dni transakcji — wynik w zł z zyskiem/stratą na walucie.
+  const histFx = useHistoricalFx(transactions);
+  const trades = useMemo(() => computeRealizedTrades(transactions, fxRates, histFx), [transactions, fxRates, histFx]);
   const grouped = useMemo(() => groupBySymbol(trades), [trades]);
 
   useEffect(() => {

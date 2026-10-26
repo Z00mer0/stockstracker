@@ -9,16 +9,43 @@ export function getUsTaxRate() {
   return localStorage.getItem(US_TAX_KEY) === '30' ? 0.30 : 0.15;
 }
 
+// Podatek u źródła od dywidendy dla inwestora z Polski, wg giełdy spółki
+// (sufiks Yahoo). Stawki ustawowe, które broker zwykle pobiera bez
+// dodatkowych formularzy; tam, gdzie da się odzyskać nadwyżkę z umowy
+// o unikaniu podwójnego opodatkowania, trzeba to zrobić samemu. Spółki z USA
+// (bez sufiksu) — wg odpowiedzi o W-8BEN. Nieznany rynek — typowe 15%.
+// Faktycznie pobrany podatek wpisany przy dywidendzie zawsze wygrywa.
+const WHT_BY_SUFFIX = {
+  L: 0, HK: 0,                      // Wielka Brytania, Hongkong
+  DE: 0.26375, F: 0.26375,          // Niemcy (z dopłatą solidarnościową)
+  PA: 0.128,                        // Francja (osoby fizyczne)
+  AS: 0.15,                         // Holandia
+  BR: 0.30,                         // Belgia
+  MI: 0.26,                         // Włochy
+  MC: 0.19,                         // Hiszpania
+  VI: 0.275,                        // Austria
+  SW: 0.35,                         // Szwajcaria
+  ST: 0.30, CO: 0.27, OL: 0.25, HE: 0.35,   // Szwecja, Dania, Norwegia, Finlandia
+  IR: 0.25,                         // Irlandia
+  TO: 0.25,                         // Kanada
+  T: 0.15315,                       // Japonia
+};
+
+export function withholdingRate(symbol, currency) {
+  const m = String(symbol ?? '').toUpperCase().match(/\.([A-Z]+)$/);
+  if (!m) return currency && currency !== 'USD' ? 0.15 : getUsTaxRate();
+  return WHT_BY_SUFFIX[m[1]] ?? 0.15;
+}
+
 export function getTaxRate(symbol, currency, accountType) {
   if (symbol?.includes('.WA') || currency === 'PLN') {
     // IKE/IKZE: dywidendy z GPW bez podatku Belki; zagraniczny WHT u źródła obowiązuje nadal
     return accountType === 'IKE' || accountType === 'IKZE' ? 0 : 0.19;
   }
-  // Zagranica: podatek u źródła (15% z W-8BEN, 30% bez). Na zwykłym rachunku
-  // do 19% dopłaca się w Polsce, więc łącznie nigdy mniej niż 19% — wcześniej
-  // liczyło się samo 15% i dochód netto wychodził zawyżony. Na IKE/IKZE
+  // Zagranica: podatek u źródła wg kraju spółki. Na zwykłym rachunku do 19%
+  // dopłaca się w Polsce, więc łącznie nigdy mniej niż 19%. Na IKE/IKZE
   // zostaje tylko potrącenie u źródła.
-  const wht = getUsTaxRate();
+  const wht = withholdingRate(symbol, currency);
   return accountType === 'IKE' || accountType === 'IKZE' ? wht : Math.max(wht, 0.19);
 }
 

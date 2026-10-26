@@ -88,7 +88,8 @@ export function pit38RateDates(transactions = [], excluded = new Set(), basis = 
 // jednego portfela transakcje nie mają _portfolioId, stąd klucz ''.
 // crypto: Set symboli oznaczonych jako krypto w pozycjach.
 // withholding: zakładana stawka podatku u źródła dla dywidendy bez wpisanego
-// podatku (tx.tax) — taka dywidenda jest oznaczona jako szacunek.
+// podatku (tx.tax) — liczba albo funkcja(transakcja); taka dywidenda jest
+// oznaczona jako szacunek.
 export function computePit38(transactions = [], { year, rates = {}, excluded = new Set(), basis = 'settlement', crypto, withholding = 0.15 } = {}) {
   const rateAt = (ccy, date) => ((ccy || 'PLN') === 'PLN' ? 1 : rates[ccy]?.[dayBefore(date)] ?? null);
 
@@ -234,7 +235,8 @@ function foreignDividends(transactions, year, rateAt, excluded, withholding) {
     if (y !== year) continue;
     const gross = txAmount({ ...t, qty: t.qty || 1, price: t.price || 0 });
     const estimated = t.tax == null || t.tax === '';
-    const withheld = estimated ? gross * withholding : Number(t.tax) || 0;
+    const assumed = typeof withholding === 'function' ? withholding(t) : withholding;
+    const withheld = estimated ? gross * assumed : Number(t.tax) || 0;
     const rate = rateAt(t.currency, date);
     rows.push({ symbol: t.symbol, date, gross, withheld, estimated, rate });
   }
