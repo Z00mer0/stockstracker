@@ -22,7 +22,7 @@ export default {
   mkt_gainers: 'Największe wzrosty',
   mkt_losers: 'Największe spadki',
   mkt_active: 'Najbardziej aktywne',
-  mkt_note: 'Szerokość rynku, obrót, wolumen i liderzy na podstawie {n} z {size} spółek ({label}) — nie całej giełdy. Obrót = cena × wolumen. Indeksy — wartości oficjalne.',
+  mkt_note: 'Szerokość rynku, obrót, wolumen i liderzy na podstawie {n} z {size} spółek ({label}) — nie całej giełdy. Obrót = cena × wolumen. Źródło: Yahoo Finance (dane nieoficjalne), pobrane o {time}.',
   mkt_error: 'Nie udało się pobrać danych sesji — spróbuj za chwilę.',
   pa_market_desc: 'Podsumowanie sesji rynku — indeksy, szerokość rynku i liderzy, po zamknięciu (dni sesyjne):',
   pa_market_us_time: 'USA · 22:10',

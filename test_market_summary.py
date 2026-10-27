@@ -38,6 +38,7 @@ def test_szerokosc_obrot_i_liderzy():
     assert s['date'] == '2026-10-26' and s['closed'] is True
     assert s['breadth'] == {'up': 3, 'down': 2, 'flat': 1, 'total': 6}
     assert s['universe'] == {'label': 'WIG20 + mWIG40 + sWIG80', 'size': 8, 'priced': 6}
+    assert s['asOf'] == int(NOW.timestamp())
     assert [g['symbol'] for g in s['gainers']] == ['BDF', 'PKO', 'ALE']
     assert [g['symbol'] for g in s['losers']] == ['HRS', 'PKN']          # bez spółek na plusie
     assert [a['symbol'] for a in s['active']] == ['PKO', 'ALE', 'PKN']   # wg obrotu, nie wolumenu
