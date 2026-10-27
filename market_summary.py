@@ -152,6 +152,7 @@ def summarize(market, quotes, indices, universe_size, now=None):
         'losers': [_mover(s, q) for s, q in reversed(by_chg[-3:]) if q['changePct'] < 0],
         'active': [_mover(s, q) for s, q in sorted(with_vol.items(), key=lambda kv: kv[1]['price'] * kv[1]['volume'], reverse=True)[:3]],
         'universe': {'label': cfg['universe_label'], 'size': universe_size, 'priced': len(cur)},
+        'asOf': int(now.timestamp()),
     }
 
 

@@ -28,7 +28,7 @@ export default {
   mkt_gainers: 'Top gainers',
   mkt_losers: 'Top losers',
   mkt_active: 'Most active',
-  mkt_note: 'Breadth, turnover, volume and leaders based on {n} of {size} stocks ({label}) — not the whole exchange. Turnover = price × volume. Indices are official values.',
+  mkt_note: 'Breadth, turnover, volume and leaders based on {n} of {size} stocks ({label}) — not the whole exchange. Turnover = price × volume. Source: Yahoo Finance (unofficial data), fetched at {time}.',
   mkt_error: 'Could not load the session data — try again in a moment.',
   pa_market_desc: 'Market session summary — indices, breadth and leaders, after the close (trading days):',
   pa_market_us_time: 'USA · 22:10',

@@ -187,7 +187,8 @@ export default function MarketSummary() {
             {t('mkt_note')
               .replace('{n}', data.universe.priced)
               .replace('{size}', data.universe.size)
-              .replace('{label}', data.universe.label)}
+              .replace('{label}', data.universe.label)
+              .replace('{time}', new Date(data.asOf * 1000).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }))}
           </p>
         </>
       )}
