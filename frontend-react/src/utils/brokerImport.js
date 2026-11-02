@@ -230,7 +230,7 @@ export function parseBrokerRows(rows, accountCurrency) {
       let price = Math.abs(amount);
       // "CLOSE BUY 2/6 @ 30.220" — the /6 denominator is optional.
       // Eksport xStation wstawia ticker: "OPEN BUY CRWV.US 0.5 @ 49.82".
-      const commentMatch = comment.match(/(?:BUY|SELL)\s+(?:[A-Z0-9][A-Z0-9.\-]*[A-Z][A-Z0-9.\-]*\s+)?([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
+      const commentMatch = comment.match(/(?:BUY|SELL)\s+(?:[A-Z0-9][A-Z0-9.-]*[A-Z][A-Z0-9.-]*\s+)?([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
       if (commentMatch) {
         qty   = parseFloat(commentMatch[1]);
         price = parseFloat(commentMatch[2]);
