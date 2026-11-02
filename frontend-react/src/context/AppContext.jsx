@@ -4,7 +4,7 @@ import { resetJournalCache } from '../services/journalService';
 import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 import { weightedAvg } from '../utils/weightedAvg.js';
 import { applyTransaction, revertTransaction, baseSymbol } from '../utils/ledger.js';
-import { normalizeSymbol } from '../utils/brokerImport.js';
+import { normalizeSymbol, QTY_EPS } from '../utils/brokerImport.js';
 import { lsSet } from '../utils/safeStorage.js';
 
 export const AppContext = createContext(null);
@@ -675,7 +675,7 @@ export function AppProvider({ children }) {
         const idx = findHolding(newHoldings, tx.symbol);
         if (idx >= 0) {
           const newQty = newHoldings[idx].qty - tx.qty;
-          newHoldings = newQty <= 0
+          newHoldings = newQty <= QTY_EPS
             ? newHoldings.filter((_, i) => i !== idx)
             : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
         }
