@@ -5,13 +5,15 @@ import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { Callout, Card, EmptyState, Stat, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
-import { usePit38 } from '../../hooks/usePit38.js';
+import { usePit38, loadPit38Basis } from '../../hooks/usePit38.js';
+import { useApp } from '../../context/AppContext';
+import { harvestPlan, lastSellDate } from '../../utils/taxHarvest.js';
 import { isCryptoSymbol } from '../../utils/crypto.js';
 
-// Optymalizator podatku Belki (tax-loss harvesting) — logika bez zmian:
-// straty z otwartych pozycji rozdzielane na zrealizowany zysk w roku,
-// od największej, do wyczerpania zysku. Kwoty w PLN (podatek jest w PLN).
-const BELKA_RATE = 0.19;
+// Optymalizator podatku Belki (tax-loss harvesting): straty z otwartych
+// pozycji, od największej, przeciw zyskowi zrealizowanemu w roku — razem ze
+// stratami z lat poprzednich (utils/taxHarvest.js). Kwoty w PLN.
+const TAX_FREE = new Set(['IKE', 'IKZE']);
 
 export default function TaxTab({ enriched, realizedYtdPLN: avgCostYtd, accountType }) {
   const t = useT();
@@ -21,31 +23,38 @@ export default function TaxTab({ enriched, realizedYtdPLN: avgCostYtd, accountTy
   // Wynik roku i podatek tak, jak w PIT-38 (FIFO, kursy NBP z dnia przed
   // transakcją). Do czasu pobrania kursów — przybliżenie średnią ceną
   // i bieżącym kursem, jak wcześniej.
-  const { forYear, loading: pitLoading } = usePit38();
+  const { portfolios } = useApp();
+  const basis = loadPit38Basis();
+  const { forYear, years, loading: pitLoading } = usePit38(basis);
   const pit = useMemo(() => forYear(year), [forYear, year]);
   const exact = !pitLoading && pit.totals.missingRates === 0;
   const realizedYtdPLN = exact ? pit.totals.income : avgCostYtd;
   const fmt = (n, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
 
   // Bez kryptowalut: ich strata nie obniża podatku od akcji (osobna część PIT-38).
+  // W widoku „Wszystkie" bez pozycji z IKE/IKZE — tam strata nic nie daje.
+  const taxFreeIds = useMemo(() => new Set(portfolios.filter(p => TAX_FREE.has(p.accountType)).map(p => p.id)), [portfolios]);
   const losers = useMemo(() => enriched
-    .filter(p => (p.plPLN ?? 0) < -0.005 && p.assetType !== 'crypto' && !isCryptoSymbol(p.symbol))
-    .map(p => ({ symbol: p.symbol, lossPLN: -p.plPLN }))
-    .sort((a, b) => b.lossPLN - a.lossPLN), [enriched]);
+    .filter(p => (p.plPLN ?? 0) < -0.005 && p.assetType !== 'crypto' && !isCryptoSymbol(p.symbol) && !taxFreeIds.has(p._portfolioId))
+    .map(p => ({ symbol: p.symbol, lossPLN: -p.plPLN, sellBy: lastSellDate(p.symbol, p.currency, year, basis) }))
+    .sort((a, b) => b.lossPLN - a.lossPLN), [enriched, taxFreeIds, year, basis]);
+  // Dochody z lat poprzednich — do odliczenia ich strat (tylko przy kursach NBP).
+  const incomes = useMemo(
+    () => (exact ? Object.fromEntries([...years, year].map(y => [y, forYear(y).totals.income])) : { [year]: realizedYtdPLN }),
+    [exact, years, year, forYear, realizedYtdPLN],
+  );
+  const today = new Date().toISOString().slice(0, 10);
 
   if (accountType === 'IKE' || accountType === 'IKZE') {
     return <EmptyState icon={PartyPopper} title={t('tax_opt_title')} description={t('tax_opt_ike_note').replace('{type}', accountType)} />;
   }
 
-  const taxDue = exact ? pit.totals.tax : Math.max(0, realizedYtdPLN) * BELKA_RATE;
-  let remaining = Math.max(0, realizedYtdPLN);
-  const rows = losers.map(l => {
-    const offset = Math.min(l.lossPLN, remaining);
-    remaining -= offset;
-    return { ...l, offset, savingPLN: offset * BELKA_RATE };
-  });
+  const plan = harvestPlan(incomes, year, losers);
+  const taxDue = plan.taxBefore;
+  const rows = plan.rows;
   const totalSaving = rows.reduce((s, r) => s + r.savingPLN, 0);
-  const taxAfter = taxDue - totalSaving;
+  const taxAfter = plan.taxAfter;
+  const fmtDate = iso => new Date(`${iso}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   const helped = rows.filter(r => r.savingPLN > 0).length;
   const posKey = { one: 'tax_opt_pos_one', few: 'tax_opt_pos_few' }[new Intl.PluralRules(locale).select(helped)] ?? 'tax_opt_pos_many';
   const blur = isPrivate ? 'privacy-blur' : undefined;
@@ -81,10 +90,19 @@ export default function TaxTab({ enriched, realizedYtdPLN: avgCostYtd, accountTy
             {realizedYtdPLN <= 0 && (
               <div className="px-4 pt-4"><Callout tone="info" icon={Info}>{t('tax_opt_no_gains_note')}</Callout></div>
             )}
+            {plan.carryDeduction > 0 && (
+              <div className="px-4 pt-4"><Callout tone="info" icon={Info}>{t('tax_opt_carry_note').replace('{amount}', fmt(plan.carryDeduction))}</Callout></div>
+            )}
             <Table
               columns={[
                 { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: r => <span className="font-semibold text-fg">{r.symbol}</span> },
                 { key: 'lossPLN', header: t('tax_opt_col_loss'), align: 'right', render: r => <span className={cx('text-down', blur)}>−{fmt(r.lossPLN)} zł</span> },
+                {
+                  key: 'sellBy', header: t('tax_opt_col_sell_by'), align: 'right',
+                  render: r => (!r.sellBy ? <span className="text-faint">—</span>
+                    : r.sellBy < today ? <span className="text-faint">{t('tax_opt_next_year')}</span>
+                    : <span className="text-dim">{fmtDate(r.sellBy)}</span>),
+                },
                 {
                   key: 'savingPLN', header: t('tax_opt_col_saving'), align: 'right', mobile: 'aside',
                   render: r => (r.savingPLN > 0 ? <span className={cx('font-bold text-up', blur)}>−{fmt(r.savingPLN)} zł</span> : <span className="text-faint">—</span>),
@@ -102,6 +120,10 @@ export default function TaxTab({ enriched, realizedYtdPLN: avgCostYtd, accountTy
           </>
         )}
       </Card>
+
+      {plan.carriedToNextYears > 0 && totalSaving > 0 && (
+        <Callout tone="info" icon={Info}>{t('tax_opt_carry_forward').replace('{amount}', fmt(plan.carriedToNextYears))}</Callout>
+      )}
 
       {totalSaving > 0 && (
         <Callout tone="up" icon={Lightbulb}>
