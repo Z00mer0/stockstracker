@@ -616,7 +616,8 @@ export function AppProvider({ children }) {
       }
       if (tx.type === 'DIV') {
         if (tx.fromSnapshot) continue;
-        const credit = Math.abs(Number(tx.price) || 0);
+        // Na rachunek wpływa dywidenda po podatku u źródła.
+        const credit = Math.abs(Number(tx.price) || 0) - (Number(tx.tax) || 0);
         newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + credit };
         continue;
       }
@@ -644,8 +645,11 @@ export function AppProvider({ children }) {
         // Zdejmij środki na zakup (symetrycznie do SELL).
         // fromClosedPosition BUY: nie ruszaj holdings (SELL zredukuje), ale
         // też nie ruszaj cash — cash-flow wynika z Cash Ops, nie z Closed Pos.
+        // Import XTB: kwota z kolumny Amount w walucie rachunku (cashAmount).
         if (affectsCash(tx)) {
-          newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) - tx.qty * tx.price };
+          newCash = tx.cashAmount != null
+            ? { ...newCash, [tx.cashCurrency]: (newCash[tx.cashCurrency] ?? 0) + tx.cashAmount }
+            : { ...newCash, [cur]: (newCash[cur] ?? 0) - tx.qty * tx.price };
         }
       } else if (tx.type === 'SELL') {
         const idx = findHolding(newHoldings, tx.symbol);
@@ -656,7 +660,9 @@ export function AppProvider({ children }) {
             : newHoldings.map((h2, i) => i === idx ? { ...h2, qty: newQty } : h2);
         }
         if (affectsCash(tx)) {
-          newCash = { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
+          newCash = tx.cashAmount != null
+            ? { ...newCash, [tx.cashCurrency]: (newCash[tx.cashCurrency] ?? 0) + tx.cashAmount }
+            : { ...newCash, [cur]: (newCash[cur] ?? 0) + tx.qty * tx.price };
         }
       }
     }

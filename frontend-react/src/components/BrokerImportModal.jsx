@@ -125,6 +125,9 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
             <p className="text-faint">{t('bi_found_tx')} <span className="text-dim">{r.transactions.length}</span></p>
             {r.error && <p className="text-down">{t(r.error)}{r.errorDetail ? `: ${r.errorDetail}` : ''}</p>}
             {r.errors?.length > 0 && <p className="text-warn">{t('bi_errors_n').replace('{n}', r.errors.length)}</p>}
+            {r.skipped?.length > 0 && (
+              <p className="text-warn">{t('bi_skipped_types')} {r.skipped.map(x => `${x.type} (${x.n})`).join(', ')}</p>
+            )}
           </div>
         ))}
 

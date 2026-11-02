@@ -228,4 +228,12 @@ describe('dywidendy zagraniczne w PIT-38', () => {
   it('kursy: dzień przed wypłatą', () => {
     expect([...pit38RateDates(txs).USD].sort()).toEqual(['2025-03-31', '2025-06-30']);
   });
+
+  it('spółka z USA wypłacona w złotych (rachunek PLN w XTB) — dalej zagraniczna', () => {
+    const r = computePit38([{ type: 'DIV', symbol: 'XRAY', price: 51.2, tax: 15.36, currency: 'PLN', date: '2025-04-01' }], { year: 2025, rates: R });
+    expect(r.dividends.count).toBe(1);
+    expect(r.dividends.grossPLN).toBeCloseTo(51.2, 6);
+    expect(r.dividends.paidAbroad).toBeCloseTo(51.2 * 0.19, 6);   // potrącono 30%, odliczyć można 19%
+    expect(r.dividends.due).toBe(0);
+  });
 });

@@ -1,6 +1,11 @@
 // Import danych brokera (XTB): arkusze Closed Positions i Cash Operations
 // (CSV lub XLSX) oraz podgląd zmian w portfelu. Wydzielone z
 // BrokerImportModal, żeby dało się je przetestować.
+//
+// Kwoty w Cash Operations (kolumna Amount) są w walucie RACHUNKU, a cena
+// w komentarzu („OPEN BUY 2 @ 180.00") w walucie instrumentu. Na rachunku
+// złotówkowym zakup akcji z USA zdejmuje złotówki, dywidenda z USA wpływa
+// w złotówkach, a podatek u źródła to osobny wiersz „Withholding tax".
 import { readSheets, excelSerialToISO } from './spreadsheet.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -48,6 +53,13 @@ function parseDate(val) {
   return str.slice(0, 10).replace(/\//g, '-');
 }
 
+// Godzina z „12.04.2024 13:01:45" (albo z daty Excela) — do sortowania.
+function timeOf(val) {
+  if (typeof val === 'number') return String(Math.round((val % 1) * 86400)).padStart(5, '0');
+  const m = String(val ?? '').match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}:${m[3] ?? '00'}` : '';
+}
+
 export function normalizeSymbol(sym) {
   return String(sym).replace(/\.PL$/i, '.WA').replace(/\.US$/i, '');
 }
@@ -65,26 +77,44 @@ export function brokerCurrency(sym) {
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
+// Typ wiersza Cash Operations → rodzaj operacji. Nazwy z eksportu xStation:
+// starsze „Stock purchase / Stock sale", nowsze „Stocks/ETF purchase / sale",
+// „Dividend" (dawniej „DIVIDENT"), „Withholding tax", „Free funds interests"
+// (+ „… tax"), „SEC fee", „Swap", „Commission", „Profit/Loss (FX/CFD)",
+// „Deposit", „Withdrawal", „Transfer". Null — nierozpoznany, pomijany.
+export function cashKind(opType, amount = 0) {
+  const t = String(opType).toLowerCase();
+  if (t.includes('withholding')) return 'wht';
+  if (t.includes('interest')) return t.includes('tax') ? 'tax' : 'interest';
+  if (t.includes('dividend') || t.includes('divident') || t.includes('spin off')) return amount < 0 ? 'fee' : 'DIV';
+  if (t.includes('purchase') || t.includes('buy')) return 'BUY';
+  if (t.includes('sale') || t.includes('sell')) return 'SELL';
+  if (t.includes('deposit') || t.includes('withdrawal') || t.includes('transfer')) return 'deposit';
+  if (t.includes('fee') || t.includes('commission') || t.includes('swap') || t.includes('stamp') || t.includes('tax')) return 'fee';
+  if (t.includes('profit/loss')) return 'cfd';
+  return null;
+}
+
 // ── Core parser ───────────────────────────────────────────────────────────────
 
 // accountCurrency — waluta rachunku (portfela docelowego) dla wpłat i wypłat,
 // które nie mają symbolu. Wcześniej trafiały zawsze do USD, więc 5000 zł
 // wpłaty na rachunek złotówkowy liczyło się jak 5000 $.
 export function parseBrokerRows(rows, accountCurrency) {
-  if (rows.length < 5) return { type: 'unknown', transactions: [], error: 'bi_too_few_rows' };
-
-  const fileTypeLine = String(rows[1]?.[0] ?? '').toLowerCase();
-  const isClosedPositions = fileTypeLine.includes('closed');
-  const isCashOperations  = fileTypeLine.includes('cash');
-
-  // Nagłówek szukamy po treści (kolumna „type" i „amount" albo „volume"),
-  // a nie tylko w piątym wierszu: CSV traci puste wiersze przy wczytaniu,
-  // więc nagłówek potrafi się przesunąć i cały plik wyglądał na pusty.
+  // Nagłówek szukamy po treści (kolumna „type" i „amount" albo „volume"):
+  // eksport XLSX ma nad tabelą dane rachunku, CSV z xStation zaczyna się
+  // od razu od nagłówka, a CSV traci puste wiersze przy wczytaniu.
   const lower = row => (row ?? []).map(h => String(h ?? '').toLowerCase().trim());
-  let headerIdx = rows.findIndex((row, i) => i >= 2 && i <= 10 && lower(row).includes('type')
+  const headerIdx = rows.findIndex((row, i) => i < 30 && lower(row).includes('type')
     && (lower(row).includes('amount') || lower(row).includes('volume')));
-  if (headerIdx < 0) headerIdx = 4;
+  if (headerIdx < 0 || rows.length < headerIdx + 2) return { type: 'unknown', transactions: [], errors: [], error: 'bi_too_few_rows' };
   const headers = lower(rows[headerIdx]);
+
+  // Rodzaj arkusza po kolumnach, a napis nad tabelą („Closed positions",
+  // „CASH OPERATION HISTORY") tylko pomocniczo — CSV często go nie ma.
+  const above = rows.slice(0, headerIdx).flat().map(c => String(c ?? '').toLowerCase()).join(' ');
+  const isCashOperations  = headers.includes('amount') && (headers.includes('comment') || above.includes('cash'));
+  const isClosedPositions = !isCashOperations && (headers.includes('close price') || above.includes('closed'));
 
   function col(row, name) {
     const idx = headers.indexOf(name.toLowerCase());
@@ -97,21 +127,24 @@ export function parseBrokerRows(rows, accountCurrency) {
 
   const transactions = [];
   const errors = [];
+  const seen = new Set();
+  const wht = [];
+  const skipped = new Map();   // nierozpoznane typy operacji → liczba wierszy
 
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row || !row.some(c => c != null && c !== '')) continue;
 
     if (isClosedPositions) {
-      const ticker     = col(row, 'ticker') || col(row, 'instrument');
+      const ticker     = col(row, 'ticker') || col(row, 'instrument') || col(row, 'symbol');
       const type       = col(row, 'type').toUpperCase();
       const qty        = parseFloat(col(row, 'volume'));
       const openPrice  = parseFloat(col(row, 'open price'));
       const closePrice = parseFloat(col(row, 'close price'));
-      const openDate   = parseDate(colRaw(row, 'open time (utc)'));
-      const closeDate  = parseDate(colRaw(row, 'close time (utc)'));
-      const pl         = parseFloat(col(row, 'profit/loss')) || 0;
-      const positionId = col(row, 'position id');
+      const openDate   = parseDate(colRaw(row, 'open time (utc)') ?? colRaw(row, 'open time'));
+      const closeDate  = parseDate(colRaw(row, 'close time (utc)') ?? colRaw(row, 'close time'));
+      const pl         = parseFloat(col(row, 'profit/loss') || col(row, 'gross p/l')) || 0;
+      const positionId = col(row, 'position id') || col(row, 'position');
 
       if (!ticker || isNaN(qty) || isNaN(openPrice)) { errors.push(i + 1); continue; }
 
@@ -137,13 +170,31 @@ export function parseBrokerRows(rows, accountCurrency) {
       const positionId = col(row, 'id') || col(row, 'position id');
 
       if (!timeStr || isNaN(amount)) continue;
+      // Ten sam wiersz (ID + typ + kwota) bywa w eksporcie dwa razy.
+      const rowKey = `${positionId}|${opType}|${amount}`;
+      if (positionId && seen.has(rowKey)) continue;
+      seen.add(rowKey);
 
-      let txType;
-      if (opType.includes('dividend'))                                     txType = 'DIV';
-      else if (opType.includes('buy')  || opType.includes('stock purchase')) txType = 'BUY';
-      else if (opType.includes('sell') || opType.includes('stock sale'))     txType = 'SELL';
-      else if (opType.includes('deposit') || opType.includes('withdrawal'))  txType = 'CASH';
-      else continue;
+      const kind = cashKind(opType, amount);
+      if (!kind) { skipped.set(opType, (skipped.get(opType) ?? 0) + 1); continue; }
+      const date = parseDate(timeStr) || new Date().toISOString().slice(0, 10);
+      const at = `${date} ${timeOf(timeStr)}`;
+
+      // Podatek u źródła — dopinany do swojej dywidendy po pętli.
+      if (kind === 'wht') { wht.push({ id: Number(positionId), symbol: ticker || instrument, time: timeStr, amount, date, comment }); continue; }
+
+      // Odsetki, opłaty, podatek od odsetek, wynik CFD, przelew: tylko gotówka
+      // rachunku. `kind` odróżnia je od wpłat (np. limit IKE liczy same wpłaty).
+      if (kind !== 'BUY' && kind !== 'SELL' && kind !== 'DIV') {
+        transactions.push({
+          _at: at, id: genId(), type: 'CASH', symbol: '', qty: null, price: amount,
+          currency: accountCurrency || brokerCurrency(ticker || instrument || ''),
+          date, note: comment || opType, brokerPositionId: positionId || undefined,
+          ...(kind !== 'deposit' ? { kind } : {}),
+        });
+        continue;
+      }
+      const txType = kind;
 
       // Symbol: prefer Ticker column, fall back to Instrument, then parse from comment
       let symbol = ticker || instrument || '';
@@ -165,44 +216,60 @@ export function parseBrokerRows(rows, accountCurrency) {
       }
 
       const normalizedCashSym = normalizeSymbol(symbol.toUpperCase());
-      const cashCurrency = txType === 'CASH' && !ticker && !instrument && accountCurrency
-        ? accountCurrency
-        : brokerCurrency(normalizedCashSym);
-
-      // Semantyka pól per typ:
-      // - CASH: qty=null, price = kwota ze znakiem (wpłata +, wypłata −); cash-flow z tx.price
-      // - DIV : qty=null, price = |amount| (zawsze uznanie na rachunek)
-      // - BUY/SELL: qty i price z komentarza "BUY x @ y"; cash-flow z qty·price
-      //   (Cash Ops JEST źródłem prawdy o cash — tylko gdy nie ma commentMatch,
-      //   zabezpieczamy się skipCashAdjust, żeby nie liczyć śmieciowej pary).
-      const isCashType = txType === 'CASH';
       const isDivType  = txType === 'DIV';
       const hasQtyPrice = qty != null && !isNaN(qty) && qty > 0;
+      // Waluta rachunku dla kwot z kolumny Amount; bez niej — po sufiksie.
+      const cashCurrency = accountCurrency || brokerCurrency(normalizedCashSym);
+
+      // Semantyka pól per typ:
+      // - DIV : qty=null, price = kwota brutto w walucie rachunku, tax = podatek u źródła
+      // - BUY/SELL: qty i price z komentarza "BUY x @ y" (waluta instrumentu);
+      //   gotówka zmienia się o cashAmount (Amount, waluta rachunku).
+      //   Bez rozpoznanego "x @ y" — skipCashAdjust, żeby nie liczyć śmieciowej pary.
       transactions.push({
+        _at: at,
         id: genId(),
         type: txType,
         symbol: normalizedCashSym,
-        qty: isCashType || isDivType ? null : (hasQtyPrice ? qty : Math.abs(amount)),
-        price: isCashType ? amount : (isDivType ? Math.abs(amount) : price),
-        currency: cashCurrency,
-        date: parseDate(timeStr) || new Date().toISOString().slice(0, 10),
+        qty: isDivType ? null : (hasQtyPrice ? qty : Math.abs(amount)),
+        price: isDivType ? Math.abs(amount) : price,
+        currency: isDivType ? cashCurrency : brokerCurrency(normalizedCashSym),
+        date,
         note: comment || opType,
         brokerPositionId: positionId || undefined,
-        // Dla BUY/SELL bez rozpoznanego "x @ y" nie ruszamy cash (byłby śmieć).
-        // CASH/DIV mają własne branchy w importBrokerTransactions — flaga tam
-        // ignorowana.
-        ...((!isCashType && !isDivType && !hasQtyPrice) ? { skipCashAdjust: true } : {}),
+        ...(isDivType ? { _time: timeStr, _id: Number(positionId) } : {}),
+        ...(!isDivType && hasQtyPrice ? { cashAmount: amount, cashCurrency } : {}),
+        ...((!isDivType && !hasQtyPrice) ? { skipCashAdjust: true } : {}),
       });
     }
   }
 
-  return { type: isClosedPositions ? 'closed_positions' : isCashOperations ? 'cash_operations' : 'unknown', transactions, errors };
+  // Podatek u źródła do dywidendy: XTB daje mu kolejne ID (dywidenda + 1),
+  // awaryjnie — ten sam symbol i ta sama chwila. Bez pary zostaje jako
+  // ruch gotówki, żeby saldo się zgadzało.
+  for (const w of wht) {
+    const divs = transactions.filter(t => t.type === 'DIV');
+    const div = divs.find(d => d._id && d._id === w.id - 1 && d.symbol === normalizeSymbol(String(w.symbol).toUpperCase()))
+      ?? divs.find(d => d._time === w.time && d.symbol === normalizeSymbol(String(w.symbol).toUpperCase()) && d.tax == null);
+    if (div) div.tax = Math.max(0, +((div.tax ?? 0) - w.amount).toFixed(2));
+    else transactions.push({ id: genId(), type: 'CASH', symbol: '', qty: null, price: w.amount, currency: accountCurrency || brokerCurrency(w.symbol), date: w.date, note: w.comment, kind: 'tax' });
+  }
+  // XTB wypisuje operacje od najnowszej, a zapis importu sortuje tylko po
+  // dacie (stabilnie) — kupno i sprzedaż z jednego dnia szły w odwrotnej
+  // kolejności i sprzedana pozycja zostawała w portfelu. Porządek
+  // chronologiczny z godziną.
+  if (isCashOperations) transactions.sort((a, b) => (a._at ?? '').localeCompare(b._at ?? ''));
+  for (const t of transactions) { delete t._time; delete t._id; delete t._at; }
+
+  return { type: isClosedPositions ? 'closed_positions' : isCashOperations ? 'cash_operations' : 'unknown', transactions, errors, skipped: [...skipped].map(([type, n]) => ({ type, n })) };
 }
 
 export function parseBrokerCsv(text, accountCurrency) {
-  const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 5) return { type: 'unknown', transactions: [], error: 'bi_too_few_rows' };
-  const sep = detectSep(lines[4]);
+  const lines = text.replace(/^\uFEFF/, '').replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+  // Separator z wiersza nagłówka — komentarze wpłat zawierają przecinki.
+  const header = lines.slice(0, 30).find(l => /type/i.test(l) && /amount|volume/i.test(l));
+  if (!header) return { type: 'unknown', transactions: [], error: 'bi_too_few_rows' };
+  const sep = detectSep(header);
   const rows = lines.map(l => splitRow(l, sep));
   return parseBrokerRows(rows, accountCurrency);
 }
@@ -210,7 +277,7 @@ export function parseBrokerCsv(text, accountCurrency) {
 export async function parseBrokerXlsx(file, accountCurrency) {
   const allResults = [];
   for (const { name: sheetName, rows } of await readSheets(file)) {
-    if (rows.length < 5) continue;
+    if (rows.length < 2) continue;
     const result = parseBrokerRows(rows, accountCurrency);
     if (result.type !== 'unknown' || result.transactions.length > 0) {
       allResults.push({ sheetName, ...result });
@@ -238,7 +305,7 @@ export function computePortfolioPreview(txs, holdings, cash) {
       continue;
     }
     if (tx.type === 'DIV') {
-      c[cur] = (c[cur] ?? 0) + Math.abs(Number(tx.price) || 0);
+      c[cur] = (c[cur] ?? 0) + Math.abs(Number(tx.price) || 0) - (Number(tx.tax) || 0);
       continue;
     }
     if (!tx.qty || tx.qty <= 0) continue;
@@ -254,7 +321,8 @@ export function computePortfolioPreview(txs, holdings, cash) {
         h.push({ symbol: tx.symbol, qty: tx.qty, avgPrice: tx.price, currency: cur });
       }
       if (affectsCash(tx)) {
-        c[cur] = (c[cur] ?? 0) - tx.qty * tx.price;
+        if (tx.cashAmount != null) c[tx.cashCurrency] = (c[tx.cashCurrency] ?? 0) + tx.cashAmount;
+        else c[cur] = (c[cur] ?? 0) - tx.qty * tx.price;
       }
     } else if (tx.type === 'SELL') {
       if (idx >= 0) {
@@ -262,7 +330,8 @@ export function computePortfolioPreview(txs, holdings, cash) {
         if (qty <= 0) h.splice(idx, 1); else h[idx] = { ...h[idx], qty };
       }
       if (affectsCash(tx)) {
-        c[cur] = (c[cur] ?? 0) + tx.qty * tx.price;
+        if (tx.cashAmount != null) c[tx.cashCurrency] = (c[tx.cashCurrency] ?? 0) + tx.cashAmount;
+        else c[cur] = (c[cur] ?? 0) + tx.qty * tx.price;
       }
     }
   }

@@ -1555,6 +1555,7 @@ export default {
   ci_preview_n:                 'Podgląd: {n} pozycji',
   ci_validating:                'sprawdzam symbole…',
   ci_unknown_n:                 '{n} nieznanych',
+  bi_skipped_types:             'Pominięte (nieznany typ operacji):',
   bi_errors_n:                  '{n} wierszy z błędami (pominięte)',
   bi_target:                    'Portfel docelowy',
   bi_pick_placeholder:          '— wybierz portfel —',
