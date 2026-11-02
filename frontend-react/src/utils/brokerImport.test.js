@@ -32,6 +32,29 @@ describe('normalizeSymbol — sufiksy XTB → Yahoo', () => {
   });
 });
 
+describe('Closed Positions — eksport xStation (bez Position ID, nagłówek w 5. wierszu)', () => {
+  const rows = [
+    ['Account number', 2507260], ['Closed Positions'], ['Date from (UTC)', '2025-12-31 23:00:00'], ['Date to (UTC)', '2026-11-02 21:49:42'],
+    ['Instrument', 'Ticker', 'Category', 'Type', 'Volume', 'Open Price', 'Open Time (UTC)', 'Close Price', 'Close Time (UTC)', 'Product', 'Profit/Loss', 'Gross Profit', 'Purchase Value', 'Sale Value'],
+    ['Spotify', 'SPOT.US', 'STOCK', 'BUY', 0.1, 473.52, '2026-10-02 16:30:28', 591.94, '2026-11-02 20:46:17', 'My Trades', 11.84, 11.84, 47.35, 59.19],
+    ['Grab', 'GRAB.US', 'STOCK', 'BUY', 10, 3.4, '2026-06-05 13:54:03', 2.7, '2026-10-30 14:51:38', 'My Trades', -7, -7, 34, 27],
+  ];
+  const r = parseBrokerRows(rows, 'USD');
+
+  it('rozpoznaje arkusz i transakcje', () => {
+    expect(r.type).toBe('closed_positions');
+    expect(r.transactions.map(t => [t.type, t.symbol, t.qty, t.price, t.date]))
+      .toEqual([['BUY', 'SPOT', 0.1, 473.52, '2026-10-02'], ['SELL', 'SPOT', 0.1, 591.94, '2026-11-02'],
+        ['BUY', 'GRAB', 10, 3.4, '2026-06-05'], ['SELL', 'GRAB', 10, 2.7, '2026-10-30']]);
+  });
+
+  it('bez numeru pozycji — bez wspólnego identyfikatora „_close” (inaczej kolejne importy znikały jako duplikaty)', () => {
+    expect(r.transactions.every(t => t.brokerPositionId === undefined)).toBe(true);
+    const later = parseBrokerRows([...rows.slice(0, 5), ['Grab', 'GRAB.US', 'STOCK', 'BUY', 5, 3, '2026-11-01 10:00:00', 3.5, '2026-11-02 10:00:00', 'My Trades', 2.5]], 'USD');
+    expect(dedupeAgainstExisting(later.transactions, r.transactions)).toHaveLength(2);
+  });
+});
+
 describe('Closed Positions', () => {
   const rows = [
     ['XTB'], ['Closed positions'], [], [],

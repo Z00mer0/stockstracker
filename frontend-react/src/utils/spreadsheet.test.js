@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { excelSerialToISO } from './spreadsheet.js';
+import { excelSerialToISO, stripDimensions } from './spreadsheet.js';
 
 describe('excelSerialToISO', () => {
   // Punkty odniesienia sprawdzone wobec tego, co pokazuje sam Excel.
@@ -31,3 +31,20 @@ describe('excelSerialToISO', () => {
 // Odczyt arkuszy testowany jest end-to-end w przeglądarce (scratchpad:
 // test_import_e2e.mjs) — read-excel-file ma osobne wejścia dla Node i dla
 // przeglądarki, więc test nodowy nie mówiłby nic o realnej ścieżce.
+
+describe('stripDimensions — eksport XTB z <dimension ref="A1"/>', () => {
+  it('usuwa zakres z arkuszy, reszta pliku bez zmian', async () => {
+    const { zipSync, unzipSync, strToU8, strFromU8 } = await import('fflate');
+    const sheet = '<worksheet><dimension ref="A1"/><sheetData><row r="1"><c r="A1"/></row></sheetData></worksheet>';
+    const zip = zipSync({ 'xl/worksheets/sheet1.xml': strToU8(sheet), 'xl/workbook.xml': strToU8('<workbook><dimension ref="A1"/></workbook>') });
+    const out = unzipSync(await stripDimensions(zip));
+    expect(strFromU8(out['xl/worksheets/sheet1.xml'])).toBe('<worksheet><sheetData><row r="1"><c r="A1"/></row></sheetData></worksheet>');
+    expect(strFromU8(out['xl/workbook.xml'])).toContain('<dimension ref="A1"/>');
+  });
+
+  it('plik bez znacznika zwracany bez przepakowania', async () => {
+    const { zipSync, strToU8 } = await import('fflate');
+    const zip = zipSync({ 'xl/worksheets/sheet1.xml': strToU8('<worksheet><sheetData/></worksheet>') });
+    expect(await stripDimensions(zip)).toBe(zip);
+  });
+});

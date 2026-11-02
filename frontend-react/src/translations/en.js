@@ -1090,7 +1090,7 @@ export default {
   add_snapshot:         'Add snapshot',
   saved_ok:             '✓ Saved',
   delete_snapshot_confirm: 'Delete snapshot from',
-  import_csv:           'Import history from CSV file (eToro etc.). Supported: Closed Positions, Cash Operations.',
+  import_csv:           'Import history from XTB — xStation export (Account history → Export): the XLSX with all sheets, or a CSV of Cash Operations / Closed Positions.',
   light_theme:          'Light theme',
   dark_theme:           'Dark theme',
   gpw_pln_label:        'GPW · PLN',

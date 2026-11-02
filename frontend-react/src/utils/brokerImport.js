@@ -164,10 +164,13 @@ export function parseBrokerRows(rows, accountCurrency) {
       const currency = brokerCurrency(ticker);
 
       const normalizedTicker = normalizeSymbol(ticker.toUpperCase());
-      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: normalizedTicker, qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId, fromClosedPosition: true });
+      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: normalizedTicker, qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId || undefined, fromClosedPosition: true });
 
       if (!isNaN(closePrice) && closeDate) {
-        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: normalizedTicker, qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, brokerPositionId: positionId + '_close', fromClosedPosition: true });
+        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: normalizedTicker, qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, // Eksport XTB z xStation nie ma kolumny z numerem pozycji — wtedy bez
+        // identyfikatora (wcześniej każde zamknięcie dostawało „_close” i po
+        // pierwszym imporcie wszystkie następne były uznawane za duplikaty).
+        brokerPositionId: positionId ? positionId + '_close' : undefined, fromClosedPosition: true });
       }
 
     } else if (isCashOperations) {
