@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { authHeader } from '../utils/auth.js';
 import { lsSet } from '../utils/safeStorage.js';
-import { isTodaysSession } from '../utils/marketCalendar.js';
+import { isTodaysSession, isQuoteStale } from '../utils/marketCalendar.js';
 import { useHistoricalFx } from './useHistoricalFx.js';
 import { replayFx, cashflowPLN } from '../utils/fxHistory.js';
 import { splitAdjusted } from '../utils/splits.js';
@@ -464,6 +464,8 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       sector:      m.sector      ?? null,
       earningsTs:  m.earningsTs  ?? null,
       notFound,
+      // Ostatnie notowanie sprzed ponad 10 dni (zawieszenie, wycofanie, zmiana tickera).
+      staleSince: !isCrypto && isQuoteStale(m.marketTime) ? m.marketTime : null,
       costPLN,
       costPLNNow,
       valuePLN,

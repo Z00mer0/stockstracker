@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import {
   ListFilter, Download, Upload, Plus, ChevronDown, Ellipsis, ArrowUp, ArrowDown, ArrowUpDown,
   ArrowDownRight, Pencil, Coins, Eye, EyeOff, ChartColumn, Bell, StickyNote, Trash2,
-  TriangleAlert, Check, X, TrendingUp, Bitcoin, FileSpreadsheet, FileText,
+  TriangleAlert, Check, X, TrendingUp, Bitcoin, FileSpreadsheet, FileText, CalendarClock,
 } from 'lucide-react';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
@@ -202,6 +202,11 @@ export default function PositionsTable({
             <TriangleAlert size={13} aria-hidden />
           </button>
         ))}
+        {pos.staleSince && (
+          <CalendarClock size={12} className="shrink-0 text-warn" aria-label={t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))}>
+            <title>{t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))}</title>
+          </CalendarClock>
+        )}
       </>
     );
   }

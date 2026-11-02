@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase, Scale,
-  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart,
+  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StockDetailModal from '../components/StockDetailModal';
@@ -392,6 +392,7 @@ export default function Dashboard() {
   const gainUp = currentGainPLN >= 0;
 
   const notFound = allPositions.filter(p => p.notFound).map(p => p.symbol);
+  const staleQuotes = allPositions.filter(p => p.staleSince);
   // Odchylenie od docelowych udziałów (Analiza → Alokacja), gdy wszystkie
   // pozycje mają cenę — przy brakach udziały byłyby fałszywe.
   const priced = allPositions.filter(p => p.valuePLN > 0);
@@ -430,6 +431,18 @@ export default function Dashboard() {
           className="mb-4"
         >
           {t('ticker_not_found_hint')}
+        </Callout>
+      )}
+
+      {staleQuotes.length > 0 && (
+        <Callout
+          tone="warn"
+          icon={CalendarClock}
+          title={`${t('quote_stale_title')}: ${staleQuotes.map(p => `${p.symbol} (${new Date(p.staleSince * 1000).toLocaleDateString(locale)})`).join(', ')}`}
+          onClick={() => navigate('/portfolio')}
+          className="mb-4"
+        >
+          {t('quote_stale_hint')}
         </Callout>
       )}
 
