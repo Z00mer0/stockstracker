@@ -128,6 +128,10 @@ export function parseBrokerRows(rows, accountCurrency) {
   const above = rows.slice(0, headerIdx).flat().map(c => String(c ?? '').toLowerCase()).join(' ');
   const isCashOperations  = headers.includes('amount') && (headers.includes('comment') || above.includes('cash'));
   const isClosedPositions = !isCashOperations && (headers.includes('close price') || above.includes('closed'));
+  // Open Positions to stan, nie historia — importuje go „Import z pliku” w Portfelu.
+  if (!isCashOperations && !isClosedPositions && (headers.includes('current price') || above.includes('open position'))) {
+    return { type: 'open_positions', transactions: [], errors: [] };
+  }
 
   function col(row, name) {
     const idx = headers.indexOf(name.toLowerCase());
@@ -164,10 +168,13 @@ export function parseBrokerRows(rows, accountCurrency) {
       const currency = brokerCurrency(ticker);
 
       const normalizedTicker = normalizeSymbol(ticker.toUpperCase());
-      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: normalizedTicker, qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId, fromClosedPosition: true });
+      transactions.push({ id: genId(), type: type === 'SELL' ? 'SELL' : 'BUY', symbol: normalizedTicker, qty, price: openPrice, currency, date: openDate || closeDate || new Date().toISOString().slice(0, 10), note: 'Import brokera', brokerPositionId: positionId || undefined, fromClosedPosition: true });
 
       if (!isNaN(closePrice) && closeDate) {
-        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: normalizedTicker, qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, brokerPositionId: positionId + '_close', fromClosedPosition: true });
+        transactions.push({ id: genId(), type: type === 'SELL' ? 'BUY' : 'SELL', symbol: normalizedTicker, qty, price: closePrice, currency, date: closeDate, note: `Import brokera | P&L: ${pl >= 0 ? '+' : ''}${pl.toFixed(2)} ${currency}`, // Eksport XTB z xStation nie ma kolumny z numerem pozycji — wtedy bez
+        // identyfikatora (wcześniej każde zamknięcie dostawało „_close” i po
+        // pierwszym imporcie wszystkie następne były uznawane za duplikaty).
+        brokerPositionId: positionId ? positionId + '_close' : undefined, fromClosedPosition: true });
       }
 
     } else if (isCashOperations) {
@@ -221,8 +228,9 @@ export function parseBrokerRows(rows, accountCurrency) {
       // Extract qty and price from comment: "OPEN BUY 3 @ 102.20" or "OPEN SELL 5 @ 99.50"
       let qty = null;
       let price = Math.abs(amount);
-      // "CLOSE BUY 2/6 @ 30.220" — the /6 denominator is optional
-      const commentMatch = comment.match(/(?:BUY|SELL)\s+([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
+      // "CLOSE BUY 2/6 @ 30.220" — the /6 denominator is optional.
+      // Eksport xStation wstawia ticker: "OPEN BUY CRWV.US 0.5 @ 49.82".
+      const commentMatch = comment.match(/(?:BUY|SELL)\s+(?:[A-Z0-9][A-Z0-9.-]*[A-Z][A-Z0-9.-]*\s+)?([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
       if (commentMatch) {
         qty   = parseFloat(commentMatch[1]);
         price = parseFloat(commentMatch[2]);
