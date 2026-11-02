@@ -83,7 +83,8 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
   // pliku t('bi_type_unknown') wołało napis jak funkcję i okno padało.
   const typeLabel = type =>
     type === 'closed_positions' ? 'Closed Positions' :
-    type === 'cash_operations'  ? 'Cash Operations'  : t('bi_type_unknown');
+    type === 'cash_operations'  ? 'Cash Operations'  :
+    type === 'open_positions'   ? `Open Positions — ${t('bi_open_positions_note')}` : t('bi_type_unknown');
   const fmtQty = q => (q % 1 === 0 ? q : q.toFixed(4));
 
   return (

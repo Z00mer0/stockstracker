@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { excelSerialToISO, stripDimensions } from './spreadsheet.js';
+import { excelSerialToISO, repairXlsx } from './spreadsheet.js';
 
 describe('excelSerialToISO', () => {
   // Punkty odniesienia sprawdzone wobec tego, co pokazuje sam Excel.
@@ -32,19 +32,26 @@ describe('excelSerialToISO', () => {
 // test_import_e2e.mjs) — read-excel-file ma osobne wejścia dla Node i dla
 // przeglądarki, więc test nodowy nie mówiłby nic o realnej ścieżce.
 
-describe('stripDimensions — eksport XTB z <dimension ref="A1"/>', () => {
+describe('repairXlsx — eksport XTB (<dimension ref="A1"/>, puste inlineStr)', () => {
   it('usuwa zakres z arkuszy, reszta pliku bez zmian', async () => {
     const { zipSync, unzipSync, strToU8, strFromU8 } = await import('fflate');
     const sheet = '<worksheet><dimension ref="A1"/><sheetData><row r="1"><c r="A1"/></row></sheetData></worksheet>';
     const zip = zipSync({ 'xl/worksheets/sheet1.xml': strToU8(sheet), 'xl/workbook.xml': strToU8('<workbook><dimension ref="A1"/></workbook>') });
-    const out = unzipSync(await stripDimensions(zip));
+    const out = unzipSync(await repairXlsx(zip));
     expect(strFromU8(out['xl/worksheets/sheet1.xml'])).toBe('<worksheet><sheetData><row r="1"><c r="A1"/></row></sheetData></worksheet>');
     expect(strFromU8(out['xl/workbook.xml'])).toContain('<dimension ref="A1"/>');
+  });
+
+  it('pusta komórka inlineStr bez treści → zwykła pusta komórka', async () => {
+    const { zipSync, unzipSync, strToU8, strFromU8 } = await import('fflate');
+    const sheet = '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>X</t></is></c><c r="B1" t="inlineStr"/><c r="C1" s="2" t="inlineStr" /></row></sheetData></worksheet>';
+    const out = unzipSync(await repairXlsx(zipSync({ 'xl/worksheets/sheet1.xml': strToU8(sheet) })));
+    expect(strFromU8(out['xl/worksheets/sheet1.xml'])).toBe('<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>X</t></is></c><c r="B1"/><c r="C1" s="2"/></row></sheetData></worksheet>');
   });
 
   it('plik bez znacznika zwracany bez przepakowania', async () => {
     const { zipSync, strToU8 } = await import('fflate');
     const zip = zipSync({ 'xl/worksheets/sheet1.xml': strToU8('<worksheet><sheetData/></worksheet>') });
-    expect(await stripDimensions(zip)).toBe(zip);
+    expect(await repairXlsx(zip)).toBe(zip);
   });
 });

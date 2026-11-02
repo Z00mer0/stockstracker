@@ -39,15 +39,20 @@ function normalizeCell(v) {
 // to ignoruje, ale read-excel-file obcina arkusz do tego zakresu i z całego
 // pliku zostawała jedna komórka („Nie znaleziono arkuszy z danymi”). Bez
 // znacznika biblioteka sama wylicza zakres z komórek.
+// Drugi kłopot takich plików: pusta komórka tekstowa zapisana jako
+// <c t="inlineStr"/> (bez <is>) — biblioteka rzuca wtedy „Couldn't read
+// inline string”. Bez atrybutu typu to zwykła pusta komórka.
 // bytes: Uint8Array z plikiem .xlsx. Zwraca te same bajty albo poprawiony plik.
-export async function stripDimensions(bytes) {
+export async function repairXlsx(bytes) {
   const { unzipSync, zipSync } = await import('fflate');
   const files = unzipSync(bytes);
   let changed = false;
   for (const [name, data] of Object.entries(files)) {
     if (!/^xl\/worksheets\/[^/]+\.xml$/i.test(name)) continue;
     const xml = new TextDecoder().decode(data);
-    const fixed = xml.replace(/<(\w+:)?dimension\b[^>]*\/>/, '');
+    const fixed = xml
+      .replace(/<(\w+:)?dimension\b[^>]*\/>/, '')
+      .replace(/<((?:\w+:)?c)\b([^>]*?)\s+t="inlineStr"([^>]*?)\s*\/>/g, '<$1$2$3/>');
     if (fixed !== xml) { files[name] = new TextEncoder().encode(fixed); changed = true; }
   }
   return changed ? zipSync(files) : bytes;
@@ -60,7 +65,7 @@ export async function readSheets(file) {
   // pliku, a czysta konwersja dat daje się dzięki temu testować poza
   // przeglądarką (biblioteka ma osobne wejścia dla Node i przeglądarki).
   const { default: readXlsxFile } = await import('read-excel-file/browser');
-  const bytes = await stripDimensions(new Uint8Array(await file.arrayBuffer()));
+  const bytes = await repairXlsx(new Uint8Array(await file.arrayBuffer()));
   // getSheets oddaje od razu komplet: [{ sheet, data }] — nazwa arkusza siedzi
   // w polu `sheet`, a `data` zawiera już wiersze. Osobny odczyt każdego arkusza
   // jest zbędny i w tej wersji zwraca inny kształt niż można by zakładać.

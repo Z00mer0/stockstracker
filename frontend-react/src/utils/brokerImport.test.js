@@ -32,6 +32,40 @@ describe('normalizeSymbol — sufiksy XTB → Yahoo', () => {
   });
 });
 
+describe('Cash Operations — XLSX z xStation (ticker w komentarzu, „Stock sell”)', () => {
+  const rows = [
+    ['Account number', 2507260], ['Cash Operations'], ['Date from (UTC)', '2025-12-31 23:00:00'], ['Date to (UTC)', '2026-11-02 21:49:42'],
+    ['Type', 'Instrument', 'Ticker', 'Category', 'Time', 'Amount', 'ID', 'Comment', 'Product', 'Position ID'],
+    ['Stock purchase', 'CoreWeave', 'CRWV.US', 'STOCK', '2026-11-02 20:55:31', -24.91, 1503246111, 'OPEN BUY CRWV.US 0.5 @ 49.82', 'My Trades', 2911231541],
+    ['Stock sell', 'Power Solutions International', 'PSIX.US', 'STOCK', '2026-11-02 20:54:44', 46.36, 1503245819, 'CLOSE BUY PSIX.US 1 @ 46.36', 'My Trades', 2578973370],
+    ['Stock sell', 'Spotify', 'SPOT.US', 'STOCK', '2026-11-02 20:46:17', 59.19, 1503242942, 'CLOSE BUY SPOT.US 0.1/0.4788 @ 591.94', 'My Trades', 2852795068],
+    ['SEC fee', 'Grab', 'GRAB.US', 'STOCK', '2026-11-02 14:13:16', -0.01, 1502247974, 'Sec Fee adj GRAB.US 20261030', 'My Trades', 2616576938],
+  ];
+  const r = parseBrokerRows(rows, 'USD');
+
+  it('ilość i cena z komentarza z tickerem (wcześniej ilość = kwota, pozycje-śmieci)', () => {
+    expect(r.type).toBe('cash_operations');
+    expect(r.transactions.filter(t => t.type !== 'CASH').map(t => [t.type, t.symbol, t.qty, t.price, t.cashAmount, t.skipCashAdjust]))
+      .toEqual([
+        ['SELL', 'SPOT', 0.1, 591.94, 59.19, undefined],
+        ['SELL', 'PSIX', 1, 46.36, 46.36, undefined],
+        ['BUY', 'CRWV', 0.5, 49.82, -24.91, undefined],
+      ]);
+  });
+
+  it('SEC fee jako opłata, ID operacji jako identyfikator', () => {
+    expect(r.transactions.find(t => t.type === 'CASH')).toMatchObject({ kind: 'fee', price: -0.01, currency: 'USD' });
+    expect(r.transactions.find(t => t.symbol === 'CRWV').brokerPositionId).toBe('1503246111');
+  });
+
+  it('arkusz Open Positions rozpoznany i pominięty (stan, nie historia)', () => {
+    const op = parseBrokerRows([['Account number', 1], ['Open Positions'], ['Data as of report generated'], ['Product', 'Metric', 'Amount', 'Currency'], [],
+      ['Product', 'Instrument/Position', 'Ticker', 'Category', 'Type', 'Volume', 'Value', 'Current price', 'Open price'],
+      ['My Trades', '1', 'ORCL.US', '', 'BUY', 1, 119.3, 119.3, 118.99]]);
+    expect(op).toMatchObject({ type: 'open_positions', transactions: [] });
+  });
+});
+
 describe('Closed Positions — eksport xStation (bez Position ID, nagłówek w 5. wierszu)', () => {
   const rows = [
     ['Account number', 2507260], ['Closed Positions'], ['Date from (UTC)', '2025-12-31 23:00:00'], ['Date to (UTC)', '2026-11-02 21:49:42'],

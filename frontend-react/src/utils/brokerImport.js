@@ -128,6 +128,10 @@ export function parseBrokerRows(rows, accountCurrency) {
   const above = rows.slice(0, headerIdx).flat().map(c => String(c ?? '').toLowerCase()).join(' ');
   const isCashOperations  = headers.includes('amount') && (headers.includes('comment') || above.includes('cash'));
   const isClosedPositions = !isCashOperations && (headers.includes('close price') || above.includes('closed'));
+  // Open Positions to stan, nie historia — importuje go „Import z pliku” w Portfelu.
+  if (!isCashOperations && !isClosedPositions && (headers.includes('current price') || above.includes('open position'))) {
+    return { type: 'open_positions', transactions: [], errors: [] };
+  }
 
   function col(row, name) {
     const idx = headers.indexOf(name.toLowerCase());
@@ -224,8 +228,9 @@ export function parseBrokerRows(rows, accountCurrency) {
       // Extract qty and price from comment: "OPEN BUY 3 @ 102.20" or "OPEN SELL 5 @ 99.50"
       let qty = null;
       let price = Math.abs(amount);
-      // "CLOSE BUY 2/6 @ 30.220" — the /6 denominator is optional
-      const commentMatch = comment.match(/(?:BUY|SELL)\s+([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
+      // "CLOSE BUY 2/6 @ 30.220" — the /6 denominator is optional.
+      // Eksport xStation wstawia ticker: "OPEN BUY CRWV.US 0.5 @ 49.82".
+      const commentMatch = comment.match(/(?:BUY|SELL)\s+(?:[A-Z0-9][A-Z0-9.\-]*[A-Z][A-Z0-9.\-]*\s+)?([\d.]+)(?:\/[\d.]+)?\s*@\s*([\d.]+)/i);
       if (commentMatch) {
         qty   = parseFloat(commentMatch[1]);
         price = parseFloat(commentMatch[2]);

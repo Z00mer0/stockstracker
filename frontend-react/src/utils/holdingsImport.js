@@ -54,11 +54,11 @@ export async function parseXtbExcel(file) {
     // Only process "OPEN POSITION" sheets
     if (!sheetName.toUpperCase().includes('OPEN POSITION')) continue;
 
-    // Find header row: the row containing "Symbol" and "Volume"
+    // Wiersz nagłówka: „Symbol” (starszy eksport) albo „Ticker” (xStation) i „Volume”.
     let headerIdx = -1;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i].map(c => String(c ?? '').toLowerCase().trim());
-      if (row.includes('symbol') && row.includes('volume')) { headerIdx = i; break; }
+      if ((row.includes('symbol') || row.includes('ticker')) && row.includes('volume')) { headerIdx = i; break; }
     }
     if (headerIdx < 0) continue;
 
@@ -76,14 +76,17 @@ export async function parseXtbExcel(file) {
       const row = rows[i];
       if (!row || !row.some(c => c != null && c !== '')) continue;
 
-      const symbol    = col(row, 'symbol');
+      const symbol    = col(row, 'symbol') || col(row, 'ticker');
       const volume    = parseFloat(col(row, 'volume'));
       const openPrice = parseFloat(col(row, 'open price'));
-      const openTime  = parseDate(colRaw(row, 'open time'));
+      const openTime  = parseDate(colRaw(row, 'open time') ?? colRaw(row, 'open time (utc)'));
       const type      = col(row, 'type').toUpperCase();
 
       if (!symbol || isNaN(volume) || isNaN(openPrice) || volume <= 0) continue;
-      if (type && type !== 'BUY') continue; // skip shorts / non-stock rows
+      // Tylko zakupy. xStation daje na spółkę wiersz zbiorczy (bez typu: suma
+      // i średnia cena), a pod nim każdy zakup osobno — liczymy zakupy, inaczej
+      // pozycja wchodziła podwójnie.
+      if (headers.includes('type') ? type !== 'BUY' : false) continue;
 
       const currency = brokerCurrency(symbol);
       const normalizedSymbol = normalizeSymbol(symbol.toUpperCase());
