@@ -224,6 +224,15 @@ describe('Cash Operations — eksport xStation', () => {
     expect(r.skipped).toEqual([{ type: 'ações/etf compra', n: 1 }]);
   });
 
+  it('pełna sprzedaż w ułamkach (0.1 + 0.2 − 0.3) nie zostawia pozycji „0.0000”', () => {
+    const p = computePortfolioPreview([
+      { type: 'BUY', symbol: 'CRWD', qty: 0.1, price: 300, currency: 'USD', date: '2026-01-01' },
+      { type: 'BUY', symbol: 'CRWD', qty: 0.2, price: 300, currency: 'USD', date: '2026-01-02' },
+      { type: 'SELL', symbol: 'CRWD', qty: 0.3, price: 350, currency: 'USD', date: '2026-01-03' },
+    ], [], {});
+    expect(p.added).toEqual([]);
+  });
+
   it('chronologicznie z godziną: kupno i sprzedaż z jednego dnia nie zostawiają pozycji', () => {
     const p = computePortfolioPreview(r.transactions, [], {});
     expect(p.added.map(x => x.symbol)).not.toContain('ZAL.DE');
@@ -246,7 +255,8 @@ describe('cashKind', () => {
     expect(cashKind('Withholding tax')).toBe('wht');
     expect(cashKind('Transfer')).toBe('deposit');
     expect(cashKind('Profit/Loss (FX/CFD)')).toBe('cfd');
-    expect(cashKind('Close trade')).toBeNull();
+    expect(cashKind('Close trade')).toBe('cfd');
+    expect(cashKind('Coś nowego')).toBeNull();
   });
 });
 

@@ -90,6 +90,11 @@ export function brokerCurrency(sym) {
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
+// Ułamki akcji (0.1 + 0.2 − 0.3) zostawiają po pełnej sprzedaży okruch
+// rzędu 1e-16 — pozycja „0.0000 szt.” nie znikała. XTB podaje ilości do
+// 4 miejsc po przecinku, więc wszystko poniżej to zero.
+export const QTY_EPS = 1e-6;
+
 // Typ wiersza Cash Operations → rodzaj operacji. Nazwy z eksportu xStation:
 // starsze „Stock purchase / Stock sale", nowsze „Stocks/ETF purchase / sale",
 // „Dividend" (dawniej „DIVIDENT"), „Withholding tax", „Free funds interests"
@@ -104,7 +109,8 @@ export function cashKind(opType, amount = 0) {
   if (t.includes('sale') || t.includes('sell')) return 'SELL';
   if (t.includes('deposit') || t.includes('withdrawal') || t.includes('transfer')) return 'deposit';
   if (t.includes('fee') || t.includes('commission') || t.includes('swap') || t.includes('stamp') || t.includes('tax')) return 'fee';
-  if (t.includes('profit/loss')) return 'cfd';
+  // „Close trade” — rozliczenie zamknięcia pozycji CFD (zysk/strata na gotówce).
+  if (t.includes('profit/loss') || t.includes('close trade')) return 'cfd';
   return null;
 }
 
@@ -348,7 +354,7 @@ export function computePortfolioPreview(txs, holdings, cash) {
     } else if (tx.type === 'SELL') {
       if (idx >= 0) {
         const qty = h[idx].qty - tx.qty;
-        if (qty <= 0) h.splice(idx, 1); else h[idx] = { ...h[idx], qty };
+        if (qty <= QTY_EPS) h.splice(idx, 1); else h[idx] = { ...h[idx], qty };
       }
       if (affectsCash(tx)) {
         if (tx.cashAmount != null) c[tx.cashCurrency] = (c[tx.cashCurrency] ?? 0) + tx.cashAmount;
