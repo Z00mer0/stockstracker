@@ -111,6 +111,8 @@ export function cashKind(opType, amount = 0) {
   if (t.includes('fee') || t.includes('commission') || t.includes('swap') || t.includes('stamp') || t.includes('tax')) return 'fee';
   // „Close trade” — rozliczenie zamknięcia pozycji CFD (zysk/strata na gotówce).
   if (t.includes('profit/loss') || t.includes('close trade')) return 'cfd';
+  // „Correction” — korekta księgowa XTB (plus albo minus na gotówce).
+  if (t.includes('correction') || t.includes('adjustment')) return 'correction';
   return null;
 }
 

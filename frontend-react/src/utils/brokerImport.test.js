@@ -256,6 +256,7 @@ describe('cashKind', () => {
     expect(cashKind('Transfer')).toBe('deposit');
     expect(cashKind('Profit/Loss (FX/CFD)')).toBe('cfd');
     expect(cashKind('Close trade')).toBe('cfd');
+    expect(cashKind('Correction')).toBe('correction');
     expect(cashKind('Coś nowego')).toBeNull();
   });
 });
