@@ -15,6 +15,8 @@
 //    mieści się w puli gotówkowej po (symbol, typ, data, cena). Zostają
 //    tylko niepokryte (np. otwarcie pozycji sprzed okna eksportu).
 
+import { normalizeSymbol } from './brokerImport.js';
+
 export function txKey(tx) {
   const qty = tx.qty == null ? '' : Number(tx.qty).toFixed(4);
   return `${coarseKey(tx)}_${qty}`;
@@ -23,7 +25,9 @@ export function txKey(tx) {
 // Klucz bez ilości — do dopasowywania zagregowanych wierszy między arkuszami.
 function coarseKey(tx) {
   const price = Number(tx.price);
-  return `${tx.symbol}_${tx.date}_${tx.type}_${isNaN(price) ? '' : price.toFixed(4)}`;
+  // Symbol po zamianie XTB → Yahoo: wcześniejszy import zapisał CSPX.UK,
+  // nowy daje CSPX.L — to te same transakcje.
+  return `${normalizeSymbol(tx.symbol ?? '')}_${tx.date}_${tx.type}_${isNaN(price) ? '' : price.toFixed(4)}`;
 }
 
 // Scala wiele arkuszy TEGO SAMEGO rodzaju: dla każdego klucza bierze

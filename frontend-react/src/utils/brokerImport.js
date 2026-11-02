@@ -60,19 +60,32 @@ function timeOf(val) {
   return m ? `${m[1].padStart(2, '0')}:${m[2]}:${m[3] ?? '00'}` : '';
 }
 
+// XTB oznacza giełdę kodem kraju, Yahoo — własnym sufiksem. Bez zamiany
+// CSPX.UK czy MC.FR nie miały notowań i były wyceniane po cenie zakupu.
+// .DE (Xetra) jest wspólne.
+export const XTB_TO_YAHOO = {
+  PL: 'WA', UK: 'L', FR: 'PA', NL: 'AS', ES: 'MC', IT: 'MI', BE: 'BR', PT: 'LS',
+  DK: 'CO', SE: 'ST', NO: 'OL', FI: 'HE', CH: 'SW', AT: 'VI', CZ: 'PR',
+};
+
 export function normalizeSymbol(sym) {
-  return String(sym).replace(/\.PL$/i, '.WA').replace(/\.US$/i, '');
+  const s = String(sym);
+  if (/\.US$/i.test(s)) return s.slice(0, -3);
+  const m = s.match(/^(.+)\.([A-Z]{2})$/i);
+  const yahoo = m && XTB_TO_YAHOO[m[2].toUpperCase()];
+  return yahoo ? `${m[1]}.${yahoo}` : s;
 }
 
-// Waluta po sufiksie symbolu XTB. Wcześniej arkusz Closed Positions znał
-// tylko PLN i USD (VOW3.DE szło jako USD), a Cash Operations już rozróżniał
-// EUR i GBP — ta sama spółka lądowała w dwóch walutach zależnie od arkusza.
+// Waluta po sufiksie (po zamianie na Yahoo). Na giełdzie w Londynie część
+// instrumentów (np. ETF-y CSPX, VWRA) notowana jest w USD — tego sufiks nie
+// mówi; aplikacja porównuje potem z walutą notowania z Yahoo i podpowiada zmianę.
+const CURRENCY_BY_SUFFIX = {
+  WA: 'PLN', L: 'GBP', DE: 'EUR', PA: 'EUR', AS: 'EUR', MC: 'EUR', MI: 'EUR', BR: 'EUR',
+  LS: 'EUR', HE: 'EUR', VI: 'EUR', CO: 'DKK', ST: 'SEK', OL: 'NOK', SW: 'CHF', PR: 'CZK',
+};
 export function brokerCurrency(sym) {
-  const s = normalizeSymbol(String(sym).toUpperCase());
-  if (/\.(WA|PL)$/i.test(s)) return 'PLN';
-  if (/\.UK$/i.test(s)) return 'GBP';
-  if (/\.(DE|FR|NL|IT|ES|BE|AT|FI|SE|DK|NO)$/i.test(s)) return 'EUR';
-  return 'USD';
+  const m = normalizeSymbol(String(sym).toUpperCase()).match(/\.([A-Z]+)$/);
+  return (m && CURRENCY_BY_SUFFIX[m[1]]) || 'USD';
 }
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
@@ -311,7 +324,7 @@ export function computePortfolioPreview(txs, holdings, cash) {
     if (!tx.qty || tx.qty <= 0) continue;
 
     const base = baseSymbol(tx.symbol);
-    const idx = h.findIndex(x => x.symbol === tx.symbol || baseSymbol(x.symbol) === base);
+    const idx = h.findIndex(x => x.symbol === tx.symbol || normalizeSymbol(x.symbol) === normalizeSymbol(tx.symbol) || baseSymbol(x.symbol) === base);
     if (tx.type === 'BUY') {
       if (idx >= 0 && !tx.fromClosedPosition) {
         const old = h[idx];

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { brokerCurrency, parseBrokerRows, parseBrokerCsv, computePortfolioPreview, cashKind } from './brokerImport.js';
+import { brokerCurrency, normalizeSymbol, parseBrokerRows, parseBrokerCsv, computePortfolioPreview, cashKind } from './brokerImport.js';
+import { dedupeAgainstExisting } from './brokerDedupe.js';
 
 const strip = txs => txs.map(({ id: _id, ...rest }) => rest);
 
@@ -10,6 +11,24 @@ describe('brokerCurrency', () => {
     expect(brokerCurrency('AAPL.US')).toBe('USD');
     expect(brokerCurrency('VOW3.DE')).toBe('EUR');
     expect(brokerCurrency('BP.UK')).toBe('GBP');
+  });
+});
+
+describe('normalizeSymbol — sufiksy XTB → Yahoo', () => {
+  it('kody krajów XTB na sufiksy giełd Yahoo', () => {
+    expect(['CSPX.UK', 'MC.FR', 'ASML.NL', 'SAN.ES', 'ENI.IT', 'NOVOB.DK', 'NESN.CH', 'TXT.PL', 'AAPL.US', 'SPYL.DE', 'PKO.WA', 'CSPX.L'].map(normalizeSymbol))
+      .toEqual(['CSPX.L', 'MC.PA', 'ASML.AS', 'SAN.MC', 'ENI.MI', 'NOVOB.CO', 'NESN.SW', 'TXT.WA', 'AAPL', 'SPYL.DE', 'PKO.WA', 'CSPX.L']);
+  });
+
+  it('waluty giełd spoza strefy euro (wcześniej DKK/SEK/NOK jako EUR)', () => {
+    expect(['NOVOB.DK', 'VOLV-B.SE', 'EQNR.NO', 'NESN.CH', 'CEZ.CZ', 'MC.FR'].map(brokerCurrency))
+      .toEqual(['DKK', 'SEK', 'NOK', 'CHF', 'CZK', 'EUR']);
+  });
+
+  it('ponowny import po zmianie: CSPX.UK z poprzedniego importu = CSPX.L (bez duplikatu)', () => {
+    const old = [{ type: 'BUY', symbol: 'CSPX.UK', qty: 1, price: 550.3, date: '2024-05-14' }];
+    const fresh = [{ type: 'BUY', symbol: 'CSPX.L', qty: 1, price: 550.3, date: '2024-05-14' }];
+    expect(dedupeAgainstExisting(fresh, old)).toEqual([]);
   });
 });
 
@@ -122,7 +141,7 @@ describe('Cash Operations — eksport xStation', () => {
 
   it('„Stocks/ETF purchase/sale" to kupno i sprzedaż (wcześniej pomijane)', () => {
     expect(r.transactions.filter(t => t.type === 'BUY').map(t => [t.symbol, t.qty, t.price, t.currency]))
-      .toEqual([['GOOGL', 1, 122.34, 'USD'], ['ZAL.DE', 1, 26.4, 'EUR'], ['SPYL.DE', 34, 11.748, 'EUR'], ['FLOA.UK', 16, 5.914, 'GBP']]);
+      .toEqual([['GOOGL', 1, 122.34, 'USD'], ['ZAL.DE', 1, 26.4, 'EUR'], ['SPYL.DE', 34, 11.748, 'EUR'], ['FLOA.L', 16, 5.914, 'GBP']]);
     expect(r.transactions.filter(t => t.type === 'SELL').map(t => [t.symbol, t.qty, t.price])).toEqual([['ZAL.DE', 1, 26.28]]);
   });
 
@@ -144,7 +163,7 @@ describe('Cash Operations — eksport xStation', () => {
   });
 
   it('powtórzony wiersz (to samo ID) liczony raz, nieznany typ zgłoszony', () => {
-    expect(r.transactions.filter(t => t.symbol === 'FLOA.UK')).toHaveLength(1);
+    expect(r.transactions.filter(t => t.symbol === 'FLOA.L')).toHaveLength(1);
     expect(r.skipped).toEqual([{ type: 'ações/etf compra', n: 1 }]);
   });
 

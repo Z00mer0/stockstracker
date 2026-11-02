@@ -39,6 +39,8 @@ async function fetchOne(sym) {
         // Do podsumowania sesji (obrót = cena × wolumen, nazwa spółki).
         regularMarketVolume: meta.regularMarketVolume ?? null,
         shortName: meta.shortName ?? meta.longName ?? null,
+        // Waluta notowania (Londyn: GBp = pensy) — klient sprawdza z walutą pozycji.
+        currency: meta.currency ?? null,
       },
     };
   } catch (e1) {

@@ -2268,6 +2268,17 @@ def _send_push(username, title, body, url='/'):
 QUOTES_BASE = os.environ.get('QUOTES_URL', 'https://myfund-app.vercel.app').rstrip('/')
 
 
+def _pence_to_pounds(q):
+    """Yahoo notuje spółki z Londynu w pensach (waluta GBp / GBX) — ceny
+    w funtach, żeby zgadzały się z walutą pozycji (GBP)."""
+    if q and str(q.get('currency') or '') in ('GBp', 'GBX'):
+        for k in ('price', 'high52', 'low52'):
+            if q.get(k) is not None:
+                q[k] = float(q[k]) / 100
+        q['currency'] = 'GBP'
+    return q
+
+
 def _quote_from_entry(entry):
     """Wpis z /api/quotes?format=map → ten sam kształt, co zwraca _fetch_quote."""
     if not isinstance(entry, dict) or entry.get('notFound'):
@@ -2276,7 +2287,7 @@ def _quote_from_entry(entry):
         return {'price': float(entry['price']), 'changePct': None, 'high52': None, 'low52': None}
     q = entry.get('quote') or {}
     if (q.get('regularMarketPrice') or 0) > 0:
-        return {
+        return _pence_to_pounds({
             'price': float(q['regularMarketPrice']),
             'changePct': q.get('regularMarketChangePercent'),
             'high52': q.get('fiftyTwoWeekHigh'),
@@ -2285,7 +2296,8 @@ def _quote_from_entry(entry):
             'tz': q.get('exchangeTimezoneName'),
             'volume': q.get('regularMarketVolume'),
             'name': q.get('shortName'),
-        }
+            'currency': q.get('currency'),
+        })
     return None
 
 
@@ -2363,14 +2375,15 @@ def _fetch_quote(symbol):
             if res:
                 q = res[0]
                 if (q.get('regularMarketPrice') or 0) > 0:
-                    return {
+                    return _pence_to_pounds({
                         'price': float(q['regularMarketPrice']),
                         'changePct': q.get('regularMarketChangePercent'),
                         'high52': q.get('fiftyTwoWeekHigh'),
                         'low52': q.get('fiftyTwoWeekLow'),
                         'marketTime': q.get('regularMarketTime'),
                         'tz': q.get('exchangeTimezoneName'),
-                    }
+                        'currency': q.get('currency'),
+                    })
     except Exception as e:
         log.warning(f'[push] price quotes {symbol}: {e}')
     # zapas dla US — finnhub (c=cena, dp=zmiana dzienna %)
