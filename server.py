@@ -87,7 +87,9 @@ def _rate_limited(ip: str) -> bool:
 
 # ── INPUT VALIDATION ──────────────────────────────────────────────────────────
 _MAX_BODY_AUTH   =   4 * 1024   #   4 KB  — login / register / change-password
-_MAX_BODY_DATA   = 512 * 1024   # 512 KB  — portfolio JSON
+# Pełna historia rachunku z XTB to tysiące transakcji (5,5 tys. ≈ 1,5 MB) —
+# przy 512 KB zapis po imporcie kończył się „too large”.
+_MAX_BODY_DATA   =   8 * 1024 * 1024   #   8 MB  — portfolio JSON
 _MAX_SYMBOLS     = 30
 _USERNAME_RE     = re.compile(r'^[a-z0-9_\-]{1,64}$')
 
@@ -1595,6 +1597,19 @@ if DATABASE_URL:
                 'otherAssets': other_assets, 'importSnapshots': import_snapshots,
                 'bonds': bonds}
 
+    def _transaction_rows(portfolio_id, transactions):
+        """Wiersze do INSERT; przy powtórzonym id wygrywa ostatni wpis — jak przy
+        zapisie wiersz po wierszu (ON CONFLICT nie przyjmie dwóch takich samych
+        id w jednym poleceniu)."""
+        rows = {}
+        for tx in transactions:
+            extra = {k: v for k, v in tx.items()
+                     if k not in ('id', 'type', 'symbol', 'qty', 'price', 'currency', 'date', 'note', 'brokerPositionId')}
+            rows[tx['id']] = (tx['id'], portfolio_id, tx.get('type'), tx.get('symbol'), tx.get('qty'),
+                              tx.get('price'), tx.get('currency'), tx.get('date'), tx.get('note'),
+                              tx.get('brokerPositionId'), json.dumps(extra))
+        return list(rows.values())
+
     def save_portfolio_data(portfolio_id, data):
         holdings = data.get('portfolio', {}).get('holdings', [])
         transactions = data.get('transactions', [])
@@ -1614,19 +1629,17 @@ if DATABASE_URL:
                                SET qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price, currency=EXCLUDED.currency, asset_type=EXCLUDED.asset_type""",
                             (hid, portfolio_id, h['symbol'], h.get('qty', 0), h.get('avgPrice', 0), h.get('currency', 'PLN'), h.get('assetType', '')))
             cur.execute("DELETE FROM portfolio_transactions WHERE portfolio_id=%s", (portfolio_id,))
-            for tx in transactions:
-                extra = {k: v for k, v in tx.items()
-                         if k not in ('id','type','symbol','qty','price','currency','date','note','brokerPositionId')}
-                cur.execute("""INSERT INTO portfolio_transactions
+            # Paczkami (execute_values): przy pełnej historii z XTB to tysiące
+            # wierszy — jedno INSERT na transakcję do zdalnej bazy trwało minuty.
+            if transactions:
+                psycopg2.extras.execute_values(cur, """INSERT INTO portfolio_transactions
                                (id, portfolio_id, type, symbol, qty, price, currency, date, note, broker_position_id, extra_json)
-                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                               VALUES %s
                                ON CONFLICT (id) DO UPDATE SET
                                type=EXCLUDED.type, symbol=EXCLUDED.symbol, qty=EXCLUDED.qty, price=EXCLUDED.price,
                                currency=EXCLUDED.currency, date=EXCLUDED.date, note=EXCLUDED.note,
                                broker_position_id=EXCLUDED.broker_position_id, extra_json=EXCLUDED.extra_json""",
-                            (tx['id'], portfolio_id, tx.get('type'), tx.get('symbol'), tx.get('qty'),
-                             tx.get('price'), tx.get('currency'), tx.get('date'), tx.get('note'),
-                             tx.get('brokerPositionId'), json.dumps(extra)))
+                    _transaction_rows(portfolio_id, transactions), page_size=1000)
             cur.execute("DELETE FROM portfolio_snapshots WHERE portfolio_id=%s", (portfolio_id,))
             for date, total in snapshots.items():
                 inv = snapshots_inv.get(date)
@@ -5864,7 +5877,7 @@ async function doRecover() {
             try:
                 length = int(self.headers.get('Content-Length', 0))
                 if length > _MAX_BODY_DATA:
-                    self.send_json(413, {'ok': False, 'error': 'Dane zbyt duże (max 512 KB)'}); return
+                    self.send_json(413, {'ok': False, 'error': 'Dane zbyt duże (max 8 MB)'}); return
                 raw    = self.rfile.read(max(0, length))
                 parsed = json.loads(raw)
                 if not isinstance(parsed, dict):
