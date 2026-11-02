@@ -4044,7 +4044,11 @@ class Handler(SimpleHTTPRequestHandler):
                                 _logo_cache[sym] = netloc
                                 return sym, netloc
                     except Exception as e:
+                        # Błąd sieci albo limit Yahoo — bez zapisu w cache, żeby
+                        # następne zapytanie spróbowało jeszcze raz, zamiast
+                        # zostawiać spółkę bez logo do restartu serwera.
                         log.warning(f'[logos] {sym}: {e}')
+                        return sym, None
                     _logo_cache[sym] = None
                     return sym, None
                 try:
