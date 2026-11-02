@@ -32,6 +32,7 @@ import PortfolioOverview from './portfolio/PortfolioOverview.jsx';
 import PositionsTable from './portfolio/PositionsTable.jsx';
 import OtherAssetsSection from './portfolio/OtherAssetsSection.jsx';
 import BondsSection from './portfolio/BondsSection.jsx';
+import BrokerCheckCard from './portfolio/BrokerCheckCard.jsx';
 import AddCryptoModal from './portfolio/AddCryptoModal.jsx';
 import { toggleWatchlist } from './portfolio/watchlistLocal.js';
 import { exportPositions, exportTransactions, exportSnapshots } from '../utils/exporters.js';
@@ -43,7 +44,7 @@ export default function Portfolio() {
   const {
     portfolio, transactions, snapshots, loading, error, fxRates, fxStale,
     saveHoldings, saveTransactions, addTransaction, renameSymbol, addPosition, editPosition, applySplit, removePosition, sellPosition,
-    refresh, displayCurrency, activePortfolioId, watchlistMigrationPending,
+    refresh, displayCurrency, activePortfolioId, watchlistMigrationPending, cash,
   } = useApp();
   const t = useT();
   const { locale } = useLanguage();
@@ -434,6 +435,20 @@ export default function Portfolio() {
 
       <OtherAssetsSection />
       <BondsSection />
+
+      {activePortfolioId !== 'all' && (
+        <BrokerCheckCard
+          key={activePortfolioId}
+          portfolioId={activePortfolioId}
+          positions={enriched}
+          positionsValuePLN={totalValuePLN}
+          cashPLN={Object.entries(cash ?? {}).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0)}
+          portFx={portFx}
+          portCurrLabel={portCurrLabel}
+          partialPrices={partialPrices}
+          fxStale={fxStale}
+        />
+      )}
 
       <PositionsTable
         positions={enriched}
