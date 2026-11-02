@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=300');
 
   try {
-    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP', {
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=PLN,EUR,GBP,CHF,DKK,SEK,NOK,CZK', {
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(8000),
     });

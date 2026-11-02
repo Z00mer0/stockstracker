@@ -4,6 +4,8 @@ import {
   ArrowDownRight, Pencil, Coins, Eye, EyeOff, ChartColumn, Bell, StickyNote, Trash2,
   TriangleAlert, Check, X, TrendingUp, Bitcoin, FileSpreadsheet, FileText, CalendarClock,
 } from 'lucide-react';
+import { normalizeSymbol } from '../../utils/brokerImport.js';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
@@ -59,7 +61,7 @@ function NoteEditor({ symbol, initial, onSave, onCancel }) {
 export default function PositionsTable({
   positions, positionsValuePLN, notes, onSaveNote, alertsPerSymbol, metricsLoading,
   fxRates, divBySymbol, displayCurrency, portToDisp, portCurrLabel,
-  onOpen, onRenameTicker, onAction, onExport, onImport, onAdd, alertDisabled,
+  onOpen, onRenameTicker, onFixCurrency, onAction, onExport, onImport, onAdd, alertDisabled,
 }) {
   const t = useT();
   const { locale } = useLanguage();
@@ -76,6 +78,7 @@ export default function PositionsTable({
   const [cols, setCols] = useState(loadColumnConfig);
   const [noteEditing, setNoteEditing] = useState(null);
   const [editTicker, setEditTicker] = useState(null); // { oldSymbol, value }
+  const [ccyFix, setCcyFix] = useState(null);         // { symbol, currency }
 
   function handleColChange(newCols) {
     setCols(newCols);
@@ -196,12 +199,24 @@ export default function PositionsTable({
             type="button"
             title={t('quote_not_found')}
             aria-label={t('quote_not_found')}
-            onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: pos.symbol }); }}
+            onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: normalizeSymbol(pos.symbol) }); }}
             className="shrink-0 text-down hover:brightness-125"
           >
             <TriangleAlert size={13} aria-hidden />
           </button>
         ))}
+        {pos.ccyMismatch && (
+          <button
+            type="button"
+            title={t('ccy_mismatch').replace('{q}', pos.ccyMismatch).replace('{p}', pos.currency)}
+            aria-label={t('ccy_mismatch').replace('{q}', pos.ccyMismatch).replace('{p}', pos.currency)}
+            disabled={!onFixCurrency}
+            onClick={e => { e.stopPropagation(); setCcyFix({ symbol: pos.symbol, currency: pos.ccyMismatch }); }}
+            className="shrink-0 rounded px-1 text-[10px] font-bold text-warn ring-1 ring-current hover:brightness-125"
+          >
+            {pos.ccyMismatch}
+          </button>
+        )}
         {pos.staleSince && (
           <CalendarClock size={12} className="shrink-0 text-warn" aria-label={t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))}>
             <title>{t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))}</title>
@@ -510,6 +525,16 @@ export default function PositionsTable({
           )}
         </table>
       </div>
+      {ccyFix && (
+        <ConfirmModal
+          danger={false}
+          message={t('ccy_mismatch_fix').replace('{sym}', ccyFix.symbol).replace('{q}', ccyFix.currency)}
+          detail={t('ccy_mismatch_detail')}
+          confirmLabel={t('ccy_mismatch_btn')}
+          onConfirm={() => { const f = ccyFix; setCcyFix(null); onFixCurrency(f.symbol, f.currency); }}
+          onCancel={() => setCcyFix(null)}
+        />
+      )}
     </Card>
   );
 }

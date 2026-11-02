@@ -1,4 +1,5 @@
-"""Nowe powiadomienia: wyniki kwartalne jutro i koncentracja portfela."""
+"""Nowe powiadomienia: wyniki kwartalne jutro i koncentracja portfela;
+notowania z Londynu w pensach."""
 import sys
 from pathlib import Path
 
@@ -22,6 +23,14 @@ def test_koncentracja():
     # jedna pozycja w portfelu to zawsze 100% — bez alarmu
     assert server._concentrated({'NVDA': 5000.0}, 0.0, 25) == []
     assert server._concentrated({}, 0.0, 25) == []
+
+
+def test_pensy_z_londynu_w_funtach():
+    q = server._quote_from_entry({'quote': {'regularMarketPrice': 450.0, 'fiftyTwoWeekHigh': 500.0,
+                                            'fiftyTwoWeekLow': 400.0, 'currency': 'GBp'}})
+    assert (q['price'], q['high52'], q['low52'], q['currency']) == (4.5, 5.0, 4.0, 'GBP')
+    usd = server._quote_from_entry({'quote': {'regularMarketPrice': 550.3, 'currency': 'USD'}})
+    assert (usd['price'], usd['currency']) == (550.3, 'USD')
 
 
 if __name__ == '__main__':

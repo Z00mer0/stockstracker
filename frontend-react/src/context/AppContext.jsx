@@ -4,6 +4,7 @@ import { resetJournalCache } from '../services/journalService';
 import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 import { weightedAvg } from '../utils/weightedAvg.js';
 import { applyTransaction, revertTransaction, baseSymbol } from '../utils/ledger.js';
+import { normalizeSymbol } from '../utils/brokerImport.js';
 import { lsSet } from '../utils/safeStorage.js';
 
 export const AppContext = createContext(null);
@@ -39,7 +40,11 @@ async function loadFxRates() {
     const data = await res.json();
     const r = data.rates;
     if (!r?.PLN) throw new Error('no PLN in response');
-    const rates = { PLN: 1, USD: r.PLN, EUR: r.PLN / r.EUR, GBP: r.PLN / r.GBP };
+    // Kurs waluty w złotych: PLN za 1 USD podzielone przez kurs waluty do USD.
+    // Poza EUR i GBP także waluty giełd z XTB (CHF, DKK, SEK, NOK, CZK) —
+    // bez nich akcje duńskie czy szwajcarskie liczyły się 1:1 do złotego.
+    const rates = { PLN: 1, USD: r.PLN };
+    for (const c of ['EUR', 'GBP', 'CHF', 'DKK', 'SEK', 'NOK', 'CZK']) if (r[c] > 0) rates[c] = r.PLN / r[c];
     lsSet(FX_CACHE_KEY, JSON.stringify({ ts: Date.now(), rates }));
     lsSet(FX_PERSIST_KEY, JSON.stringify({ rates }));
     return { rates, stale: null };
@@ -424,6 +429,21 @@ export function AppProvider({ children }) {
     });
   }
 
+  // Waluta pozycji i jej kupna/sprzedaży — gdy notowanie jest w innej walucie,
+  // niż zapisano (ETF z Londynu w USD zapisany jako GBP). Ceny zostają: biuro
+  // podaje je w walucie notowania. Dywidendy i gotówka są w walucie rachunku.
+  async function setSymbolCurrency(symbol, currency) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const holdings = (rd?.portfolio?.holdings ?? []).map(h => (h.symbol === symbol ? { ...h, currency } : h));
+    const transactions = (rd?.transactions ?? []).map(t => {
+      const type = String(t.type ?? '').toUpperCase();
+      return t.symbol === symbol && (type === 'BUY' || type === 'SELL') ? { ...t, currency } : t;
+    });
+    await postUpdate({ ...rd, portfolio: { ...rd.portfolio, holdings }, transactions });
+  }
+
   async function renameSymbol(oldSymbol, newSymbol) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zmienić symbol');
     assertLoaded();
@@ -559,7 +579,7 @@ export function AppProvider({ children }) {
 
     // XTB.PL i XTB.WA to ta sama pozycja (baseSymbol).
     function findHolding(arr, symbol) {
-      return arr.findIndex(h => h.symbol === symbol || baseSymbol(h.symbol) === baseSymbol(symbol));
+      return arr.findIndex(h => h.symbol === symbol || normalizeSymbol(h.symbol) === normalizeSymbol(symbol) || baseSymbol(h.symbol) === baseSymbol(symbol));
     }
 
     // For snapshot imports: auto-replace any existing snapshot for the same date.
@@ -893,6 +913,7 @@ export function AppProvider({ children }) {
     removePosition,
     sellPosition,
     renameSymbol,
+    setSymbolCurrency,
     importBrokerTransactions,
     clearBrokerImport,
     portfolios,

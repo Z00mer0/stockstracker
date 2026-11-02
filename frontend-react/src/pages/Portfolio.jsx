@@ -43,7 +43,7 @@ const CsvImportModal = lazy(() => import('../components/CsvImportModal'));
 export default function Portfolio() {
   const {
     portfolio, transactions, snapshots, loading, error, fxRates, fxStale,
-    saveHoldings, saveTransactions, addTransaction, renameSymbol, addPosition, editPosition, applySplit, removePosition, sellPosition,
+    saveHoldings, saveTransactions, addTransaction, renameSymbol, setSymbolCurrency, addPosition, editPosition, applySplit, removePosition, sellPosition,
     refresh, displayCurrency, activePortfolioId, watchlistMigrationPending, cash,
   } = useApp();
   const t = useT();
@@ -464,6 +464,7 @@ export default function Portfolio() {
         portCurrLabel={portCurrLabel}
         onOpen={setSelectedItem}
         onRenameTicker={handleTickerRename}
+        onFixCurrency={activePortfolioId !== 'all' ? (sym, ccy) => setSymbolCurrency(sym, ccy) : undefined}
         onAction={handleAction}
         onExport={handleExport}
         onImport={() => setShowImport(true)}

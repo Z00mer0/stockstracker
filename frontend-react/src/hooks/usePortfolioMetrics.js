@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { authHeader } from '../utils/auth.js';
 import { lsSet } from '../utils/safeStorage.js';
 import { isTodaysSession, isQuoteStale } from '../utils/marketCalendar.js';
+import { fromQuote, currencyMismatch } from '../utils/quoteCurrency.js';
 import { useHistoricalFx } from './useHistoricalFx.js';
 import { replayFx, cashflowPLN } from '../utils/fxHistory.js';
 import { splitAdjusted } from '../utils/splits.js';
@@ -108,10 +109,12 @@ async function fetchYahooBatch(symbols) {
         if (e.notFound)  { out[sym] = { notFound: true }; continue; }
         if (e.stooq)     { out[sym] = { price: e.price, dailyChg: null, pe: null, peFwd: null, pb: null }; continue; }
         const q = e.quote;
+        const fq = fromQuote(q?.regularMarketPrice ?? null, q?.currency);
         out[sym] = q?.regularMarketPrice
-          ? { price: q.regularMarketPrice, dailyChg: q.regularMarketChangePercent ?? null,
+          ? { price: fq.price, dailyChg: q.regularMarketChangePercent ?? null,
               pe: null, peFwd: null, pb: null, sector: null, earningsTs: null,
-              marketTime: q.regularMarketTime ?? null, tz: q.exchangeTimezoneName ?? null }
+              marketTime: q.regularMarketTime ?? null, tz: q.exchangeTimezoneName ?? null,
+              quoteCcy: fq.currency }
           : null;
       }
     } catch {
@@ -281,6 +284,7 @@ async function fetchAllMetrics(symbols) {
       earningsTs: yq?.earningsTs ?? null,
       marketTime: yq?.marketTime ?? null,
       tz:         yq?.tz         ?? null,
+      quoteCcy:   yq?.quoteCcy   ?? null,
     };
   }
 
@@ -466,6 +470,8 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       notFound,
       // Ostatnie notowanie sprzed ponad 10 dni (zawieszenie, wycofanie, zmiana tickera).
       staleSince: !isCrypto && isQuoteStale(m.marketTime) ? m.marketTime : null,
+      // Yahoo notuje w innej walucie niż zapisana pozycja (np. ETF z Londynu w USD).
+      ccyMismatch: currencyMismatch(m.quoteCcy, pos.currency),
       costPLN,
       costPLNNow,
       valuePLN,
