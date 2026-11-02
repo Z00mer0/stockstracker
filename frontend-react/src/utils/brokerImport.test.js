@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { brokerCurrency, normalizeSymbol, parseBrokerRows, parseBrokerCsv, computePortfolioPreview, cashKind } from './brokerImport.js';
+import { brokerCurrency, normalizeSymbol, suggestYahooSymbol, parseBrokerRows, parseBrokerCsv, computePortfolioPreview, cashKind } from './brokerImport.js';
 import { dedupeAgainstExisting } from './brokerDedupe.js';
 
 const strip = txs => txs.map(({ id: _id, ...rest }) => rest);
@@ -18,6 +18,19 @@ describe('normalizeSymbol — sufiksy XTB → Yahoo', () => {
   it('kody krajów XTB na sufiksy giełd Yahoo', () => {
     expect(['CSPX.UK', 'MC.FR', 'ASML.NL', 'SAN.ES', 'ENI.IT', 'NOVOB.DK', 'NESN.CH', 'TXT.PL', 'AAPL.US', 'SPYL.DE', 'PKO.WA', 'CSPX.L'].map(normalizeSymbol))
       .toEqual(['CSPX.L', 'MC.PA', 'ASML.AS', 'SAN.MC', 'ENI.MI', 'NOVOB.CO', 'NESN.SW', 'TXT.WA', 'AAPL', 'SPYL.DE', 'PKO.WA', 'CSPX.L']);
+  });
+
+  it('Samsung (GDR, Londyn IOB): SMSN.UK i SMSN.L → SMSN.IL w USD', () => {
+    expect(normalizeSymbol('SMSN.UK')).toBe('SMSN.IL');
+    expect(normalizeSymbol('SMSN.L')).toBe('SMSN.IL');
+    expect(brokerCurrency('SMSN.UK')).toBe('USD');
+  });
+
+  it('podpowiedź tickera dla pozycji bez notowań', () => {
+    expect(suggestYahooSymbol('CSPX.UK')).toBe('CSPX.L');
+    expect(suggestYahooSymbol('SMSN.L')).toBe('SMSN.IL');
+    expect(suggestYahooSymbol('LKOD.L')).toBe('LKOD.IL');
+    expect(suggestYahooSymbol('AAPL')).toBe('AAPL');
   });
 
   it('waluty giełd spoza strefy euro (wcześniej DKK/SEK/NOK jako EUR)', () => {
