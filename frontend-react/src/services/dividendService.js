@@ -56,7 +56,7 @@ export function dividendTaxRate(tx, accountType) {
   const gross = (tx.price || 0) * (tx.qty || 1);
   if (tx.tax == null || tx.tax === '' || !(gross > 0)) return getTaxRate(tx.symbol, tx.currency, accountType);
   const withheld = Math.min(1, Math.max(0, Number(tx.tax) / gross));
-  const foreign = !(tx.symbol?.includes('.WA') || tx.currency === 'PLN');
+  const foreign = tx.symbol ? !tx.symbol.includes('.WA') : tx.currency !== 'PLN';
   const taxFree = accountType === 'IKE' || accountType === 'IKZE';
   return foreign && !taxFree ? Math.max(withheld, 0.19) : withheld;
 }

@@ -1555,6 +1555,7 @@ export default {
   ci_preview_n:                 'Preview: {n} positions',
   ci_validating:                'checking symbols…',
   ci_unknown_n:                 '{n} unknown',
+  bi_skipped_types:             'Skipped (unknown operation type):',
   bi_errors_n:                  '{n} rows with errors (skipped)',
   bi_target:                    'Target portfolio',
   bi_pick_placeholder:          '— choose a portfolio —',

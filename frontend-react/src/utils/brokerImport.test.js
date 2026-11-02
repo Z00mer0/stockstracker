@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { brokerCurrency, parseBrokerRows, parseBrokerCsv, computePortfolioPreview } from './brokerImport.js';
+import { brokerCurrency, parseBrokerRows, parseBrokerCsv, computePortfolioPreview, cashKind } from './brokerImport.js';
 
 const strip = txs => txs.map(({ id: _id, ...rest }) => rest);
 
@@ -89,6 +89,88 @@ describe('Cash Operations (CSV)', () => {
     const div = r.transactions[3];
     expect(div.symbol).toBe('PKN.WA');
     expect(div.currency).toBe('PLN');
+  });
+});
+
+// Wiersze w formacie eksportu xStation (CSV z „CASH OPERATION HISTORY",
+// nagłówek w pierwszym wierszu) — rachunek w EUR.
+describe('Cash Operations — eksport xStation', () => {
+  const csv = [
+    'ID;Type;Time;Symbol;Comment;Amount',
+    '530692719;Stocks/ETF purchase;12.04.2024 13:01:45;SPYL.DE;OPEN BUY 34/42.5658 @ 11.7480;-399.43',
+    '530691593;Deposit;12.04.2024 13:00:22;;JP_MORGAN deposit, JP_MORGAN provider transaction id=TXN-1, id=11083197;500',
+    '419846716;Stocks/ETF purchase;25.07.2023 20:56:07;GOOGL.US;OPEN BUY 1 @ 122.34;-111.25',
+    '524303821;Stocks/ETF sale;02.04.2024 11:42:37;ZAL.DE;CLOSE BUY 1 @ 26.280;26.28',
+    '524222272;Stocks/ETF purchase;02.04.2024 10:21:47;ZAL.DE;OPEN BUY 1 @ 26.400;-26.4',
+    '579262975;Dividend;12.07.2024 13:01:17;XRAY.US;XRAY.US USD 0.1600/ SHR;12.8',
+    '579262976;Withholding tax;12.07.2024 13:01:17;XRAY.US;XRAY.US USD WHT 30%;-3.84',
+    '579262886;Dividend;12.07.2024 13:01:17;XRAY.US;XRAY.US USD 0.1600/ SHR;4.8',
+    '579262887;Withholding tax;12.07.2024 13:01:17;XRAY.US;XRAY.US USD WHT 30%;-1.44',
+    '543857396;Free funds interests tax;07.05.2024 09:36:50;;Free-funds Interest Tax 2024-04;-2',
+    '543604525;Free funds interests;07.05.2024 03:16:39;;Free-funds Interest 2024-04;15.17',
+    '210658050;SEC fee;11.01.2024 16:16:01;AAPL.US;SEC fee;-0.01',
+    '547615089;Stocks/ETF purchase;14.05.2024 17:21:10;FLOA.UK;OPEN BUY 16/16.7399 @ 5.9140;-94.62',
+    '547615089;Stocks/ETF purchase;14.05.2024 17:21:10;FLOA.UK;OPEN BUY 16/16.7399 @ 5.9140;-94.62',
+    '419846717;Ações/ETF compra;25.07.2023 20:56:07;GOOGL.US;OPEN BUY 1 @ 122.34;-111.25',
+  ].join('\n');
+  const r = parseBrokerCsv(csv, 'EUR');
+  const byNote = n => r.transactions.filter(t => t.note.startsWith(n));
+
+  it('nagłówek w pierwszym wierszu — arkusz rozpoznany (wcześniej „za mało wierszy")', () => {
+    expect(r.type).toBe('cash_operations');
+  });
+
+  it('„Stocks/ETF purchase/sale" to kupno i sprzedaż (wcześniej pomijane)', () => {
+    expect(r.transactions.filter(t => t.type === 'BUY').map(t => [t.symbol, t.qty, t.price, t.currency]))
+      .toEqual([['GOOGL', 1, 122.34, 'USD'], ['ZAL.DE', 1, 26.4, 'EUR'], ['SPYL.DE', 34, 11.748, 'EUR'], ['FLOA.UK', 16, 5.914, 'GBP']]);
+    expect(r.transactions.filter(t => t.type === 'SELL').map(t => [t.symbol, t.qty, t.price])).toEqual([['ZAL.DE', 1, 26.28]]);
+  });
+
+  it('gotówka z kolumny Amount w walucie rachunku, cena w walucie instrumentu', () => {
+    const googl = r.transactions.find(t => t.symbol === 'GOOGL');
+    expect(googl).toMatchObject({ price: 122.34, currency: 'USD', cashAmount: -111.25, cashCurrency: 'EUR' });
+  });
+
+  it('podatek u źródła dopięty do swojej dywidendy, dywidenda w walucie rachunku', () => {
+    expect(r.transactions.filter(t => t.type === 'DIV').map(t => [t.symbol, t.price, t.tax, t.currency]))
+      .toEqual([['XRAY', 12.8, 3.84, 'EUR'], ['XRAY', 4.8, 1.44, 'EUR']]);
+  });
+
+  it('odsetki, podatek od odsetek i opłaty — gotówka z rodzajem, nie wpłata', () => {
+    expect(byNote('Free-funds Interest 2024').map(t => [t.type, t.kind, t.price])).toEqual([['CASH', 'interest', 15.17]]);
+    expect(byNote('Free-funds Interest Tax').map(t => [t.kind, t.price])).toEqual([['tax', -2]]);
+    expect(byNote('SEC fee').map(t => [t.kind, t.price])).toEqual([['fee', -0.01]]);
+    expect(byNote('JP_MORGAN').map(t => [t.type, t.kind, t.price, t.currency])).toEqual([['CASH', undefined, 500, 'EUR']]);
+  });
+
+  it('powtórzony wiersz (to samo ID) liczony raz, nieznany typ zgłoszony', () => {
+    expect(r.transactions.filter(t => t.symbol === 'FLOA.UK')).toHaveLength(1);
+    expect(r.skipped).toEqual([{ type: 'ações/etf compra', n: 1 }]);
+  });
+
+  it('chronologicznie z godziną: kupno i sprzedaż z jednego dnia nie zostawiają pozycji', () => {
+    const p = computePortfolioPreview(r.transactions, [], {});
+    expect(p.added.map(x => x.symbol)).not.toContain('ZAL.DE');
+  });
+
+  it('podgląd: zakup zdejmuje euro (Amount), dywidenda wpływa po podatku', () => {
+    const p = computePortfolioPreview(r.transactions, [], {});
+    // −399.43 + 500 − 111.25 + 26.28 + (12.8 − 3.84) + (4.8 − 1.44) − 2 + 15.17 − 0.01 − 94.62
+    expect(p.cashRemoved.EUR).toBeCloseTo(-(-399.43 + 500 - 111.25 + 26.28 - 26.4 + 8.96 + 3.36 - 2 + 15.17 - 0.01 - 94.62), 6);
+    expect(p.cashAdded).toEqual({});
+    expect(p.cashRemoved.USD).toBeUndefined();
+  });
+});
+
+describe('cashKind', () => {
+  it('starsze i nowsze nazwy typów', () => {
+    expect(cashKind('Stock purchase')).toBe('BUY');
+    expect(cashKind('DIVIDENT')).toBe('DIV');
+    expect(cashKind('Dividend', -0.05)).toBe('fee');
+    expect(cashKind('Withholding tax')).toBe('wht');
+    expect(cashKind('Transfer')).toBe('deposit');
+    expect(cashKind('Profit/Loss (FX/CFD)')).toBe('cfd');
+    expect(cashKind('Close trade')).toBeNull();
   });
 });
 

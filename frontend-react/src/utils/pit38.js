@@ -46,7 +46,12 @@ const inScope = (t, excluded) => !excluded.has(t._portfolioId ?? '');
 const isCrypto = (t, extra) => t.assetType === 'crypto' || isCryptoSymbol(t.symbol, extra);
 const isUs = t => (t.currency || 'PLN') === 'USD' && !String(t.symbol ?? '').includes('.');
 // Dywidenda opodatkowana w PIT-38: zagraniczna (polską rozlicza płatnik).
-const isForeignDiv = t => (t.currency || 'PLN') !== 'PLN' && !String(t.symbol ?? '').toUpperCase().endsWith('.WA');
+// Zagraniczna = spółka spoza GPW, nawet gdy biuro wypłaciło ją w złotych
+// (rachunek złotówkowy w XTB). Bez symbolu — po walucie.
+const isForeignDiv = t => {
+  const sym = String(t.symbol ?? '').toUpperCase();
+  return sym ? !sym.endsWith('.WA') : (t.currency || 'PLN') !== 'PLN';
+};
 
 function addBusinessDays(iso, n, market) {
   const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);

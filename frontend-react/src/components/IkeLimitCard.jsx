@@ -22,7 +22,7 @@ export default function IkeLimitCard() {
   const selfLimit = type === 'IKZE' ? LIMITS.IKZE_SELF?.[year] : null;
 
   const deposits = transactions
-    .filter(tx => tx.type === 'CASH' && (tx.price ?? 0) > 0 && String(tx.date ?? '').startsWith(String(year)))
+    .filter(tx => tx.type === 'CASH' && !tx.kind && (tx.price ?? 0) > 0 && String(tx.date ?? '').startsWith(String(year)))
     .reduce((s, tx) => s + tx.price * (fxRates[tx.currency] ?? 1), 0);
 
   const fmt = n => n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
