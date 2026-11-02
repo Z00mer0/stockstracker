@@ -818,7 +818,7 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
-  async function addBond({ type, name, purchaseDate, count, firstYearRate, margin }) {
+  async function addBond({ type, name, purchaseDate, count, firstYearRate, margin, earlyFee, taxFree }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
     assertLoaded();
     const rd = rawDataRef.current;
@@ -829,6 +829,8 @@ export function AppProvider({ children }) {
       count: parseInt(count, 10) || 0,
       firstYearRate: parseFloat(firstYearRate) || 0,
       margin: parseFloat(margin) || 0,
+      earlyFee: earlyFee ?? null,
+      taxFree: !!taxFree,
     };
     const updated = { ...rd, bonds: [...bonds, newBond] };
     await postUpdate(updated);
