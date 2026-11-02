@@ -1447,6 +1447,9 @@ if DATABASE_URL:
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS weekly_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS market_gpw BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS market_us BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS earnings_reminder BOOLEAN DEFAULT FALSE")
+            # Próg udziału jednej pozycji w portfelu (%); NULL = wyłączone.
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS concentration_pct NUMERIC")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_tone TEXT DEFAULT 'professional'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_language TEXT DEFAULT 'pl'")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS notification_hour INT DEFAULT 16")
@@ -2889,6 +2892,80 @@ def _upcoming_dividends(symbols):
     return results
 
 
+_EARN_CACHE = {}   # dzień → [{symbol, hour}] z kalendarza wyników Finnhub
+
+
+def _earnings_on(day_iso):
+    """Spółki z USA publikujące wyniki danego dnia (Finnhub, jedno zapytanie
+    na dzień dla wszystkich użytkowników). Pusta lista przy błędzie."""
+    if day_iso in _EARN_CACHE:
+        return _EARN_CACHE[day_iso]
+    token = os.environ.get('FINNHUB_TOKEN', '')
+    if not token:
+        return []
+    try:
+        url = f'https://finnhub.io/api/v1/calendar/earnings?from={day_iso}&to={day_iso}&token={token}'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        out = [{'symbol': str(e.get('symbol') or '').upper(), 'hour': e.get('hour') or ''}
+               for e in data.get('earningsCalendar', []) if e.get('date') == day_iso]
+    except Exception as e:
+        log.warning(f'[earnings] {day_iso}: {e}')
+        return []
+    if len(_EARN_CACHE) > 7:
+        _EARN_CACHE.clear()
+    _EARN_CACHE[day_iso] = out
+    return out
+
+
+def _earnings_for_held(events, held):
+    """Wyniki posiadanych spółek z USA. Tylko symbole bez sufiksu giełdy —
+    Finnhub podaje tickery z USA, a „PKO” z GPW (PKO.WA) to inna spółka."""
+    us = {s.upper() for s in held if s and '.' not in s}
+    return [e for e in events if e['symbol'] in us]
+
+
+def _concentrated(values, cash_pln, pct):
+    """Pozycje, których udział w portfelu (akcje + gotówka) wynosi co
+    najmniej `pct` %. values: {symbol: wartość PLN}. [(symbol, udział %)]."""
+    total = sum(values.values()) + max(cash_pln, 0)
+    if total <= 0 or len(values) < 2:
+        return []
+    return sorted(((s, v / total * 100) for s, v in values.items() if v / total * 100 >= pct),
+                  key=lambda x: -x[1])
+
+
+def _holding_values(username, price_cache, rates):
+    """Wartość pozycji w PLN zsumowana po symbolu ze wszystkich portfeli
+    i gotówka w PLN. None, gdy brakuje ceny albo kursu."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""SELECT h.symbol, h.qty, h.currency FROM portfolio_holdings h
+                       JOIN portfolio_list p ON p.id = h.portfolio_id
+                       WHERE p.user_id = %s AND h.qty > 0""", (username,))
+        holdings = cur.fetchall()
+        cur.execute("""SELECT pc.currency, SUM(pc.amount) FROM portfolio_cash pc
+                       JOIN portfolio_list p ON p.id = pc.portfolio_id
+                       WHERE p.user_id = %s GROUP BY pc.currency""", (username,))
+        cash = cur.fetchall()
+    _prefill_quotes([s for s, _, _ in holdings], price_cache)
+    values = {}
+    for sym, qty, curr in holdings:
+        if sym not in price_cache:
+            price_cache[sym] = _fetch_quote(sym)
+        q, fx = price_cache[sym], rates.get(curr or 'PLN')
+        if q is None or fx is None:
+            return None
+        values[sym] = values.get(sym, 0.0) + float(qty) * q['price'] * fx
+    cash_pln = 0.0
+    for curr, amount in cash:
+        fx = rates.get(curr or 'PLN')
+        if fx is None:
+            return None
+        cash_pln += float(amount or 0) * fx
+    return values, cash_pln
+
+
 IKE_LIMITS = {  # roczne limity wpłat w PLN (jak w IkeLimitCard.jsx)
     'IKE':  {2024: 23472,   2025: 26019,   2026: 28260},
     'IKZE': {2024: 9388.80, 2025: 10407.60, 2026: 11304},
@@ -3167,7 +3244,7 @@ def _market_push_due(market, now=None):
 
 
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0, 'market': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0, 'market': 0, 'earnings': 0, 'concentration': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -3522,6 +3599,50 @@ def _run_push_checks():
         except Exception as e:
             log.warning(f'[push] dividends {username}: {e}')
 
+        # 2b. Wyniki kwartalne jutro (opt-in) — posiadane spółki z USA
+        try:
+            with _conn() as c, c.cursor() as cur:
+                cur.execute("SELECT earnings_reminder, concentration_pct FROM portfolio_alerts WHERE username=%s", (username,))
+                prefs = cur.fetchone() or (False, None)
+            if prefs[0]:
+                # Własne zapytanie — `held` z sekcji dywidend mógłby zostać po poprzednim użytkowniku.
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("""SELECT DISTINCT h.symbol FROM portfolio_holdings h
+                                   JOIN portfolio_list p ON h.portfolio_id = p.id
+                                   WHERE p.user_id=%s AND h.qty > 0""", (username,))
+                    owned = [r[0] for r in cur.fetchall()]
+                tomorrow = (today + datetime.timedelta(days=1)).isoformat()
+                for ev in _earnings_for_held(_earnings_on(tomorrow), owned):
+                    key = f"earn:{ev['symbol']}:{tomorrow}"
+                    if _already_sent(username, key):
+                        continue
+                    when = {'bmo': ' przed sesją', 'amc': ' po sesji'}.get(ev['hour'], '')
+                    _send_push(username, f"📊 Wyniki {ev['symbol']} jutro",
+                               f'Spółka publikuje wyniki kwartalne jutro{when} — kurs może mocno się ruszyć.', '/calendar')
+                    _mark_sent(username, key)
+                    stats['earnings'] += 1
+        except Exception as e:
+            log.warning(f'[push] earnings {username}: {e}')
+            prefs = (False, None)
+
+        # 2c. Koncentracja (opt-in): jedna pozycja ≥ X% portfela — raz w tygodniu, póki trwa
+        try:
+            if prefs[1] is not None:
+                hv = _holding_values(username, price_cache, fx_rates)
+                if hv is not None:
+                    week = today.isocalendar()
+                    for sym, share in _concentrated(hv[0], hv[1], float(prefs[1])):
+                        key = f'conc:{sym}:{week[0]}-W{week[1]:02d}'
+                        if _already_sent(username, key):
+                            continue
+                        _send_push(username, f'⚖️ {sym} to {share:.0f}% portfela',
+                                   f'Jedna pozycja przekracza Twój próg {float(prefs[1]):g}% — rozważ, czy to ryzyko jest zamierzone.',
+                                   '/analysis')
+                        _mark_sent(username, key)
+                        stats['concentration'] += 1
+        except Exception as e:
+            log.warning(f'[push] concentration {username}: {e}')
+
         # 3. Limit IKE/IKZE: progi 80% i 100%, raz na rok
         try:
             year = today.year
@@ -3535,8 +3656,10 @@ def _run_push_checks():
                 if not limit:
                     continue
                 with _conn() as c, c.cursor() as cur:
+                    # Bez odsetek, opłat itp. z importu XTB (extra_json.kind) — limit liczy wpłaty.
                     cur.execute("""SELECT price, currency FROM portfolio_transactions
                                    WHERE portfolio_id=%s AND type='CASH' AND price > 0
+                                     AND COALESCE(extra_json, '{}') NOT LIKE '%%"kind"%%'
                                      AND date >= %s AND date <= %s""",
                                 (acc['id'], f'{year}-01-01', f'{year}-12-31'))
                     rows = cur.fetchall()
@@ -3706,17 +3829,19 @@ class Handler(SimpleHTTPRequestHandler):
             if not DATABASE_URL:
                 # Tryb plikowy (lokalny dev/demo): brak tabeli portfolio_alerts — zwróć domyślne
                 self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False,
-                                     'marketGpw': False, 'marketUs': False}); return
+                                     'marketGpw': False, 'marketUs': False, 'earnings': False, 'concentrationPct': None}); return
             with _conn() as c, c.cursor() as cur:
-                cur.execute("SELECT enabled, threshold_pct, us_summary, gpw_summary, weekly_summary, market_gpw, market_us FROM portfolio_alerts WHERE username=%s", (username,))
+                cur.execute("""SELECT enabled, threshold_pct, us_summary, gpw_summary, weekly_summary, market_gpw, market_us,
+                                      earnings_reminder, concentration_pct FROM portfolio_alerts WHERE username=%s""", (username,))
                 row = cur.fetchone()
             if row:
                 self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1]),
                                      'usSummary': bool(row[2]), 'gpwSummary': bool(row[3]), 'weeklySummary': bool(row[4]),
-                                     'marketGpw': bool(row[5]), 'marketUs': bool(row[6])})
+                                     'marketGpw': bool(row[5]), 'marketUs': bool(row[6]), 'earnings': bool(row[7]),
+                                     'concentrationPct': float(row[8]) if row[8] is not None else None})
             else:
                 self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False,
-                                     'marketGpw': False, 'marketUs': False})
+                                     'marketGpw': False, 'marketUs': False, 'earnings': False, 'concentrationPct': None})
             return
 
         elif path == '/api/market-summary':
@@ -6250,6 +6375,14 @@ async function doRecover() {
                 weekly = bool(body['weeklySummary']) if 'weeklySummary' in body else None
                 market_gpw = bool(body['marketGpw']) if 'marketGpw' in body else None
                 market_us = bool(body['marketUs']) if 'marketUs' in body else None
+                earnings = bool(body['earnings']) if 'earnings' in body else None
+                # concentrationPct: liczba = włączone z tym progiem, null = wyłączone, brak klucza = bez zmian.
+                conc_given = 'concentrationPct' in body
+                conc = body.get('concentrationPct')
+                if conc is not None:
+                    conc = float(conc)
+                    if not (5 <= conc <= 90):
+                        self.send_json(400, {'error': 'concentrationPct must be 5-90'}); return
                 if enabled and not (0.5 <= threshold <= 90):
                     self.send_json(400, {'error': 'thresholdPct must be 0.5-90'}); return
                 with _conn() as c, c.cursor() as cur:
@@ -6272,6 +6405,10 @@ async function doRecover() {
                                            THEN portfolio_alerts.ath_value ELSE NULL END
                     """, (username, threshold or 10, enabled, us_summary, gpw_summary, weekly, market_gpw, market_us,
                           weekly, market_gpw, market_us))
+                    if earnings is not None:
+                        cur.execute("UPDATE portfolio_alerts SET earnings_reminder=%s WHERE username=%s", (earnings, username))
+                    if conc_given:
+                        cur.execute("UPDATE portfolio_alerts SET concentration_pct=%s WHERE username=%s", (conc, username))
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 log.warning(f'[push] portfolio-alert save: {e}')

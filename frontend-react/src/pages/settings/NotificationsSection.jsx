@@ -21,6 +21,9 @@ function PortfolioAlertCard() {
   const [weeklySummary, setWeeklySummary] = useState(false);
   const [marketGpw, setMarketGpw] = useState(false);
   const [marketUs, setMarketUs] = useState(false);
+  const [earnings, setEarnings] = useState(false);
+  const [concPct, setConcPct] = useState(null);       // null = wyłączone
+  const [concDraft, setConcDraft] = useState(20);     // próg wybrany przed włączeniem
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [hasSub, setHasSub] = useState(true); // true, dopóki nie sprawdzimy — bez fałszywego ostrzeżenia
@@ -28,7 +31,7 @@ function PortfolioAlertCard() {
   useEffect(() => {
     fetch('/api/portfolio-alert', { headers: authHeader() })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); setWeeklySummary(!!d.weeklySummary); setMarketGpw(!!d.marketGpw); setMarketUs(!!d.marketUs); } })
+      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); setWeeklySummary(!!d.weeklySummary); setMarketGpw(!!d.marketGpw); setMarketUs(!!d.marketUs); setEarnings(!!d.earnings); setConcPct(d.concentrationPct ?? null); if (d.concentrationPct) setConcDraft(d.concentrationPct); } })
       .catch(() => {});
     getPushSubscription().then(sub => setHasSub(!!sub));
   }, []);
@@ -38,7 +41,9 @@ function PortfolioAlertCard() {
     || (next.gpwSummary === true && !gpwSummary)
     || (next.weeklySummary === true && !weeklySummary)
     || (next.marketGpw === true && !marketGpw)
-    || (next.marketUs === true && !marketUs);
+    || (next.marketUs === true && !marketUs)
+    || (next.earnings === true && !earnings)
+    || (next.concentrationPct != null && concPct == null);
 
   async function save(next) {
     // Bez subskrypcji push przełącznik nic by nie dawał — najpierw zgoda.
@@ -50,7 +55,7 @@ function PortfolioAlertCard() {
       setHasSub(true); setMsg('');
     }
     setBusy(true); setMsg('');
-    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, weeklySummary, marketGpw, marketUs, ...next };
+    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, weeklySummary, marketGpw, marketUs, earnings, concentrationPct: concPct, ...next };
     try {
       const r = await fetch('/api/portfolio-alert', {
         method: 'POST',
@@ -59,7 +64,7 @@ function PortfolioAlertCard() {
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setEnabled(cfg.enabled); setThreshold(cfg.thresholdPct); setUsSummary(cfg.usSummary); setGpwSummary(cfg.gpwSummary); setWeeklySummary(cfg.weeklySummary);
-      setMarketGpw(cfg.marketGpw); setMarketUs(cfg.marketUs);
+      setMarketGpw(cfg.marketGpw); setMarketUs(cfg.marketUs); setEarnings(cfg.earnings); setConcPct(cfg.concentrationPct);
       setMsg(t('pa_saved'));
     } catch {
       setMsg(t('pa_error'));
@@ -73,7 +78,7 @@ function PortfolioAlertCard() {
     if (r.ok) { setHasSub(true); setMsg(t('pa_saved')); } else setMsg(r.reason === 'denied' ? t('push_denied') : t('pa_push_failed'));
   }
 
-  const showSubWarn = pushSupported && !hasSub && (enabled || usSummary || gpwSummary || weeklySummary || marketGpw || marketUs);
+  const showSubWarn = pushSupported && !hasSub && (enabled || usSummary || gpwSummary || weeklySummary || marketGpw || marketUs || earnings || concPct != null);
 
   return (
     <Card title={t('pa_title')}>
@@ -120,6 +125,24 @@ function PortfolioAlertCard() {
           <Button size="sm" variant={weeklySummary ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ weeklySummary: !weeklySummary })}>
             {weeklySummary ? t('pa_summary_off') : t('pa_summary_on')}
           </Button>
+        </Row>
+        <Row label={t('pa_earnings_desc')}>
+          <Button size="sm" variant={earnings ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ earnings: !earnings })}>
+            {earnings ? t('pa_summary_off') : t('pa_summary_on')}
+          </Button>
+        </Row>
+        <Row label={t('pa_conc_desc')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentedControl
+              options={[15, 20, 25, 30].map(p => ({ value: p, label: `${p}%` }))}
+              value={concPct ?? concDraft}
+              onChange={p => { setConcDraft(p); if (concPct != null) save({ concentrationPct: p }); }}
+            />
+            <Button size="sm" variant={concPct != null ? 'secondary' : 'primary'} disabled={busy}
+              onClick={() => save({ concentrationPct: concPct != null ? null : concDraft })}>
+              {concPct != null ? t('pa_disable') : t('pa_enable')}
+            </Button>
+          </div>
         </Row>
         <Note>{msg}</Note>
       </div>
