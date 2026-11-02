@@ -68,19 +68,35 @@ export const XTB_TO_YAHOO = {
   DK: 'CO', SE: 'ST', NO: 'OL', FI: 'HE', CH: 'SW', AT: 'VI', CZ: 'PR',
 };
 
+// Wyjątki, gdzie kod kraju nie wystarcza. Samsung (GDR) w Londynie jest
+// notowany w segmencie IOB — Yahoo ma go pod .IL (w USD); pod .L zostały
+// tylko notowania sprzed 2022 r.
+const XTB_OVERRIDES = { 'SMSN.UK': 'SMSN.IL', 'SMSN.L': 'SMSN.IL' };
+
 export function normalizeSymbol(sym) {
   const s = String(sym);
+  const override = XTB_OVERRIDES[s.toUpperCase()];
+  if (override) return override;
   if (/\.US$/i.test(s)) return s.slice(0, -3);
   const m = s.match(/^(.+)\.([A-Z]{2})$/i);
   const yahoo = m && XTB_TO_YAHOO[m[2].toUpperCase()];
   return yahoo ? `${m[1]}.${yahoo}` : s;
 }
 
+// Podpowiedź poprawnego tickera Yahoo dla pozycji bez (aktualnych) notowań:
+// sufiks XTB → Yahoo, a dla Londynu bez notowań — segment IOB (.IL), gdzie
+// są GDR-y spółek spoza Wielkiej Brytanii.
+export function suggestYahooSymbol(sym) {
+  const n = normalizeSymbol(sym);
+  if (n !== sym) return n;
+  return /\.L$/i.test(sym) ? sym.replace(/\.L$/i, '.IL') : sym;
+}
+
 // Waluta po sufiksie (po zamianie na Yahoo). Na giełdzie w Londynie część
 // instrumentów (np. ETF-y CSPX, VWRA) notowana jest w USD — tego sufiks nie
 // mówi; aplikacja porównuje potem z walutą notowania z Yahoo i podpowiada zmianę.
 const CURRENCY_BY_SUFFIX = {
-  WA: 'PLN', L: 'GBP', DE: 'EUR', PA: 'EUR', AS: 'EUR', MC: 'EUR', MI: 'EUR', BR: 'EUR',
+  WA: 'PLN', L: 'GBP', IL: 'USD', DE: 'EUR', PA: 'EUR', AS: 'EUR', MC: 'EUR', MI: 'EUR', BR: 'EUR',
   LS: 'EUR', HE: 'EUR', VI: 'EUR', CO: 'DKK', ST: 'SEK', OL: 'NOK', SW: 'CHF', PR: 'CZK',
 };
 export function brokerCurrency(sym) {

@@ -4,7 +4,7 @@ import {
   ArrowDownRight, Pencil, Coins, Eye, EyeOff, ChartColumn, Bell, StickyNote, Trash2,
   TriangleAlert, Check, X, TrendingUp, Bitcoin, FileSpreadsheet, FileText, CalendarClock,
 } from 'lucide-react';
-import { normalizeSymbol } from '../../utils/brokerImport.js';
+import { suggestYahooSymbol } from '../../utils/brokerImport.js';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
@@ -177,7 +177,7 @@ export default function PositionsTable({
             <title>{t('pf_alerts_active').replace('{n}', alertsPerSymbol.get(pos.symbol))}</title>
           </Bell>
         )}
-        {pos.notFound && (editTicker?.oldSymbol === pos.symbol ? (
+        {(pos.notFound || pos.staleSince) && editTicker?.oldSymbol === pos.symbol ? (
           <form
             onSubmit={e => { e.preventDefault(); e.stopPropagation(); onRenameTicker(pos.symbol, editTicker.value).then(() => setEditTicker(null)); }}
             onClick={e => e.stopPropagation()}
@@ -194,17 +194,17 @@ export default function PositionsTable({
             <IconButton icon={Check} size="sm" type="submit" label={t('save_btn')} className="h-6 w-6" />
             <IconButton icon={X} size="sm" label={t('cancel')} className="h-6 w-6" onClick={() => setEditTicker(null)} />
           </form>
-        ) : (
+        ) : pos.notFound && (
           <button
             type="button"
             title={t('quote_not_found')}
             aria-label={t('quote_not_found')}
-            onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: normalizeSymbol(pos.symbol) }); }}
+            onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: suggestYahooSymbol(pos.symbol) }); }}
             className="shrink-0 text-down hover:brightness-125"
           >
             <TriangleAlert size={13} aria-hidden />
           </button>
-        ))}
+        )}
         {pos.ccyMismatch && (
           <button
             type="button"
@@ -217,10 +217,17 @@ export default function PositionsTable({
             {pos.ccyMismatch}
           </button>
         )}
-        {pos.staleSince && (
-          <CalendarClock size={12} className="shrink-0 text-warn" aria-label={t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))}>
-            <title>{t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))}</title>
-          </CalendarClock>
+        {/* Stare notowanie: kliknięcie otwiera zmianę tickera (np. SMSN.L → SMSN.IL). */}
+        {pos.staleSince && editTicker?.oldSymbol !== pos.symbol && (
+          <button
+            type="button"
+            title={`${t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))} — ${t('pf_rename_ticker')}`}
+            aria-label={`${t('quote_stale_since').replace('{date}', new Date(pos.staleSince * 1000).toLocaleDateString(locale))} — ${t('pf_rename_ticker')}`}
+            onClick={e => { e.stopPropagation(); setEditTicker({ oldSymbol: pos.symbol, value: suggestYahooSymbol(pos.symbol) }); }}
+            className="shrink-0 text-warn hover:brightness-125"
+          >
+            <CalendarClock size={12} aria-hidden />
+          </button>
         )}
       </>
     );
