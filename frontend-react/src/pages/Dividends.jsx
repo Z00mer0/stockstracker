@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Coins, Percent, CalendarClock, Sigma, Plus, Info, Pencil, Trash2, CalendarX, Sprout, Target } from 'lucide-react';
+import { Coins, Percent, CalendarClock, Sigma, Plus, Info, Pencil, Trash2, CalendarX, Sprout, Target, SearchCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -12,6 +12,8 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { lsSet } from '../utils/safeStorage.js';
 import { normalizeType } from '../utils/transactions.js';
+import { findMissingDividends, sharesHeldBefore } from '../utils/missingDividends.js';
+import { splitAdjusted } from '../utils/splits.js';
 import { dividendsByYear } from '../utils/dividendYears.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
@@ -43,8 +45,10 @@ function fmt(n, decimals = 2, locale = 'pl-PL') {
   return n.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+const DISMISSED_KEY = 'myfund_div_missing_dismissed';
+
 export default function Dividends() {
-  const { transactions, loading, fxRates, portfolio, addTransaction, activePortfolio, displayCurrency } = useApp();
+  const { transactions, loading, fxRates, portfolio, addTransaction, activePortfolio, displayCurrency, canWrite } = useApp();
   const accountType = activePortfolio?.accountType;
   // Kwoty liczone są wewnętrznie w PLN — wyświetlamy w walucie portfela
   const dispFx = fxRates[displayCurrency] ?? 1;
@@ -90,6 +94,9 @@ export default function Dividends() {
   const [yocMap, setYocMap] = useState({});
   const [yocLoading, setYocLoading] = useState(false);
   const [divHistory, setDivHistory] = useState({});
+  const [dismissed, setDismissed] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')); } catch { return new Set(); }
+  });
   const [tab, setTab] = useState('timeline');
 
   const [fireGoal, setFireGoal] = useState(() => {
@@ -158,6 +165,21 @@ export default function Dividends() {
     transactions.filter(tx => normalizeType(tx.type) === 'DIV').sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
     [transactions]
   );
+
+  // Dywidendy z historii spółki bez zapisu w transakcjach (utils/missingDividends.js).
+  const missing = useMemo(
+    () => findMissingDividends(transactions, divHistory, { dismissed }),
+    [transactions, divHistory, dismissed],
+  );
+  function dismissMissing(m) {
+    const next = new Set(dismissed).add(`${m.symbol}|${m.exDate}`);
+    setDismissed(next);
+    lsSet(DISMISSED_KEY, JSON.stringify([...next]));
+  }
+  function addMissing(m) {
+    setEditTarget({ symbol: m.symbol, exDate: m.exDate, amount: m.perShare, currency: portfolio.find(p => p.symbol === m.symbol)?.currency });
+    setModalOpen(true);
+  }
 
   const grossPLN = d => (d.price || 0) * (d.qty || 1) * (fxRates[d.currency] ?? 1);
   const netPLN = d => grossPLN(d) * (1 - dividendTaxRate(d, accountType));
@@ -255,10 +277,13 @@ export default function Dividends() {
   function openAdd() { setEditTarget(null); setModalOpen(true); }
   function openEdit(div) { setEditTarget(div); setModalOpen(true); }
   async function handleSave({ tax, toCash, ...formData }) {
-    if (editTarget) {
+    if (editTarget?.id) {
       editDividend(editTarget.id, formData);
     } else {
-      const heldQty = portfolio.find(p => p.symbol === formData.symbol)?.qty;
+      // Dywidenda należy się od akcji trzymanych w dniu odcięcia, nie od
+      // dzisiejszej pozycji — dokupione później nie podwajają wypłaty.
+      const exQty = formData.exDate ? sharesHeldBefore(splitAdjusted(transactions), formData.symbol, formData.exDate) : 0;
+      const heldQty = exQty > 0 ? exQty : portfolio.find(p => p.symbol === formData.symbol)?.qty;
       const newTx = {
         id: Date.now().toString(),
         type: 'DIV',
@@ -443,6 +468,32 @@ export default function Dividends() {
           )}
         >
           {t('w8ben_desc')}
+        </Callout>
+      )}
+
+      {missing.length > 0 && (
+        <Callout tone="warn" icon={SearchCheck} title={t('div_missing_title').replace('{n}', missing.length)}>
+          <p>{t('div_missing_desc')}</p>
+          <ul className="mt-2 divide-y divide-line">
+            {missing.map(m => {
+              const ccy = portfolio.find(p => p.symbol === m.symbol)?.currency ?? '';
+              return (
+                <li key={`${m.portfolioId ?? ''}|${m.symbol}|${m.exDate}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="min-w-0">
+                    <span className="font-semibold text-fg">{m.symbol}</span>
+                    <span className="text-faint"> · {t('div_missing_ex')} {new Date(`${m.exDate}T12:00:00`).toLocaleDateString(locale)}</span>
+                    <span className={cx('block tabular-nums', isPrivate && 'privacy-blur')}>
+                      {m.qty.toLocaleString(locale)} × {fmt(m.perShare, m.perShare < 1 ? 4 : 2, locale)} {ccy} ≈ {fmt(m.gross, 2, locale)} {ccy} {t('gross').toLowerCase()}
+                    </span>
+                  </span>
+                  <span className="flex gap-2">
+                    {canWrite && <Button size="sm" variant="primary" icon={Plus} onClick={() => addMissing(m)}>{t('add')}</Button>}
+                    <Button size="sm" variant="ghost" onClick={() => dismissMissing(m)}>{t('div_missing_dismiss')}</Button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </Callout>
       )}
 
