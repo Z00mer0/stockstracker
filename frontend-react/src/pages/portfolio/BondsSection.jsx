@@ -3,7 +3,7 @@ import { Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
-import { fetchCpiSeries, valueBond, BOND_TYPES } from '../../services/bondService';
+import { fetchCpiSeries, valueBond, defaultEarlyFee, BOND_TYPES } from '../../services/bondService';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Badge, Button, Card, Field, IconButton, Input, Modal, Select, Table } from '../../components/ui';
 
@@ -18,6 +18,8 @@ function BondModal({ initial, onSave, onClose }) {
   const [count, setCount] = useState(initial?.count ?? '');
   const [rate1, setRate1] = useState(initial?.firstYearRate ?? '');
   const [margin, setMargin] = useState(initial?.margin ?? '');
+  const [earlyFee, setEarlyFee] = useState(initial?.earlyFee ?? '');
+  const [taxFree, setTaxFree] = useState(!!initial?.taxFree);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,6 +32,7 @@ function BondModal({ initial, onSave, onClose }) {
       await onSave({
         type, name: name.trim(), purchaseDate: date,
         count: c, firstYearRate: parseFloat(rate1) || 0, margin: parseFloat(margin) || 0,
+        earlyFee: earlyFee === '' ? null : parseFloat(earlyFee), taxFree,
       });
       onClose();
     } catch (e) {
@@ -72,6 +75,13 @@ function BondModal({ initial, onSave, onClose }) {
         <Field label={t('bond_margin')}>
           <Input type="number" min="0" step="0.01" inputMode="decimal" suffix="%" value={margin} onChange={e => setMargin(e.target.value)} placeholder={eg('2.00')} />
         </Field>
+        <Field label={t('bond_early_fee')}>
+          <Input type="number" min="0" step="0.01" inputMode="decimal" suffix="zł" value={earlyFee} onChange={e => setEarlyFee(e.target.value)} placeholder={String(defaultEarlyFee(type, date))} />
+        </Field>
+        <label className="flex cursor-pointer items-start gap-3 self-end pb-2">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--accent)]" checked={taxFree} onChange={e => setTaxFree(e.target.checked)} />
+          <span className="text-[13px] text-fg">{t('bond_tax_free')}</span>
+        </label>
         {error && <p role="alert" className="text-small text-down sm:col-span-2">{error}</p>}
         <button type="submit" hidden />
       </form>
@@ -148,6 +158,7 @@ export default function BondsSection() {
         <span className="inline-flex flex-wrap items-center gap-2 font-semibold text-fg">
           <Landmark size={15} aria-hidden className="shrink-0 text-dim" />{b.name}
           {b.v.matured && <Badge tone="warn">{t('bond_matured')}</Badge>}
+          {b.v.estimated && <Badge tone="neutral">{t('bond_estimated')}</Badge>}
         </span>
       ),
     },
@@ -157,7 +168,14 @@ export default function BondsSection() {
     { key: 'nominal', header: t('col_nominal'), align: 'right', render: b => <span className={`text-dim ${blur ?? ''}`}>{fmt(b.v.totalNominal)} zł</span> },
     { key: 'rate', header: t('col_bond_rate'), align: 'right', render: b => <span className="text-up">{fmtPct(b.v.currentRate)}</span> },
     { key: 'value', header: t('col_bond_value'), align: 'right', mobile: 'aside', render: b => <span className={blur}>{fmt(b.v.totalValue)} zł</span> },
-    { key: 'redeem', header: t('col_bond_redeem'), align: 'right', render: b => <span className={`text-dim ${blur ?? ''}`}>{fmt(b.v.redeemTodayTotal)} zł</span> },
+    {
+      key: 'redeem', header: t('col_bond_redeem'), align: 'right',
+      render: b => (
+        <span className={`text-dim ${blur ?? ''}`} title={t('bond_redeem_breakdown').replace('{fee}', fmt(b.v.feeTotal)).replace('{tax}', fmt(b.v.taxTotal))}>
+          {fmt(b.v.redeemTodayTotal)} zł
+        </span>
+      ),
+    },
   ];
   if (canWrite) {
     columns.push({

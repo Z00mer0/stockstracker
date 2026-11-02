@@ -6,9 +6,23 @@
 
 export const BOND_NOMINAL = 100;
 export const BOND_TYPES = {
-  EDO: { years: 10, capitalizes: true,  earlyFee: 3.00 },
-  COI: { years: 4,  capitalizes: false, earlyFee: 0.70 },
+  EDO: { years: 10, capitalizes: true },
+  COI: { years: 4,  capitalizes: false },
 };
+
+// Podatek od odsetek (art. 30a ustawy o PIT); na IKE/IKZE nie ma go.
+export const BOND_TAX = 0.19;
+
+// Opłata za przedterminowy wykup (zł/szt.) zależy od emisji: od września 2024
+// EDO 3 zł (wcześniej 2 zł), COI 2 zł (wcześniej 0,70 zł). Domyślna wg daty
+// zakupu — przy obligacji można wpisać stawkę z listu emisyjnego.
+const FEE_CHANGE = '2024-09-01';
+const EARLY_FEES = { EDO: [2.00, 3.00], COI: [0.70, 2.00] };
+
+export function defaultEarlyFee(type, purchaseDate) {
+  const [before, after] = EARLY_FEES[type] ?? EARLY_FEES.EDO;
+  return String(purchaseDate ?? '') >= FEE_CHANGE ? after : before;
+}
 
 let _cpiPromise = null;
 
@@ -38,6 +52,17 @@ export function yoyInflation(cpiMap, ym) {
   return a / b - 1;
 }
 
+// Inflacja r/r z najnowszego miesiąca w serii — zastępstwo, gdy miesiąca
+// odniesienia jeszcze nie opublikowano.
+function latestInflation(cpiMap) {
+  const months = [...cpiMap.keys()].sort().reverse();
+  for (const ym of months) {
+    const v = yoyInflation(cpiMap, ym);
+    if (v != null) return v;
+  }
+  return null;
+}
+
 function addYears(date, n) {
   const d = new Date(date);
   d.setFullYear(d.getFullYear() + n);
@@ -53,9 +78,12 @@ function refMonthFor(periodStart) {
 
 /**
  * Values a single bond entry.
- * bond: { type:'EDO'|'COI', name, purchaseDate:'YYYY-MM-DD', count, firstYearRate(%), margin(%) }
+ * bond: { type:'EDO'|'COI', name, purchaseDate:'YYYY-MM-DD', count, firstYearRate(%), margin(%),
+ *         earlyFee? (zł/szt., domyślnie wg daty), taxFree? (IKE/IKZE) }
  * Returns { valuePerBond, totalValue, totalNominal, currentRate, periodIndex,
- *           paidInterestTotal (COI), redeemTodayTotal, matured, maturityDate }
+ *           paidInterestTotal (COI, brutto), redeemTodayTotal (po opłacie i podatku),
+ *           feeTotal, taxTotal, estimated (brak inflacji z miesiąca odniesienia),
+ *           matured, maturityDate }
  */
 export function valueBond(bond, cpiMap, today = new Date()) {
   const spec = BOND_TYPES[bond.type] ?? BOND_TYPES.EDO;
@@ -69,6 +97,7 @@ export function valueBond(bond, cpiMap, today = new Date()) {
   let currentRate = (Number(bond.firstYearRate) || 0) / 100;
   let periodIndex = 0;
   let accruedPerBond = 0;
+  let estimated = false;
 
   for (let k = 0; k < spec.years; k++) {
     const start = addYears(buy, k);
@@ -79,8 +108,9 @@ export function valueBond(bond, cpiMap, today = new Date()) {
     if (k === 0) {
       rate = (Number(bond.firstYearRate) || 0) / 100;
     } else {
-      const infl = yoyInflation(cpiMap, refMonthFor(start));
-      rate = (Number(bond.margin) || 0) / 100 + Math.max(infl ?? 0, 0);
+      let infl = yoyInflation(cpiMap, refMonthFor(start));
+      if (infl == null) { infl = latestInflation(cpiMap) ?? 0; estimated = true; }
+      rate = (Number(bond.margin) || 0) / 100 + Math.max(infl, 0);
     }
 
     if (clampedToday >= end) {
@@ -100,9 +130,14 @@ export function valueBond(bond, cpiMap, today = new Date()) {
   }
 
   const valuePerBond = capital + accruedPerBond;
-  const interestPerBond = valuePerBond - BOND_NOMINAL;
-  const fee = Math.min(spec.earlyFee, Math.max(interestPerBond, 0));
+  const interestPerBond = valuePerBond - BOND_NOMINAL;   // jeszcze niewypłacone odsetki
   const matured = today >= maturity;
+  const feeRate = bond.earlyFee != null && bond.earlyFee !== '' ? Number(bond.earlyFee) : defaultEarlyFee(bond.type, bond.purchaseDate);
+  // EDO: opłata nigdy nie przekracza narosłych odsetek. COI: ten limit działa
+  // tylko w 1. okresie odsetkowym, później opłata jest pobierana w całości.
+  const capped = spec.capitalizes || periodIndex === 0;
+  const fee = matured ? 0 : capped ? Math.min(feeRate, Math.max(interestPerBond, 0)) : feeRate;
+  const tax = bond.taxFree ? 0 : BOND_TAX * Math.max(interestPerBond - fee, 0);
 
   return {
     valuePerBond,
@@ -111,7 +146,10 @@ export function valueBond(bond, cpiMap, today = new Date()) {
     currentRate,
     periodIndex,
     paidInterestTotal: paidPerBond * count,
-    redeemTodayTotal: (matured ? valuePerBond : valuePerBond - fee) * count,
+    redeemTodayTotal: (valuePerBond - fee - tax) * count,
+    feeTotal: fee * count,
+    taxTotal: tax * count,
+    estimated,
     matured,
     maturityDate: maturity.toISOString().slice(0, 10),
   };
