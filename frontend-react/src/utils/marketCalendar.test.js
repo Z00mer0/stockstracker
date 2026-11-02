@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { easterSunday, holidays, isTradingDay, marketOf, isTodaysSession } from './marketCalendar.js';
+import { easterSunday, holidays, isTradingDay, marketOf, isTodaysSession, isQuoteStale } from './marketCalendar.js';
 
 describe('marketCalendar', () => {
   it('Wielkanoc', () => {
@@ -41,5 +41,12 @@ describe('marketCalendar', () => {
     expect(isTodaysSession(Date.parse('2026-10-26T06:30:00Z') / 1000, 'Europe/Warsaw', now)).toBe(true);
     // 23:30 ET w niedzielę to już poniedziałek w Warszawie, ale nie w Nowym Jorku
     expect(isTodaysSession(friday, 'America/New_York', new Date('2026-10-26T03:30:00Z'))).toBe(false);
+  });
+
+  it('notowanie sprzed ponad 10 dni', () => {
+    const now = Date.parse('2026-11-02T12:00:00Z');
+    expect(isQuoteStale(Date.parse('2026-10-30T15:00:00Z') / 1000, now)).toBe(false);   // piątek → poniedziałek
+    expect(isQuoteStale(Date.parse('2026-10-20T15:00:00Z') / 1000, now)).toBe(true);
+    expect(isQuoteStale(null, now)).toBe(false);
   });
 });

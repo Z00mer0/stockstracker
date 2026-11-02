@@ -84,3 +84,11 @@ export function isTodaysSession(ts, timeZone, now = new Date()) {
   const fmt = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
   return fmt.format(new Date(ts * 1000)) === fmt.format(now);
 }
+
+// Ostatnie notowanie starsze niż `days` dni kalendarzowych — dłużej niż trwa
+// najdłuższa przerwa świąteczna. Spółka mogła zostać zawieszona, wycofana
+// z obrotu, zmienić ticker albo połączyć się z inną; wycena stoi na starej cenie.
+export const QUOTE_STALE_DAYS = 10;
+export function isQuoteStale(ts, now = Date.now(), days = QUOTE_STALE_DAYS) {
+  return ts > 0 && now - ts * 1000 > days * 86400000;
+}
