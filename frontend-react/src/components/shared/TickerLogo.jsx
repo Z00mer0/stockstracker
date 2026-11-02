@@ -1,5 +1,6 @@
 import { useState, useContext } from 'react';
 import { AppContext } from '../../context/AppContext';
+import { logoSources } from '../../utils/logoSources.js';
 
 const DOMAIN_MAP = {
   // GPW
@@ -138,25 +139,33 @@ const DOMAIN_MAP = {
 };
 
 export default function TickerLogo({ symbol = '', size }) {
-  const [imgErr, setImgErr] = useState(false);
   const ctx = useContext(AppContext);
   const logoMap = ctx?.logoMap ?? {};
 
   const chars = symbol.replace(/\.(WA|US|UK)$/i, '').slice(0, 2).toUpperCase();
   const domain = DOMAIN_MAP[symbol] ?? logoMap[symbol] ?? null;
+  const sources = logoSources(symbol, domain);
+  const sourcesKey = sources.join('|');
+  // Licznik nieudanych źródeł, liczony od nowa przy zmianie listy źródeł
+  // (np. gdy domena z /api/logos dojdzie po pierwszym renderze).
+  const [failed, setFailed] = useState({ key: sourcesKey, n: 0 });
+  const errCount = failed.key === sourcesKey ? failed.n : 0;
+  const src = sources[errCount];
   const cls = size === 'lg' ? 'ticker-logo ticker-logo-lg' : 'ticker-logo';
   const px = typeof size === 'number' ? size : size === 'lg' ? 56 : 32;
   const sizeStyle = typeof size === 'number' ? { width: px, height: px } : undefined;
 
-  if (domain && !imgErr) {
+  if (src) {
     return (
       <span className={cls} style={{ ...sizeStyle, padding: 0, overflow: 'hidden', background: 'var(--bg)' }}>
         <img
-          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
+          key={src}
+          src={src}
           alt=""
           width={px}
           height={px}
-          onError={() => setImgErr(true)}
+          loading="lazy"
+          onError={() => setFailed({ key: sourcesKey, n: errCount + 1 })}
           style={{ display: 'block', borderRadius: 6, objectFit: 'contain' }}
         />
       </span>

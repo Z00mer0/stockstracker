@@ -239,9 +239,14 @@ export function AppProvider({ children }) {
     const symbols = [...new Set(holdings.map(h => h.symbol))];
     const missing = symbols.filter(s => !(s in logoMap));
     if (!missing.length) return;
-    api.get(`/api/logos?symbols=${missing.join(',')}`)
-      .then(res => setLogoMap(prev => ({ ...prev, ...res.data })))
-      .catch(() => {});
+    // Serwer przyjmuje do 30 symboli na zapytanie — przy większym portfelu
+    // reszta spółek zostawała bez logo.
+    for (let i = 0; i < missing.length; i += 30) {
+      const chunk = missing.slice(i, i + 30);
+      api.get(`/api/logos?symbols=${chunk.map(encodeURIComponent).join(',')}`)
+        .then(res => setLogoMap(prev => ({ ...prev, ...res.data })))
+        .catch(() => {});
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawData, authed]);
 
