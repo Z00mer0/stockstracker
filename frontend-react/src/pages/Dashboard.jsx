@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase, Scale,
-  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock,
+  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock, BarChart3,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StockDetailModal from '../components/StockDetailModal';
@@ -406,6 +406,12 @@ export default function Dashboard() {
       <PageHeader
         title={`${t('greeting')}, ${displayName ?? t('investor_fallback')}`}
         subtitle={new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
+        actions={(
+          <>
+            <Button size="sm" icon={BarChart3} onClick={() => navigate('/market/gpw')}>{t('dash_session_gpw')}</Button>
+            <Button size="sm" icon={BarChart3} onClick={() => navigate('/market/us')}>{t('dash_session_us')}</Button>
+          </>
+        )}
       />
 
       {allPositions.length > 0 && (
