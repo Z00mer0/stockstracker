@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TriangleAlert, Upload, X } from 'lucide-react';
 import { parseCsv, parseXtbExcel, mergeBySymbol } from '../utils/holdingsImport.js';
+import { fetchQuoteCurrencies, withQuoteCurrency } from '../utils/quoteCurrency.js';
 import { useT } from '../context/LanguageContext';
 import { Badge, Button, FileDrop, Modal, SegmentedControl, Spinner, Table } from './ui';
 import { cx } from './ui/cx.js';
@@ -73,15 +74,18 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
     if (!preview.length) { setError(t('ci_empty')); return; }
     setSaving(true); setError('');
     try {
+      // Waluta pozycji z notowania, nie z sufiksu (CSPX.UK jest w USD).
+      const currencies = await fetchQuoteCurrencies(preview.map(p => p.symbol));
+      const fixed = withQuoteCurrency(preview, currencies);
       let newHoldings;
       if (mode === 'replace') {
-        newHoldings = preview;
+        newHoldings = fixed;
       } else {
         const map = Object.fromEntries(existingHoldings.map(h => [h.symbol, h]));
-        preview.forEach(p => { map[p.symbol] = p; });
+        fixed.forEach(p => { map[p.symbol] = p; });
         newHoldings = Object.values(map);
       }
-      await onSave(newHoldings, rawRows);
+      await onSave(newHoldings, withQuoteCurrency(rawRows, currencies));
       onClose();
     } catch (e) {
       setError(e.message || t('save_error'));
