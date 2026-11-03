@@ -3,6 +3,7 @@ import { CircleCheck, FileText, Info, Upload } from 'lucide-react';
 import { dedupeBatch, dedupeAgainstExisting } from '../utils/brokerDedupe';
 import { parseBrokerCsv, parseBrokerXlsx, computePortfolioPreview } from '../utils/brokerImport.js';
 import { useApp } from '../context/AppContext';
+import { fetchQuoteCurrencies, withQuoteCurrency } from '../utils/quoteCurrency.js';
 import { useT } from '../context/LanguageContext';
 import { Button, Callout, Field, FileDrop, Modal, Select } from './ui';
 
@@ -70,7 +71,9 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
     if (!deduped.length) return;
     setSaving(true); setError('');
     try {
-      await onSave(deduped);
+      // Waluta kupna/sprzedaży z notowania, nie z sufiksu (CSPX.UK jest w USD).
+      const currencies = await fetchQuoteCurrencies(deduped.filter(x => x.symbol).map(x => x.symbol));
+      await onSave(withQuoteCurrency(deduped, currencies));
       setSaved(true);
     } catch (e) {
       setError(e.response?.data?.error ?? e.message ?? t('save_error'));
