@@ -311,9 +311,15 @@ export function AppProvider({ children }) {
   // optimistic-update + POST round trip, not just around the network call.
   async function postUpdate(updated) {
     writeInProgressRef.current = true;
+    const prev = rawDataRef.current;
     try {
       setRawData(updated);
       await api.post(dataUrl, updated);
+    } catch (e) {
+      // Serwer zapisu nie przyjął — cofamy zmianę na ekranie. Inaczej np.
+      // usunięta pozycja znikała, a po odświeżeniu wracała bez słowa.
+      setRawData(cur => (cur === updated ? prev : cur));
+      throw e;
     } finally {
       writeInProgressRef.current = false;
     }
