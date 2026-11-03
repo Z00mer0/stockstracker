@@ -320,7 +320,7 @@ export default function Portfolio() {
           message={t('pf_delete_confirm').replace('{name}', confirmDel)}
           detail={t('confirm_delete_pos')}
           confirmLabel={t('delete_btn')}
-          onConfirm={() => { const sym = confirmDel; setConfirmDel(null); removePosition(sym).then(() => refresh()); }}
+          onConfirm={() => { const sym = confirmDel; setConfirmDel(null); removePosition(sym).then(() => refresh(), e => showToast(e.response?.data?.error ?? e.message, { type: 'error' })); }}
           onCancel={() => setConfirmDel(null)}
         />
       )}

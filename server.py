@@ -12,6 +12,7 @@ import functools
 import logging
 import mimetypes
 import re
+import math
 import secrets
 import socket
 import os
@@ -1597,6 +1598,43 @@ if DATABASE_URL:
                 'otherAssets': other_assets, 'importSnapshots': import_snapshots,
                 'bonds': bonds}
 
+    def _num(v):
+        """Liczba albo None. NaN z przeglądarki przychodzi w JSON jako null."""
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+
+    def _clean_portfolio_data(data, portfolio_id):
+        """Jeden zepsuty wiersz (null zamiast liczby, pusta data) wywracał cały
+        zapis błędem 500 — a z nim każdą kolejną zmianę, np. usunięcie pozycji.
+        Takie wiersze poprawiamy albo pomijamy i odnotowujemy w logach."""
+        fixed = []
+        holdings = []
+        for h in (data.get('portfolio') or {}).get('holdings') or []:
+            if not isinstance(h, dict) or not h.get('symbol'):
+                fixed.append('holding bez symbolu'); continue
+            qty, avg = _num(h.get('qty')), _num(h.get('avgPrice'))
+            if qty is None or avg is None:
+                fixed.append(f"holding {h.get('symbol')} qty={h.get('qty')} avg={h.get('avgPrice')}")
+            holdings.append({**h, 'qty': qty or 0, 'avgPrice': avg or 0})
+        txs = []
+        for tx in data.get('transactions') or []:
+            if not isinstance(tx, dict) or not tx.get('type'):
+                fixed.append(f'transakcja bez typu: {tx}'); continue
+            tx = dict(tx)
+            if not tx.get('id'):
+                tx['id'] = secrets.token_hex(4)
+            if not tx.get('date'):
+                tx['date'] = None
+            txs.append(tx)
+        cash = {}
+        for k, v in (data.get('cash') or {}).items():
+            if _num(v) is None:
+                fixed.append(f'gotówka {k}={v}'); continue
+            cash[k] = v
+        if fixed:
+            log.warning(f'[save] portfolio {portfolio_id}: poprawione/pominięte wiersze: {fixed[:20]}')
+        return {**data, 'portfolio': {**(data.get('portfolio') or {}), 'holdings': holdings},
+                'transactions': txs, 'cash': cash}
+
     def _transaction_rows(portfolio_id, transactions):
         """Wiersze do INSERT; przy powtórzonym id wygrywa ostatni wpis — jak przy
         zapisie wiersz po wierszu (ON CONFLICT nie przyjmie dwóch takich samych
@@ -1611,6 +1649,7 @@ if DATABASE_URL:
         return list(rows.values())
 
     def save_portfolio_data(portfolio_id, data):
+        data = _clean_portfolio_data(data, portfolio_id)
         holdings = data.get('portfolio', {}).get('holdings', [])
         transactions = data.get('transactions', [])
         snapshots = data.get('snapshots', {})
@@ -5775,6 +5814,9 @@ async function doRecover() {
             except (ValueError, json.JSONDecodeError) as e:
                 self.send_json(400, {'error': str(e)})
             except Exception as e:
+                # Pełny ślad w logach Rendera — sam komunikat w odpowiedzi nie
+                # mówi, który wiersz portfela baza odrzuciła.
+                log.exception(f'[save] portfolio {pid}')
                 self.send_json(500, {'error': str(e)})
 
         elif path.startswith('/api/portfolios/') and path.endswith('/layout'):
