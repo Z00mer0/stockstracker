@@ -5775,6 +5775,9 @@ async function doRecover() {
             except (ValueError, json.JSONDecodeError) as e:
                 self.send_json(400, {'error': str(e)})
             except Exception as e:
+                # Pełny ślad w logach Rendera — sam komunikat w odpowiedzi nie
+                # mówi, który wiersz portfela baza odrzuciła.
+                log.exception(f'[save] portfolio {pid}')
                 self.send_json(500, {'error': str(e)})
 
         elif path.startswith('/api/portfolios/') and path.endswith('/layout'):
