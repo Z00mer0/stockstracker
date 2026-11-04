@@ -71,7 +71,10 @@ export function AppProvider({ children }) {
   // 'fallback', a nie null.
   const [fxStale, setFxStale]       = useState('fallback');
   const [logoMap, setLogoMap]       = useState({});
-  const writeInProgressRef          = useRef(false);
+  // Liczba zapisów w toku (nie flaga: przy dwóch naraz pierwszy kończący
+  // zdejmowałby blokadę odświeżania drugiemu).
+  const writeInProgressRef          = useRef(0);
+  const postChainRef                = useRef(Promise.resolve());
   const fetchIdRef                  = useRef(0);
   // Mirrors rawData, always current regardless of which render a callback's closure
   // came from — write functions read this instead of the `rawData` variable directly,
@@ -183,7 +186,7 @@ export function AppProvider({ children }) {
 
   const fetchData = useCallback(async () => {
     if (!authed) return;
-    if (writeInProgressRef.current) return;
+    if (writeInProgressRef.current > 0) return;
     // Guard against out-of-order responses: if activePortfolioId changes while a
     // fetch is in flight, an older (e.g. "all") request can resolve AFTER a newer
     // one and overwrite rawData with the wrong portfolio's data. Only the response
@@ -309,19 +312,28 @@ export function AppProvider({ children }) {
   // Single choke point for all writes: blocks fetchData() from running (and clobbering
   // rawData with a fetch that started before this write finished) for the entire
   // optimistic-update + POST round trip, not just around the network call.
+  // Zapisy portfela idą do serwera po kolei. Każdy niesie cały portfel, więc
+  // gdy dwa leciały naraz (np. automatyczny zapis wartości dnia i usunięcie
+  // pozycji), starszy mógł dojść później i przywrócić usuniętą pozycję.
+  function postSerialized(updated) {
+    const run = postChainRef.current.catch(() => {}).then(() => api.post(dataUrl, updated));
+    postChainRef.current = run;
+    return run;
+  }
+
   async function postUpdate(updated) {
-    writeInProgressRef.current = true;
+    writeInProgressRef.current += 1;
     const prev = rawDataRef.current;
     try {
       setRawData(updated);
-      await api.post(dataUrl, updated);
+      await postSerialized(updated);
     } catch (e) {
       // Serwer zapisu nie przyjął — cofamy zmianę na ekranie. Inaczej np.
       // usunięta pozycja znikała, a po odświeżeniu wracała bez słowa.
       setRawData(cur => (cur === updated ? prev : cur));
       throw e;
     } finally {
-      writeInProgressRef.current = false;
+      writeInProgressRef.current -= 1;
     }
   }
 
@@ -712,12 +724,12 @@ export function AppProvider({ children }) {
       importSnapshots: { ...baseSnapshots, [importId]: preSnapshot },
     };
 
-    writeInProgressRef.current = true;
+    writeInProgressRef.current += 1;
     try {
-      await api.post(dataUrl, updated); // save first — state only updates after confirmed save
+      await postSerialized(updated); // save first — state only updates after confirmed save
       setRawData(updated);
     } finally {
-      writeInProgressRef.current = false;
+      writeInProgressRef.current -= 1;
     }
   }
 
@@ -746,12 +758,12 @@ export function AppProvider({ children }) {
       importSnapshots: snapshots,
     };
 
-    writeInProgressRef.current = true;
+    writeInProgressRef.current += 1;
     try {
-      await api.post(dataUrl, updated); // save first
+      await postSerialized(updated); // save first
       setRawData(updated);
     } finally {
-      writeInProgressRef.current = false;
+      writeInProgressRef.current -= 1;
     }
   }
 
