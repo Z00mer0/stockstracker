@@ -1659,15 +1659,34 @@ if DATABASE_URL:
         snapshots_cap_native = data.get('snapshotsCapitalNative', {})
         cash = data.get('cash', {})
         with _conn() as c, c.cursor() as cur:
+            # Dwa zapisy tego samego portfela naraz (np. usunięcie pozycji i zapis
+            # wartości dnia) przeplatały się: DELETE drugiego nie widział wierszy
+            # wstawionych przez pierwszy, więc usunięta pozycja wracała, a zdublowany
+            # snapshot kończył się błędem 500. Blokada wiersza portfela ustawia
+            # zapisy jeden po drugim.
+            cur.execute("SELECT 1 FROM portfolio_list WHERE id=%s FOR UPDATE", (portfolio_id,))
             cur.execute("DELETE FROM portfolio_holdings WHERE portfolio_id=%s", (portfolio_id,))
+            # Identyfikatory są unikalne w całej bazie, nie w portfelu. Ten sam id
+            # w innym portfelu (np. kopia zapasowa przywrócona obok oryginału)
+            # kończył zapis pozycji błędem 500, a transakcję nadpisywał w cudzym
+            # portfelu. Zajęte gdzie indziej dostają nowy id.
+            cur.execute("SELECT id FROM portfolio_holdings WHERE id = ANY(%s)",
+                        ([h['id'] for h in holdings if h.get('id')],))
+            taken_h = {r[0] for r in cur.fetchall()}
             for h in holdings:
-                hid = h.get('id') or secrets.token_hex(8)
+                hid = h.get('id') if h.get('id') and h.get('id') not in taken_h else secrets.token_hex(8)
                 cur.execute("""INSERT INTO portfolio_holdings (id, portfolio_id, symbol, qty, avg_price, currency, asset_type)
                                VALUES (%s, %s, %s, %s, %s, %s, %s)
                                ON CONFLICT (portfolio_id, symbol) DO UPDATE
                                SET qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price, currency=EXCLUDED.currency, asset_type=EXCLUDED.asset_type""",
                             (hid, portfolio_id, h['symbol'], h.get('qty', 0), h.get('avgPrice', 0), h.get('currency', 'PLN'), h.get('assetType', '')))
             cur.execute("DELETE FROM portfolio_transactions WHERE portfolio_id=%s", (portfolio_id,))
+            cur.execute("SELECT id FROM portfolio_transactions WHERE id = ANY(%s)",
+                        ([tx['id'] for tx in transactions],))
+            taken_t = {r[0] for r in cur.fetchall()}
+            if taken_t:
+                log.warning(f'[save] portfolio {portfolio_id}: {len(taken_t)} transakcji z id zajętym w innym portfelu — nowe id')
+                transactions = [{**tx, 'id': secrets.token_hex(8)} if tx['id'] in taken_t else tx for tx in transactions]
             # Paczkami (execute_values): przy pełnej historii z XTB to tysiące
             # wierszy — jedno INSERT na transakcję do zdalnej bazy trwało minuty.
             if transactions:
@@ -1708,6 +1727,22 @@ if DATABASE_URL:
             cur.execute("""INSERT INTO portfolio_bonds (portfolio_id, bonds_json) VALUES (%s, %s)
                            ON CONFLICT (portfolio_id) DO UPDATE SET bonds_json = EXCLUDED.bonds_json""",
                         (portfolio_id, json.dumps(bonds, ensure_ascii=False)))
+
+    def save_snapshot_row(portfolio_id, date, total, invested, fx_map=None, capital=None, cap_native=None):
+        """Sama wartość dnia — bez przepisywania całego portfela. Wcześniej
+        /save-snapshots wczytywał portfel i zapisywał go w całości, więc zmiana
+        zrobiona w międzyczasie (np. usunięta pozycja) wracała."""
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("""INSERT INTO portfolio_snapshots (portfolio_id, date, total, invested, fx_json, capital, capital_native)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT (portfolio_id, date) DO UPDATE SET
+                           total=EXCLUDED.total, invested=EXCLUDED.invested,
+                           fx_json=COALESCE(EXCLUDED.fx_json, portfolio_snapshots.fx_json),
+                           capital=COALESCE(EXCLUDED.capital, portfolio_snapshots.capital),
+                           capital_native=COALESCE(EXCLUDED.capital_native, portfolio_snapshots.capital_native)""",
+                        (portfolio_id, date, total, invested,
+                         json.dumps(fx_map) if isinstance(fx_map, dict) and fx_map else None,
+                         capital, json.dumps(cap_native) if isinstance(cap_native, dict) else None))
 
     def load_layout(portfolio_id):
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -5871,7 +5906,12 @@ async function doRecover() {
                         pdata.setdefault('snapshotsFx', {})[today] = fx_map
                     capital = vals.get('capital')
                     cap_native = vals.get('capitalNative')
-                    if isinstance(capital, (int, float)) and isinstance(cap_native, dict):
+                    has_cap = isinstance(capital, (int, float)) and isinstance(cap_native, dict)
+                    if DATABASE_URL:
+                        save_snapshot_row(pid, today, total, invested, fx_map,
+                                          capital if has_cap else None, cap_native if has_cap else None)
+                        continue
+                    if has_cap:
                         pdata.setdefault('snapshotsCapital', {})[today] = capital
                         pdata.setdefault('snapshotsCapitalNative', {})[today] = cap_native
                     save_portfolio_data(pid, pdata)
