@@ -3213,6 +3213,37 @@ def _big_move_title(sym, changePct, lang):
     return f'{arrow} {sym} {sign}{changePct:.2f}% {today_word}'
 
 
+_BIG_MOVE_DIGEST_TOP = 4
+
+
+def _big_move_push(moves, tone, lang, today_iso):
+    """Jeden push na całą paczkę ruchów zamiast osobnego na każdą spółkę.
+    moves: [(symbol, changePct)]. Jedna spółka — dotychczasowy push z tekstem;
+    kilka — zbiorczy: liczba rosnących i spadających, największe ruchy,
+    a kliknięcie otwiera /moves z pełną listą (zakodowaną w adresie, więc
+    pokazuje dokładnie to, co było w powiadomieniu)."""
+    if len(moves) == 1:
+        sym, chg = moves[0]
+        return _big_move_title(sym, chg, lang), _big_move_text(sym, chg, tone, lang, today_iso), '/watchlist'
+    ordered = sorted(moves, key=lambda m: -abs(m[1]))
+    ups = sum(1 for _, c in moves if c >= 0)
+    downs = len(moves) - ups
+    parts = []
+    if ups:
+        parts.append(f'{ups} ↑')
+    if downs:
+        parts.append(f'{downs} ↓')
+    head = 'Duże ruchy dziś' if lang == 'pl' else 'Big moves today'
+    title = f"{'🚀' if ups >= downs else '📉'} {head}: {', '.join(parts)}"
+    top = ' · '.join(f'{s} {c:+.1f}%' for s, c in ordered[:_BIG_MOVE_DIGEST_TOP])
+    rest = len(moves) - _BIG_MOVE_DIGEST_TOP
+    if rest > 0:
+        top += f" · {'i' if lang == 'pl' else 'and'} {rest} {'więcej' if lang == 'pl' else 'more'}"
+    url = '/moves?d=' + today_iso + '&m=' + urllib.parse.quote(
+        ','.join(f'{s}:{c:.2f}' for s, c in ordered), safe=',:')
+    return title, top, url
+
+
 class _SkipBigMoves(Exception):
     """Sygnal early-return z sekcji 1d bez logowania jako blad."""
     pass
@@ -3578,6 +3609,9 @@ def _run_push_checks():
             targets = sorted(wl_syms | pf_syms)
             _prefill_quotes(targets, price_cache)
             today_iso = today.isoformat()
+            # Najpierw zbieramy wszystkie nowe ruchy, potem jeden push na
+            # paczkę — wcześniej każda spółka szła osobno (20 powiadomień naraz).
+            pending = []
             for sym in targets:
                 try:
                     if sym not in price_cache:
@@ -3594,13 +3628,15 @@ def _run_push_checks():
                     key = f'move:{today_iso}:{sym}:{direction}:{tone}:{lang}'
                     if _already_sent(username, key):
                         continue
-                    title = _big_move_title(sym, chg, lang)
-                    body = _big_move_text(sym, chg, tone, lang, today_iso)
-                    if _send_push(username, title, body, '/watchlist'):
-                        _mark_sent(username, key)
-                        stats['bigMove'] += 1
+                    pending.append((sym, chg, key))
                 except Exception as e:
                     log.warning(f'[push] big move {username}/{sym}: {e}')
+            if pending:
+                title, body, url = _big_move_push([(s, c) for s, c, _ in pending], tone, lang, today_iso)
+                if _send_push(username, title, body, url):
+                    for _, _, key in pending:
+                        _mark_sent(username, key)
+                    stats['bigMove'] += 1
         except _SkipBigMoves:
             pass
         except Exception as e:
@@ -6440,6 +6476,7 @@ async function doRecover() {
                 cache = {}
                 _prefill_quotes(targets, cache)
                 sent, scanned, qualifying = 0, 0, 0
+                moves = []
                 for sym in targets:
                     scanned += 1
                     try:
@@ -6454,12 +6491,12 @@ async function doRecover() {
                         if not _quote_is_current(sym, quote):
                             continue
                         qualifying += 1
-                        title = _big_move_title(sym, chg, lang)
-                        body = _big_move_text(sym, chg, tone, lang, today_iso)
-                        if _send_push(username, title, body, '/watchlist'):
-                            sent += 1
+                        moves.append((sym, chg))
                     except Exception as e:
                         log.warning(f'[push] big-move-scan {username}/{sym}: {e}')
+                if moves:
+                    title, body, url = _big_move_push(moves, tone, lang, today_iso)
+                    sent = 1 if _send_push(username, title, body, url) else 0
                 self.send_json(200, {'scanned': scanned, 'qualifying': qualifying, 'sent': sent, 'tone': tone, 'language': lang})
             except Exception as e:
                 log.warning(f'[push] big-move-scan {username}: {e}')
