@@ -15,6 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 // na której użytkownik faktycznie jest.
 const Dashboard       = React.lazy(() => import('./pages/Dashboard'));
 const Portfolio       = React.lazy(() => import('./pages/Portfolio'));
+const BigMoves        = React.lazy(() => import('./pages/BigMoves'));
 const History         = React.lazy(() => import('./pages/History'));
 const Transactions    = React.lazy(() => import('./pages/Transactions'));
 const Dividends       = React.lazy(() => import('./pages/Dividends'));
@@ -77,6 +78,7 @@ function AppRoutes() {
           <Route path="calendar"    element={<Calendar />} />
           <Route path="market/:market?" element={<MarketSummary />} />
           <Route path="watchlist"   element={<Watchlist />} />
+          <Route path="moves"       element={<BigMoves />} />
           <Route path="alerts"      element={<Alerts />} />
           <Route path="scenario"    element={<ScenarioLab />} />
           <Route path="oki"         element={<OkiCalculator />} />
