@@ -1527,6 +1527,11 @@ if DATABASE_URL:
     def delete_portfolio(portfolio_id, username):
         with _conn() as c, c.cursor() as cur:
             cur.execute("DELETE FROM portfolio_list WHERE id=%s AND user_id=%s", (portfolio_id, username))
+            if cur.rowcount:
+                # Te tabele nie mają ON DELETE CASCADE — bez tego zostawały po
+                # usuniętym portfelu, a link udostępniania dalej działał.
+                for table in ('portfolio_bonds', 'portfolio_import_snapshots', 'portfolio_layouts', 'share_links'):
+                    cur.execute(f"DELETE FROM {table} WHERE portfolio_id=%s", (portfolio_id,))
 
     def load_portfolio_data(portfolio_id):
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

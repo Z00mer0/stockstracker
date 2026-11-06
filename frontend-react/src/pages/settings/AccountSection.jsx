@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck } from 'lucide-react';
+import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { api } from '../../hooks/useApi';
@@ -194,6 +194,61 @@ function ExportDataCard() {
   );
 }
 
+// Usunięcie portfela razem z jego pozycjami, transakcjami i historią.
+// Ostatniego portfela usunąć się nie da (serwer też tego pilnuje).
+function PortfoliosCard() {
+  const t = useT();
+  const { portfolios, deletePortfolio, refresh } = useApp();
+  const [target, setTarget] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const last = portfolios.length <= 1;
+
+  async function remove() {
+    const p = target;
+    setTarget(null); setError(null); setBusy(p.id);
+    try {
+      await deletePortfolio(p.id);
+      refresh();
+    } catch (e) {
+      setError(e.response?.data?.error ?? e.message);
+    } finally { setBusy(null); }
+  }
+
+  return (
+    <Card title={t('pfl_manage_title')}>
+      <div className="grid gap-2 p-4">
+        <Note tone="err">{error}</Note>
+        {portfolios.map(p => (
+          <div key={p.id} className="flex items-center gap-3 rounded-card-sm border border-line px-3 py-2">
+            <span className="min-w-0 flex-1 truncate text-fg">{p.name}</span>
+            <span className="shrink-0 text-small text-faint">{[p.currency, p.accountType || p.account_type].filter(Boolean).join(' · ')}</span>
+            <Button
+              size="sm" variant="danger" icon={Trash2}
+              loading={busy === p.id}
+              disabled={last}
+              title={last ? t('pfl_delete_last') : undefined}
+              onClick={() => setTarget(p)}
+            >
+              {t('delete')}
+            </Button>
+          </div>
+        ))}
+        {last && <p className="text-small text-faint">{t('pfl_delete_last')}</p>}
+      </div>
+      {target && (
+        <ConfirmModal
+          message={t('pfl_delete_confirm').replace('{name}', target.name)}
+          detail={t('pfl_delete_detail')}
+          confirmLabel={t('pfl_delete_btn')}
+          onConfirm={remove}
+          onCancel={() => setTarget(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
 export default function AccountSection() {
   return (
     <div className="space-y-4">
@@ -201,6 +256,7 @@ export default function AccountSection() {
       <ChangePasswordCard />
       <RecoveryCodesCard />
       <ExportDataCard />
+      <PortfoliosCard />
     </div>
   );
 }
