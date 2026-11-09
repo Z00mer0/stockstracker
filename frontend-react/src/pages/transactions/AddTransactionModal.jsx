@@ -5,6 +5,7 @@ import { Button, Field, Input, Modal, SegmentedControl, Select } from '../../com
 import SymbolInput from '../../components/shared/SymbolInput.jsx';
 import { usePriceOnDate } from '../../hooks/usePriceOnDate.js';
 import { currencyForSymbol } from '../../utils/priceOnDate.js';
+import { parseLabels } from '../../utils/labels.js';
 
 const TYPES = ['BUY', 'SELL', 'DIV', 'CASH'];
 const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 'type_cash' };
@@ -22,6 +23,7 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
     currency: 'PLN',
     date: new Date().toISOString().slice(0, 10),
     note: '',
+    labels: '',
     fee: '',
     tax: '',
     ...initial,
@@ -76,6 +78,7 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
         note: form.note.trim(),
         ...(fee > 0 ? { fee } : {}),
         ...(tax >= 0 ? { tax } : {}),
+        ...(parseLabels(form.labels).length ? { labels: parseLabels(form.labels) } : {}),
       }, { positions: isTrade && positions, cash: (isTrade || isDiv) && cashOn });
       onClose();
     } catch (e) {
@@ -155,6 +158,9 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
         )}
         <Field label={t('note_optional')}>
           <Input value={form.note} onChange={e => set('note', e.target.value)} />
+        </Field>
+        <Field label={t('lbl_field_optional')} hint={t('lbl_hint')}>
+          <Input value={form.labels} onChange={e => set('labels', e.target.value)} placeholder={t('lbl_ph')} />
         </Field>
         {(isTrade || isDiv) && (
           <Field label={form.type === 'BUY' ? t('source_of_funds') : form.type === 'SELL' ? t('sale_proceeds') : t('div_payout')}>

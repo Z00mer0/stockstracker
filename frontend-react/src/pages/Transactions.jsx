@@ -1,6 +1,6 @@
 // src/pages/Transactions.jsx
 import { useMemo, useState } from 'react';
-import { ShoppingCart, HandCoins, Coins, Wallet, Download, Upload, Plus, ArrowLeftRight, Info, Trash2, TriangleAlert } from 'lucide-react';
+import { ShoppingCart, HandCoins, Coins, Wallet, Download, Upload, Plus, ArrowLeftRight, Info, Trash2, TriangleAlert, Tag } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -15,6 +15,8 @@ import { positionMismatches } from '../utils/ledger.js';
 import AddTransactionModal from './transactions/AddTransactionModal.jsx';
 import ImportCsvModal from './transactions/ImportCsvModal.jsx';
 import { isAggregateView } from '../utils/portfolioView.js';
+import { allLabels } from '../utils/labels.js';
+import LabelsModal from './transactions/LabelsModal.jsx';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 const TYPE_TONE = { BUY: 'up', SELL: 'down', DIV: 'info', CASH: 'warn' };
@@ -31,7 +33,7 @@ function fmt(n, decimals, locale) {
 }
 
 export default function Transactions() {
-  const { transactions = [], portfolio = [], loading, importTransactions, addTransaction, deleteTransaction, activePortfolioId, displayCurrency, fxRates, canWrite } = useApp();
+  const { transactions = [], portfolio = [], loading, importTransactions, addTransaction, deleteTransaction, setTransactionLabels, activePortfolioId, displayCurrency, fxRates, canWrite } = useApp();
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
   const t = useT();
@@ -41,6 +43,10 @@ export default function Transactions() {
   const [confirmDel, setConfirmDel] = useState(null);
   const { showToast } = useToast();
   const [showImport, setShowImport] = useState(false);
+  const [label, setLabel] = useState('');
+  const [labelTarget, setLabelTarget] = useState(null);
+  const labels = useMemo(() => allLabels(transactions), [transactions]);
+  const activeLabel = labels.includes(label) ? label : '';
 
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const stats = useMemo(() => last30Totals(transactions, fxRates, displayCurrency), [transactions, fxRates, displayCurrency]);
@@ -53,9 +59,10 @@ export default function Transactions() {
 
   // Najnowsze na górze; brak daty na końcu (wcześniej brak daty wywracał sort).
   const sorted = useMemo(() => {
-    const base = filter === 'all' ? transactions : transactions.filter(tx => normalizeType(tx.type) === filter);
+    const base = transactions.filter(tx => (filter === 'all' || normalizeType(tx.type) === filter)
+      && (!activeLabel || (tx.labels ?? []).includes(activeLabel)));
     return [...base].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
-  }, [transactions, filter]);
+  }, [transactions, filter, activeLabel]);
 
   // W widoku „Wszystkie" pozycje różnych portfeli są zsumowane — porównanie
   // ma sens tylko dla jednego portfela.
@@ -115,10 +122,23 @@ export default function Transactions() {
       value: tx => txAmount(tx) * (fxRates[tx.currency] ?? 1),
       render: tx => <span className={`font-semibold ${blur ?? ''}`}>{fmt(txAmount(tx), 2, locale)} {CUR_SYMBOLS[tx.currency] ?? tx.currency ?? ''}</span>,
     },
-    { key: 'note', header: t('col_note'), render: tx => <span className="text-[11px] text-faint">{tx.note || '—'}</span> },
+    {
+      key: 'note', header: t('col_note'),
+      render: tx => (
+        <span className="flex flex-wrap items-center gap-1 text-[11px] text-faint">
+          {(tx.labels ?? []).map(l => <Badge key={l} tone="info">{l}</Badge>)}
+          {tx.note || (tx.labels?.length ? '' : '—')}
+        </span>
+      ),
+    },
     ...(canWrite ? [{
       key: 'actions', header: <span className="sr-only">{t('delete')}</span>, align: 'right',
-      render: tx => tx.id && <IconButton size="sm" icon={Trash2} label={t('delete')} onClick={() => setConfirmDel(tx)} />,
+      render: tx => tx.id && (
+        <span className="inline-flex gap-1">
+          <IconButton size="sm" icon={Tag} label={t('lbl_edit_title')} onClick={() => setLabelTarget(tx)} />
+          <IconButton size="sm" icon={Trash2} label={t('delete')} onClick={() => setConfirmDel(tx)} />
+        </span>
+      ),
     }] : []),
   ];
 
@@ -194,6 +214,14 @@ export default function Transactions() {
       >
         <div className="px-4 pt-2">
           <Tabs id="tx" tabs={tabs} value={filter} onChange={setFilter} />
+          {labels.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-2" role="group" aria-label={t('lbl_filter')}>
+              <Tag size={13} aria-hidden className="text-faint" />
+              {labels.map(l => (
+                <Button key={l} size="sm" variant={activeLabel === l ? 'primary' : 'secondary'} aria-pressed={activeLabel === l} onClick={() => setLabel(activeLabel === l ? '' : l)}>{l}</Button>
+              ))}
+            </div>
+          )}
         </div>
         <TabPanel tabsId="tx" value={filter}>
         <Table
@@ -224,6 +252,17 @@ export default function Transactions() {
           confirmLabel={t('delete_btn')}
           onConfirm={() => { const id = confirmDel.id; setConfirmDel(null); deleteTransaction(id).catch(e => showToast(e.message, { type: 'error' })); }}
           onCancel={() => setConfirmDel(null)}
+        />
+      )}
+      {labelTarget && (
+        <LabelsModal
+          tx={labelTarget}
+          known={labels}
+          onSave={(next, whole) => setTransactionLabels(
+            whole ? transactions.filter(x => x.symbol === labelTarget.symbol && x.id).map(x => x.id) : [labelTarget.id],
+            next,
+          )}
+          onClose={() => setLabelTarget(null)}
         />
       )}
       {showImport && (
