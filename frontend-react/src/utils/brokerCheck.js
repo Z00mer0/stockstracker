@@ -19,6 +19,8 @@ export function brokerCheckIssues(positions = [], { partialPrices = false, fxSta
   const stale = positions.filter(p => p.staleSince).map(p => p.symbol);
   if (notFound.length) issues.push({ key: 'notFound', symbols: notFound });
   if (stale.length) issues.push({ key: 'stale', symbols: stale });
+  const mismatch = positions.filter(p => p.priceCheck?.mismatch).map(p => p.symbol);
+  if (mismatch.length) issues.push({ key: 'priceMismatch', symbols: mismatch });
   if (partialPrices) issues.push({ key: 'partial' });
   if (fxStale) issues.push({ key: 'fx' });
   return issues;

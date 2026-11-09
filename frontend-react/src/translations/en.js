@@ -339,6 +339,7 @@ export default {
   broker_cause_less:    'a missing withdrawal, sale, commission, fee or tax withheld by the broker',
   broker_cause_timing:  'the broker values at the close, the app at the current price — during the session the gap can be larger',
   broker_issue_notFound: 'no quotes for: {symbols} — valued at purchase price',
+  broker_issue_priceMismatch: 'price differs between sources (Yahoo and stooq): {symbols}',
   broker_issue_stale:   'quotes older than 10 days: {symbols}',
   broker_issue_partial: 'not all prices have loaded',
   broker_issue_fx:      'exchange rates are out of date',
@@ -1658,4 +1659,7 @@ export default {
   err_boundary_title: 'Something went wrong',
   err_boundary_hint: 'This part couldn’t be displayed. The rest of the app works normally.',
   server_unavailable_toast: 'Server temporarily unavailable — try refreshing in a moment',
+  price_source: 'Price: {src}',
+  price_check_ok: 'matches {src} ({price})',
+  price_check_diff: '{src} shows {price} — {pct}% apart, check with your broker',
 };

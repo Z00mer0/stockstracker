@@ -1,5 +1,6 @@
 import Chip from '../../components/shared/Chip';
 import { fmtPeriod } from '../../hooks/usePortfolioMetrics';
+import { tStatic } from '../../utils/i18n.js';
 
 export function fmt(n, decimals = 2, locale = 'pl-PL') {
   if (n == null || isNaN(n)) return '—';
@@ -22,10 +23,21 @@ export function renderCell(key, pos, fxRates, divBySymbol, locale, displayCurren
       return <span className="text-fg">{pos.qty == null ? '—' : pos.qty.toLocaleString(locale, { maximumFractionDigits: 4 })}</span>;
     case 'avgPrice':
       return <span className="text-dim">{fmt(pos.avgPrice, 2, locale)} <span className="text-xs">{flag}</span></span>;
-    case 'price':
-      return pos.price != null
-        ? <span className="text-fg">{fmt(pos.price, 2, locale)} <span className="text-xs">{flag}</span></span>
-        : <Dash />;
+    case 'price': {
+      if (pos.price == null) return <Dash />;
+      // Źródło i godzina kursu w dymku; rozjazd z drugim źródłem — ostrzeżenie.
+      const chk = pos.priceCheck;
+      const time = pos.marketTime ? new Date(pos.marketTime * 1000).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+      const src = pos.priceSource === 'stooq' ? 'stooq' : 'Yahoo';
+      let title = [tStatic('price_source').replace('{src}', src), time].filter(Boolean).join(' · ');
+      if (chk) title += ` · ${tStatic(chk.mismatch ? 'price_check_diff' : 'price_check_ok').replace('{src}', 'stooq').replace('{price}', fmt(chk.price, 2, locale)).replace('{pct}', fmt(Math.abs(chk.diffPct), 1, locale))}`;
+      return (
+        <span className="text-fg" title={title}>
+          {chk?.mismatch && <span className="mr-1 text-warn" aria-label={title}>⚠</span>}
+          {fmt(pos.price, 2, locale)} <span className="text-xs">{flag}</span>
+        </span>
+      );
+    }
     case 'dailyChg':
       return pos.dailyChg == null ? <Dash /> : <Chip value={pos.dailyChg} />;
     case 'costPLN':

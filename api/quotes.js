@@ -1,4 +1,5 @@
 import { rateLimited } from './_rateLimit.js';
+import { fetchStooq } from './_stooq.js';
 // Vercel serverless function — fetches stock quotes server-side (different IP than Render)
 // No auth required — stock prices are public data
 //
@@ -13,6 +14,8 @@ const MAX_SYMBOLS = 60;
 // Zwraca { quote } | { stooq } | { notFound: true } | null (błąd przejściowy)
 async function fetchOne(sym) {
   let yahooStatus = null;
+  // GPW: stooq równolegle — kontrola kursu z Yahoo albo zapas, gdy Yahoo padnie.
+  const stooqP = fetchStooq(sym, { headers: { 'User-Agent': UA } });
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
     const r = await fetch(url, {
@@ -41,22 +44,26 @@ async function fetchOne(sym) {
         shortName: meta.shortName ?? meta.longName ?? null,
         // Waluta notowania (Londyn: GBp = pensy) — klient sprawdza z walutą pozycji.
         currency: meta.currency ?? null,
+        // Kurs z drugiego źródła (GPW) — klient porównuje i ostrzega przy rozjeździe.
+        priceCheck: await stooqP,
       },
     };
   } catch (e1) {
-    // Stooq CSV fallback (Polish .WA stocks)
+    // Zapas: stooq (GPW — już pobrany równolegle, reszta jak dotąd).
     try {
-      const stooqSym = sym.endsWith('.WA') ? sym.slice(0, -3).toLowerCase() : sym.toLowerCase() + '.us';
-      const url = `https://stooq.com/q/l/?s=${stooqSym}&f=sd2ohlcv&h&e=csv`;
-      const r = await fetch(url, {
-        headers: { 'User-Agent': UA, 'Referer': 'https://stooq.com/' },
-        signal: AbortSignal.timeout(6000),
-      });
-      const text = await r.text();
-      const lines = text.trim().split('\n');
-      if (lines.length >= 2) {
-        const price = parseFloat(lines[1].split(',')[5]);
-        if (price > 0) return { stooq: true, price };
+      const gpw = await stooqP;
+      if (gpw) return { stooq: true, price: gpw.price, date: gpw.date, time: gpw.time };
+      if (!sym.endsWith('.WA')) {
+        const url = `https://stooq.com/q/l/?s=${sym.toLowerCase()}.us&f=sd2ohlcv&h&e=csv`;
+        const r = await fetch(url, {
+          headers: { 'User-Agent': UA, 'Referer': 'https://stooq.com/' },
+          signal: AbortSignal.timeout(6000),
+        });
+        const lines = (await r.text()).trim().split('\n');
+        if (lines.length >= 2) {
+          const price = parseFloat(lines[1].split(',')[5]);
+          if (price > 0) return { stooq: true, price };
+        }
       }
     } catch {}
     // Yahoo powiedziało 404 → symbol nie istnieje, nie ma po co ponawiać
