@@ -1,3 +1,4 @@
+import { dividendTrack } from '../utils/dividendTrack.js';
 import { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Coins, Percent, CalendarClock, Sigma, Plus, Info, Pencil, Trash2, CalendarX, Sprout, Target, SearchCheck } from 'lucide-react';
@@ -148,6 +149,11 @@ export default function Dividends() {
   }, [symbols.join(',')]);
 
   const today = new Date().toISOString().slice(0, 10);
+  // Wzrost dywidendy i lata wypłat z rzędu — z 10 lat historii spółki.
+  const trackMap = useMemo(
+    () => Object.fromEntries(Object.entries(divHistory).map(([s, h]) => [s, dividendTrack(h)])),
+    [divHistory],
+  );
 
   const yearCutoff = useMemo(() => {
     const d = new Date(); d.setFullYear(d.getFullYear() - 1);
@@ -417,6 +423,20 @@ export default function Dividends() {
       render: r => {
         const yoc = yocMap[r.symbol]?.yoc;
         return yoc != null ? <Chip value={yoc} /> : <span className="text-[11px] text-faint">{yocLoading ? '…' : '—'}</span>;
+      },
+    },
+    {
+      key: 'growth', header: t('div_growth_col'), align: 'right', sortable: true, firstDir: 'desc', value: r => trackMap[r.symbol]?.growth?.pct,
+      render: r => {
+        const g = trackMap[r.symbol]?.growth;
+        return g ? <span title={t('div_growth_title').replace('{n}', g.years)}><Chip value={g.pct} decimals={1} /></span> : <span className="text-[11px] text-faint">—</span>;
+      },
+    },
+    {
+      key: 'streak', header: t('div_streak_col'), align: 'right', sortable: true, firstDir: 'desc', value: r => trackMap[r.symbol]?.streak,
+      render: r => {
+        const n = trackMap[r.symbol]?.streak;
+        return <span className="text-dim">{n ? (n >= 9 ? '9+' : n) : '—'}</span>;
       },
     },
   ];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { historyStats, twrSeries } from './historyStats.js';
+import { historyStats, twrSeries, mwrPct } from './historyStats.js';
 
 const row = (date, total, capital) => ({ date, total, capital });
 
@@ -63,5 +63,25 @@ describe('twrSeries', () => {
   it('indeks zaczyna od 1 i łańcuchuje dzienne stopy', () => {
     const s = twrSeries([row('a', 100, 100), row('b', 110, 100), row('c', 121, 100)]);
     expect(s.map(p => +p.index.toFixed(10))).toEqual([1, 1.1, 1.21]);
+  });
+});
+
+describe('mwrPct (zmodyfikowany Dietz)', () => {
+  it('bez wpłat równa się zwykłej stopie', () => {
+    expect(mwrPct([{ date: '2026-01-01', total: 1000, capital: 1000 }, { date: '2026-12-31', total: 1100, capital: 1000 }])).toBeCloseTo(10, 6);
+  });
+
+  it('wpłata w połowie okresu waży połowę', () => {
+    // zysk 100 na kapitale 1000 + 0,5 × 1000 = 6,67%
+    const r = mwrPct([
+      { date: '2026-01-01', total: 1000, capital: 1000 },
+      { date: '2026-01-06', total: 2000, capital: 2000 },
+      { date: '2026-01-11', total: 2100, capital: 2000 },
+    ]);
+    expect(r).toBeCloseTo(100 / 1500 * 100, 6);
+  });
+
+  it('za mało danych → null', () => {
+    expect(mwrPct([{ date: '2026-01-01', total: 1000, capital: 1000 }])).toBe(null);
   });
 });

@@ -47,8 +47,28 @@ export function maxDrawdown(series) {
   return best;
 }
 
+// Stopa ważona kapitałem (MWR, zmodyfikowana metoda Dietza): zysk do kapitału
+// faktycznie pracującego w okresie — wpłata z końca okresu waży mało.
+export function mwrPct(rows) {
+  if (rows.length < 2) return null;
+  const t0 = new Date(rows[0].date).getTime();
+  const span = new Date(rows[rows.length - 1].date).getTime() - t0;
+  const v0 = rows[0].total, v1 = rows[rows.length - 1].total;
+  if (!(span > 0) || v0 == null || v1 == null) return null;
+  let flows = 0, weighted = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i], prev = rows[i - 1];
+    const f = r.capital != null && prev.capital != null ? r.capital - prev.capital : 0;
+    if (!f) continue;
+    flows += f;
+    weighted += f * (1 - (new Date(r.date).getTime() - t0) / span);
+  }
+  const base = v0 + weighted;
+  return base > 0 ? (v1 - v0 - flows) / base * 100 : null;
+}
+
 export function historyStats(rows) {
-  if (!rows.length) return { profit: null, twrPct: null, cagr: null, days: 0, mdd: null, series: [] };
+  if (!rows.length) return { profit: null, twrPct: null, mwrPct: null, cagr: null, days: 0, mdd: null, series: [] };
   const first = rows[0], last = rows[rows.length - 1];
   const profitAt = r => (r.total != null && r.capital != null ? r.total - r.capital : null);
   const p0 = profitAt(first), p1 = profitAt(last);
@@ -58,6 +78,7 @@ export function historyStats(rows) {
   return {
     profit: p0 != null && p1 != null ? p1 - p0 : null,
     twrPct: rows.length > 1 ? twr * 100 : null,
+    mwrPct: mwrPct(rows),
     cagr: days >= 365 && twr > -1 ? (Math.pow(1 + twr, 365 / days) - 1) * 100 : null,
     days,
     mdd: maxDrawdown(series),
