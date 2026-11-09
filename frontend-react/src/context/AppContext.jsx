@@ -5,6 +5,7 @@ import { migratePortfolioAlertsOnce } from '../services/watchlistService';
 import { weightedAvg } from '../utils/weightedAvg.js';
 import { applyTransaction, revertTransaction, baseSymbol } from '../utils/ledger.js';
 import { normalizeSymbol, QTY_EPS } from '../utils/brokerImport.js';
+import { isAggregateView, groupIdOf, dataUrlFor } from '../utils/portfolioView.js';
 import { lsSet } from '../utils/safeStorage.js';
 
 export const AppContext = createContext(null);
@@ -86,9 +87,13 @@ export function AppProvider({ children }) {
   const ACTIVE_PORTFOLIO_KEY = 'myfund_active_portfolio';
 
   const [portfolios, setPortfolios] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [groupsLoaded, setGroupsLoaded] = useState(false);
   const [activePortfolioId, setActivePortfolioId] = useState(
     () => localStorage.getItem(ACTIVE_PORTFOLIO_KEY) || 'all'
   );
+  // Adres danych zależy od składu grupy — zmiana grupy przeładowuje jej dane.
+  const fetchUrl = dataUrlFor(activePortfolioId, groups);
   // True only while we have old localStorage alerts that still need to be merged
   // into the server watchlist — gates Watchlist.jsx's autosave and Portfolio's
   // "Ustaw alert" button so they can't race the migration write.
@@ -202,9 +207,7 @@ export function AppProvider({ children }) {
     try {
       const [portfoliosRes, dataRes] = await Promise.all([
         api.get('/api/portfolios'),
-        api.get(activePortfolioId === 'all'
-          ? '/api/portfolios/all/data'
-          : `/api/portfolios/${activePortfolioId}/data`),
+        api.get(fetchUrl),
       ]);
       if (myFetchId !== fetchIdRef.current) return; // stale response, ignore
       setPortfolios(portfoliosRes.data);
@@ -213,7 +216,7 @@ export function AppProvider({ children }) {
       if (myFetchId !== fetchIdRef.current) return; // stale error, ignore
       if (err.response?.status === 401) {
         handleUnauthorizedRef.current();
-      } else if (err.response?.status === 403 && activePortfolioId !== 'all') {
+      } else if (err.response?.status === 403 && !isAggregateView(activePortfolioId)) {
         // stale portfolio id in localStorage — fall back to aggregate view
         switchPortfolio('all');
       } else {
@@ -222,11 +225,27 @@ export function AppProvider({ children }) {
     } finally {
       if (myFetchId === fetchIdRef.current) setLoading(false);
     }
-  }, [authed, activePortfolioId]);
+  }, [authed, activePortfolioId, fetchUrl]);
 
   useEffect(() => {
     if (authed) fetchData();
   }, [authed, activePortfolioId, fetchData]);
+
+  // Grupy portfeli (np. „Emerytura” = IKE + zwykły) — z serwera, wspólne dla urządzeń.
+  useEffect(() => {
+    if (!authed) return;
+    api.get('/api/portfolio-groups').then(r => { setGroups(Array.isArray(r.data) ? r.data : []); setGroupsLoaded(true); }).catch(() => setGroupsLoaded(true));
+  }, [authed]);
+  // Usunięta grupa — wróć do „Wszystkie”.
+  useEffect(() => {
+    const gid = groupIdOf(activePortfolioId);
+    if (gid && groupsLoaded && !groups.some(g => g.id === gid)) switchPortfolio('all');
+  }, [groups, groupsLoaded, activePortfolioId]);
+
+  async function saveGroups(next) {
+    await api.post('/api/portfolio-groups', { groups: next });
+    setGroups(next);
+  }
 
   // Jednorazowa migracja starych localStorage-owych alertów z Portfela
   // do watchlisty (backend jako single source of truth).
@@ -301,10 +320,8 @@ export function AppProvider({ children }) {
     });
   }
 
-  const dataUrl = activePortfolioId === 'all'
-    ? '/api/portfolios/all/data'
-    : `/api/portfolios/${activePortfolioId}/data`;
-  const canWrite = activePortfolioId !== 'all';
+  const dataUrl = fetchUrl;
+  const canWrite = !isAggregateView(activePortfolioId);
 
   // Guards against writing while rawData hasn't loaded yet (e.g. slow/cold backend on
   // first page load) — spreading `{ ...null, ... }` silently drops every other field,
@@ -953,6 +970,8 @@ export function AppProvider({ children }) {
     restorePortfolios,
     updatePortfolio,
     deletePortfolio,
+    groups,
+    saveGroups,
     canWrite,
     logoMap,
     addOtherAsset,

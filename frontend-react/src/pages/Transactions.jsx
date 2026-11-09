@@ -14,6 +14,7 @@ import { exportTransactions } from '../utils/exporters.js';
 import { positionMismatches } from '../utils/ledger.js';
 import AddTransactionModal from './transactions/AddTransactionModal.jsx';
 import ImportCsvModal from './transactions/ImportCsvModal.jsx';
+import { isAggregateView } from '../utils/portfolioView.js';
 
 const CUR_SYMBOLS = { PLN: 'zł', USD: '$', EUR: '€', GBP: '£' };
 const TYPE_TONE = { BUY: 'up', SELL: 'down', DIV: 'info', CASH: 'warn' };
@@ -95,7 +96,7 @@ export default function Transactions() {
             : <span className="ticker-logo" aria-hidden><Wallet size={14} /></span>}
           <span className="text-[13px] font-semibold text-fg">{tx.symbol || (normalizeType(tx.type) === 'CASH' ? t('type_cash') : '—')}</span>
           {tx.name && tx.name !== tx.symbol && <span className="truncate text-[11px] font-normal text-faint">{tx.name}</span>}
-          {activePortfolioId === 'all' && tx._portfolioName && <Badge>{tx._portfolioName}</Badge>}
+          {isAggregateView(activePortfolioId) && tx._portfolioName && <Badge>{tx._portfolioName}</Badge>}
         </span>
       ),
     },

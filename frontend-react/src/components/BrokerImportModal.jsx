@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext';
 import { fetchQuoteCurrencies, withQuoteCurrency } from '../utils/quoteCurrency.js';
 import { useT } from '../context/LanguageContext';
 import { Button, Callout, Field, FileDrop, Modal, Select } from './ui';
+import { isAggregateView } from '../utils/portfolioView.js';
 
 export default function BrokerImportModal({ existingTransactions, existingPortfolio = [], existingCash = {}, onSave, onReconcile, onClose }) {
   const t = useT();
@@ -19,7 +20,7 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
   // prawidłowym celem zapisu, więc wymuszamy wybór konkretnego portfela.
   const { portfolios, activePortfolioId, switchPortfolio, loading } = useApp();
   const accountCurrency = portfolios.find(p => p.id === activePortfolioId)?.currency;
-  const isAggregate = activePortfolioId === 'all';
+  const isAggregate = isAggregateView(activePortfolioId);
 
   // Pliki zostają w stanie i są czytane od nowa po zmianie portfela
   // docelowego — waluta wpłat zależy od waluty rachunku.

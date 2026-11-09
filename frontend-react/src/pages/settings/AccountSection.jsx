@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
-import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck, Trash2 } from 'lucide-react';
+import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck, Trash2, Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { api } from '../../hooks/useApi';
-import { Button, Card, Field, Input, SegmentedControl } from '../../components/ui';
+import { Button, Card, Field, Input, Modal, SegmentedControl } from '../../components/ui';
 import { Row, Note, download } from './common.jsx';
 import ConfirmModal from '../../components/ConfirmModal';
 import { buildBackup, parseBackup } from '../../utils/backup.js';
@@ -249,6 +249,75 @@ function PortfoliosCard() {
   );
 }
 
+// Grupy portfeli: własny widok z kilku portfeli (np. „Emerytura” = IKE +
+// zwykły rachunek) — w przełączniku portfeli pod „Wszystkie”.
+function GroupModal({ initial, portfolios, onSave, onClose }) {
+  const t = useT();
+  const [name, setName] = useState(initial?.name ?? '');
+  const [ids, setIds] = useState(new Set(initial?.portfolioIds ?? []));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const toggle = id => setIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  async function save() {
+    if (!name.trim()) { setError(t('group_err_name')); return; }
+    if (ids.size < 1) { setError(t('group_err_pick')); return; }
+    setSaving(true);
+    try {
+      await onSave({ id: initial?.id ?? Math.random().toString(36).slice(2, 10), name: name.trim(), portfolioIds: portfolios.filter(p => ids.has(p.id)).map(p => p.id) });
+      onClose();
+    } catch (e) { setError(e.response?.data?.error ?? e.message); } finally { setSaving(false); }
+  }
+  return (
+    <Modal size="sm" title={initial ? t('group_edit') : t('group_new')} onClose={onClose}
+      footer={<><Button variant="ghost" onClick={onClose}>{t('cancel')}</Button><Button variant="primary" loading={saving} onClick={save}>{t('save_btn')}</Button></>}>
+      <form className="grid gap-4" onSubmit={e => { e.preventDefault(); save(); }}>
+        <Field label={t('group_name')}><Input value={name} onChange={e => setName(e.target.value)} placeholder={t('group_name_ph')} /></Field>
+        <fieldset className="grid gap-2">
+          <legend className="mb-1 text-label font-semibold uppercase text-dim">{t('group_portfolios')}</legend>
+          {portfolios.map(p => (
+            <label key={p.id} className="flex cursor-pointer items-center gap-3 text-[13px] text-fg">
+              <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={ids.has(p.id)} onChange={() => toggle(p.id)} />
+              <span className="flex-1">{p.name}</span>
+              <span className="text-small text-faint">{[p.currency, p.accountType || p.account_type].filter(Boolean).join(' · ')}</span>
+            </label>
+          ))}
+        </fieldset>
+        <Note tone="err">{error}</Note>
+        <button type="submit" hidden />
+      </form>
+    </Modal>
+  );
+}
+
+function GroupsCard() {
+  const t = useT();
+  const { portfolios, groups = [], saveGroups } = useApp();
+  const [edit, setEdit] = useState(null);
+  const [del, setDel] = useState(null);
+  const upsert = g => saveGroups(groups.some(x => x.id === g.id) ? groups.map(x => (x.id === g.id ? g : x)) : [...groups, g]);
+  if (portfolios.length < 2) return null;
+  const nameOf = id => portfolios.find(p => p.id === id)?.name;
+  return (
+    <Card title={t('groups_title')} actions={<Button size="sm" icon={Plus} onClick={() => setEdit({})}>{t('group_new')}</Button>}>
+      <div className="grid gap-2 p-4">
+        <p className="text-small text-dim">{t('groups_desc')}</p>
+        {groups.map(g => (
+          <div key={g.id} className="flex items-center gap-3 rounded-card-sm border border-line px-3 py-2">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-fg">{g.name}</span>
+              <span className="block truncate text-small text-faint">{g.portfolioIds.map(nameOf).filter(Boolean).join(' + ')}</span>
+            </span>
+            <Button size="sm" variant="ghost" onClick={() => setEdit(g)}>{t('edit')}</Button>
+            <Button size="sm" variant="danger" icon={Trash2} onClick={() => setDel(g)}>{t('delete')}</Button>
+          </div>
+        ))}
+      </div>
+      {edit && <GroupModal initial={edit.id ? edit : null} portfolios={portfolios} onSave={upsert} onClose={() => setEdit(null)} />}
+      {del && <ConfirmModal message={t('group_delete_confirm').replace('{name}', del.name)} detail={t('group_delete_detail')} onConfirm={() => { const g = del; setDel(null); saveGroups(groups.filter(x => x.id !== g.id)); }} onCancel={() => setDel(null)} />}
+    </Card>
+  );
+}
+
 export default function AccountSection() {
   return (
     <div className="space-y-4">
@@ -257,6 +326,7 @@ export default function AccountSection() {
       <RecoveryCodesCard />
       <ExportDataCard />
       <PortfoliosCard />
+      <GroupsCard />
     </div>
   );
 }

@@ -36,6 +36,7 @@ import BrokerCheckCard from './portfolio/BrokerCheckCard.jsx';
 import AddCryptoModal from './portfolio/AddCryptoModal.jsx';
 import { toggleWatchlist } from './portfolio/watchlistLocal.js';
 import { exportPositions, exportTransactions, exportSnapshots } from '../utils/exporters.js';
+import { isAggregateView } from '../utils/portfolioView.js';
 
 // Modal importu ciągnie za sobą parser xlsx — ładujemy go dopiero po otwarciu.
 const CsvImportModal = lazy(() => import('../components/CsvImportModal'));
@@ -395,7 +396,7 @@ export default function Portfolio() {
           title={alert.symbol}
           action={(
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="primary" disabled={activePortfolioId === 'all'} onClick={() => applySplitAlert(alert)}>{t('split_apply')}</Button>
+              <Button size="sm" variant="primary" disabled={isAggregateView(activePortfolioId)} onClick={() => applySplitAlert(alert)}>{t('split_apply')}</Button>
               <Button size="sm" onClick={() => dismissAlert(alert.key)}>{t('split_already')}</Button>
             </div>
           )}
@@ -405,7 +406,7 @@ export default function Portfolio() {
             .replace('{qty}', fmtNum(alert.qty)).replace('{avg}', fmtNum(alert.avgPrice))
             .replace('{newQty}', fmtNum(alert.qty * alert.ratio)).replace('{newAvg}', fmtNum(alert.avgPrice / alert.ratio))
             .replace(/\{cur\}/g, alert.currency ?? '')}
-          {activePortfolioId === 'all' && <span className="block text-faint">{t('split_pick_portfolio')}</span>}
+          {isAggregateView(activePortfolioId) && <span className="block text-faint">{t('split_pick_portfolio')}</span>}
         </Callout>
       ))}
 
@@ -436,7 +437,7 @@ export default function Portfolio() {
       <OtherAssetsSection />
       <BondsSection />
 
-      {activePortfolioId !== 'all' && (
+      {!isAggregateView(activePortfolioId) && (
         <BrokerCheckCard
           key={activePortfolioId}
           portfolioId={activePortfolioId}
@@ -464,7 +465,7 @@ export default function Portfolio() {
         portCurrLabel={portCurrLabel}
         onOpen={setSelectedItem}
         onRenameTicker={handleTickerRename}
-        onFixCurrency={activePortfolioId !== 'all' ? (sym, ccy) => setSymbolCurrency(sym, ccy) : undefined}
+        onFixCurrency={!isAggregateView(activePortfolioId) ? (sym, ccy) => setSymbolCurrency(sym, ccy) : undefined}
         onAction={handleAction}
         onExport={handleExport}
         onImport={() => setShowImport(true)}
