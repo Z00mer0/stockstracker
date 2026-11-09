@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase, Scale,
-  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock, BarChart3,
+  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock, BarChart3, ListChecks,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StockDetailModal from '../components/StockDetailModal';
@@ -13,6 +13,8 @@ import TickerLogo from '../components/shared/TickerLogo';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import useBondsValue from '../hooks/useBondsValue';
+import useMissingDividends from '../hooks/useMissingDividends';
+import { useSplitDetector } from '../hooks/useSplitDetector';
 import { formatPercent } from '../utils/format.js';
 import InsightStrip from '../components/shared/InsightStrip';
 import StackedAllocation from '../components/shared/StackedAllocation';
@@ -107,7 +109,7 @@ function MoverGroup({ tone, label, items, ...rowProps }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, bonds, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, bonds, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, refresh, applySplit } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
@@ -122,6 +124,17 @@ export default function Dashboard() {
   const [wlMode, setWlMode] = useState('pct');
   const { enrichPosition, histFx } = usePortfolioMetrics(portfolio, transactions, fxRates);
   const bondsValue = useBondsValue(bonds);
+  // Do uzupełnienia: niezastosowane splity i dywidendy bez zapisu — bez tego
+  // widać je tylko po wejściu na Portfel albo Dywidendy.
+  const { alerts: splitAlerts } = useSplitDetector(portfolio, transactions);
+  const missingDivs = useMissingDividends(portfolio, transactions);
+  const [applyingSplit, setApplyingSplit] = useState(null);
+  async function applySplitNow(a) {
+    setApplyingSplit(a.key);
+    try { await applySplit({ symbol: a.symbol, date: a.date, ratio: a.ratio, label: a.label }); }
+    catch { /* komunikat pokaże Portfel; tu zostaje propozycja */ }
+    finally { setApplyingSplit(null); }
+  }
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { allCalendarEvents } = useDividendEvents(symbols);
@@ -441,6 +454,28 @@ export default function Dashboard() {
           className="mb-4"
         >
           {t('ticker_not_found_hint')}
+        </Callout>
+      )}
+
+      {(splitAlerts.length > 0 || missingDivs.length > 0) && (
+        <Callout tone="info" icon={ListChecks} title={t('todo_title')} className="mb-4">
+          <ul className="mt-1 grid gap-1.5">
+            {splitAlerts.map(a => (
+              <li key={a.key} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>{t('todo_split').replace('{sym}', a.symbol).replace('{ratio}', a.label).replace('{date}', new Date(`${a.date}T12:00:00`).toLocaleDateString(locale))}</span>
+                <Button size="sm" variant="primary" loading={applyingSplit === a.key} disabled={activePortfolioId === 'all'} onClick={() => applySplitNow(a)}>{t('split_apply')}</Button>
+              </li>
+            ))}
+            {missingDivs.length > 0 && (
+              <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>
+                  {t('todo_divs').replace('{n}', missingDivs.length)}{' '}
+                  <span className="text-faint">{missingDivs.slice(0, 4).map(m => `${m.symbol} (${new Date(`${m.exDate}T12:00:00`).toLocaleDateString(locale)})`).join(', ')}{missingDivs.length > 4 ? '…' : ''}</span>
+                </span>
+                <Button size="sm" onClick={() => navigate('/dividends')}>{t('todo_divs_btn')}</Button>
+              </li>
+            )}
+          </ul>
         </Callout>
       )}
 

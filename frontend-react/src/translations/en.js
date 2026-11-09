@@ -1669,4 +1669,8 @@ export default {
   bi_rec_hint_after: 'Quantities in the app differ from XTB. You can set them as in XTB — transaction history stays unchanged.',
   bi_rec_fix: 'Set quantities as in XTB',
   bi_rec_fixed: 'Quantities set as in XTB.',
+  todo_title: 'To complete',
+  todo_split: '{sym}: {ratio} split on {date} — not applied to the position.',
+  todo_divs: 'Dividends not recorded: {n}.',
+  todo_divs_btn: 'Add in Dividends',
 };
