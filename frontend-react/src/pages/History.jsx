@@ -165,7 +165,7 @@ export default function History() {
   );
 
   const filtered = useMemo(() => {
-    const p = PERIODS.find(p => p.key === period);
+    const p = PERIODS_BASE.find(p => p.key === period);
     if (p?.ytd) {
       const jan1 = `${new Date().getFullYear()}-01-01`;
       return allRows.filter(s => s.date >= jan1);

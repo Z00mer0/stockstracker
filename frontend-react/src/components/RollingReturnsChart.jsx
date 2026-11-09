@@ -54,7 +54,7 @@ export default function RollingReturnsChart({ data }) {
 
   // Indices to display (subset of full array)
   const displayIndices = useMemo(() => {
-    const p = DISPLAY_PERIODS.find(p => p.key === displayPeriod);
+    const p = DISPLAY_PERIODS_KEYS.find(p => p.key === displayPeriod);
     if (!p?.days) return data.map((_, i) => i);
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - p.days);

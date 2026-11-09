@@ -1,3 +1,4 @@
+import { tStatic } from '../utils/i18n.js';
 // Wrapper na window.fetch: retry z exponential backoff (1s/2s/4s)
 // dla GET /api/* na 503/504 (Render cold start ~30s, hobby plan).
 // Mutacje (POST/PATCH/PUT/DELETE) NIE są retry'owane — ryzyko dubli.
@@ -79,7 +80,7 @@ export function installFetchRetry(showToast) {
     if (lastSuccessAt && now - lastSuccessAt < QUIET_AFTER_SUCCESS_MS) return;
     if (now - lastToastAt < TOAST_COOLDOWN_MS) return;
     lastToastAt = now;
-    showToast?.('Serwer chwilowo niedostępny — spróbuj odświeżyć za chwilę', {
+    showToast?.(tStatic('server_unavailable_toast'), {
       type: 'error',
       duration: 5000,
     });

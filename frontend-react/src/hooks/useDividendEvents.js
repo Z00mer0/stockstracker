@@ -70,17 +70,19 @@ export default function useDividendEvents(portfolioSymbols = []) {
   const [autoEvents, setAutoEvents]           = useState([]);
   const [loading, setLoading]                 = useState(false);
 
-  // Pobierz auto-dywidendy przy zmianie portfela
+  // Pobierz auto-dywidendy przy zmianie portfela. Klucz tekstowy, bo tablica
+  // symboli przychodzi nowa przy każdym renderze rodzica.
+  const symbolsKey = portfolioSymbols.join(',');
   useEffect(() => {
-    if (!portfolioSymbols.length) { setAutoEvents([]); return; }
+    if (!symbolsKey) { setAutoEvents([]); return; }
 
     let cancelled = false;
     setLoading(true);
-    fetchAutoUpcoming(portfolioSymbols).then(evs => {
+    fetchAutoUpcoming(symbolsKey.split(',')).then(evs => {
       if (!cancelled) { setAutoEvents(evs); setLoading(false); }
     });
     return () => { cancelled = true; };
-  }, [portfolioSymbols.join(',')]);
+  }, [symbolsKey]);
 
   // Dodaj nową dywidendę ręczną
   const addDividend = useCallback((div) => {
