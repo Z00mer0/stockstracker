@@ -7,7 +7,11 @@
 const TTL_MS = 5 * 60 * 1000;
 const cache = new Map();   // sym → { at, value }
 
+// Fundusze inwestycyjne (TFI) mają na stooq numeryczny kod z sufiksem .N, np. 1048.N.
+export const isFundSymbol = sym => /^\d+\.N$/i.test(String(sym ?? ''));
+
 export function stooqSymbol(sym) {
+  if (isFundSymbol(sym)) return sym.toLowerCase();
   return /\.WA$/i.test(sym) ? sym.slice(0, -3).toLowerCase() : null;
 }
 

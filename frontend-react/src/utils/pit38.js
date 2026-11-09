@@ -44,6 +44,9 @@ const inScope = (t, excluded) => !excluded.has(t._portfolioId ?? '');
 
 // extra: Set symboli oznaczonych jako krypto w pozycjach (assetType).
 const isCrypto = (t, extra) => t.assetType === 'crypto' || isCryptoSymbol(t.symbol, extra);
+// Fundusze TFI (kod stooq 1048.N): podatek od umorzenia pobiera TFI jako
+// płatnik — nie wchodzą do PIT-38.
+const isFund = t => /^\d+\.N$/i.test(String(t.symbol ?? ''));
 const isUs = t => (t.currency || 'PLN') === 'USD' && !String(t.symbol ?? '').includes('.');
 // Dywidenda opodatkowana w PIT-38: zagraniczna (polską rozlicza płatnik).
 // Zagraniczna = spółka spoza GPW, nawet gdy biuro wypłaciło ją w złotych
@@ -81,7 +84,7 @@ export function pit38RateDates(transactions = [], excluded = new Set(), basis = 
   for (const t of transactions) {
     const type = normalizeType(t.type);
     const div = type === 'DIV' && isForeignDiv(t);
-    if ((type !== 'BUY' && type !== 'SELL' && !div) || !t.date || !inScope(t, excluded)) continue;
+    if ((type !== 'BUY' && type !== 'SELL' && !div) || !t.date || !inScope(t, excluded) || isFund(t)) continue;
     const ccy = t.currency || 'PLN';
     if (ccy === 'PLN') continue;
     (out[ccy] ??= new Set()).add(dayBefore(div ? t.date.slice(0, 10) : taxDate(t, basis, crypto)));
@@ -103,7 +106,7 @@ export function computePit38(transactions = [], { year, rates = {}, excluded = n
   const cryptoTxs = [];
   for (const t of splitAdjusted(transactions)) {
     const type = normalizeType(t.type);
-    if ((type !== 'BUY' && type !== 'SELL') || !(t.qty > 0) || !t.date || !inScope(t, excluded)) continue;
+    if ((type !== 'BUY' && type !== 'SELL') || !(t.qty > 0) || !t.date || !inScope(t, excluded) || isFund(t)) continue;
     if (isCrypto(t, crypto)) { cryptoTxs.push({ ...t, type }); continue; }
     const key = `${t._portfolioId ?? ''}|${t.symbol}`;
     if (!groups.has(key)) groups.set(key, []);

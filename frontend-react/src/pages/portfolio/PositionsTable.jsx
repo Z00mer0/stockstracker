@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import {
   ListFilter, Download, Upload, Plus, ChevronDown, Ellipsis, ArrowUp, ArrowDown, ArrowUpDown,
   ArrowDownRight, Pencil, Coins, Eye, EyeOff, ChartColumn, Bell, StickyNote, Trash2,
-  TriangleAlert, Check, X, TrendingUp, Bitcoin, FileSpreadsheet, FileText, CalendarClock,
+  TriangleAlert, Check, X, TrendingUp, Bitcoin, PiggyBank, FileSpreadsheet, FileText, CalendarClock,
 } from 'lucide-react';
 import { suggestYahooSymbol } from '../../utils/brokerImport.js';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -274,6 +274,7 @@ export default function PositionsTable({
   const addItems = [
     { icon: TrendingUp, label: t('pf_add_stocks'), onSelect: () => onAdd('stock') },
     { icon: Bitcoin, label: t('pf_add_crypto'), onSelect: () => onAdd('crypto') },
+    { icon: PiggyBank, label: t('pf_add_fund'), onSelect: () => onAdd('fund') },
   ];
   const sortOptions = [['symbol', t('col_symbol')], ...cols.filter(k => SORT_GETTERS[k]).map(k => [k, getColLabel(k, t)])];
 
