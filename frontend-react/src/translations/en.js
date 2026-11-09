@@ -255,6 +255,7 @@ export default {
 
   // ── InsightStrip ─────────────────────────────────────────────
   best_position:        'Best position',
+  weakest_position:     'Weakest position',
   under_pressure:       'Under pressure',
   biggest_move:         'Biggest move today',
   daily_result:         'Daily result',

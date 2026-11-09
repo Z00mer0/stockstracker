@@ -7,7 +7,7 @@ import { useLanguage, useT } from '../context/LanguageContext';
 import Chip from '../components/shared/Chip';
 import AddDividendModal from '../components/AddDividendModal';
 import DividendForecastCard from '../components/DividendForecastCard.jsx';
-import { forecastDividends } from '../utils/dividendForecast.js';
+import { forecastDividends, withRecordedDividends } from '../utils/dividendForecast.js';
 import useDividendEvents from '../hooks/useDividendEvents';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import { lsSet } from '../utils/safeStorage.js';
@@ -206,12 +206,16 @@ export default function Dividends() {
 
   const forecast = useMemo(() => forecastDividends({
     positions: portfolio,
-    history: divHistory,
+    history: withRecordedDividends(divHistory, transactions, portfolio, {
+      today,
+      isDiv: tx => normalizeType(tx.type) === 'DIV',
+      sharesAt: (sym, date) => sharesHeldBefore(splitAdjusted(transactions), sym, date),
+    }),
     announced: allCalendarEvents,
     fx: fxRates,
     taxRate: (sym, cur) => getTaxRate(sym, cur, accountType),
     today,
-  }), [portfolio, divHistory, allCalendarEvents, fxRates, accountType, today]);
+  }), [portfolio, divHistory, transactions, allCalendarEvents, fxRates, accountType, today]);
 
   const upcoming = useMemo(() => allCalendarEvents.filter(e => e.date >= today), [allCalendarEvents, today]);
   const upcoming30d = useMemo(() =>

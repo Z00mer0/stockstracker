@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { forecastDividends } from './dividendForecast.js';
+import { forecastDividends, withRecordedDividends } from './dividendForecast.js';
 
 const today = '2026-09-28';
 const positions = [
@@ -48,5 +48,34 @@ describe('forecastDividends', () => {
   it('bez kursu waluty pozycja jest pomijana, a nie liczona po 1', () => {
     const r = forecastDividends({ positions, history, fx: {}, taxRate, today });
     expect(r.symbols.map(s => s.symbol)).toEqual(['PKO.WA']);
+  });
+});
+
+describe('withRecordedDividends', () => {
+  const isDiv = t => t.type === 'DIV';
+  const today = '2026-11-09';
+  const positions = [{ symbol: 'PKO.WA', qty: 100, currency: 'PLN' }, { symbol: 'AAPL', qty: 5, currency: 'USD' }];
+
+  it('bez historii z Yahoo — wypłaty z transakcji, na akcję', () => {
+    const tx = [
+      { type: 'DIV', symbol: 'PKO.WA', qty: 100, price: 5.47, currency: 'PLN', date: '2026-07-12' },
+      { type: 'DIV', symbol: 'PKO.WA', qty: null, price: 300, currency: 'PLN', date: '2025-12-01' },
+      { type: 'DIV', symbol: 'PKO.WA', qty: 100, price: 4, currency: 'PLN', date: '2025-06-01' },   // ponad rok temu
+    ];
+    const h = withRecordedDividends({}, tx, positions, { today, isDiv, sharesAt: () => 60 });
+    expect(h['PKO.WA']).toEqual([{ date: '2026-07-12', amount: 5.47 }, { date: '2025-12-01', amount: 5 }]);
+    const f = forecastDividends({ positions, history: h, today });
+    expect(f.gross).toBeCloseTo(100 * 5.47 + 100 * 5, 6);
+  });
+
+  it('historia z Yahoo ma pierwszeństwo; dywidenda w innej walucie pominięta', () => {
+    const yahoo = { AAPL: [{ date: '2026-08-10', amount: 0.26 }] };
+    const tx = [
+      { type: 'DIV', symbol: 'AAPL', qty: 5, price: 0.26, currency: 'USD', date: '2026-08-14' },
+      { type: 'DIV', symbol: 'PKO.WA', qty: null, price: 30, currency: 'USD', date: '2026-07-12' },
+    ];
+    const h = withRecordedDividends(yahoo, tx, positions, { today, isDiv, sharesAt: () => 100 });
+    expect(h.AAPL).toEqual(yahoo.AAPL);
+    expect(h['PKO.WA']).toBeUndefined();
   });
 });
