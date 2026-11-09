@@ -24,7 +24,14 @@ function OtherAssetModal({ initial, onSave, onClose }) {
   const categories = getAssetCategories(t);
   const [name, setName] = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.category ?? 'other');
-  const [value, setValue] = useState(initial?.value ?? '');
+  const [value, setValue] = useState(initial?.principal ?? initial?.value ?? '');
+  const dep = initial?.deposit;
+  const [mode, setMode] = useState(dep?.kind ?? 'manual');
+  const [rate, setRate] = useState(dep?.rate ?? '');
+  const [startDate, setStartDate] = useState(dep?.startDate ?? new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(dep?.endDate ?? '');
+  const [belka, setBelka] = useState(dep?.belka !== false);
+  const isDeposit = category === 'savings' && mode !== 'manual';
   const [currency, setCurrency] = useState(initial?.currency ?? 'PLN');
   const [note, setNote] = useState(initial?.note ?? '');
   const [saving, setSaving] = useState(false);
@@ -34,9 +41,16 @@ function OtherAssetModal({ initial, onSave, onClose }) {
     if (!name.trim()) { setError(t('enter_name')); return; }
     const v = parseFloat(value);
     if (isNaN(v) || v < 0) { setError(t('enter_value_err')); return; }
+    let deposit;
+    if (isDeposit) {
+      const r = parseFloat(rate);
+      if (isNaN(r) || r <= 0) { setError(t('dep_err_rate')); return; }
+      if (!startDate || (mode === 'term' && (!endDate || endDate <= startDate))) { setError(t('dep_err_dates')); return; }
+      deposit = { kind: mode, rate: r, startDate, ...(mode === 'term' ? { endDate } : {}), belka };
+    }
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), category, value: v, currency, note: note.trim() });
+      await onSave({ name: name.trim(), category, value: v, currency, note: note.trim(), deposit });
       onClose();
     } catch (e) {
       setError(e.message || t('save_error'));
@@ -64,8 +78,17 @@ function OtherAssetModal({ initial, onSave, onClose }) {
             {Object.entries(categories).map(([k, { label }]) => <option key={k} value={k}>{label}</option>)}
           </Select>
         </Field>
+        {category === 'savings' && (
+          <Field label={t('dep_mode_label')}>
+            <Select value={mode} onChange={e => setMode(e.target.value)}>
+              <option value="term">{t('dep_mode_term')}</option>
+              <option value="savings">{t('dep_mode_savings')}</option>
+              <option value="manual">{t('dep_mode_manual')}</option>
+            </Select>
+          </Field>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('asset_value_label')}>
+          <Field label={isDeposit ? t('dep_amount_label') : t('asset_value_label')}>
             <Input type="number" min="0" step="any" inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} />
           </Field>
           <Field label={t('currency_label')}>
@@ -74,6 +97,26 @@ function OtherAssetModal({ initial, onSave, onClose }) {
             </Select>
           </Field>
         </div>
+        {isDeposit && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t('dep_rate_label')}>
+              <Input type="number" min="0" step="0.01" inputMode="decimal" suffix="%" value={rate} onChange={e => setRate(e.target.value)} />
+            </Field>
+            <Field label={t('dep_start_label')}>
+              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </Field>
+            {mode === 'term' && (
+              <Field label={t('dep_end_label')}>
+                <Input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+              </Field>
+            )}
+            <label className="flex cursor-pointer items-start gap-3 self-end pb-2">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--accent)]" checked={belka} onChange={e => setBelka(e.target.checked)} />
+              <span className="text-[13px] text-fg">{t('dep_belka')}</span>
+            </label>
+            <p className="text-small text-faint sm:col-span-2">{t('dep_auto_hint')}</p>
+          </div>
+        )}
         <Field label={t('note_optional')}>
           <Input value={note} onChange={e => setNote(e.target.value)} placeholder={t('asset_note_placeholder')} />
         </Field>
@@ -98,7 +141,15 @@ export default function OtherAssetsSection() {
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const totalPLN = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
   const fmtLocal = n => n.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const fmtLocal2 = n => n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const blur = isPrivate ? 'privacy-blur' : undefined;
+  const depositInfo = a => {
+    if (a.matured) return t('dep_matured');
+    const rate = a.deposit.rate.toLocaleString(locale);
+    return a.deposit.kind === 'savings'
+      ? t('dep_info_savings').replace('{rate}', rate)
+      : t('dep_info_term').replace('{rate}', rate).replace('{date}', a.deposit.endDate);
+  };
 
   const openAdd = () => { setEditTarget(null); setShowModal(true); };
 
@@ -144,11 +195,27 @@ export default function OtherAssetsSection() {
       key: 'name', header: t('col_name'), mobile: 'title',
       render: a => {
         const Icon = (categories[a.category] ?? categories.other).icon;
-        return <span className="inline-flex items-center gap-2 font-semibold text-fg"><Icon size={15} aria-hidden className="shrink-0 text-dim" />{a.name}</span>;
+        return (
+          <span className="inline-flex items-center gap-2">
+            <Icon size={15} aria-hidden className="shrink-0 text-dim" />
+            <span>
+              <span className="block font-semibold text-fg">{a.name}</span>
+              {a.deposit && <span className={`block text-[11px] ${a.matured ? 'text-warn' : 'text-faint'}`}>{depositInfo(a)}</span>}
+            </span>
+          </span>
+        );
       },
     },
     { key: 'category', header: t('col_category'), render: a => <span className="text-small text-dim">{(categories[a.category] ?? categories.other).label}</span> },
-    { key: 'value', header: t('col_value'), align: 'right', render: a => <span className={blur}>{fmtLocal(a.value)} {a.currency}</span> },
+    {
+      key: 'value', header: t('col_value'), align: 'right',
+      render: a => (
+        <span className={blur}>
+          {fmtLocal(a.value)} {a.currency}
+          {a.deposit && a.interest > 0 && <span className="block text-[11px] text-up">{t('dep_interest').replace('{amount}', fmtLocal2(a.interest))}</span>}
+        </span>
+      ),
+    },
     {
       key: 'approx', header: `≈ ${displayCurrency}`, align: 'right', mobile: 'aside',
       render: a => <span className={blur}>{fmtLocal(((a.value || 0) * (fxRates[a.currency] ?? 1)) / fx)} {currLabel}</span>,
