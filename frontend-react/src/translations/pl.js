@@ -1669,4 +1669,8 @@ export default {
   bi_rec_hint_after: 'Ilości w aplikacji różnią się od XTB. Możesz je ustawić jak w XTB — historia transakcji zostaje bez zmian.',
   bi_rec_fix: 'Ustaw ilości jak w XTB',
   bi_rec_fixed: 'Ilości ustawione jak w XTB.',
+  todo_title: 'Do uzupełnienia',
+  todo_split: '{sym}: split {ratio} z {date} — nieuwzględniony w pozycji.',
+  todo_divs: 'Dywidendy bez zapisu: {n}.',
+  todo_divs_btn: 'Dodaj w Dywidendach',
 };
