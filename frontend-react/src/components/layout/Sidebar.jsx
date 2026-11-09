@@ -46,7 +46,7 @@ function SectionLabel({ collapsed, children }) {
 const initials = name => (name || '?').replace(/[^\p{L}\p{N} ]/gu, '').trim().slice(0, 2).toUpperCase() || '?';
 
 export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio, collapsed = false, onToggleCollapse }) {
-  const { displayName, logout, portfolios, activePortfolioId, switchPortfolio } = useApp();
+  const { displayName, logout, portfolios, groups = [], activePortfolioId, switchPortfolio } = useApp();
   const t = useT();
   const NAV_ITEMS = getNavItems(t);
   const NAV_BOTTOM = getNavBottom(t);
@@ -54,10 +54,10 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio, col
   const rail = collapsed && !isMobile;
 
   const allLabel = t('nav_all');
-  const activePortfolio = activePortfolioId === 'all'
-    ? { name: allLabel, currency: '' }
-    : portfolios.find(p => p.id === activePortfolioId) || { name: allLabel, currency: '' };
-  const allItems = [{ id: 'all', name: allLabel, currency: '' }, ...portfolios];
+  // Grupy portfeli (Ustawienia → Konto → Portfele) — pod „Wszystkie”.
+  const groupItems = groups.map(g => ({ id: `group:${g.id}`, name: g.name, currency: '', group: true }));
+  const allItems = [{ id: 'all', name: allLabel, currency: '' }, ...groupItems, ...portfolios];
+  const activePortfolio = allItems.find(p => p.id === activePortfolioId) || { name: allLabel, currency: '' };
 
   // Esc zamyka szufladę na telefonie.
   useEffect(() => {
@@ -125,6 +125,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio, col
               >
                 <span className="min-w-0 flex-1 truncate">{p.name}</span>
                 {p.currency && <span className="shrink-0 text-[10px] text-faint">{p.currency}</span>}
+                {p.group && <span className="shrink-0 text-[10px] text-faint">{t('group_badge')}</span>}
               </button>
             ))}
             <button

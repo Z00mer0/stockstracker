@@ -5,6 +5,7 @@ import { useLanguage, useT } from '../context/LanguageContext';
 import useShareLink from '../hooks/useShareLink';
 import { drawShareImage } from '../utils/shareImage.js';
 import { Button, Field, Modal, Select } from './ui';
+import { isAggregateView } from '../utils/portfolioView.js';
 
 // „Pokaż znajomym”: publiczny link (same procenty) i obrazek z wynikami
 // do wysłania — rysowany z tych samych danych co publiczny widok.
@@ -12,7 +13,7 @@ export default function ShareModal({ onClose }) {
   const t = useT();
   const { locale } = useLanguage();
   const { portfolios, activePortfolioId } = useApp();
-  const [pid, setPid] = useState(activePortfolioId !== 'all' ? activePortfolioId : portfolios[0]?.id ?? '');
+  const [pid, setPid] = useState(!isAggregateView(activePortfolioId) ? activePortfolioId : portfolios[0]?.id ?? '');
   const { token, url, busy, generate, revoke } = useShareLink(pid);
   const [copied, setCopied] = useState(false);
   const [data, setData] = useState(null);

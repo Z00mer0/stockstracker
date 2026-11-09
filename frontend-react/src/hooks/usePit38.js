@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { fetchFxRates } from './useFxBreakdown.js';
 import { computePit38, pit38RateDates } from '../utils/pit38.js';
 import { withholdingRate } from '../services/dividendService.js';
+import { isAggregateView } from '../utils/portfolioView.js';
 
 const TAX_FREE = new Set(['IKE', 'IKZE']);
 
@@ -21,7 +22,7 @@ export function usePit38(basis = loadPit38Basis()) {
   const cryptoKey = portfolio.filter(h => h.assetType === 'crypto').map(h => String(h.symbol).toUpperCase()).sort().join(',');
   const crypto = useMemo(() => new Set(cryptoKey ? cryptoKey.split(',') : []), [cryptoKey]);
   const excluded = useMemo(() => {
-    if (activePortfolioId !== 'all') {
+    if (!isAggregateView(activePortfolioId)) {
       const acc = portfolios.find(p => p.id === activePortfolioId)?.accountType;
       return new Set(TAX_FREE.has(acc) ? [''] : []);
     }

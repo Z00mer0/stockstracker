@@ -1353,6 +1353,11 @@ if DATABASE_URL:
                     goals_json TEXT NOT NULL DEFAULT '[]'
                 )""")
             cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_portfolio_groups (
+                    username    TEXT PRIMARY KEY,
+                    groups_json TEXT NOT NULL DEFAULT '[]'
+                )""")
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS user_insights (
                     username     TEXT PRIMARY KEY,
                     insights_json TEXT NOT NULL DEFAULT '{}'
@@ -1795,6 +1800,20 @@ if DATABASE_URL:
                 ON CONFLICT (username) DO UPDATE SET goals_json = EXCLUDED.goals_json
             """, (username, json.dumps(goals, ensure_ascii=False)))
 
+    # Grupy portfeli (np. „Emerytura” = IKE + zwykły) — lista JSON na użytkownika.
+    def load_groups(username):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT groups_json FROM user_portfolio_groups WHERE username=%s", (username,))
+            row = cur.fetchone()
+        return json.loads(row[0]) if row else []
+
+    def save_groups(username, groups):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("""
+                INSERT INTO user_portfolio_groups (username, groups_json) VALUES (%s, %s)
+                ON CONFLICT (username) DO UPDATE SET groups_json = EXCLUDED.groups_json
+            """, (username, json.dumps(groups, ensure_ascii=False)))
+
     def load_insights(username):
         with _conn() as c, c.cursor() as cur:
             cur.execute("SELECT insights_json FROM user_insights WHERE username=%s", (username,))
@@ -1948,6 +1967,17 @@ else:
         f = BASE / f'goals_{username}.json'
         f.write_text(json.dumps(goals, ensure_ascii=False), encoding='utf-8')
 
+    def load_groups(username):
+        f = BASE / f'groups_{username}.json'
+        try:
+            return json.loads(f.read_text(encoding='utf-8')) if f.exists() else []
+        except Exception:
+            return []
+
+    def save_groups(username, groups):
+        f = BASE / f'groups_{username}.json'
+        f.write_text(json.dumps(groups, ensure_ascii=False), encoding='utf-8')
+
     def load_insights(username):
         f = BASE / f'insights_{username}.json'
         if f.exists():
@@ -2025,7 +2055,7 @@ else:
         'load_data', 'save_data', '_read_pfile', '_write_pfile',
         'list_portfolios', 'create_portfolio', 'update_portfolio', 'delete_portfolio',
         'load_portfolio_data', 'save_portfolio_data',
-        'load_watchlist', 'save_watchlist', 'load_goals', 'save_goals',
+        'load_watchlist', 'save_watchlist', 'load_goals', 'save_goals', 'load_groups', 'save_groups',
         'load_insights', 'save_insights',
         'load_journal', 'save_journal',
         '_load_shares', '_save_shares',
@@ -2055,9 +2085,12 @@ def migrate_user_to_portfolios(username):
     return list_portfolios(username)
 
 
-def load_aggregate_data(username):
-    """Merge all portfolios into a single data blob for dashboard 'Wszystkie' view."""
+def load_aggregate_data(username, only_ids=None):
+    """Merge all portfolios into a single data blob for dashboard 'Wszystkie' view.
+    only_ids — tylko te portfele (grupa portfeli, np. „Emerytura” = IKE + zwykły)."""
     portfolios = list_portfolios(username)
+    if only_ids is not None:
+        portfolios = [p for p in portfolios if p['id'] in only_ids]
     merged_holdings = []
     merged_txs = []
     merged_snaps = {}
@@ -2186,6 +2219,7 @@ def _purge_old_demo_users():
                 cur.execute("DELETE FROM portfolios WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_watchlist WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_goals WHERE username=%s", (uname,))
+                cur.execute("DELETE FROM user_portfolio_groups WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_insights WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_journal WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM share_links WHERE username=%s", (uname,))
@@ -4155,6 +4189,15 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
+        elif path == '/api/portfolio-groups':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                self.send_json(200, load_groups(username))
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
         elif path == '/api/goals':
             username = get_username(self)
             if not username:
@@ -4322,7 +4365,9 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 if pid == 'all':
                     migrate_user_to_portfolios(username)
-                    data = load_aggregate_data(username)
+                    qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+                    ids = {i for i in qs.get('ids', '').split(',') if re.fullmatch(r'[a-f0-9]{24}', i)} if 'ids' in qs else None
+                    data = load_aggregate_data(username, ids)
                 else:
                     portfolios = list_portfolios(username)
                     if not any(p['id'] == pid for p in portfolios):
@@ -5886,6 +5931,26 @@ async function doRecover() {
                 self.send_json(400, {'error': 'expected list'}); return
             try:
                 save_watchlist(username, items)
+                self.send_json(200, {'ok': True})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/portfolio-groups':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=16 * 1024)
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            groups = body.get('groups') if isinstance(body, dict) else None
+            ok = isinstance(groups, list) and len(groups) <= 20 and all(
+                isinstance(g, dict) and isinstance(g.get('id'), str) and isinstance(g.get('name'), str)
+                and isinstance(g.get('portfolioIds'), list) for g in groups)
+            if not ok:
+                self.send_json(400, {'error': 'expected groups list (max 20)'}); return
+            try:
+                save_groups(username, groups)
                 self.send_json(200, {'ok': True})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})

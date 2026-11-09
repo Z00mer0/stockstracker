@@ -37,6 +37,7 @@ import {
   Button, Callout, Card, EmptyState, Field, Input, Modal, PageHeader, SegmentedControl, Stat,
 } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
+import { isAggregateView } from '../utils/portfolioView.js';
 
 function xirr(cashflows) {
   if (cashflows.length < 2) return null;
@@ -295,6 +296,8 @@ export default function Dashboard() {
     // żeby wpłaty i zakupy nie liczyły się jako zysk. Patrz utils/capital.js.
     const today = new Date().toISOString().slice(0, 10);
     const { capital, native } = todayCapital({ snapshots, holdings: portfolio, cash, transactions, fxRates, today });
+    // Grupa portfeli: wartości zapisują się per portfel w jego widoku i nocą.
+    if (isAggregateView(activePortfolioId) && activePortfolioId !== 'all') return;
     if (activePortfolioId === 'all') {
       // Widok „Wszystkie" łączy ten sam symbol z kilku portfeli pod jednym
       // _portfolioId i nie zna gotówki per portfel — zapis per portfel był
@@ -467,7 +470,7 @@ export default function Dashboard() {
             {splitAlerts.map(a => (
               <li key={a.key} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>{t('todo_split').replace('{sym}', a.symbol).replace('{ratio}', a.label).replace('{date}', new Date(`${a.date}T12:00:00`).toLocaleDateString(locale))}</span>
-                <Button size="sm" variant="primary" loading={applyingSplit === a.key} disabled={activePortfolioId === 'all'} onClick={() => applySplitNow(a)}>{t('split_apply')}</Button>
+                <Button size="sm" variant="primary" loading={applyingSplit === a.key} disabled={isAggregateView(activePortfolioId)} onClick={() => applySplitNow(a)}>{t('split_apply')}</Button>
               </li>
             ))}
             {missingDivs.length > 0 && (
