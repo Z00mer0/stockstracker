@@ -7,6 +7,7 @@ import { applyTransaction, revertTransaction, baseSymbol } from '../utils/ledger
 import { normalizeSymbol, QTY_EPS } from '../utils/brokerImport.js';
 import { isAggregateView, groupIdOf, dataUrlFor } from '../utils/portfolioView.js';
 import { lsSet } from '../utils/safeStorage.js';
+import { withDepositValue } from '../utils/deposits.js';
 
 export const AppContext = createContext(null);
 
@@ -374,6 +375,12 @@ export function AppProvider({ children }) {
           capitalNative: snapshotsCapNative[date] ?? null,
         }))
     : [];
+
+  // Lokaty wyceniane z oprocentowania; w rawData zostaje wpisana kwota.
+  const otherAssets = useMemo(
+    () => (rawData?.otherAssets ?? []).map(a => withDepositValue(a)),
+    [rawData?.otherAssets],
+  );
 
   const portfolioInvested = useMemo(() => {
     const holdings = rawData?.portfolio?.holdings ?? [];
@@ -856,7 +863,7 @@ export function AppProvider({ children }) {
     await api.post('/api/portfolios/save-snapshots', snapshotsMap);
   }
 
-  async function addOtherAsset({ name, category, value: val, currency, note }) {
+  async function addOtherAsset({ name, category, value: val, currency, note, deposit }) {
     assertLoaded();
     const rd = rawDataRef.current;
     const assets = rd?.otherAssets ?? [];
@@ -864,6 +871,7 @@ export function AppProvider({ children }) {
       id: Math.random().toString(36).slice(2, 10),
       name, category, value: parseFloat(val), currency,
       note: note || '',
+      ...(deposit ? { deposit } : {}),
       updatedAt: new Date().toISOString().slice(0, 10),
     };
     const updated = { ...rd, otherAssets: [...assets, newAsset] };
@@ -934,7 +942,7 @@ export function AppProvider({ children }) {
     transactions: rawData?.transactions ?? [],
     snapshots,
     cash:         rawData?.cash ?? {},
-    otherAssets:  rawData?.otherAssets ?? [],
+    otherAssets,
     bonds:        rawData?.bonds ?? [],
     loading,
     error,

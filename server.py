@@ -1291,6 +1291,8 @@ if DATABASE_URL:
                     updated_at   TEXT NOT NULL DEFAULT '',
                     PRIMARY KEY (portfolio_id, id)
                 )""")
+            # Dodatkowe pola (np. `deposit` — oprocentowanie i daty lokaty).
+            cur.execute("ALTER TABLE portfolio_other_assets ADD COLUMN IF NOT EXISTS extra_json TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_transactions (
                     id                 TEXT PRIMARY KEY,
@@ -1590,10 +1592,16 @@ if DATABASE_URL:
                         pass
             cur.execute("SELECT currency, amount FROM portfolio_cash WHERE portfolio_id=%s", (portfolio_id,))
             cash = {r['currency']: float(r['amount']) for r in cur.fetchall()}
-            cur.execute("SELECT id, name, category, value, currency, note, updated_at FROM portfolio_other_assets WHERE portfolio_id=%s", (portfolio_id,))
-            other_assets = [{'id': r['id'], 'name': r['name'], 'category': r['category'],
-                             'value': float(r['value']), 'currency': r['currency'],
-                             'note': r['note'], 'updatedAt': r['updated_at']} for r in cur.fetchall()]
+            cur.execute("SELECT id, name, category, value, currency, note, updated_at, extra_json FROM portfolio_other_assets WHERE portfolio_id=%s", (portfolio_id,))
+            other_assets = []
+            for r in cur.fetchall():
+                try:
+                    extra = json.loads(r['extra_json']) if r['extra_json'] else {}
+                except Exception:
+                    extra = {}
+                other_assets.append({**extra, 'id': r['id'], 'name': r['name'], 'category': r['category'],
+                                     'value': float(r['value']), 'currency': r['currency'],
+                                     'note': r['note'], 'updatedAt': r['updated_at']})
             cur.execute("SELECT import_id, snapshot_json FROM portfolio_import_snapshots WHERE portfolio_id=%s", (portfolio_id,))
             import_snapshots = {}
             for r in cur.fetchall():
@@ -1650,6 +1658,9 @@ if DATABASE_URL:
             log.warning(f'[save] portfolio {portfolio_id}: poprawione/pominięte wiersze: {fixed[:20]}')
         return {**data, 'portfolio': {**(data.get('portfolio') or {}), 'holdings': holdings},
                 'transactions': txs, 'cash': cash}
+
+    # Pola „inne aktywa" spoza stałych kolumn, które zapisujemy w extra_json.
+    _OTHER_ASSET_EXTRA = ('deposit',)
 
     def _transaction_rows(portfolio_id, transactions):
         """Wiersze do INSERT; przy powtórzonym id wygrywa ostatni wpis — jak przy
@@ -1730,10 +1741,13 @@ if DATABASE_URL:
             other_assets = data.get('otherAssets', [])
             cur.execute("DELETE FROM portfolio_other_assets WHERE portfolio_id=%s", (portfolio_id,))
             for a in other_assets:
-                cur.execute("""INSERT INTO portfolio_other_assets (id, portfolio_id, name, category, value, currency, note, updated_at)
-                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                extra = {k: v for k, v in a.items()
+                         if k in _OTHER_ASSET_EXTRA and v is not None}
+                cur.execute("""INSERT INTO portfolio_other_assets (id, portfolio_id, name, category, value, currency, note, updated_at, extra_json)
+                               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                             (a.get('id', secrets.token_hex(8)), portfolio_id, a.get('name',''), a.get('category','Inne'),
-                             a.get('value', 0), a.get('currency','PLN'), a.get('note',''), a.get('updatedAt','')))
+                             a.get('value', 0), a.get('currency','PLN'), a.get('note',''), a.get('updatedAt',''),
+                             json.dumps(extra, ensure_ascii=False) if extra else None))
             import_snapshots = data.get('importSnapshots', {})
             cur.execute("DELETE FROM portfolio_import_snapshots WHERE portfolio_id=%s", (portfolio_id,))
             for imp_id, snap in import_snapshots.items():
@@ -2100,6 +2114,7 @@ def load_aggregate_data(username, only_ids=None):
     cap_incomplete = set()   # daty, w których któryś portfel nie ma kapitału
     merged_cash = {}
     merged_bonds = []
+    merged_other = []
     symbol_set = {}
 
     for p in portfolios:
@@ -2142,6 +2157,8 @@ def load_aggregate_data(username, only_ids=None):
             merged_cash[cur] = merged_cash.get(cur, 0) + amt
         for b in data.get('bonds', []):
             merged_bonds.append({**b, '_portfolioId': p['id'], '_portfolioName': p['name']})
+        for a in data.get('otherAssets', []):
+            merged_other.append({**a, '_portfolioId': p['id'], '_portfolioName': p['name']})
 
     merged_txs.sort(key=lambda t: t.get('date', ''))
     return {
@@ -2153,6 +2170,7 @@ def load_aggregate_data(username, only_ids=None):
         'snapshotsCapitalNative': {d: v for d, v in merged_snaps_cap_native.items() if d not in cap_incomplete},
         'cash': merged_cash,
         'bonds': merged_bonds,
+        'otherAssets': merged_other,
     }
 
 
