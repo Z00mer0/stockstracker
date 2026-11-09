@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { CircleCheck, FileText, Info, Upload } from 'lucide-react';
+import { CircleCheck, FileText, Info, Scale, Upload } from 'lucide-react';
 import { dedupeBatch, dedupeAgainstExisting } from '../utils/brokerDedupe';
 import { parseBrokerCsv, parseBrokerXlsx, computePortfolioPreview } from '../utils/brokerImport.js';
+import { parseXtbExcel, mergeBySymbol } from '../utils/holdingsImport.js';
+import { reconcileHoldings } from '../utils/brokerReconcile.js';
 import { useApp } from '../context/AppContext';
 import { fetchQuoteCurrencies, withQuoteCurrency } from '../utils/quoteCurrency.js';
 import { useT } from '../context/LanguageContext';
 import { Button, Callout, Field, FileDrop, Modal, Select } from './ui';
 
-export default function BrokerImportModal({ existingTransactions, existingPortfolio = [], existingCash = {}, onSave, onClose }) {
+export default function BrokerImportModal({ existingTransactions, existingPortfolio = [], existingCash = {}, onSave, onReconcile, onClose }) {
   const t = useT();
   const [results, setResults] = useState([]);
   const [saving, setSaving]   = useState(false);
@@ -22,10 +24,23 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
   // Pliki zostają w stanie i są czytane od nowa po zmianie portfela
   // docelowego — waluta wpłat zależy od waluty rachunku.
   const [files, setFiles] = useState([]);
+  // Zakładka Open Positions z XTB — stan rachunku do porównania z aplikacją.
+  const [brokerOpen, setBrokerOpen] = useState(null);
+  const [fixing, setFixing] = useState(false);
+  const [fixed, setFixed] = useState(false);
   function handleFiles(picked) {
-    setError(''); setSaved(false);
+    setError(''); setSaved(false); setFixed(false);
     setFiles(picked);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    const xlsx = files.filter(f => f.name.toLowerCase().endsWith('.xlsx'));
+    if (!xlsx.length) { setBrokerOpen(null); return; }
+    Promise.all(xlsx.map(f => parseXtbExcel(f).catch(() => [])))
+      .then(lists => { if (!cancelled) { const rows = lists.flat(); setBrokerOpen(rows.length ? mergeBySymbol(rows) : null); } });
+    return () => { cancelled = true; };
+  }, [files]);
 
   useEffect(() => {
     if (!files.length) return;
@@ -66,6 +81,15 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
   // żeby nie pokazywał zmian, których import potem nie wykona.
   const preview = deduped.length > 0 ? computePortfolioPreview(deduped, existingPortfolio, existingCash) : null;
   const instruments = new Set(deduped.map(t => t.symbol));
+  // Przed importem: stan po imporcie; po imporcie: faktyczne pozycje portfela.
+  const diffs = brokerOpen ? reconcileHoldings(preview?.holdings ?? existingPortfolio, brokerOpen) : null;
+
+  async function handleFix() {
+    setFixing(true); setError('');
+    try { await onReconcile(diffs); setFixed(true); }
+    catch (e) { setError(e.response?.data?.error ?? e.message ?? t('save_error')); }
+    finally { setFixing(false); }
+  }
 
   async function handleImport() {
     if (!deduped.length) return;
@@ -181,6 +205,25 @@ export default function BrokerImportModal({ existingTransactions, existingPortfo
             </div>
           );
         })()}
+
+        {diffs && (
+          diffs.length === 0 ? (
+            <Callout tone="up" icon={Scale}>{t('bi_rec_ok').replace('{n}', brokerOpen.length)}</Callout>
+          ) : (
+            <Callout tone="warn" icon={Scale} title={t('bi_rec_title').replace('{n}', diffs.length)}>
+              <ul className="mt-1 grid gap-0.5 tabular-nums">
+                {diffs.map(d => (
+                  <li key={d.symbol}>{d.symbol}: {t('bi_rec_app')} {fmtQty(d.appQty)} · XTB {fmtQty(d.brokerQty)}</li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[11px] text-faint">{t(saved ? 'bi_rec_hint_after' : 'bi_rec_hint_before')}</p>
+              {saved && onReconcile && !fixed && (
+                <Button size="sm" variant="primary" className="mt-2" loading={fixing} disabled={isAggregate} onClick={handleFix}>{t('bi_rec_fix')}</Button>
+              )}
+            </Callout>
+          )
+        )}
+        {fixed && <Callout tone="up" icon={CircleCheck}>{t('bi_rec_fixed')}</Callout>}
 
         {saved && <Callout tone="up" icon={CircleCheck}>{t('bi_imported_ok')}</Callout>}
         {error && <p role="alert" className="text-small text-down">{error}</p>}
