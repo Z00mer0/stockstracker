@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Gauge, Trophy, Download, ChartLine, Info } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Gauge, Trophy, Download, ChartLine, Info, CalendarRange } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -101,6 +102,7 @@ const USD_BENCHMARKS = new Set(['^GSPC', '^IXIC', 'URTH']);
 
 export default function History() {
   const { snapshots, loading, displayCurrency, fxRates, transactions, cash, activePortfolioId } = useApp();
+  const navigate = useNavigate();
   // Snapshoty rosnąco — potrzebne, żeby dla wpisu bez zapisanych kursów sięgnąć
   // po kursy najbliższego wcześniejszego snapshotu zamiast po dzisiejsze.
   const snapshotsAsc = useMemo(
@@ -369,6 +371,7 @@ export default function History() {
           onChange={setPeriod}
         />
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" icon={CalendarRange} onClick={() => navigate('/report')}>{t('report_open')}</Button>
           <label htmlFor="history-bench" className="text-small text-dim">{t('benchmark_label')}</label>
           <Select
             id="history-bench"

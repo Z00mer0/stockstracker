@@ -19,6 +19,7 @@ function PortfolioAlertCard() {
   const [usSummary, setUsSummary] = useState(false);
   const [gpwSummary, setGpwSummary] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState(false);
+  const [monthlyReport, setMonthlyReport] = useState(false);
   const [marketGpw, setMarketGpw] = useState(false);
   const [marketUs, setMarketUs] = useState(false);
   const [earnings, setEarnings] = useState(false);
@@ -31,7 +32,7 @@ function PortfolioAlertCard() {
   useEffect(() => {
     fetch('/api/portfolio-alert', { headers: authHeader() })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); setWeeklySummary(!!d.weeklySummary); setMarketGpw(!!d.marketGpw); setMarketUs(!!d.marketUs); setEarnings(!!d.earnings); setConcPct(d.concentrationPct ?? null); if (d.concentrationPct) setConcDraft(d.concentrationPct); } })
+      .then(d => { if (d) { setEnabled(d.enabled); setThreshold(d.thresholdPct); setUsSummary(!!d.usSummary); setGpwSummary(!!d.gpwSummary); setWeeklySummary(!!d.weeklySummary); setMonthlyReport(!!d.monthlyReport); setMarketGpw(!!d.marketGpw); setMarketUs(!!d.marketUs); setEarnings(!!d.earnings); setConcPct(d.concentrationPct ?? null); if (d.concentrationPct) setConcDraft(d.concentrationPct); } })
       .catch(() => {});
     getPushSubscription().then(sub => setHasSub(!!sub));
   }, []);
@@ -40,6 +41,7 @@ function PortfolioAlertCard() {
     || (next.usSummary === true && !usSummary)
     || (next.gpwSummary === true && !gpwSummary)
     || (next.weeklySummary === true && !weeklySummary)
+    || (next.monthlyReport === true && !monthlyReport)
     || (next.marketGpw === true && !marketGpw)
     || (next.marketUs === true && !marketUs)
     || (next.earnings === true && !earnings)
@@ -55,7 +57,7 @@ function PortfolioAlertCard() {
       setHasSub(true); setMsg('');
     }
     setBusy(true); setMsg('');
-    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, weeklySummary, marketGpw, marketUs, earnings, concentrationPct: concPct, ...next };
+    const cfg = { enabled, thresholdPct: threshold, usSummary, gpwSummary, weeklySummary, monthlyReport, marketGpw, marketUs, earnings, concentrationPct: concPct, ...next };
     try {
       const r = await fetch('/api/portfolio-alert', {
         method: 'POST',
@@ -63,7 +65,7 @@ function PortfolioAlertCard() {
         body: JSON.stringify(cfg),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setEnabled(cfg.enabled); setThreshold(cfg.thresholdPct); setUsSummary(cfg.usSummary); setGpwSummary(cfg.gpwSummary); setWeeklySummary(cfg.weeklySummary);
+      setEnabled(cfg.enabled); setThreshold(cfg.thresholdPct); setUsSummary(cfg.usSummary); setGpwSummary(cfg.gpwSummary); setWeeklySummary(cfg.weeklySummary); setMonthlyReport(cfg.monthlyReport);
       setMarketGpw(cfg.marketGpw); setMarketUs(cfg.marketUs); setEarnings(cfg.earnings); setConcPct(cfg.concentrationPct);
       setMsg(t('pa_saved'));
     } catch {
@@ -78,7 +80,7 @@ function PortfolioAlertCard() {
     if (r.ok) { setHasSub(true); setMsg(t('pa_saved')); } else setMsg(r.reason === 'denied' ? t('push_denied') : t('pa_push_failed'));
   }
 
-  const showSubWarn = pushSupported && !hasSub && (enabled || usSummary || gpwSummary || weeklySummary || marketGpw || marketUs || earnings || concPct != null);
+  const showSubWarn = pushSupported && !hasSub && (enabled || usSummary || gpwSummary || weeklySummary || monthlyReport || marketGpw || marketUs || earnings || concPct != null);
 
   return (
     <Card title={t('pa_title')}>
@@ -124,6 +126,11 @@ function PortfolioAlertCard() {
         <Row label={t('pa_weekly_desc')}>
           <Button size="sm" variant={weeklySummary ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ weeklySummary: !weeklySummary })}>
             {weeklySummary ? t('pa_summary_off') : t('pa_summary_on')}
+          </Button>
+        </Row>
+        <Row label={t('pa_monthly_desc')}>
+          <Button size="sm" variant={monthlyReport ? 'secondary' : 'primary'} disabled={busy} onClick={() => save({ monthlyReport: !monthlyReport })}>
+            {monthlyReport ? t('pa_summary_off') : t('pa_summary_on')}
           </Button>
         </Row>
         <Row label={t('pa_earnings_desc')}>

@@ -1448,6 +1448,7 @@ if DATABASE_URL:
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS us_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS gpw_summary BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS weekly_summary BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS monthly_report BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS market_gpw BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS market_us BOOLEAN DEFAULT FALSE")
             cur.execute("ALTER TABLE portfolio_alerts ADD COLUMN IF NOT EXISTS earnings_reminder BOOLEAN DEFAULT FALSE")
@@ -3312,6 +3313,42 @@ def _fetch_week_change(symbol):
         return None
 
 
+def _month_pairs(snapshots, month_start, month_end):
+    """Dla każdego portfela: ostatni snapshot sprzed miesiąca (albo pierwszy
+    w miesiącu dla nowego portfela) i ostatni z miesiąca."""
+    pairs = []
+    for rows in snapshots.values():
+        inside = [r for r in rows if month_start <= r[0] <= month_end]
+        if not inside:
+            continue
+        before = [r for r in rows if r[0] < month_start]
+        pairs.append((before[-1] if before else inside[0], inside[-1]))
+    return pairs
+
+
+_MONTHS_PL = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec',
+              'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień']
+_MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+              'August', 'September', 'October', 'November', 'December']
+
+
+def _monthly_report_text(summary, month_start, dividends, lang):
+    """Tytuł i treść pusha z raportem miesięcznym. dividends: netto w zł."""
+    en = lang == 'en'
+    name = (_MONTHS_EN if en else _MONTHS_PL)[month_start.month - 1]
+    name = name[0].upper() + name[1:]
+    r = summary['result']
+    pct = f" ({summary['pct']:+.1f}%)" if summary['pct'] is not None else ''
+    title = f"📅 {name}: {r:+,.0f} zł{pct}".replace(',', ' ')
+    parts = [f"{'Portfolio' if en else 'Portfel'}: {summary['end']:,.0f} zł".replace(',', ' ')]
+    if summary['net'] and abs(summary['flows']) >= 1:
+        parts.append(f"{'Deposits' if en else 'Wpłaty'}: {summary['flows']:+,.0f} zł".replace(',', ' '))
+    if dividends >= 1:
+        parts.append(f"{'Dividends' if en else 'Dywidendy'}: {dividends:,.0f} zł".replace(',', ' '))
+    parts.append('See the full report' if en else 'Zobacz pełny raport')
+    return title, ' · '.join(parts)
+
+
 def _weekly_summary_text(summary, movers, lang):
     """movers: {symbol: zmiana % tygodnia}. Zwraca (tytuł, treść)."""
     en = lang == 'en'
@@ -3380,7 +3417,7 @@ def _market_push_due(market, now=None):
 
 
 def _run_push_checks():
-    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0, 'market': 0, 'earnings': 0, 'concentration': 0}
+    stats = {'users': 0, 'priceAlerts': 0, 'dividends': 0, 'ike': 0, 'portfolio': 0, 'usSummary': 0, 'bigMove': 0, 'weekly': 0, 'market': 0, 'earnings': 0, 'concentration': 0, 'monthly': 0}
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT username FROM push_subscriptions")
         users = [r[0] for r in cur.fetchall()]
@@ -3678,6 +3715,47 @@ def _run_push_checks():
         except Exception as e:
             log.warning(f'[push] weekly {username}: {e}')
 
+        # ── 1e'. Raport miesięczny (opt-in): od 1. dnia miesiąca 9:00 —
+        # snapshot ostatniego dnia poprzedniego miesiąca zapisał się o 22:00.
+        try:
+            now_warsaw = datetime.datetime.now(_WARSAW)
+            if now_warsaw.day <= 3 and now_warsaw.hour >= 9:
+                month_end = now_warsaw.date().replace(day=1) - datetime.timedelta(days=1)
+                month_start = month_end.replace(day=1)
+                key = f'monthly:{month_start:%Y-%m}'
+                with _conn() as c, c.cursor() as cur:
+                    cur.execute("SELECT monthly_report, notification_language FROM portfolio_alerts WHERE username=%s",
+                                (username,))
+                    mrow_m = cur.fetchone()
+                if mrow_m and mrow_m[0] and not _already_sent(username, key):
+                    with _conn() as c, c.cursor() as cur:
+                        cur.execute("""SELECT s.portfolio_id, s.date, s.total, s.capital
+                                       FROM portfolio_snapshots s JOIN portfolio_list p ON p.id = s.portfolio_id
+                                       WHERE p.user_id=%s AND s.date > %s AND s.date <= %s AND s.total IS NOT NULL
+                                       ORDER BY s.date""",
+                                    (username, month_start - datetime.timedelta(days=15), month_end))
+                        snaps = {}
+                        for pid, d, total, cap in cur.fetchall():
+                            snaps.setdefault(pid, []).append((d, float(total), float(cap) if cap is not None else None))
+                        cur.execute("""SELECT t.price, t.qty, t.currency, t.extra_json FROM portfolio_transactions t
+                                       JOIN portfolio_list p ON p.id = t.portfolio_id
+                                       WHERE p.user_id=%s AND upper(t.type) IN ('DIV','DIVIDEND') AND t.date BETWEEN %s AND %s""",
+                                    (username, month_start, month_end))
+                        div_rows = cur.fetchall()
+                    summary = _week_result(_month_pairs(snaps, month_start, month_end))
+                    if summary:
+                        fx = _nbp_rates() if any((r[2] or 'PLN') != 'PLN' for r in div_rows) else {}
+                        dividends = 0.0
+                        for price, qty, cur_code, extra in div_rows:
+                            tax = (json.loads(extra or '{}') or {}).get('tax') or 0
+                            dividends += ((float(qty) if qty else 1) * float(price or 0) - float(tax)) * fx.get(cur_code or 'PLN', 1.0)
+                        title, body = _monthly_report_text(summary, month_start, dividends, mrow_m[1] or 'pl')
+                        if _send_push(username, title, body, f'/report?m={month_start:%Y-%m}'):
+                            _mark_sent(username, key)
+                            stats['monthly'] += 1
+        except Exception as e:
+            log.warning(f'[push] monthly {username}: {e}')
+
         # ── 1f. Podsumowanie sesji rynku (opt-in): GPW po 17:10, USA po 16:10 ET
         try:
             due = [(m, k) for m in ('gpw', 'us') if (k := _market_push_due(m))]
@@ -3970,19 +4048,20 @@ class Handler(SimpleHTTPRequestHandler):
             if not DATABASE_URL:
                 # Tryb plikowy (lokalny dev/demo): brak tabeli portfolio_alerts — zwróć domyślne
                 self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False,
-                                     'marketGpw': False, 'marketUs': False, 'earnings': False, 'concentrationPct': None}); return
+                                     'marketGpw': False, 'marketUs': False, 'earnings': False, 'concentrationPct': None, 'monthlyReport': False}); return
             with _conn() as c, c.cursor() as cur:
                 cur.execute("""SELECT enabled, threshold_pct, us_summary, gpw_summary, weekly_summary, market_gpw, market_us,
-                                      earnings_reminder, concentration_pct FROM portfolio_alerts WHERE username=%s""", (username,))
+                                      earnings_reminder, concentration_pct, monthly_report FROM portfolio_alerts WHERE username=%s""", (username,))
                 row = cur.fetchone()
             if row:
                 self.send_json(200, {'enabled': bool(row[0]), 'thresholdPct': float(row[1]),
                                      'usSummary': bool(row[2]), 'gpwSummary': bool(row[3]), 'weeklySummary': bool(row[4]),
                                      'marketGpw': bool(row[5]), 'marketUs': bool(row[6]), 'earnings': bool(row[7]),
-                                     'concentrationPct': float(row[8]) if row[8] is not None else None})
+                                     'concentrationPct': float(row[8]) if row[8] is not None else None,
+                                     'monthlyReport': bool(row[9])})
             else:
                 self.send_json(200, {'enabled': False, 'thresholdPct': 10, 'usSummary': False, 'gpwSummary': False, 'weeklySummary': False,
-                                     'marketGpw': False, 'marketUs': False, 'earnings': False, 'concentrationPct': None})
+                                     'marketGpw': False, 'marketUs': False, 'earnings': False, 'concentrationPct': None, 'monthlyReport': False})
             return
 
         elif path == '/api/market-summary':
@@ -6530,6 +6609,7 @@ async function doRecover() {
                 market_gpw = bool(body['marketGpw']) if 'marketGpw' in body else None
                 market_us = bool(body['marketUs']) if 'marketUs' in body else None
                 earnings = bool(body['earnings']) if 'earnings' in body else None
+                monthly = bool(body['monthlyReport']) if 'monthlyReport' in body else None
                 # concentrationPct: liczba = włączone z tym progiem, null = wyłączone, brak klucza = bez zmian.
                 conc_given = 'concentrationPct' in body
                 conc = body.get('concentrationPct')
@@ -6561,6 +6641,8 @@ async function doRecover() {
                           weekly, market_gpw, market_us))
                     if earnings is not None:
                         cur.execute("UPDATE portfolio_alerts SET earnings_reminder=%s WHERE username=%s", (earnings, username))
+                    if monthly is not None:
+                        cur.execute("UPDATE portfolio_alerts SET monthly_report=%s WHERE username=%s", (monthly, username))
                     if conc_given:
                         cur.execute("UPDATE portfolio_alerts SET concentration_pct=%s WHERE username=%s", (conc, username))
                 self.send_json(200, {'ok': True})
