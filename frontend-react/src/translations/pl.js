@@ -1730,4 +1730,13 @@ export default {
   goal_hint_div: 'potrzebny portfel ok. {capital} przy stopie dywidendy {yield}%',
   goal_hint_div_monthly: 'potrzebny portfel ok. {capital} (stopa {yield}%) — odkładaj ok. {amount} miesięcznie (przy {pct}% rocznie)',
   goal_delete_confirm: 'Usunąć cel „{name}”?',
+  share_show_friends: 'Pokaż znajomym',
+  share_modal_title: 'Pokaż portfel znajomym',
+  share_img_title: 'Mój portfel',
+  share_img_top: 'Największe pozycje · udział i wynik',
+  share_img_footer: 'Same procenty — bez kwot. myfund',
+  share_img_text: 'Mój portfel w myfund',
+  share_send: 'Wyślij',
+  share_download: 'Pobierz obrazek',
+  share_copy_link: 'Kopiuj link',
 };

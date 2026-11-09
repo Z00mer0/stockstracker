@@ -1,12 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Upload, FileText, Undo2, Pencil, Trash2, Plus, Save, X, Link2, Copy, Check, Info } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
-import { api } from '../../hooks/useApi';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Badge, Button, Callout, Card, Field, IconButton, Input, Select, Table } from '../../components/ui';
 import { Note } from './common.jsx';
 import { applyBrokerQuantities } from '../../utils/brokerReconcile.js';
+import useShareLink from '../../hooks/useShareLink';
 
 // Oba okna ciągną ciężkie parsery (xlsx, pdfjs, tesseract) — ładowane dopiero po otwarciu.
 const BrokerImportModal = lazy(() => import('../../components/BrokerImportModal'));
@@ -223,30 +223,10 @@ function ShareLinkCard() {
   const t = useT();
   const { portfolios } = useApp();
   const [pid, setPid] = useState('');
-  const [token, setToken] = useState(null);
-  const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const selected = pid || portfolios[0]?.id || '';
-  const shareUrl = token ? `${window.location.origin}/s/${token}` : null;
+  const { token, url: shareUrl, busy, generate, revoke } = useShareLink(selected);
 
-  useEffect(() => {
-    if (!selected) return;
-    let cancelled = false;
-    setToken(null);
-    api.get(`/api/share?portfolio_id=${encodeURIComponent(selected)}`)
-      .then(res => { if (!cancelled) setToken(res.data.token); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [selected]);
-
-  async function generate() {
-    setBusy(true);
-    try { setToken((await api.post('/api/share', { portfolio_id: selected })).data.token); } catch { /* bez zmian */ } finally { setBusy(false); }
-  }
-  async function revoke() {
-    setBusy(true);
-    try { await api.post('/api/share/revoke', { portfolio_id: selected }); setToken(null); } catch { /* bez zmian */ } finally { setBusy(false); }
-  }
   async function copy() {
     try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* schowek niedostępny */ }
   }
