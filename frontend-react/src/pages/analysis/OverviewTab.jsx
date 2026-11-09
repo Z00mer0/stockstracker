@@ -5,7 +5,7 @@ import { usePrivacy } from '../../context/PrivacyContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import TickerLogo from '../../components/shared/TickerLogo';
 import { Card, SegmentedControl, Stat, Table } from '../../components/ui';
-import { attribution } from '../../utils/attribution.js';
+import { attribution, sourceBreakdown } from '../../utils/attribution.js';
 import { useHistoricalFx } from '../../hooks/useHistoricalFx.js';
 import { cx } from '../../components/ui/cx.js';
 import { buildInsights } from './insights.js';
@@ -25,6 +25,7 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
   const [attrBy, setAttrBy] = useState('positions');
   const histFx = useHistoricalFx(transactions);
   const attr = useMemo(() => attribution(enriched, transactions, fxRates, histFx), [enriched, transactions, fxRates, histFx]);
+  const sources = useMemo(() => sourceBreakdown(enriched, transactions, fxRates, histFx), [enriched, transactions, fxRates, histFx]);
   const dispFx = fxRates[displayCurrency] ?? 1;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const fmt = (n, d = 0) => (n == null || isNaN(n) ? '—' : n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -100,18 +101,20 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
       {attr.positions.length > 0 && (() => {
         const items = attrBy === 'positions'
           ? attr.positions.map(r => ({ key: r.symbol, label: r.symbol, total: r.total, parts: r }))
-          : attr.sectors.map(r => ({ key: r.sector || '-', label: r.sector || t('attr_no_sector'), total: r.total }));
+          : attrBy === 'sources'
+            ? sources.parts.map(r => ({ key: r.key, label: t(`attr_src_${r.key}`), total: r.total, hint: t(`attr_src_${r.key}_hint`) }))
+            : attr.sectors.map(r => ({ key: r.sector || '-', label: r.sector || t('attr_no_sector'), total: r.total }));
         const maxAbs = Math.max(...items.map(i => Math.abs(i.total)), 1);
         return (
           <Card
             title={t('attr_title')}
-            actions={<SegmentedControl aria-label={t('attr_title')} options={[{ value: 'positions', label: t('attr_by_positions') }, { value: 'sectors', label: t('attr_by_sectors') }]} value={attrBy} onChange={setAttrBy} />}
+            actions={<SegmentedControl aria-label={t('attr_title')} options={[{ value: 'positions', label: t('attr_by_positions') }, { value: 'sectors', label: t('attr_by_sectors') }, { value: 'sources', label: t('attr_by_sources') }]} value={attrBy} onChange={setAttrBy} />}
           >
             <div className="grid gap-2 px-4 py-3">
-              <p className="text-[11px] text-faint">{t('attr_desc')}</p>
+              <p className="text-[11px] text-faint">{t(attrBy === 'sources' ? 'attr_src_desc' : 'attr_desc')}</p>
               {items.map(i => (
                 <div key={i.key} className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_auto] items-center gap-3 text-small">
-                  <span className="truncate font-semibold text-fg">{i.label}</span>
+                  <span className="truncate font-semibold text-fg" title={i.hint}>{i.label}</span>
                   <span className="h-2.5 overflow-hidden rounded-full bg-panel-2" aria-hidden>
                     <span className={cx('block h-full rounded-full', i.total >= 0 ? 'bg-up' : 'bg-down')} style={{ width: `${Math.abs(i.total) / maxAbs * 100}%` }} />
                   </span>
@@ -120,7 +123,7 @@ export default function OverviewTab({ enriched, positionsCount, realizedYtdPLN, 
                     title={i.parts ? `${t('attr_unrealized')} ${fmt(i.parts.unrealized / dispFx)} · ${t('attr_realized')} ${fmt(i.parts.realized / dispFx)} · ${t('attr_dividends')} ${fmt(i.parts.dividends / dispFx)} ${currLabel}` : undefined}
                   >
                     {sign(i.total)}{fmt(i.total / dispFx)} {currLabel}
-                    {attr.total > 0 && <span className="ml-1.5 font-normal text-faint">{fmt(i.total / attr.total * 100, 0)}%</span>}
+                    {attr.total > 0 && <span className="ml-1.5 font-normal text-faint">{Math.abs(i.total / attr.total * 100) < 0.5 ? '<1' : fmt(i.total / attr.total * 100, 0)}%</span>}
                   </span>
                 </div>
               ))}

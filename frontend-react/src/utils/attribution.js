@@ -3,7 +3,7 @@
 // + dywidendy (netto). Spółki już sprzedane też się liczą — ich wynik nie
 // znika z portfela tylko dlatego, że pozycji już nie ma. Kwoty w PLN.
 import { computeRealizedTrades } from './realizedPL.js';
-import { normalizeType, divNet } from './transactions.js';
+import { normalizeType, divNet, txAmount, txFee } from './transactions.js';
 import { baseSymbol } from './ledger.js';
 
 // hist: kursy z dni transakcji (useHistoricalFx) — zrealizowany wynik z walutą.
@@ -37,4 +37,47 @@ export function attribution(positions = [], transactions = [], fxRates = {}, his
     sectors: [...sectors].map(([sector, total]) => ({ sector, total })).sort(byTotal),
     total: list.reduce((s, r) => s + r.total, 0),
   };
+}
+
+// Ten sam łączny wynik rozłożony na źródła: zmiana cen (po kursie waluty
+// z dnia zakupu), kursy walut, dywidendy brutto, podatek u źródła i prowizje.
+// Prowizje siedzą w koszcie (średnia z prowizją) i w wyniku sprzedaży —
+// tu są wyjęte osobno, więc zmiana cen jest „przed prowizjami”.
+// Suma pięciu części = total z attribution().
+export function sourceBreakdown(positions = [], transactions = [], fxRates = {}, hist = null) {
+  let tradeTotal = 0, fx = 0, fees = 0, dividends = 0, tax = 0;
+  for (const p of positions) {
+    if (p.plPLN == null) continue;
+    tradeTotal += p.plPLN;
+    // Waluta: dzisiejsza wartość po dzisiejszym kursie minus ta sama wartość
+    // po kursie z dni zakupu (z kosztu pozycji).
+    const costNative = (p.qty ?? 0) * (p.avgPrice ?? 0);
+    if (p.price != null && costNative > 0 && p.costPLN != null && p.valuePLN != null) {
+      fx += p.valuePLN - p.qty * p.price * (p.costPLN / costNative);
+    }
+  }
+  for (const tr of computeRealizedTrades(transactions, fxRates, hist)) {
+    tradeTotal += tr.plPLN;
+    const costNative = tr.costBasis * tr.qty;
+    // Wynik w walucie po kursie zakupu; reszta to waluta.
+    if (costNative > 0 && tr.costPLN > 0) fx += tr.plPLN - tr.plNative * (tr.costPLN / costNative);
+  }
+  for (const tx of transactions) {
+    const type = normalizeType(tx.type);
+    const r = fxRates[tx.currency] ?? 1;
+    if (type === 'BUY' || type === 'SELL') fees += txFee(tx) * r;
+    else if (type === 'DIV' && tx.symbol) {
+      dividends += txAmount({ ...tx, qty: tx.qty || 1, price: tx.price || 0 }) * r;
+      tax += (Number(tx.tax) || 0) * r;
+    }
+  }
+  const price = tradeTotal - fx + fees;
+  const parts = [
+    { key: 'price', total: price },
+    { key: 'fx', total: fx },
+    { key: 'dividends', total: dividends },
+    { key: 'tax', total: -tax },
+    { key: 'fees', total: -fees },
+  ];
+  return { parts, total: parts.reduce((s, x) => s + x.total, 0) };
 }
