@@ -339,6 +339,7 @@ export default {
   broker_cause_less:    'brakuje wypłaty, sprzedaży, prowizji, opłaty albo podatku pobranego przez biuro',
   broker_cause_timing:  'biuro wycenia po kursie zamknięcia, aplikacja po bieżącym — w trakcie sesji różnica może być większa',
   broker_issue_notFound: 'brak notowań dla: {symbols} — wycena po cenie zakupu',
+  broker_issue_priceMismatch: 'kurs różni się między źródłami (Yahoo i stooq): {symbols}',
   broker_issue_stale:   'notowania sprzed ponad 10 dni: {symbols}',
   broker_issue_partial: 'nie wszystkie ceny się wczytały',
   broker_issue_fx:      'kursy walut są nieaktualne',
@@ -1658,4 +1659,7 @@ export default {
   err_boundary_title: 'Coś poszło nie tak',
   err_boundary_hint: 'Ta część nie mogła się wyświetlić. Reszta aplikacji działa normalnie.',
   server_unavailable_toast: 'Serwer chwilowo niedostępny — spróbuj odświeżyć za chwilę',
+  price_source: 'Kurs: {src}',
+  price_check_ok: 'zgodny ze {src} ({price})',
+  price_check_diff: '{src} podaje {price} — różnica {pct}%, sprawdź kurs w biurze',
 };

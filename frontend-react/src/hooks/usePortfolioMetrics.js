@@ -9,6 +9,7 @@ import { replayFx, cashflowPLN } from '../utils/fxHistory.js';
 import { splitAdjusted } from '../utils/splits.js';
 import { normalizeType } from '../utils/transactions.js';
 import { CRYPTO_SYMBOLS } from '../utils/crypto.js';
+import { comparePrice } from '../utils/priceCheck.js';
 
 const CACHE_KEY = 'portfolio_metrics_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 min
@@ -107,14 +108,14 @@ async function fetchYahooBatch(symbols) {
         const e = quotes?.[sym];
         if (!e)          { out[sym] = null; continue; }
         if (e.notFound)  { out[sym] = { notFound: true }; continue; }
-        if (e.stooq)     { out[sym] = { price: e.price, dailyChg: null, pe: null, peFwd: null, pb: null }; continue; }
+        if (e.stooq)     { out[sym] = { price: e.price, dailyChg: null, pe: null, peFwd: null, pb: null, source: 'stooq' }; continue; }
         const q = e.quote;
         const fq = fromQuote(q?.regularMarketPrice ?? null, q?.currency);
         out[sym] = q?.regularMarketPrice
           ? { price: fq.price, dailyChg: q.regularMarketChangePercent ?? null,
               pe: null, peFwd: null, pb: null, sector: null, earningsTs: null,
               marketTime: q.regularMarketTime ?? null, tz: q.exchangeTimezoneName ?? null,
-              quoteCcy: fq.currency }
+              quoteCcy: fq.currency, source: 'yahoo', priceCheck: q.priceCheck ?? null }
           : null;
       }
     } catch {
@@ -285,6 +286,8 @@ async function fetchAllMetrics(symbols) {
       marketTime: yq?.marketTime ?? null,
       tz:         yq?.tz         ?? null,
       quoteCcy:   yq?.quoteCcy   ?? null,
+      source:     yq?.source     ?? null,
+      priceCheck: yq?.priceCheck ?? null,
     };
   }
 
@@ -472,6 +475,10 @@ export function usePortfolioMetrics(portfolio, transactions, fxRates) {
       staleSince: !isCrypto && isQuoteStale(m.marketTime) ? m.marketTime : null,
       // Yahoo notuje w innej walucie niż zapisana pozycja (np. ETF z Londynu w USD).
       ccyMismatch: currencyMismatch(m.quoteCcy, pos.currency),
+      // Źródło kursu i kontrola drugim źródłem (GPW: stooq) — utils/priceCheck.js.
+      priceSource: m.source ?? null,
+      marketTime:  m.marketTime ?? null,
+      priceCheck:  comparePrice(m.price, m.marketTime, m.priceCheck),
       costPLN,
       costPLNNow,
       valuePLN,
