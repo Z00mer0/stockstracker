@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, TrendingUp, Coins, Wallet, TriangleAlert, WifiOff, Briefcase, Scale,
-  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock, BarChart3, ListChecks,
+  ArrowUp, ArrowDown, MoonStar, RefreshCw, LineChart, CalendarClock, BarChart3, ListChecks, Share2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StockDetailModal from '../components/StockDetailModal';
@@ -15,6 +15,7 @@ import useDividendEvents from '../hooks/useDividendEvents';
 import useBondsValue from '../hooks/useBondsValue';
 import useMissingDividends from '../hooks/useMissingDividends';
 import GoalsCard from '../components/GoalsCard';
+import ShareModal from '../components/ShareModal';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import { formatPercent } from '../utils/format.js';
 import InsightStrip from '../components/shared/InsightStrip';
@@ -130,6 +131,7 @@ export default function Dashboard() {
   const { alerts: splitAlerts } = useSplitDetector(portfolio, transactions);
   const missingDivs = useMissingDividends(portfolio, transactions);
   const [applyingSplit, setApplyingSplit] = useState(null);
+  const [showShare, setShowShare] = useState(false);
   async function applySplitNow(a) {
     setApplyingSplit(a.key);
     try { await applySplit({ symbol: a.symbol, date: a.date, ratio: a.ratio, label: a.label }); }
@@ -428,6 +430,7 @@ export default function Dashboard() {
           <>
             <Button size="sm" icon={BarChart3} onClick={() => navigate('/market/gpw')}>{t('dash_session_gpw')}</Button>
             <Button size="sm" icon={BarChart3} onClick={() => navigate('/market/us')}>{t('dash_session_us')}</Button>
+            <Button size="sm" icon={Share2} onClick={() => setShowShare(true)}>{t('share_show_friends')}</Button>
           </>
         )}
       />
@@ -596,6 +599,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {showShare && <ShareModal onClose={() => setShowShare(false)} />}
       <GoalsCard value={kpi.totalValue} monthlyDividends={kpi.annualDivPLN / 12} dispFx={dispFx} currLabel={currLabel} />
 
       {/* Mapa portfela: wielkość = wartość, kolor = zmiana dnia */}

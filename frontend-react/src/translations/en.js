@@ -1730,4 +1730,13 @@ export default {
   goal_hint_div: 'needs a portfolio of about {capital} at a {yield}% dividend yield',
   goal_hint_div_monthly: 'needs a portfolio of about {capital} ({yield}% yield) — save about {amount} per month (at {pct}% a year)',
   goal_delete_confirm: 'Delete goal “{name}”?',
+  share_show_friends: 'Show friends',
+  share_modal_title: 'Show your portfolio to friends',
+  share_img_title: 'My portfolio',
+  share_img_top: 'Largest positions · weight and return',
+  share_img_footer: 'Percentages only — no amounts. myfund',
+  share_img_text: 'My portfolio on myfund',
+  share_send: 'Send',
+  share_download: 'Download image',
+  share_copy_link: 'Copy link',
 };
