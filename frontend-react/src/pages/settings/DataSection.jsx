@@ -6,6 +6,7 @@ import { api } from '../../hooks/useApi';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Badge, Button, Callout, Card, Field, IconButton, Input, Select, Table } from '../../components/ui';
 import { Note } from './common.jsx';
+import { applyBrokerQuantities } from '../../utils/brokerReconcile.js';
 
 // Oba okna ciągną ciężkie parsery (xlsx, pdfjs, tesseract) — ładowane dopiero po otwarciu.
 const BrokerImportModal = lazy(() => import('../../components/BrokerImportModal'));
@@ -20,7 +21,7 @@ function fmtDate(iso) {
 function BrokerImportCard() {
   const t = useT();
   const { locale } = useLanguage();
-  const { transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport, canWrite } = useApp();
+  const { transactions, portfolio, cash, importBrokerTransactions, clearBrokerImport, saveHoldings, canWrite } = useApp();
   const [showBroker, setShowBroker] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [clearingId, setClearingId] = useState(null);
@@ -83,6 +84,7 @@ function BrokerImportCard() {
             existingPortfolio={portfolio}
             existingCash={cash}
             onSave={async newTxs => { await importBrokerTransactions(newTxs); }}
+            onReconcile={diffs => saveHoldings(applyBrokerQuantities(portfolio, diffs))}
             onClose={() => setShowBroker(false)}
           />
         )}

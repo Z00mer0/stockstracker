@@ -396,5 +396,7 @@ export function computePortfolioPreview(txs, holdings, cash) {
                .map(x => ({ ...x, oldQty: oldMap[x.symbol].qty })),
     cashAdded,
     cashRemoved,
+    // Stan po imporcie — do porównania z Open Positions z XTB.
+    holdings: h,
   };
 }
