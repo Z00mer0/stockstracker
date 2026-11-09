@@ -12,6 +12,7 @@ import Sparkline from '../components/shared/Sparkline';
 import TickerLogo from '../components/shared/TickerLogo';
 import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
+import useBondsValue from '../hooks/useBondsValue';
 import { formatPercent } from '../utils/format.js';
 import InsightStrip from '../components/shared/InsightStrip';
 import StackedAllocation from '../components/shared/StackedAllocation';
@@ -106,7 +107,7 @@ function MoverGroup({ tone, label, items, ...rowProps }) {
 }
 
 export default function Dashboard() {
-  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, refresh } = useApp();
+  const { portfolio, transactions, snapshots, loading, error, fxRates, fxStale, cash, otherAssets, bonds, saveCash, invested, saveSnapshot, saveBatchSnapshots, activePortfolioId, portfolios, displayName, displayCurrency, refresh } = useApp();
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
   const { isPrivate } = usePrivacy();
   const { locale } = useLanguage();
@@ -120,6 +121,7 @@ export default function Dashboard() {
   const [savingCash, setSavingCash] = useState(false);
   const [wlMode, setWlMode] = useState('pct');
   const { enrichPosition, histFx } = usePortfolioMetrics(portfolio, transactions, fxRates);
+  const bondsValue = useBondsValue(bonds);
 
   const symbols = useMemo(() => [...new Set(portfolio.map(p => p.symbol))], [portfolio]);
   const { allCalendarEvents } = useDividendEvents(symbols);
@@ -194,8 +196,10 @@ export default function Dashboard() {
     const otherAssetsValue = otherAssets.reduce((s, a) => s + (a.value || 0) * (fxRates[a.currency] ?? 1), 0);
 
     // Ta sama funkcja co w Portfolio — patrz utils/portfolioValue.js.
+    // Obligacje skarbowe liczą się do majątku jak inne aktywa (nie do
+    // dziennych snapshotów Historii — te obejmują akcje i gotówkę).
     const { totalValue, positionsValue, pricesLoaded, staleTotal, partialPrices } =
-      computePortfolioValue(allPositions, snapshots, cashValue + otherAssetsValue);
+      computePortfolioValue(allPositions, snapshots, cashValue + otherAssetsValue + bondsValue);
 
     // Unrealized P&L / ROI: sumuje po pozycjach z ceną (bez ceny → 0).
     // Koszt jak w pozycjach (po kursie zakupu) — inaczej % zysku dzielił
@@ -214,7 +218,7 @@ export default function Dashboard() {
       ytdRealizedPLN,
       sparkValues, pricesLoaded, staleTotal, partialPrices,
     };
-  }, [allPositions, snapshots, transactions, fxRates, cash, otherAssets, histFx]);
+  }, [allPositions, snapshots, transactions, fxRates, cash, otherAssets, bondsValue, histFx]);
 
   // ── Portfolio IRR — od pełnego roku historii ─────────────────────────────
   const { portfolioIrr } = useMemo(() => {

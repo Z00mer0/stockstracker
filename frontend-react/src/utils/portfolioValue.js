@@ -11,7 +11,7 @@
 //
 // positions: [{ valuePLN, costPLN }]  — valuePLN === null gdy brak notowania
 // snapshots: [{ date: 'YYYY-MM-DD', total }]
-// extraValue: gotówka + inne aktywa, już przeliczone na PLN (Dashboard liczy
+// extraValue: gotówka + inne aktywa + obligacje, już przeliczone na PLN (Dashboard liczy
 //             wartość całego majątku, Portfolio tylko same pozycje)
 export function computePortfolioValue(positions, snapshots = [], extraValue = 0) {
   const pricesLoaded   = positions.length === 0 || positions.every(p => p.valuePLN != null);
