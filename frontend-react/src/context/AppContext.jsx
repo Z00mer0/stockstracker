@@ -599,7 +599,7 @@ export function AppProvider({ children }) {
     return txId;
   }
 
-  async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType, fee }) {
+  async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType, fee, name }) {
     if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać pozycję');
     assertLoaded();
     const rd = rawDataRef.current;
@@ -610,8 +610,8 @@ export function AppProvider({ children }) {
       type: 'BUY', symbol, qty, price, currency, date, note,
       ...(fee > 0 ? { fee } : {}),
     }, { cash: funding === 'cash' });
-    const newHoldings = isNew && assetType
-      ? r.holdings.map(h => h.symbol === symbol ? { ...h, assetType } : h)
+    const newHoldings = isNew && (assetType || name)
+      ? r.holdings.map(h => h.symbol === symbol ? { ...h, ...(assetType ? { assetType } : {}), ...(name ? { name } : {}) } : h)
       : r.holdings;
 
     const updated = {

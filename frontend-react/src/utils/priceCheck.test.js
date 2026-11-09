@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { comparePrice } from './priceCheck.js';
-import { parseStooqCsv, fetchStooq, _clearStooqCache } from '../../../api/_stooq.js';
+import { parseStooqCsv, fetchStooq, _clearStooqCache, stooqSymbol, isFundSymbol } from '../../../api/_stooq.js';
 
 const t = iso => Math.floor(Date.parse(iso) / 1000);
 
@@ -41,5 +41,15 @@ describe('comparePrice', () => {
   });
   it('brak drugiego źródła', () => {
     expect(comparePrice(62.4, null, null)).toBeNull();
+  });
+});
+
+describe('stooqSymbol — fundusze TFI', () => {
+  it('kod 1048.N → 1048.n; GPW bez zmian; reszta null', () => {
+    expect(isFundSymbol('1048.N')).toBe(true);
+    expect(isFundSymbol('PKO.WA')).toBe(false);
+    expect(stooqSymbol('1048.N')).toBe('1048.n');
+    expect(stooqSymbol('PKO.WA')).toBe('pko');
+    expect(stooqSymbol('AAPL')).toBe(null);
   });
 });

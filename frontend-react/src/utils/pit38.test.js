@@ -47,6 +47,15 @@ describe('computePit38', () => {
     expect(r.totals.tax).toBe(0);
   });
 
+  it('fundusze TFI (kod stooq .N) poza PIT-38 — podatek pobiera TFI', () => {
+    const r = computePit38([
+      { type: 'BUY', symbol: '1048.N', qty: 10, price: 100, currency: 'PLN', date: '2024-01-02' },
+      { type: 'SELL', symbol: '1048.N', qty: 10, price: 150, currency: 'PLN', date: '2025-01-05' },
+    ], { basis: 'trade', year: 2025 });
+    expect(r.rows).toHaveLength(0);
+    expect(r.totals.tax).toBe(0);
+  });
+
   it('konto IKE pominięte; FIFO osobno dla każdego portfela', () => {
     const multi = [
       { type: 'BUY', symbol: 'X', qty: 1, price: 10, currency: 'PLN', date: '2024-01-02', _portfolioId: 'a' },

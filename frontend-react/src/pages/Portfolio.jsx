@@ -34,6 +34,7 @@ import OtherAssetsSection from './portfolio/OtherAssetsSection.jsx';
 import BondsSection from './portfolio/BondsSection.jsx';
 import BrokerCheckCard from './portfolio/BrokerCheckCard.jsx';
 import AddCryptoModal from './portfolio/AddCryptoModal.jsx';
+import AddFundModal from './portfolio/AddFundModal.jsx';
 import { toggleWatchlist } from './portfolio/watchlistLocal.js';
 import { exportPositions, exportTransactions, exportSnapshots } from '../utils/exporters.js';
 import { isAggregateView } from '../utils/portfolioView.js';
@@ -54,6 +55,7 @@ export default function Portfolio() {
   const [showImport, setShowImport] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddCrypto, setShowAddCrypto] = useState(false);
+  const [showAddFund, setShowAddFund] = useState(false);
   const [addSymbol, setAddSymbol] = useState('');
   const [sellTarget, setSellTarget] = useState(null);
   const [divTarget, setDivTarget] = useState(null);
@@ -271,6 +273,12 @@ export default function Portfolio() {
           onClose={() => setShowAddCrypto(false)}
         />
       )}
+      {showAddFund && (
+        <AddFundModal
+          onSave={async data => { await addPosition(data); refresh(); }}
+          onClose={() => setShowAddFund(false)}
+        />
+      )}
       {sellTarget && (
         <SellStockModal
           holding={sellTarget}
@@ -469,7 +477,7 @@ export default function Portfolio() {
         onAction={handleAction}
         onExport={handleExport}
         onImport={() => setShowImport(true)}
-        onAdd={kind => (kind === 'crypto' ? setShowAddCrypto(true) : setShowAdd(true))}
+        onAdd={kind => (kind === 'crypto' ? setShowAddCrypto(true) : kind === 'fund' ? setShowAddFund(true) : setShowAdd(true))}
         alertDisabled={watchlistMigrationPending}
       />
 
