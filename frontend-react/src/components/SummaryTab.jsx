@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 
 function fmt(val, decimals = 2, locale = 'pl-PL') {
   if (val == null || !isFinite(val)) return '—';
@@ -37,6 +37,7 @@ function UpsideCard({ label, value, upside, note }) {
 }
 
 export default function SummaryTab({ symbol, livePrice }) {
+  const t = useT();
   const [raw, setRaw] = useState(null);
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -79,16 +80,16 @@ export default function SummaryTab({ symbol, livePrice }) {
       {(dcfUpside != null || analystUpside != null) && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Wycena
+            {t('ks_valuation')}
           </div>
           <UpsideCard
-            label="Wycena DCF"
+            label={t('ks_dcf_value')}
             value={raw?.dcfFairValue}
             upside={dcfUpside}
-            note="Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%"
+            note={t('ks_dcf_note')}
           />
           <UpsideCard
-            label="Cel analityków (śr.)"
+            label={t('ks_analyst_target')}
             value={raw?.targetMeanPrice}
             upside={analystUpside}
           />
@@ -121,7 +122,7 @@ export default function SummaryTab({ symbol, livePrice }) {
               opacity: summaryLoading ? 0.6 : 1,
             }}
           >
-            {summaryLoading ? 'Generuję…' : 'Generuj podsumowanie'}
+            {summaryLoading ? t('sum_generating') : t('sum_generate')}
           </button>
           {summaryError && (
             <div style={{ fontSize: 11, color: '#f43f5e', marginTop: 6 }}>{summaryError}</div>

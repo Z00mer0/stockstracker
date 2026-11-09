@@ -172,12 +172,17 @@ export function AppProvider({ children }) {
     logout();
   }
 
+  // Interceptor i fetchData wołają zawsze aktualną wersję (ref) — bez
+  // przepinania interceptora i odtwarzania fetchData przy każdym renderze.
+  const handleUnauthorizedRef = useRef(handleUnauthorized);
+  handleUnauthorizedRef.current = handleUnauthorized;
+
   // Auto-logout on any 401 from write operations (e.g. backend session cleared after restart)
   useEffect(() => {
     const id = api.interceptors.response.use(
       r => r,
       err => {
-        if (err.response?.status === 401 && err.config?.url !== '/api/demo') handleUnauthorized();
+        if (err.response?.status === 401 && err.config?.url !== '/api/demo') handleUnauthorizedRef.current();
         return Promise.reject(err);
       }
     );
@@ -207,7 +212,7 @@ export function AppProvider({ children }) {
     } catch (err) {
       if (myFetchId !== fetchIdRef.current) return; // stale error, ignore
       if (err.response?.status === 401) {
-        handleUnauthorized();
+        handleUnauthorizedRef.current();
       } else if (err.response?.status === 403 && activePortfolioId !== 'all') {
         // stale portfolio id in localStorage — fall back to aggregate view
         switchPortfolio('all');

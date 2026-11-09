@@ -1,4 +1,5 @@
 import React from 'react';
+import { tStatic } from '../utils/i18n.js';
 
 // Jedyny sposób na złapanie wyjątku z renderowania w Reakcie — hooki tego nie
 // potrafią, musi być klasa.
@@ -41,9 +42,9 @@ export default class ErrorBoundary extends React.Component {
         border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)',
       }}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{this.props.title ?? 'Coś poszło nie tak'}</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{this.props.title ?? tStatic('err_boundary_title')}</p>
         <p style={{ fontSize: 13, color: 'var(--text-faint)', maxWidth: 420, margin: '0 auto 12px' }}>
-          {this.props.hint ?? 'Ta część nie mogła się wyświetlić. Reszta aplikacji działa normalnie.'}
+          {this.props.hint ?? tStatic('err_boundary_hint')}
         </p>
         <button
           onClick={() => this.setState({ error: null })}

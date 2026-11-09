@@ -169,7 +169,7 @@ function GrowthDrivers({ symbol, roic }) {
     { label: 'ROIC',               value: roic != null ? `${roic.toFixed(1)}%` : '—', highlight: true },
   ];
   return (
-    <Section title="Dynamika Rozwoju">
+    <Section title={t('ks_growth_dynamics')}>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 6 }}>
         {items.map(({ label, value, highlight }) => (
           <div key={label} style={{ background: 'var(--panel-2)', borderRadius: 8, padding: '8px 10px' }}>
@@ -209,7 +209,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
     },
   ];
   return (
-    <Section title="Analiza DuPont (ROE)">
+    <Section title={t('ks_dupont')}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
         {boxes.map((box, i) => (
           <React.Fragment key={i}>
@@ -242,6 +242,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
 
 // ─── Valuation Gauge ─────────────────────────────────────────────────────────
 function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
+  const t = useT();
   const { locale } = useLanguage();
   if (!currentPrice) return null;
   const vals = [currentPrice, dcfValue, analystTarget].filter(v => v != null);
@@ -295,7 +296,7 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
         )}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: -6 }}>
-        <span style={{ color: 'var(--text-faint)' }}>Zysk DCF: 5Y, dysk. 10%, wzrost hist., term. 3%</span>
+        <span style={{ color: 'var(--text-faint)' }}>{t('ks_dcf_note')}</span>
         {dcfPremium != null && (
           <span style={{ color: isUndervalued ? '#008751' : '#f43f5e', fontWeight: 600 }}>
             {dcfPremium < 0
@@ -520,7 +521,7 @@ function PeerComparison({ symbol, pe, netMargin }) {
           ))}
         </tbody>
       </table>
-      <div style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 5 }}>Dane konkurencji: cze 2026 · szacunkowe</div>
+      <div style={{ fontSize: 9, color: 'var(--text-faint)', marginTop: 5 }}>{t('ks_peers_note')}</div>
     </Section>
   );
 }
@@ -569,7 +570,7 @@ function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
   const total     = checks.filter(c => c.pass !== null).length;
 
   return (
-    <Section title={`Sygnały inwestycyjne ${total > 0 ? `(${passCount}/${total})` : ''}`}>
+    <Section title={`${t('ks_signals')} ${total > 0 ? `(${passCount}/${total})` : ''}`}>
       {checks.map((c, i) => <CheckItem key={i} {...c} />)}
     </Section>
   );
@@ -680,20 +681,20 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
     <div style={{ padding: '12px 20px 20px' }}>
 
       {hasValuation && (
-        <Section title="Wycena">
-          {peRatio        != null && <Row label="C/Z (TTM)"     value={fmtL(peRatio,  { decimals: 1, suffix: 'x' })} tooltip={t('ks_pe_tip')} />}
-          {raw?.forwardPE != null && <Row label="C/Z (forward)" value={fmtL(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip={t('ks_fpe_tip')} />}
-          {psRatio        != null && <Row label="C/P"           value={fmtL(psRatio,  { decimals: 1, suffix: 'x' })} tooltip={t('ks_ps_tip2')} />}
+        <Section title={t('ks_valuation')}>
+          {peRatio        != null && <Row label={t('ks_pe_ttm')}     value={fmtL(peRatio,  { decimals: 1, suffix: 'x' })} tooltip={t('ks_pe_tip')} />}
+          {raw?.forwardPE != null && <Row label={t('ks_pe_fwd')} value={fmtL(raw.forwardPE, { decimals: 1, suffix: 'x' })} tooltip={t('ks_fpe_tip')} />}
+          {psRatio        != null && <Row label={t('ks_ps')}           value={fmtL(psRatio,  { decimals: 1, suffix: 'x' })} tooltip={t('ks_ps_tip2')} />}
           {evEbitda       != null && <Row label="EV/EBITDA"     value={fmtL(evEbitda, { decimals: 1, suffix: 'x' })} tooltip={t('ks_evebitda_tip')} />}
-          {pfcf           != null && <Row label="C/FCF"         value={fmtL(pfcf,     { decimals: 1, suffix: 'x' })} tooltip={t('ks_pfcf_tip')} />}
+          {pfcf           != null && <Row label={t('ks_pfcf')}         value={fmtL(pfcf,     { decimals: 1, suffix: 'x' })} tooltip={t('ks_pfcf_tip')} />}
           {fcfYield       != null && <Row label="FCF Yield"     value={fmtL(fcfYield, { decimals: 2, suffix: '%' })} color={fcfYield > 0 ? '#10b981' : '#f43f5e'} tooltip={t('ks_fcfyield_tip')} />}
-          {raw?.priceToBook != null && <Row label="C/WK (P/B)"  value={fmtL(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip={t('ks_pb_tip')} />}
+          {raw?.priceToBook != null && <Row label={t('ks_pb')}  value={fmtL(raw.priceToBook, { decimals: 2, suffix: 'x' })} tooltip={t('ks_pb_tip')} />}
           {raw?.pegRatio    != null && <Row label="PEG"          value={fmtL(raw.pegRatio,    { decimals: 2 })} tooltip={t('ks_peg_tip')} />}
-          {liveMarketCap    != null && <Row label="Kap. rynkowa" value={fmtLargeL(liveMarketCap)} />}
+          {liveMarketCap    != null && <Row label={t('ks_mcap')} value={fmtLargeL(liveMarketCap)} />}
           {liveEV           != null && <Row label="EV"           value={fmtLargeL(liveEV)} tooltip={t('ks_ev_tip')} />}
           {(raw?.epsRevisionsUp30d != null || raw?.epsRevisionsDown30d != null) && (
             <Row
-              label="Rewizje EPS (30d)"
+              label={t('ks_eps_rev')}
               value={`↑${raw.epsRevisionsUp30d ?? 0} ↓${raw.epsRevisionsDown30d ?? 0}`}
               color={(raw.epsRevisionsUp30d ?? 0) > (raw.epsRevisionsDown30d ?? 0) ? '#10b981' : (raw.epsRevisionsDown30d ?? 0) > (raw.epsRevisionsUp30d ?? 0) ? '#f43f5e' : undefined}
               tooltip={t('ks_revisions_tip')}
@@ -706,7 +707,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       )}
 
       {hasFundamentals && (
-        <Section title="Fundamenty">
+        <Section title={t('ks_fundamentals')}>
           {raw?.ttmRevenue != null && (
             <Row
               label={raw?.revenueGrowthYoY != null
@@ -724,13 +725,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       <GrowthDrivers symbol={symbol} roic={roic} />
 
       {(hasProfit || raw?.beta != null || yearChangePct != null) && (
-        <Section title="Zysk / Ryzyko">
+        <Section title={t('ks_profit_risk')}>
           {epsTtm          != null && <Row label="EPS (TTM)"     value={fmtL(epsTtm, { decimals: 2 })} tooltip={t('ks_eps_tip')} />}
           {raw?.forwardEps != null && <Row label="EPS (forward)" value={fmtL(raw.forwardEps, { decimals: 2 })} tooltip={t('ks_feps_tip')} />}
           {raw?.beta       != null && <Row label="Beta"          value={fmtL(raw.beta, { decimals: 2 })} tooltip={t('ks_beta_tip')} />}
           {yearChangePct   != null && (
             <Row
-              label="Zmiana 1 rok"
+              label={t('ks_change_1y')}
               value={`${yearChangePct >= 0 ? '+' : ''}${yearChangePct.toFixed(1)}%`}
               color={yearChangePct >= 0 ? '#10b981' : '#f43f5e'}
             />
@@ -739,8 +740,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       )}
 
       {hasDividend && (
-        <Section title="Dywidenda">
-          <Row label="Stopa dywidendowa" value={raw.dividendYield != null ? fmtL(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip={t('ks_divyield_tip')} />
+        <Section title={t('ks_dividend')}>
+          <Row label={t('ks_div_yield')} value={raw.dividendYield != null ? fmtL(raw.dividendYield, { percent: true, suffix: '%' }) : '—'} tooltip={t('ks_divyield_tip')} />
           {raw.dividendRate != null && <Row label="DPS" value={fmtL(raw.dividendRate)} tooltip={t('ks_dps_tip')} />}
           {raw?.payoutRatio != null && (
             <Row
@@ -752,7 +753,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           )}
           {raw?.exDividendDate && (
             <Row
-              label="Data ex-dividend"
+              label={t('ks_ex_div')}
               value={new Date(raw.exDividendDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
               tooltip={t('ks_exdate_tip')}
             />
@@ -768,9 +769,9 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       )}
 
       {has52W && (
-        <Section title="52-tygodniowy zakres">
+        <Section title={t('ks_52w')}>
           <Row label="Min"  value={fmtL(low52,  { decimals: 2 })} />
-          <Row label="Maks" value={fmtL(high52, { decimals: 2 })} />
+          <Row label={t('ks_max')} value={fmtL(high52, { decimals: 2 })} />
           {pct52 != null && (
             <div style={{ marginTop: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -789,19 +790,19 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       )}
 
       {hasAnalysts && (
-        <Section title="Analitycy">
+        <Section title={t('ks_analysts_section')}>
           {raw.targetMeanPrice != null && <Row label={t('ks_target_avg')} value={fmtL(raw.targetMeanPrice, { decimals: 2 })} />}
           {raw.targetLowPrice  != null && raw.targetHighPrice != null && (
-            <Row label="Cel (min–maks)" value={`${fmtL(raw.targetLowPrice, { decimals: 2 })} – ${fmtL(raw.targetHighPrice, { decimals: 2 })}`} />
+            <Row label={t('ks_target_range')} value={`${fmtL(raw.targetLowPrice, { decimals: 2 })} – ${fmtL(raw.targetHighPrice, { decimals: 2 })}`} />
           )}
           {raw.numberOfAnalystOpinions != null && <Row label={t('ks_analysts')} value={String(raw.numberOfAnalystOpinions)} />}
-          {rec && <Row label="Rekomendacja" value={rec[0]} color={rec[1]} />}
-          {raw.nextEarningsDate != null && <Row label="Nast. wyniki" value={fmtDateL(raw.nextEarningsDate)} />}
+          {rec && <Row label={t('ks_recommendation')} value={rec[0]} color={rec[1]} />}
+          {raw.nextEarningsDate != null && <Row label={t('ks_next_earnings')} value={fmtDateL(raw.nextEarningsDate)} />}
         </Section>
       )}
 
       {hasFundamentalValuation && (
-        <Section title="Wycena Fundamentalna">
+        <Section title={t('ks_fair_value')}>
           <ValuationGauge
             currentPrice={livePrice}
             dcfValue={raw?.dcfFairValue}
@@ -816,7 +817,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           )}
           {dcfUpside != null && (
             <Row
-              label="Wycena DCF"
+              label={t('ks_dcf_value')}
               value={fmtL(raw.dcfFairValue, { decimals: 2 })}
               color={dcfUpside <= 0 ? '#008751' : '#f43f5e'}
             />
@@ -840,8 +841,8 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       )}
 
       {hasHealth && (
-        <Section title="Kondycja finansowa">
-          {gScore  != null && <HealthBar label="Wzrost"        score={gScore} />}
+        <Section title={t('ks_fin_health')}>
+          {gScore  != null && <HealthBar label={t('ks_growth')}        score={gScore} />}
           {pScore  != null && <HealthBar label={t('ks_profitability')}    score={pScore}  tooltip={isCompounder ? t(COMPOUNDER_TOOLTIP_KEY) : undefined} />}
           {cfScore != null && <HealthBar label={t('ks_fcf_flows')} score={cfScore} tooltip={isCompounder ? t(COMPOUNDER_TOOLTIP_KEY) : undefined} />}
         </Section>

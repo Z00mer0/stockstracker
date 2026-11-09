@@ -217,7 +217,7 @@ export function useMarketNotifications() {
     }
     writeStamps(SEEN_KEY, seenRef.current);
     setNotifications(fresh);
-  }, [targets, deliveryHour]);
+  }, [targets, deliveryHour, deliveryMinute]);
 
   // Karta w tle nie ma komu pokazac dzwonka, a odpytywanie leci z kazdej
   // otwartej zakladki — wiec w tle nie skanujemy, a po powrocie doganiamy.

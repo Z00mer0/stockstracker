@@ -114,16 +114,20 @@ export default function Watchlist() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchItems, initialized, watchlistMigrationPending]);
 
+  // Kursy przy zmianie zestawu spółek (nie przy edycji notatki czy alertu).
+  // Sama liczba nie wystarczała — zamiana jednej spółki na inną zostawiała
+  // nową bez kursu.
+  const watchSymbolsKey = [...new Set(watchItems.map(w => w.symbol))].join(',');
   useEffect(() => {
-    if (!watchItems.length) return;
+    if (!watchSymbolsKey) return;
     setLoading(true);
-    const symbols = [...new Set(watchItems.map(w => w.symbol))];
+    const symbols = watchSymbolsKey.split(',');
     Promise.allSettled(symbols.map(async sym => ({ sym, data: await fetchLivePrice(sym) }))).then(results => {
       const prices = {};
       results.forEach(r => { if (r.status === 'fulfilled' && r.value.data) prices[r.value.sym] = r.value.data; });
       setLivePrices(prices);
     }).finally(() => setLoading(false));
-  }, [watchItems.length]);
+  }, [watchSymbolsKey]);
 
   async function addWatchItem() {
     const sym = inputTicker.trim().toUpperCase();

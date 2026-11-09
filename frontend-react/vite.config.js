@@ -4,7 +4,6 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
   const env       = loadEnv(mode, process.cwd());
-  const isProd    = mode === 'production';
   const apiTarget = env.VITE_API_URL || 'http://localhost:8765';
 
   return {

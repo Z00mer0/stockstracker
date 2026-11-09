@@ -383,7 +383,7 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
             )}
             {showExternal && (
               <>
-                <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', borderTop: searchResults.length > 0 ? '1px solid var(--border)' : 'none' }}>Giełda</div>
+                <div style={{ padding: '6px 12px 4px', fontSize: 10, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', borderTop: searchResults.length > 0 ? '1px solid var(--border)' : 'none' }}>{t('search_exchange')}</div>
                 {externalResults.map(item => (
                   <div key={item.symbol}
                     onMouseDown={() => handleExternalSelect(item)}

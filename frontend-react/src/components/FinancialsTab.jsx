@@ -660,7 +660,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
               color: 'var(--text-dim)',
               cursor: 'pointer',
             }}
-          >📎 Importuj screen</button>
+          >{t('fin_import_shot')}</button>
         </div>
       </div>
 
@@ -683,7 +683,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
                 href="data:text/csv;charset=utf-8,Metric%2C2022%2C2023%2C2024%2C2025%0ARevenue%2C%2C%2C%2C%0AOperating%20Income%2C%2C%2C%2C%0AEBITDA%2C%2C%2C%2C%0ANet%20Income%2C%2C%2C%2C%0ATotal%20Assets%2C%2C%2C%2C%0ATotal%20Liabilities%2C%2C%2C%2C%0ATotal%20Equity%2C%2C%2C%2C%0ATotal%20Debt%2C%2C%2C%2C%0ACash%20from%20Operations%2C%2C%2C%2C%0ACapEx%2C%2C%2C%2C%0AFCF%2C%2C%2C%2C"
                 download="financials_template.csv"
                 style={{ color: 'var(--info)', textDecoration: 'underline' }}
-              >pobierz szablon</a>
+              >{t('fin_template')}</a>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button
@@ -691,7 +691,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
                 disabled={uploading}
                 style={{ background: 'var(--info)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 11, fontWeight: 600, cursor: uploading ? 'wait' : 'pointer' }}
               >{uploading ? t('fin_reading') : t('fin_drop_csv')}</button>
-              <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Waluta:</span>
+              <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>{t('fin_currency')}</span>
               <select
                 value={csvCurrency}
                 onChange={e => setCsvCurrency(e.target.value)}
@@ -705,14 +705,14 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
 
           {/* Screenshot — secondary (requires API) */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-            <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 4, fontSize: 10 }}>📎 Ze screenshota (wizja AI)</div>
+            <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginBottom: 4, fontSize: 10 }}>{t('fin_from_shot')}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
                 style={{ background: 'var(--panel-2)', color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 12px', fontSize: 11, cursor: uploading ? 'wait' : 'pointer' }}
               >{t('fin_drop_image')}</button>
-              <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>lub Ctrl+V</span>
+              <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>{t('fin_or_paste')}</span>
             </div>
           </div>
 
@@ -766,25 +766,25 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
           {/* RZiS */}
           <Accordion title={t('fin_income_statement')} unit={`mln ${currency}`} defaultOpen={true}>
             <ColumnHeaders periods={displayPeriods} />
-            <TableRow label="Przychody" values={displayPeriods.map(p => p.revenue)} locale={locale} />
-            <SubRow label="Wzrost r/r" values={displayPeriods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
+            <TableRow label={t('fin_revenue')} values={displayPeriods.map(p => p.revenue)} locale={locale} />
+            <SubRow label={t('fin_growth_yoy')} values={displayPeriods.map(p => p.revenueGrowthYoY)} fmt={fmtPct} />
             {LFL_DATA[symbol] && (
-              <SubRow label="Wzrost LFL (r/r)" values={displayPeriods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
+              <SubRow label={t('fin_growth_lfl')} values={displayPeriods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
             )}
-            <TableRow label="Zysk brutto" values={displayPeriods.map(p => p.grossProfit)} locale={locale} />
+            <TableRow label={t('fin_gross_profit')} values={displayPeriods.map(p => p.grossProfit)} locale={locale} />
             <SubRow label={t('fin_gross_margin')} values={displayPeriods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
-            <TableRow label="Koszty oper." values={displayPeriods.map(p => p.operatingCost)} locale={locale} />
-            <TableRow label="Zysk oper." values={displayPeriods.map(p => p.operatingIncome)} locale={locale} />
+            <TableRow label={t('fin_opex')} values={displayPeriods.map(p => p.operatingCost)} locale={locale} />
+            <TableRow label={t('fin_op_income')} values={displayPeriods.map(p => p.operatingIncome)} locale={locale} />
             <TableRow label="EBITDA" values={displayPeriods.map(p => p.ebitda)} locale={locale} />
             <SubRow label={t('fin_ebitda_margin')} values={displayPeriods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
-            <TableRow label="Zysk netto" values={displayPeriods.map(p => p.netIncome)} locale={locale} />
+            <TableRow label={t('fin_net_income')} values={displayPeriods.map(p => p.netIncome)} locale={locale} />
             <TableRow label={t('fin_net_debt')} values={displayPeriods.map(p => p.netDebt)} locale={locale} />
           </Accordion>
 
           {/* Bilans */}
-          <Accordion title="Bilans" unit={`mln ${currency}`} defaultOpen={false}>
+          <Accordion title={t('fin_balance')} unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={displayPeriods} />
-            <TableRow label="Aktywa obrotowe" values={displayPeriods.map(p => p.totalCurrentAssets)} locale={locale} />
+            <TableRow label={t('fin_current_assets')} values={displayPeriods.map(p => p.totalCurrentAssets)} locale={locale} />
             <TableRow label={t('fin_total_assets')} values={displayPeriods.map(p => p.totalAssets)} locale={locale} />
             <TableRow label={t('fin_current_liabilities')} values={displayPeriods.map(p => p.totalCurrentLiabilities)} locale={locale} />
             <TableRow label={t('fin_liabilities')} values={displayPeriods.map(p => p.totalLiabilities)} locale={locale} />
@@ -796,20 +796,20 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
           {/* Przepływy */}
           <Accordion title={t('fin_cash_flow')} unit={`mln ${currency}`} defaultOpen={false}>
             <ColumnHeaders periods={displayPeriods} />
-            <TableRow label="CFO (oper.)" values={displayPeriods.map(p => p.operatingCashFlow)} locale={locale} />
-            <TableRow label="CAPEX / Inwest." values={displayPeriods.map(p => p.capex)} locale={locale} />
-            <SubRow label="Stopa Reinwest." values={displayPeriods.map(p =>
+            <TableRow label={t('fin_cfo')} values={displayPeriods.map(p => p.operatingCashFlow)} locale={locale} />
+            <TableRow label={t('fin_capex')} values={displayPeriods.map(p => p.capex)} locale={locale} />
+            <SubRow label={t('fin_reinvest')} values={displayPeriods.map(p =>
               p.capex != null && p.operatingCashFlow != null && Math.abs(p.operatingCashFlow) > 0
                 ? Math.abs(p.capex) / Math.abs(p.operatingCashFlow)
                 : null
             )} fmt={v => v == null ? '—' : (v * 100).toFixed(0) + '%'} />
-            <TableRow label="Finansowanie" values={displayPeriods.map(p => p.cashFromFinancing)} locale={locale} />
+            <TableRow label={t('fin_financing')} values={displayPeriods.map(p => p.cashFromFinancing)} locale={locale} />
             <TableRow label="FCF" values={displayPeriods.map(p => p.fcf)} locale={locale} />
-            <TableRow label="Skup akcji" values={displayPeriods.map(p => p.shareRepurchases)} locale={locale} />
+            <TableRow label={t('fin_buyback')} values={displayPeriods.map(p => p.shareRepurchases)} locale={locale} />
           </Accordion>
 
           {/* Wycena */}
-          <Accordion title="Wycena" defaultOpen={true}>
+          <Accordion title={t('ks_valuation')} defaultOpen={true}>
             <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
               <ValuationCard
                 label="P/E (trailing)"
@@ -840,7 +840,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
                 label="EV"
                 value={val.ev != null ? fmtL(val.ev) : '—'}
                 sub={val.netDebtLatest != null
-                  ? `Dług netto: ${val.netDebtLatest < 0 ? '' : '+'}${fmtL(val.netDebtLatest)}`
+                  ? `${t('fin_net_debt')}: ${val.netDebtLatest < 0 ? '' : '+'}${fmtL(val.netDebtLatest)}`
                   : null}
               />
             </div>
