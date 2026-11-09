@@ -8,6 +8,7 @@ import { normalizeSymbol, QTY_EPS } from '../utils/brokerImport.js';
 import { isAggregateView, groupIdOf, dataUrlFor } from '../utils/portfolioView.js';
 import { lsSet } from '../utils/safeStorage.js';
 import { withDepositValue } from '../utils/deposits.js';
+import { labelView, parseLabels } from '../utils/labels.js';
 
 export const AppContext = createContext(null);
 
@@ -95,6 +96,8 @@ export function AppProvider({ children }) {
   );
   // Adres danych zależy od składu grupy — zmiana grupy przeładowuje jej dane.
   const fetchUrl = dataUrlFor(activePortfolioId, groups);
+  // Grupa z etykietami: widok tylko z oznaczonych transakcji (utils/labels.js).
+  const labelsKey = (groups.find(g => g.id === groupIdOf(activePortfolioId))?.labels ?? []).join(',');
   // True only while we have old localStorage alerts that still need to be merged
   // into the server watchlist — gates Watchlist.jsx's autosave and Portfolio's
   // "Ustaw alert" button so they can't race the migration write.
@@ -212,7 +215,7 @@ export function AppProvider({ children }) {
       ]);
       if (myFetchId !== fetchIdRef.current) return; // stale response, ignore
       setPortfolios(portfoliosRes.data);
-      setRawData(dataRes.data);
+      setRawData(labelView(dataRes.data, labelsKey));
     } catch (err) {
       if (myFetchId !== fetchIdRef.current) return; // stale error, ignore
       if (err.response?.status === 401) {
@@ -226,7 +229,7 @@ export function AppProvider({ children }) {
     } finally {
       if (myFetchId === fetchIdRef.current) setLoading(false);
     }
-  }, [authed, activePortfolioId, fetchUrl]);
+  }, [authed, activePortfolioId, fetchUrl, labelsKey]);
 
   useEffect(() => {
     if (authed) fetchData();
@@ -462,6 +465,22 @@ export function AppProvider({ children }) {
       portfolio: { ...rd.portfolio, holdings: state.holdings },
       transactions: [...(rd.transactions ?? []), ...added],
       cash: state.cash,
+    });
+  }
+
+  // Etykiety nie wpływają na pozycje ani gotówkę — zmienia się tylko wpis.
+  async function setTransactionLabels(ids, labels) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const clean = parseLabels(labels);
+    await postUpdate({
+      ...rd,
+      transactions: (rd.transactions ?? []).map(x => {
+        if (!ids.includes(x.id)) return x;
+        const { labels: _old, ...rest } = x;
+        return clean.length ? { ...rest, labels: clean } : rest;
+      }),
     });
   }
 
@@ -955,6 +974,7 @@ export function AppProvider({ children }) {
     saveTransactions,
     addTransaction,
     deleteTransaction,
+    setTransactionLabels,
     importTransactions,
     saveSnapshot,
     saveBatchSnapshots,

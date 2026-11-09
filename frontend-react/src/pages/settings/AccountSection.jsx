@@ -1,3 +1,4 @@
+import { parseLabels } from '../../utils/labels.js';
 import { useRef, useState } from 'react';
 import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck, Trash2, Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -255,6 +256,7 @@ function GroupModal({ initial, portfolios, onSave, onClose }) {
   const t = useT();
   const [name, setName] = useState(initial?.name ?? '');
   const [ids, setIds] = useState(new Set(initial?.portfolioIds ?? []));
+  const [labels, setLabels] = useState((initial?.labels ?? []).join(', '));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const toggle = id => setIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -263,7 +265,7 @@ function GroupModal({ initial, portfolios, onSave, onClose }) {
     if (ids.size < 1) { setError(t('group_err_pick')); return; }
     setSaving(true);
     try {
-      await onSave({ id: initial?.id ?? Math.random().toString(36).slice(2, 10), name: name.trim(), portfolioIds: portfolios.filter(p => ids.has(p.id)).map(p => p.id) });
+      await onSave({ id: initial?.id ?? Math.random().toString(36).slice(2, 10), name: name.trim(), portfolioIds: portfolios.filter(p => ids.has(p.id)).map(p => p.id), labels: parseLabels(labels) });
       onClose();
     } catch (e) { setError(e.response?.data?.error ?? e.message); } finally { setSaving(false); }
   }
@@ -282,6 +284,9 @@ function GroupModal({ initial, portfolios, onSave, onClose }) {
             </label>
           ))}
         </fieldset>
+        <Field label={t('group_labels')} hint={t('group_labels_hint')}>
+          <Input value={labels} onChange={e => setLabels(e.target.value)} placeholder={t('lbl_ph')} />
+        </Field>
         <Note tone="err">{error}</Note>
         <button type="submit" hidden />
       </form>
@@ -305,7 +310,7 @@ function GroupsCard() {
           <div key={g.id} className="flex items-center gap-3 rounded-card-sm border border-line px-3 py-2">
             <span className="min-w-0 flex-1">
               <span className="block truncate text-fg">{g.name}</span>
-              <span className="block truncate text-small text-faint">{g.portfolioIds.map(nameOf).filter(Boolean).join(' + ')}</span>
+              <span className="block truncate text-small text-faint">{g.portfolioIds.map(nameOf).filter(Boolean).join(' + ')}{g.labels?.length ? ` · ${t('lbl_field').toLowerCase()}: ${g.labels.join(', ')}` : ''}</span>
             </span>
             <Button size="sm" variant="ghost" onClick={() => setEdit(g)}>{t('edit')}</Button>
             <Button size="sm" variant="danger" icon={Trash2} onClick={() => setDel(g)}>{t('delete')}</Button>
