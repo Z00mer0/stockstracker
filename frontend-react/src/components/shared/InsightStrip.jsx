@@ -61,13 +61,14 @@ export default function InsightStrip({
       )}
       {worst && worst.symbol !== best?.symbol && (
         <div className={'insight' + (onSymbolClick ? ' clickable' : '')} onClick={() => onSymbolClick?.(worst)}>
-          <span className="ins-dot" style={{ background: 'var(--down)' }} />
+          {/* Najsłabsza pozycja na plusie to nie „presja” — bez czerwieni. */}
+          <span className="ins-dot" style={{ background: worstPct < 0 ? 'var(--down)' : 'var(--warn)' }} />
           <div className="ins-body">
-            <div className="ins-label">{t('under_pressure')}</div>
+            <div className="ins-label">{t(worstPct < 0 ? 'under_pressure' : 'weakest_position')}</div>
             <div className="ins-text">
               {worst.symbol.replace('.WA', '')}
               {' · '}
-              <span className={'num down' + blur}>{fmtPct(worstPct)}</span>
+              <span className={'num ' + (worstPct < 0 ? 'down' : 'up') + blur}>{fmtPct(worstPct)}</span>
             </div>
           </div>
         </div>

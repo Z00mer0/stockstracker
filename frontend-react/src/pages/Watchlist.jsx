@@ -48,6 +48,8 @@ function alertLabel(a, t) {
 export default function Watchlist() {
   const { portfolio, watchlistMigrationPending } = useApp();
   const { locale } = useLanguage();
+  // Kursy w formacie języka aplikacji (48,00 zamiast 48.00) — jak na pozostałych stronach.
+  const money = v => v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const t = useT();
   const { isPrivate } = usePrivacy();
   const { showToast } = useToast();
@@ -170,12 +172,12 @@ export default function Watchlist() {
         </span>
       ),
     },
-    { key: 'addedPrice', header: t('col_added_price'), align: 'right', render: w => <span className="text-dim">{w.addedPrice != null ? `${w.addedPrice.toFixed(2)} ${w.currency ?? ''}` : '—'}</span> },
+    { key: 'addedPrice', header: t('col_added_price'), align: 'right', render: w => <span className="text-dim">{w.addedPrice != null ? `${money(w.addedPrice)} ${w.currency ?? ''}` : '—'}</span> },
     {
       key: 'price', header: t('col_price'), align: 'right', mobile: 'aside',
       render: w => {
         const live = livePrices[w.symbol];
-        return loading && !live ? <span className="text-faint">…</span> : live ? <span className="font-semibold">{live.price.toFixed(2)} {w.currency ?? ''}</span> : <span className="text-faint">—</span>;
+        return loading && !live ? <span className="text-faint">…</span> : live ? <span className="font-semibold">{money(live.price)} {w.currency ?? ''}</span> : <span className="text-faint">—</span>;
       },
     },
     { key: 'day', header: t('col_day'), align: 'right', render: w => (livePrices[w.symbol]?.dailyChg != null ? <Chip value={livePrices[w.symbol].dailyChg} /> : <span className="text-faint">—</span>) },
@@ -250,7 +252,7 @@ export default function Watchlist() {
             columns={[
               { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: p => <span className="flex items-center gap-2"><TickerLogo symbol={p.symbol} /><span className="font-semibold text-fg">{p.symbol}</span></span> },
               { key: 'qty', header: t('col_qty'), align: 'right', render: p => <span className={isPrivate ? 'privacy-blur' : undefined}>{p.qty?.toLocaleString(locale) ?? '—'}</span> },
-              { key: 'avgPrice', header: t('col_avg_price_short'), align: 'right', mobile: 'aside', render: p => <span className={cx('text-dim', isPrivate && 'privacy-blur')}>{p.avgPrice?.toFixed(2)} {p.currency}</span> },
+              { key: 'avgPrice', header: t('col_avg_price_short'), align: 'right', mobile: 'aside', render: p => <span className={cx('text-dim', isPrivate && 'privacy-blur')}>{p.avgPrice != null ? money(p.avgPrice) : '—'} {p.currency}</span> },
             ]}
             rows={portfolio}
             rowKey={p => p.id ?? p.symbol}
