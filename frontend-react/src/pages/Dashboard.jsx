@@ -14,6 +14,7 @@ import { usePortfolioMetrics } from '../hooks/usePortfolioMetrics';
 import useDividendEvents from '../hooks/useDividendEvents';
 import useBondsValue from '../hooks/useBondsValue';
 import useMissingDividends from '../hooks/useMissingDividends';
+import GoalsCard from '../components/GoalsCard';
 import { useSplitDetector } from '../hooks/useSplitDetector';
 import { formatPercent } from '../utils/format.js';
 import InsightStrip from '../components/shared/InsightStrip';
@@ -594,6 +595,8 @@ export default function Dashboard() {
             )}
         </Card>
       </div>
+
+      <GoalsCard value={kpi.totalValue} monthlyDividends={kpi.annualDivPLN / 12} dispFx={dispFx} currLabel={currLabel} />
 
       {/* Mapa portfela: wielkość = wartość, kolor = zmiana dnia */}
       {allPositions.some(p => p.valuePLN > 0) && (
