@@ -68,7 +68,7 @@ export async function fetchDividendHistory(symbol) {
     if (c?.ts && Date.now() - c.ts < CACHE_TTL) return c.data;
   } catch {}
   try {
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2y&events=div`;
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=10y&events=div`;
     const r = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000), });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const json = await r.json();

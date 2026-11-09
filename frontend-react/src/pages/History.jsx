@@ -194,7 +194,7 @@ export default function History() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allRows, displayCurrency, fxRates]
   );
-  const { profit: gainDisp, twrPct, cagr, days, mdd } = stats;
+  const { profit: gainDisp, twrPct, mwrPct, cagr, days, mdd } = stats;
 
   // Indeksy notowane w dolarach domyślnie w złotych — kurs USD z dnia
   // snapshotu (a przed pierwszym — najstarszy znany). Portfel liczony jest
@@ -454,7 +454,11 @@ export default function History() {
             benchData={benchView}
             benchLabel={BENCHMARKS.find(b => b.key === benchmark)?.label}
           />
-          <p className="mt-2 text-small text-faint">{t('history_twr_note')}</p>
+          <p className="mt-2 text-small text-faint">
+            {twrPct != null && mwrPct != null
+              ? t('history_twr_mwr').replace('{twr}', formatPercent(twrPct, { locale, decimals: 2 })).replace('{mwr}', formatPercent(mwrPct, { locale, decimals: 2 }))
+              : t('history_twr_note')}
+          </p>
         </div>
       </Card>
 
