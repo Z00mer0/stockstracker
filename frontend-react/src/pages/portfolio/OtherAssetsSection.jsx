@@ -1,12 +1,12 @@
 import { formatDate } from '../../utils/format.js';
 import { useState } from 'react';
-import { Home, Gem, Landmark, Car, Package, CandlestickChart, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Home, Gem, Landmark, Car, Package, CandlestickChart, CircleCheck, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Button, Card, Field, IconButton, Input, Modal, Select, Table } from '../../components/ui';
-import { defaultMultiplier } from '../../utils/futures.js';
+import { defaultMultiplier, futureValue } from '../../utils/futures.js';
 
 // Nieruchomości, lokaty, złoto, pojazdy — wyceniane ręcznie.
 
@@ -167,8 +167,51 @@ function OtherAssetModal({ initial, onSave, onClose }) {
   );
 }
 
+function CloseFutureModal({ asset, onSave, onClose }) {
+  const t = useT();
+  const { locale } = useLanguage();
+  const [price, setPrice] = useState(asset.futurePrice ?? '');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const p = parseFloat(price);
+  const res = p > 0 ? futureValue(asset.margin ?? asset.value, asset.future, p) : null;
+  const money = n => `${n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${asset.currency}`;
+
+  async function save() {
+    if (!(p > 0) || !date) { setError(t('err_enter_price_short')); return; }
+    setSaving(true);
+    try { await onSave(p, date); onClose(); }
+    catch (e) { setError(e.message || t('save_error')); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <Modal size="sm" title={t('fut_close_title').replace('{name}', asset.name)} onClose={onClose}
+      footer={<><Button variant="ghost" onClick={onClose}>{t('cancel')}</Button><Button variant="primary" loading={saving} onClick={save}>{t('fut_close_btn')}</Button></>}>
+      <form className="grid gap-4 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); save(); }}>
+        <Field label={t('fut_close_price')}>
+          <Input type="number" min="0" step="any" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} />
+        </Field>
+        <Field label={t('col_date')}>
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+        </Field>
+        {res && (
+          <dl className="grid gap-1 text-[13px] sm:col-span-2">
+            <div className="flex justify-between"><dt className="text-dim">{t('fut_close_result')}</dt><dd className={`font-semibold ${res.pl >= 0 ? 'text-up' : 'text-down'}`}>{res.pl >= 0 ? '+' : ''}{money(res.pl)}</dd></div>
+            <div className="flex justify-between"><dt className="text-dim">{t('fut_close_to_cash')}</dt><dd className="font-semibold text-fg">{money(res.value)}</dd></div>
+          </dl>
+        )}
+        <p className="text-small text-faint sm:col-span-2">{t('fut_close_hint')}</p>
+        {error && <p role="alert" className="text-small text-down sm:col-span-2">{error}</p>}
+        <button type="submit" hidden />
+      </form>
+    </Modal>
+  );
+}
+
 export default function OtherAssetsSection() {
-  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, fxRates, displayCurrency, canWrite } = useApp();
+  const { otherAssets, addOtherAsset, editOtherAsset, deleteOtherAsset, closeFuture, fxRates, displayCurrency, canWrite } = useApp();
   const t = useT();
   const { locale } = useLanguage();
   const { isPrivate } = usePrivacy();
@@ -176,6 +219,7 @@ export default function OtherAssetsSection() {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [closeTarget, setCloseTarget] = useState(null);
 
   const fx = fxRates[displayCurrency] ?? 1;
   const currLabel = displayCurrency === 'PLN' ? 'zł' : displayCurrency;
@@ -203,6 +247,13 @@ export default function OtherAssetsSection() {
             else await addOtherAsset(data);
           }}
           onClose={() => { setShowModal(false); setEditTarget(null); }}
+        />
+      )}
+      {closeTarget && (
+        <CloseFutureModal
+          asset={closeTarget}
+          onSave={(price, date) => closeFuture(closeTarget.id, price, date)}
+          onClose={() => setCloseTarget(null)}
         />
       )}
       {confirmDel && (
@@ -275,6 +326,7 @@ export default function OtherAssetsSection() {
       key: 'actions', header: '', align: 'right',
       render: a => (
         <span className="inline-flex gap-1">
+          {a.future && <IconButton icon={CircleCheck} size="sm" label={`${t('fut_close_btn')}: ${a.name}`} onClick={() => setCloseTarget(a)} />}
           <IconButton icon={Pencil} size="sm" label={`${t('edit')}: ${a.name}`} onClick={() => { setEditTarget(a); setShowModal(true); }} />
           <IconButton icon={Trash2} size="sm" label={`${t('delete_btn')}: ${a.name}`} onClick={() => setConfirmDel(a)} />
         </span>

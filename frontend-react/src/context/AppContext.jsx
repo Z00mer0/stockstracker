@@ -8,7 +8,7 @@ import { normalizeSymbol, QTY_EPS } from '../utils/brokerImport.js';
 import { isAggregateView, groupIdOf, dataUrlFor } from '../utils/portfolioView.js';
 import { lsSet } from '../utils/safeStorage.js';
 import { withDepositValue } from '../utils/deposits.js';
-import { withFutureValue, futureQuoteSymbol } from '../utils/futures.js';
+import { withFutureValue, futureQuoteSymbol, futureValue } from '../utils/futures.js';
 import { labelView, parseLabels } from '../utils/labels.js';
 
 export const AppContext = createContext(null);
@@ -926,6 +926,28 @@ export function AppProvider({ children }) {
     await postUpdate(updated);
   }
 
+  // Zamknięcie kontraktu: depozyt z wynikiem wraca do gotówki (wpis w historii),
+  // a kontrakt znika z innych aktywów — jednym zapisem.
+  async function closeFuture(id, closePrice, date) {
+    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    assertLoaded();
+    const rd = rawDataRef.current;
+    const asset = (rd?.otherAssets ?? []).find(a => a.id === id);
+    if (!asset?.future) return;
+    const { value, pl } = futureValue(asset.value, asset.future, closePrice);
+    const r = applyTransaction({ holdings: rd?.portfolio?.holdings ?? [], cash: rd?.cash ?? {} }, {
+      id: Math.random().toString(36).slice(2, 10),
+      type: 'CASH', symbol: '', qty: null, price: value, currency: asset.currency || 'PLN', date,
+      note: `${asset.future.code} × ${asset.future.contracts} @ ${closePrice}: ${pl >= 0 ? '+' : ''}${pl}`,
+    });
+    await postUpdate({
+      ...rd,
+      otherAssets: rd.otherAssets.filter(a => a.id !== id),
+      transactions: [...(rd.transactions ?? []), r.tx],
+      cash: r.cash,
+    });
+  }
+
   async function deleteOtherAsset(id) {
     assertLoaded();
     const rd = rawDataRef.current;
@@ -992,6 +1014,7 @@ export function AppProvider({ children }) {
     saveTransactions,
     addTransaction,
     deleteTransaction,
+    closeFuture,
     setTransactionLabels,
     importTransactions,
     saveSnapshot,
