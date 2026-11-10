@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useLanguage, useT } from '../context/LanguageContext';
 import useShareLink from '../hooks/useShareLink';
 import { drawShareImage } from '../utils/shareImage.js';
-import { Button, Field, Modal, Select } from './ui';
+import { Button, Field, Input, Modal, Select } from './ui';
 import { isAggregateView } from '../utils/portfolioView.js';
 
 // „Pokaż znajomym”: publiczny link (same procenty) i obrazek z wynikami
@@ -14,7 +14,15 @@ export default function ShareModal({ onClose }) {
   const { locale } = useLanguage();
   const { portfolios, activePortfolioId } = useApp();
   const [pid, setPid] = useState(!isAggregateView(activePortfolioId) ? activePortfolioId : portfolios[0]?.id ?? '');
-  const { token, url, busy, generate, revoke } = useShareLink(pid);
+  const { token, url, busy, generate, revoke, listing, saveListing } = useShareLink(pid);
+  const [pubName, setPubName] = useState('');
+  const [pubError, setPubError] = useState('');
+  useEffect(() => { setPubName(listing.publicName); }, [listing.publicName]);
+  async function toggleListing(listed) {
+    if (listed && !pubName.trim()) { setPubError(t('pub_err_name')); return; }
+    setPubError('');
+    try { await saveListing(listed, pubName.trim()); } catch { setPubError(t('save_error')); }
+  }
   const [copied, setCopied] = useState(false);
   const [data, setData] = useState(null);
   const canvasRef = useRef(null);
@@ -78,6 +86,20 @@ export default function ShareModal({ onClose }) {
               <Button icon={copied ? Check : Copy} onClick={copy}>{copied ? t('rc_copied') : t('share_copy_link')}</Button>
             </div>
             <p className="break-all text-center font-mono text-[11px] text-faint">{url}</p>
+            <div className="grid gap-2 rounded-card-sm border border-line p-3">
+              <p className="text-[13px] font-semibold text-fg">{t('pub_list_title')}</p>
+              <p className="text-small text-faint">{t('pub_list_desc')}</p>
+              <div className="flex flex-wrap items-end gap-2">
+                <Field label={t('pub_name_label')} className="min-w-0 flex-1">
+                  <Input value={pubName} maxLength={40} placeholder={t('pub_name_ph')} onChange={e => setPubName(e.target.value)} />
+                </Field>
+                {listing.listed
+                  ? <><Button disabled={busy} onClick={() => toggleListing(true)}>{t('save_btn')}</Button><Button variant="ghost" className="text-down" disabled={busy} onClick={() => toggleListing(false)}>{t('pub_unlist')}</Button></>
+                  : <Button variant="primary" disabled={busy} onClick={() => toggleListing(true)}>{t('pub_list_btn')}</Button>}
+              </div>
+              {listing.listed && <p className="text-small text-up">{t('pub_listed_now')}</p>}
+              {pubError && <p role="alert" className="text-small text-down">{pubError}</p>}
+            </div>
             <Button size="sm" variant="ghost" className="justify-self-center text-down" disabled={busy} onClick={revoke}>{t('share_revoke')}</Button>
           </>
         )}

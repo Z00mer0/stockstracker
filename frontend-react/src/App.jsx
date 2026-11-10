@@ -16,6 +16,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 const Dashboard       = React.lazy(() => import('./pages/Dashboard'));
 const Portfolio       = React.lazy(() => import('./pages/Portfolio'));
 const BigMoves        = React.lazy(() => import('./pages/BigMoves'));
+const PublicPortfolios = React.lazy(() => import('./pages/PublicPortfolios'));
 const MonthlyReport   = React.lazy(() => import('./pages/MonthlyReport'));
 const History         = React.lazy(() => import('./pages/History'));
 const Transactions    = React.lazy(() => import('./pages/Transactions'));
@@ -80,6 +81,7 @@ function AppRoutes() {
           <Route path="market/:market?" element={<MarketSummary />} />
           <Route path="watchlist"   element={<Watchlist />} />
           <Route path="moves"       element={<BigMoves />} />
+          <Route path="public"      element={<PublicPortfolios />} />
           <Route path="report"      element={<MonthlyReport />} />
           <Route path="alerts"      element={<Alerts />} />
           <Route path="scenario"    element={<ScenarioLab />} />
