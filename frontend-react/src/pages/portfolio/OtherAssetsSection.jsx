@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Home, Gem, Landmark, Car, Package, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Home, Gem, Landmark, Car, Package, CandlestickChart, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Button, Card, Field, IconButton, Input, Modal, Select, Table } from '../../components/ui';
+import { defaultMultiplier } from '../../utils/futures.js';
 
 // Nieruchomości, lokaty, złoto, pojazdy — wyceniane ręcznie.
 
@@ -14,6 +15,7 @@ function getAssetCategories(t) {
     metals:      { label: t('asset_cat_metals'), icon: Gem },
     savings:     { label: t('asset_cat_savings'), icon: Landmark },
     vehicle:     { label: t('asset_cat_vehicle'), icon: Car },
+    futures:     { label: t('asset_cat_futures'), icon: CandlestickChart },
     other:       { label: t('asset_cat_other'), icon: Package },
   };
 }
@@ -24,7 +26,14 @@ function OtherAssetModal({ initial, onSave, onClose }) {
   const categories = getAssetCategories(t);
   const [name, setName] = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.category ?? 'other');
-  const [value, setValue] = useState(initial?.principal ?? initial?.value ?? '');
+  const [value, setValue] = useState(initial?.principal ?? initial?.margin ?? initial?.value ?? '');
+  const fut = initial?.future;
+  const [code, setCode] = useState(fut?.code ?? '');
+  const [side, setSide] = useState(fut?.side ?? 'long');
+  const [contracts, setContracts] = useState(fut?.contracts ?? '');
+  const [multiplier, setMultiplier] = useState(fut?.multiplier ?? '');
+  const [entryPrice, setEntryPrice] = useState(fut?.entryPrice ?? '');
+  const isFuture = category === 'futures';
   const dep = initial?.deposit;
   const [mode, setMode] = useState(dep?.kind ?? 'manual');
   const [rate, setRate] = useState(dep?.rate ?? '');
@@ -48,9 +57,16 @@ function OtherAssetModal({ initial, onSave, onClose }) {
       if (!startDate || (mode === 'term' && (!endDate || endDate <= startDate))) { setError(t('dep_err_dates')); return; }
       deposit = { kind: mode, rate: r, startDate, ...(mode === 'term' ? { endDate } : {}), belka };
     }
+    let future;
+    if (isFuture) {
+      const c = parseFloat(contracts), e = parseFloat(entryPrice);
+      const m = parseFloat(multiplier) || defaultMultiplier(code);
+      if (!code.trim() || !(c > 0) || !(e > 0)) { setError(t('fut_err')); return; }
+      future = { code: code.trim().toUpperCase(), side, contracts: c, multiplier: m, entryPrice: e };
+    }
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), category, value: v, currency, note: note.trim(), deposit });
+      await onSave({ name: name.trim(), category, value: v, currency, note: note.trim(), deposit, future });
       onClose();
     } catch (e) {
       setError(e.message || t('save_error'));
@@ -88,7 +104,7 @@ function OtherAssetModal({ initial, onSave, onClose }) {
           </Field>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={isDeposit ? t('dep_amount_label') : t('asset_value_label')}>
+          <Field label={isDeposit ? t('dep_amount_label') : isFuture ? t('fut_margin_label') : t('asset_value_label')}>
             <Input type="number" min="0" step="any" inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} />
           </Field>
           <Field label={t('currency_label')}>
@@ -97,6 +113,29 @@ function OtherAssetModal({ initial, onSave, onClose }) {
             </Select>
           </Field>
         </div>
+        {isFuture && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t('fut_code_label')} hint={t('fut_code_hint')} className="sm:col-span-2">
+              <Input placeholder="FW20Z2620" value={code} onChange={e => setCode(e.target.value)} />
+            </Field>
+            <Field label={t('fut_side_label')}>
+              <Select value={side} onChange={e => setSide(e.target.value)}>
+                <option value="long">{t('fut_long')}</option>
+                <option value="short">{t('fut_short')}</option>
+              </Select>
+            </Field>
+            <Field label={t('fut_contracts_label')}>
+              <Input type="number" min="0" step="1" inputMode="numeric" value={contracts} onChange={e => setContracts(e.target.value)} />
+            </Field>
+            <Field label={t('fut_entry_label')}>
+              <Input type="number" min="0" step="any" inputMode="decimal" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} />
+            </Field>
+            <Field label={t('fut_multiplier_label')}>
+              <Input type="number" min="0" step="any" inputMode="decimal" placeholder={String(defaultMultiplier(code))} value={multiplier} onChange={e => setMultiplier(e.target.value)} />
+            </Field>
+            <p className="text-small text-faint sm:col-span-2">{t('fut_auto_hint')}</p>
+          </div>
+        )}
         {isDeposit && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('dep_rate_label')}>
@@ -201,6 +240,12 @@ export default function OtherAssetsSection() {
             <span>
               <span className="block font-semibold text-fg">{a.name}</span>
               {a.deposit && <span className={`block text-[11px] ${a.matured ? 'text-warn' : 'text-faint'}`}>{depositInfo(a)}</span>}
+              {a.future && (
+                <span className="block text-[11px] text-faint">
+                  {t(a.future.side === 'short' ? 'fut_short' : 'fut_long')} {a.future.contracts} × {a.future.code} @ {a.future.entryPrice.toLocaleString(locale)}
+                  {a.futurePrice != null ? ` · ${t('fut_now')} ${a.futurePrice.toLocaleString(locale)}` : ` · ${t('fut_no_quote')}`}
+                </span>
+              )}
             </span>
           </span>
         );
@@ -213,6 +258,7 @@ export default function OtherAssetsSection() {
         <span className={blur}>
           {fmtLocal(a.value)} {a.currency}
           {a.deposit && a.interest > 0 && <span className="block text-[11px] text-up">{t('dep_interest').replace('{amount}', fmtLocal2(a.interest))}</span>}
+          {a.future && a.pl != null && <span className={`block text-[11px] ${a.pl >= 0 ? 'text-up' : 'text-down'}`}>{t('fut_pl').replace('{amount}', `${a.pl >= 0 ? '+' : ''}${fmtLocal2(a.pl)}`)}</span>}
         </span>
       ),
     },

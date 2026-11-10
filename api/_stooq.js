@@ -10,7 +10,11 @@ const cache = new Map();   // sym → { at, value }
 // Fundusze inwestycyjne (TFI) mają na stooq numeryczny kod z sufiksem .N, np. 1048.N.
 export const isFundSymbol = sym => /^\d+\.N$/i.test(String(sym ?? ''));
 
+// „STOOQ:FW20Z2620" — instrument tylko ze stooq (np. kontrakty terminowe GPW).
+export const isStooqDirect = sym => /^STOOQ:[A-Z0-9._-]{1,20}$/i.test(String(sym ?? ''));
+
 export function stooqSymbol(sym) {
+  if (isStooqDirect(sym)) return sym.slice(6).toLowerCase();
   if (isFundSymbol(sym)) return sym.toLowerCase();
   return /\.WA$/i.test(sym) ? sym.slice(0, -3).toLowerCase() : null;
 }

@@ -1,5 +1,5 @@
 import { rateLimited } from './_rateLimit.js';
-import { fetchStooq, isFundSymbol } from './_stooq.js';
+import { fetchStooq, isFundSymbol, isStooqDirect } from './_stooq.js';
 // Vercel serverless function — fetches stock quotes server-side (different IP than Render)
 // No auth required — stock prices are public data
 //
@@ -16,8 +16,8 @@ async function fetchOne(sym) {
   let yahooStatus = null;
   // GPW: stooq równolegle — kontrola kursu z Yahoo albo zapas, gdy Yahoo padnie.
   const stooqP = fetchStooq(sym, { headers: { 'User-Agent': UA } });
-  // Fundusze TFI: Yahoo ich nie zna — wycena jednostki tylko ze stooq.
-  if (isFundSymbol(sym)) {
+  // Fundusze TFI i kontrakty terminowe: Yahoo ich nie zna — kurs tylko ze stooq.
+  if (isFundSymbol(sym) || isStooqDirect(sym)) {
     const f = await stooqP;
     return f ? { stooq: true, price: f.price, date: f.date, time: f.time } : { notFound: true, error: 'fund not found' };
   }

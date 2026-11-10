@@ -1662,7 +1662,7 @@ if DATABASE_URL:
                 'transactions': txs, 'cash': cash}
 
     # Pola „inne aktywa" spoza stałych kolumn, które zapisujemy w extra_json.
-    _OTHER_ASSET_EXTRA = ('deposit',)
+    _OTHER_ASSET_EXTRA = ('deposit', 'future')
 
     def _transaction_rows(portfolio_id, transactions):
         """Wiersze do INSERT; przy powtórzonym id wygrywa ostatni wpis — jak przy
