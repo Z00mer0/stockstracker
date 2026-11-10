@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { comparePrice } from './priceCheck.js';
-import { parseStooqCsv, fetchStooq, _clearStooqCache, stooqSymbol, isFundSymbol } from '../../../api/_stooq.js';
+import { parseStooqCsv, fetchStooq, _clearStooqCache, stooqSymbol, isFundSymbol, isStooqDirect } from '../../../api/_stooq.js';
 
 const t = iso => Math.floor(Date.parse(iso) / 1000);
 
@@ -51,5 +51,8 @@ describe('stooqSymbol — fundusze TFI', () => {
     expect(stooqSymbol('1048.N')).toBe('1048.n');
     expect(stooqSymbol('PKO.WA')).toBe('pko');
     expect(stooqSymbol('AAPL')).toBe(null);
+    expect(isStooqDirect('STOOQ:FW20Z2620')).toBe(true);
+    expect(isStooqDirect('STOOQ:a b')).toBe(false);
+    expect(stooqSymbol('STOOQ:FW20Z2620')).toBe('fw20z2620');
   });
 });

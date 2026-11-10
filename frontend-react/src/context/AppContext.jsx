@@ -8,6 +8,7 @@ import { normalizeSymbol, QTY_EPS } from '../utils/brokerImport.js';
 import { isAggregateView, groupIdOf, dataUrlFor } from '../utils/portfolioView.js';
 import { lsSet } from '../utils/safeStorage.js';
 import { withDepositValue } from '../utils/deposits.js';
+import { withFutureValue, futureQuoteSymbol } from '../utils/futures.js';
 import { labelView, parseLabels } from '../utils/labels.js';
 
 export const AppContext = createContext(null);
@@ -380,9 +381,25 @@ export function AppProvider({ children }) {
     : [];
 
   // Lokaty wyceniane z oprocentowania; w rawData zostaje wpisana kwota.
+  // Kontrakty terminowe: depozyt + bieżący wynik z kursu (stooq).
+  const futuresKey = [...new Set((rawData?.otherAssets ?? []).filter(a => a.future?.code).map(a => futureQuoteSymbol(a.future.code)))].sort().join(',');
+  const [futureQuotes, setFutureQuotes] = useState({});
+  useEffect(() => {
+    if (!futuresKey) return undefined;
+    let cancelled = false;
+    fetch(`/api/quotes?format=map&symbols=${futuresKey.split(',').map(encodeURIComponent).join(',')}`)
+      .then(r => r.json())
+      .then(({ quotes }) => {
+        if (cancelled) return;
+        setFutureQuotes(Object.fromEntries(Object.entries(quotes ?? {}).filter(([, q]) => q?.price > 0).map(([s, q]) => [s, q.price])));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [futuresKey]);
+
   const otherAssets = useMemo(
-    () => (rawData?.otherAssets ?? []).map(a => withDepositValue(a)),
-    [rawData?.otherAssets],
+    () => (rawData?.otherAssets ?? []).map(a => withFutureValue(withDepositValue(a), futureQuotes)),
+    [rawData?.otherAssets, futureQuotes],
   );
 
   const portfolioInvested = useMemo(() => {
@@ -882,7 +899,7 @@ export function AppProvider({ children }) {
     await api.post('/api/portfolios/save-snapshots', snapshotsMap);
   }
 
-  async function addOtherAsset({ name, category, value: val, currency, note, deposit }) {
+  async function addOtherAsset({ name, category, value: val, currency, note, deposit, future }) {
     assertLoaded();
     const rd = rawDataRef.current;
     const assets = rd?.otherAssets ?? [];
@@ -891,6 +908,7 @@ export function AppProvider({ children }) {
       name, category, value: parseFloat(val), currency,
       note: note || '',
       ...(deposit ? { deposit } : {}),
+      ...(future ? { future } : {}),
       updatedAt: new Date().toISOString().slice(0, 10),
     };
     const updated = { ...rd, otherAssets: [...assets, newAsset] };
