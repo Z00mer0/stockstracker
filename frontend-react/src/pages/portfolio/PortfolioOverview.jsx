@@ -41,13 +41,15 @@ const DASH_DEFAULT_LAYOUT = [
 // treść na telefonie. Mobilny układ ma własny zapis, nie miesza się z desktopem.
 const DASH_MOBILE_BREAKPOINT = 640;
 const DASH_MOBILE_LAYOUT = [
-  { i: 'chart',   x: 0, y: 0,  w: 12, h: 10, minW: 12, minH: 7, maxH: 20 },
+  // h: 10 ucinało legendę pod wykresem — na telefonie przełącznik okresu
+  // schodzi do osobnego wiersza i karta jest wyższa.
+  { i: 'chart',   x: 0, y: 0,  w: 12, h: 11, minW: 12, minH: 11, maxH: 20 },
   // Trzy wiersze statystyk (~210 px z nagłówkiem) — przy h: 8 (324 px) połowa
   // karty była pusta.
-  { i: 'stats',   x: 0, y: 10, w: 12, h: 6,  minW: 12, minH: 5, maxH: 20 },
-  { i: 'pie',     x: 0, y: 16, w: 12, h: 10, minW: 12, minH: 9, maxH: 20 },
-  { i: 'alloc',   x: 0, y: 26, w: 12, h: 8,  minW: 12, minH: 8, maxH: 20 },
-  { i: 'realytd', x: 0, y: 34, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
+  { i: 'stats',   x: 0, y: 11, w: 12, h: 6,  minW: 12, minH: 5, maxH: 20 },
+  { i: 'pie',     x: 0, y: 17, w: 12, h: 10, minW: 12, minH: 9, maxH: 20 },
+  { i: 'alloc',   x: 0, y: 27, w: 12, h: 8,  minW: 12, minH: 8, maxH: 20 },
+  { i: 'realytd', x: 0, y: 35, w: 12, h: 8,  minW: 12, minH: 5, maxH: 20 },
 ];
 
 // Zapisany układ z localStorage wygrywa z domyślnym, więc samo podniesienie

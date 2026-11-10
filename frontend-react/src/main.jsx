@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './utils/numberGrouping.js';
 import './index.css';
 import './tabs.css';
 import { PrivacyProvider } from './context/PrivacyContext';

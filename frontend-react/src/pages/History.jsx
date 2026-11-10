@@ -397,7 +397,7 @@ export default function History() {
           icon={gainDisp >= 0 ? TrendingUp : TrendingDown}
           label={t('gain_loss_short')}
           tone={gainDisp == null ? undefined : gainDisp >= 0 ? 'up' : 'down'}
-          value={fmtMoney(gainDisp, currLabel, locale)}
+          value={gainDisp > 0 ? `+${fmtMoney(gainDisp, currLabel, locale)}` : fmtMoney(gainDisp, currLabel, locale)}
           delta={twrPct != null ? formatPercent(twrPct, { locale, decimals: 2 }) : null}
           deltaTone={twrPct >= 0 ? 'up' : 'down'}
           hint={t('history_net_of_deposits')}
