@@ -19,10 +19,11 @@ function slicePath(cx, cy, r, innerR, startAngle, endAngle) {
   return `M${s1.x},${s1.y} A${r},${r},0,${large},1,${e1.x},${e1.y} L${s2.x},${s2.y} A${innerR},${innerR},0,${large},0,${e2.x},${e2.y} Z`;
 }
 
-function fmtPLN(val) {
-  if (val >= 1_000_000) return (val / 1_000_000).toFixed(2) + 'M';
-  if (val >= 1_000) return (val / 1_000).toFixed(1) + 'k';
-  return val.toFixed(0);
+function fmtPLN(val, locale) {
+  const f = (n, d) => n.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+  if (val >= 1_000_000) return f(val / 1_000_000, 2) + 'M';
+  if (val >= 1_000) return f(val / 1_000, 1) + 'k';
+  return f(val, 0);
 }
 
 // Procenty formatujemy przez toLocaleString, a nie toFixed — inaczej wykres
@@ -109,7 +110,7 @@ export default function PortfolioPieChart({ positions, totalValue, currency = 'P
         )}
         {/* Center text */}
         <text x={CX} y={CY - 8} textAnchor="middle" fontSize={15} fontWeight="700" fill="var(--text, #e2e8f0)" className={blur.trim() || undefined}>
-          {fmtPLN((totalValue || total) / fxRate)} {currency === 'PLN' ? 'PLN' : currency}
+          {fmtPLN((totalValue || total) / fxRate, locale)} {currency === 'PLN' ? 'zł' : currency}
         </text>
         <text x={CX} y={CY + 12} textAnchor="middle" fontSize={11} fill="var(--text-muted, #94a3b8)">
           {t('pie_center')}

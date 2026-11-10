@@ -1,9 +1,9 @@
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { usePrivacy } from '../../context/PrivacyContext';
 
-function fmtPct(n) {
+function fmtPct(n, locale) {
   if (n == null || isNaN(n)) return '—';
-  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+  return (n >= 0 ? '+' : '') + n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 }
 
 export default function InsightStrip({
@@ -24,6 +24,7 @@ export default function InsightStrip({
     currency: displayCurrency,
     maximumFractionDigits: 0,
     signDisplay: 'exceptZero',
+    useGrouping: 'always',
   });
 
   function fmtMoney(n) {
@@ -54,7 +55,7 @@ export default function InsightStrip({
             <div className="ins-text">
               {best.symbol.replace('.WA', '')}
               {' · '}
-              <span className={'num up' + blur}>{fmtPct(bestPct)}</span>
+              <span className={'num up' + blur}>{fmtPct(bestPct, locale)}</span>
             </div>
           </div>
         </div>
@@ -68,7 +69,7 @@ export default function InsightStrip({
             <div className="ins-text">
               {worst.symbol.replace('.WA', '')}
               {' · '}
-              <span className={'num ' + (worstPct < 0 ? 'down' : 'up') + blur}>{fmtPct(worstPct)}</span>
+              <span className={'num ' + (worstPct < 0 ? 'down' : 'up') + blur}>{fmtPct(worstPct, locale)}</span>
             </div>
           </div>
         </div>
@@ -81,7 +82,7 @@ export default function InsightStrip({
             <div className="ins-text">
               {mover.symbol.replace('.WA', '')}
               {' · '}
-              <span className={'num ' + (mover.dailyChg >= 0 ? 'up' : 'down')}>{fmtPct(mover.dailyChg)}</span>
+              <span className={'num ' + (mover.dailyChg >= 0 ? 'up' : 'down')}>{fmtPct(mover.dailyChg, locale)}</span>
             </div>
           </div>
         </div>
@@ -95,7 +96,7 @@ export default function InsightStrip({
               <span className={'num ' + (dayUp ? 'up' : 'down') + blur}>{fmtMoney(dailyChangePLN)}</span>
               {dailyChangePct != null && (
                 <span className={isPrivate ? 'privacy-blur' : ''} style={{ fontSize: 11, color: dayUp ? 'var(--up)' : 'var(--down)', marginLeft: 4 }}>
-                  {fmtPct(dailyChangePct)}
+                  {fmtPct(dailyChangePct, locale)}
                 </span>
               )}
             </div>
