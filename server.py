@@ -2114,6 +2114,7 @@ else:
         'load_journal', 'save_journal',
         '_load_shares', '_save_shares',
         'get_share_token', 'create_share_token', 'revoke_share_token', 'resolve_share_token',
+        'get_share_listing', 'set_share_listing', 'list_public_shares',
     ):
         globals()[_fname] = _synchronized(globals()[_fname])
 
@@ -2281,6 +2282,10 @@ def _purge_old_demo_users():
                 cur.execute("DELETE FROM user_insights WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM user_journal WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM share_links WHERE username=%s", (uname,))
+                # Bez tych czterech po każdym koncie demo zostawały w bazie
+                # jego alerty, przeglądy i wpisy powiadomień.
+                for table in ('portfolio_alerts', 'portfolio_reviews', 'push_subscriptions', 'push_sent'):
+                    cur.execute(f"DELETE FROM {table} WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM sessions WHERE username=%s", (uname,))
                 cur.execute("DELETE FROM users WHERE username=%s", (uname,))
         stale_set = set(stale)
@@ -4495,6 +4500,10 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(401, {'error': 'unauthorized'}); return
             pid = path[len('/api/portfolios/'):-len('/layout')]
             try:
+                # Układ kafelków tylko dla własnego portfela — wcześniej każdy
+                # zalogowany mógł go odczytać, znając identyfikator.
+                if not any(p['id'] == pid for p in list_portfolios(username)):
+                    self.send_json(403, {'error': 'forbidden'}); return
                 layout = load_layout(pid) if DATABASE_URL else None
                 self.send_json(200, {'layout': layout})
             except Exception as e:
@@ -6243,6 +6252,8 @@ async function doRecover() {
                 layout = body.get('layout')
                 if layout is None:
                     self.send_json(400, {'error': 'missing layout'}); return
+                if not any(p['id'] == pid for p in list_portfolios(username)):
+                    self.send_json(403, {'error': 'forbidden'}); return
                 if DATABASE_URL:
                     save_layout(pid, layout)
                 self.send_json(200, {'ok': True})
@@ -6319,6 +6330,7 @@ async function doRecover() {
                     if len(portfolios) <= 1:
                         self.send_json(400, {'error': 'Nie można usunąć ostatniego portfela'}); return
                     delete_portfolio(pid, username)
+                    _public_dir_cache['at'] = 0   # usunięty portfel znika z katalogu od razu
                     self.send_json(200, {'ok': True})
                 else:
                     name = str(body.get('name', '')).strip()[:64]

@@ -445,7 +445,7 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
               <span className="mono" style={{ fontSize: isMobile ? 11 : 12, color: 'var(--text)' }}>{formatPrice(tick.key, tick.price, locale)}</span>
               {tick.delta != null && (
                 <span className="mono" style={{ fontSize: 11, color: tick.delta >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                  {tick.delta >= 0 ? '+' : ''}{tick.delta.toFixed(2)}%
+                  {tick.delta >= 0 ? '+' : ''}{tick.delta.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                 </span>
               )}
             </div>

@@ -10,6 +10,7 @@ import { lsSet } from '../utils/safeStorage.js';
 import { withDepositValue } from '../utils/deposits.js';
 import { withFutureValue, futureQuoteSymbol, futureValue } from '../utils/futures.js';
 import { labelView, parseLabels } from '../utils/labels.js';
+import { tStatic } from '../utils/i18n.js';
 
 export const AppContext = createContext(null);
 
@@ -333,7 +334,7 @@ export function AppProvider({ children }) {
   // wiping the portfolio record instead of throwing. Every write function must call
   // this before touching rawData.
   function assertLoaded() {
-    if (!rawDataRef.current) throw new Error('Dane portfela jeszcze się nie załadowały — spróbuj ponownie za chwilę.');
+    if (!rawDataRef.current) throw new Error(tStatic('err_data_loading'));
   }
 
   // Single choke point for all writes: blocks fetchData() from running (and clobbering
@@ -410,13 +411,13 @@ export function AppProvider({ children }) {
   }, [rawData, fxRates]);
 
   async function saveCash(newCash) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     await postUpdate({ ...rawDataRef.current, cash: newCash });
   }
 
   async function saveHoldings(newHoldings) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const updated = { ...rd, portfolio: { ...rd.portfolio, holdings: newHoldings } };
@@ -430,7 +431,7 @@ export function AppProvider({ children }) {
   // latest rawData — passing an updater instead always derives from rawDataRef.current
   // at the moment this actually runs, closing that gap regardless of caller staleness.
   async function saveTransactions(newTransactionsOrFn) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać transakcję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const newTransactions = typeof newTransactionsOrFn === 'function'
@@ -443,7 +444,7 @@ export function AppProvider({ children }) {
   // Transakcja razem z jej wpływem na pozycję i gotówkę (utils/ledger.js) —
   // jednym zapisem, żeby historia i portfel się nie rozjeżdżały.
   async function addTransaction(tx, opts) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać transakcję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const r = applyTransaction({ holdings: rd?.portfolio?.holdings ?? [], cash: rd?.cash ?? {} }, tx, opts);
@@ -460,7 +461,7 @@ export function AppProvider({ children }) {
   // i gotówkę, nakładane po kolei od najstarszych — kupno przed sprzedażą
   // z tego samego dnia. Błąd w którymkolwiek wierszu przerywa cały import.
   async function importTransactions(txs, { apply = false } = {}) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zaimportować transakcje');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     let state = { holdings: rd?.portfolio?.holdings ?? [], cash: rd?.cash ?? {} };
@@ -487,7 +488,7 @@ export function AppProvider({ children }) {
 
   // Etykiety nie wpływają na pozycje ani gotówkę — zmienia się tylko wpis.
   async function setTransactionLabels(ids, labels) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const clean = parseLabels(labels);
@@ -503,7 +504,7 @@ export function AppProvider({ children }) {
 
   // Usuwa transakcję i cofa to, co zmieniła w pozycji i gotówce.
   async function deleteTransaction(id) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć transakcję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const tx = (rd.transactions ?? []).find(x => x.id === id);
@@ -521,7 +522,7 @@ export function AppProvider({ children }) {
   // niż zapisano (ETF z Londynu w USD zapisany jako GBP). Ceny zostają: biuro
   // podaje je w walucie notowania. Dywidendy i gotówka są w walucie rachunku.
   async function setSymbolCurrency(symbol, currency) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = (rd?.portfolio?.holdings ?? []).map(h => (h.symbol === symbol ? { ...h, currency } : h));
@@ -533,7 +534,7 @@ export function AppProvider({ children }) {
   }
 
   async function renameSymbol(oldSymbol, newSymbol) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zmienić symbol');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
@@ -561,7 +562,7 @@ export function AppProvider({ children }) {
   }
 
   async function editPosition({ symbol, qty, avgPrice }) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby edytować pozycję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
@@ -579,13 +580,13 @@ export function AppProvider({ children }) {
   // a historia wpis SPLIT — obliczenia z historii przeliczają przez niego
   // wcześniejsze transakcje (utils/splits.js).
   async function applySplit({ symbol, date, ratio, label }) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zastosować split');
-    if (!(ratio > 0)) throw new Error('Nieprawidłowy podział');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
+    if (!(ratio > 0)) throw new Error(tStatic('err_bad_split'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
     const existing = holdings.find(h => h.symbol === symbol);
-    if (!existing) throw new Error('Nie znaleziono pozycji');
+    if (!existing) throw new Error(tStatic('err_position_missing'));
     const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
       id: Math.random().toString(36).slice(2, 10),
       type: 'SPLIT', symbol, date, ratio, qty: null, price: 0,
@@ -600,7 +601,7 @@ export function AppProvider({ children }) {
   }
 
   async function removePosition(symbol) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby usunąć pozycję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
@@ -613,11 +614,11 @@ export function AppProvider({ children }) {
 
   // toCash — przychód zostaje na rachunku jako gotówka.
   async function sellPosition({ symbol, qty, price, currency, date, note, overridePL, toCash = false, fee }) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby sprzedać pozycję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
-    if (!holdings.some(h => h.symbol === symbol)) throw new Error('Nie znaleziono pozycji');
+    if (!holdings.some(h => h.symbol === symbol)) throw new Error(tStatic('err_position_missing'));
     const txId = Math.random().toString(36).slice(2, 10);
     const r = applyTransaction({ holdings, cash: rd?.cash ?? {} }, {
       id: txId,
@@ -636,7 +637,7 @@ export function AppProvider({ children }) {
   }
 
   async function addPosition({ symbol, qty, price, currency, date, note, funding, assetType, fee, name }) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby dodać pozycję');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const holdings = rd?.portfolio?.holdings ?? [];
@@ -835,7 +836,7 @@ export function AppProvider({ children }) {
   async function deleteSnapshot(date) {
     // Bez tego w widoku „Wszystkie" zmiana pojawiała się na ekranie, a serwer
     // odrzucał zapis (400) — po odświeżeniu znikała bez słowa.
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const newSnapshots = { ...(rd?.snapshots ?? {}) };
@@ -856,7 +857,7 @@ export function AppProvider({ children }) {
   async function setSnapshot(date, totalValue, investedValue, fxSnapshot) {
     // Bez tego w widoku „Wszystkie" zmiana pojawiała się na ekranie, a serwer
     // odrzucał zapis (400) — po odświeżeniu znikała bez słowa.
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const updated = {
@@ -929,7 +930,7 @@ export function AppProvider({ children }) {
   // Zamknięcie kontraktu: depozyt z wynikiem wraca do gotówki (wpis w historii),
   // a kontrakt znika z innych aktywów — jednym zapisem.
   async function closeFuture(id, closePrice, date) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const asset = (rd?.otherAssets ?? []).find(a => a.id === id);
@@ -957,7 +958,7 @@ export function AppProvider({ children }) {
   }
 
   async function addBond({ type, name, purchaseDate, count, firstYearRate, margin, earlyFee, taxFree }) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const bonds = rd?.bonds ?? [];
@@ -975,7 +976,7 @@ export function AppProvider({ children }) {
   }
 
   async function editBond(id, changes) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const bonds = rd?.bonds ?? [];
@@ -984,7 +985,7 @@ export function AppProvider({ children }) {
   }
 
   async function deleteBond(id) {
-    if (!canWrite) throw new Error('Wybierz konkretny portfel, aby zapisać zmiany');
+    if (!canWrite) throw new Error(tStatic('err_pick_portfolio'));
     assertLoaded();
     const rd = rawDataRef.current;
     const bonds = rd?.bonds ?? [];

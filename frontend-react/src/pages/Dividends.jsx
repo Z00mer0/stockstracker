@@ -233,11 +233,14 @@ export default function Dividends() {
   const portfolioYield = useMemo(() => {
     let totalAnnualDiv = 0, totalValue = 0;
     positions.forEach(pos => {
+      // Mianownik to cały portfel, także spółki bez dywidendy — inaczej
+      // stopa wychodziła zawyżona (liczona tylko od spółek, które płacą).
+      totalValue += valueOf(pos);
       const data = yocMap[pos.symbol];
       if (!data?.annual) return;
       totalAnnualDiv += pos.qty * data.annual * (fxRates[pos.currency] ?? 1);
-      totalValue += valueOf(pos);
     });
+    if (!totalAnnualDiv) return null;
     return totalValue > 0 ? (totalAnnualDiv / totalValue) * 100 : null;
   }, [positions, yocMap, fxRates]);
 
