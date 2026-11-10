@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import GridLayout, { verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -22,19 +23,19 @@ const DASH_LAYOUT_KEY = 'portfolio_dash_layout_v6';
 const DASH_ROW_H = 30;
 const DASH_MARGIN = [12, 12];
 const DASH_DEFAULT_LAYOUT = [
-  { i: 'chart',   x: 0, y: 0,  w: 8,  h: 11, minW: 4, minH: 8, maxH: 20 },
-  { i: 'stats',   x: 8, y: 0,  w: 4,  h: 11, minW: 2, minH: 4, maxH: 20 },
+  { i: 'chart',   x: 0, y: 0,  w: 8,  h: 10, minW: 4, minH: 8, maxH: 20 },
+  { i: 'stats',   x: 8, y: 0,  w: 4,  h: 10, minW: 2, minH: 4, maxH: 20 },
   // h/minH pierścienia liczone z treści, nie na oko: nagłówek 48 + wykres 220
   // + legenda w dwóch kolumnach 70 + odstępy 32 ≈ 370 px. 9 wierszy (366) to
   // absolutne minimum, więc domyślnie dajemy 10 (408) na zapas na inne
   // renderowanie czcionek. Przy h: 8 (324) karta ucinała czubek wykresu
   // i dwa ostatnie wiersze legendy.
-  { i: 'pie',     x: 0, y: 11, w: 6,  h: 10, minW: 3, minH: 9, maxH: 20 },
+  { i: 'pie',     x: 0, y: 10, w: 6,  h: 10, minW: 3, minH: 9, maxH: 20 },
   // minH 4 (132 px karty → ~84 px na treść) było gwarantem suwaka — nie zmieści
   // się nawet nagłówek + pasek + jeden wiersz legendy. 7 sektorów potrzebuje
   // ~250 px na treść, czyli 8 wierszy siatki (300 px).
-  { i: 'alloc',   x: 6, y: 11, w: 6,  h: 8,  minW: 3, minH: 8, maxH: 20 },
-  { i: 'realytd', x: 0, y: 19, w: 12, h: 8,  minW: 4, minH: 5, maxH: 20 },
+  { i: 'alloc',   x: 6, y: 10, w: 6,  h: 8,  minW: 3, minH: 8, maxH: 20 },
+  { i: 'realytd', x: 0, y: 18, w: 12, h: 8,  minW: 4, minH: 5, maxH: 20 },
 ];
 // Poniżej tej szerokości grid zwija się do jednej kolumny (karty na całą
 // szerokość, stos pionowy) — 12-kolumnowy układ desktopowy ściska i ucina
@@ -84,6 +85,8 @@ export default function PortfolioOverview({
 
   const [dashLayout, setDashLayout] = useState(DASH_DEFAULT_LAYOUT);
   const [editMode, setEditMode] = useState(false);
+  const [headerSlot, setHeaderSlot] = useState(null);
+  useEffect(() => { setHeaderSlot(document.getElementById('page-header-actions')); }, []);
   const [gridWidth, setGridWidth] = useState(0);
   const [tf, setTf] = useState('MAX');
   const [plView, setPlView] = useState('realized');
@@ -138,7 +141,8 @@ export default function PortfolioOverview({
 
   return (
     <>
-      <div className="mb-1.5 flex items-center justify-end gap-1.5">
+      {/* Przyciski układu w wierszu nagłówka strony (portal), a nie w osobnym, pustym rzędzie. */}
+      {headerSlot && createPortal(<>
         {editMode && (
           <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => { setDashLayout(defaultLayout); saveLayout(defaultLayout); }}>
             {t('pf_layout_reset')}
@@ -154,7 +158,7 @@ export default function PortfolioOverview({
         >
           {editMode ? t('pf_layout_done') : t('pf_layout_edit')}
         </Button>
-      </div>
+      </>, headerSlot)}
 
       <div ref={gridRef} className={cx('mb-4 overflow-hidden', editMode && 'rgl-edit')}>
         {gridWidth > 0 && (
@@ -200,8 +204,8 @@ export default function PortfolioOverview({
             <div key="stats">
               <div className="card flex h-full flex-col">
                 <div className={head()}><div className="card-title">{t('stats_section')}</div></div>
-                <div className="flex flex-1 flex-col justify-center px-5 pb-4 pt-2">
-                  <div className="rail-stats">
+                <div className="flex flex-1 flex-col px-5 pb-2 pt-1">
+                  <div className="rail-stats rail-stats-fill">
                     <div className="rail-stat">
                       <span className="rs-lbl">{t('stats_cost')}</span>
                       <span className="rs-val">{fmt(portToDisp(totalCostPLN), 2, locale)} {portCurrLabel}</span>

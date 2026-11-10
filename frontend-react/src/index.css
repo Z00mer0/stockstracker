@@ -369,7 +369,7 @@ body.privacy-mode .lg-pct {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-dim);
-  padding: 12px 14px;
+  padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
@@ -380,7 +380,8 @@ body.privacy-mode .lg-pct {
 }
 .data-table thead th.right { text-align: right; }
 .data-table tbody td {
-  padding: 13px 14px;
+  /* 13 px dawało wiersz ~59 px; przy 9 px mieści się o jedną czwartą więcej pozycji. */
+  padding: 9px 14px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   font-size: 13.5px;
