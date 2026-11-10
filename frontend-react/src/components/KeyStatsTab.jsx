@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/format.js';
 import React, { useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useIsMobile } from '../hooks/useIsMobile.js';
@@ -166,7 +167,7 @@ function GrowthDrivers({ symbol, roic }) {
   const items = [
     { label: t('ks_openings_label'),   value: drivers.openings },
     { label: 'Stopa reinwestycji', value: drivers.reinvestment },
-    { label: 'ROIC',               value: roic != null ? `${roic.toFixed(1)}%` : '—', highlight: true },
+    { label: 'ROIC',               value: roic != null ? `${formatNumber(roic, 1)}%` : '—', highlight: true },
   ];
   return (
     <Section title={t('ks_growth_dynamics')}>
@@ -186,7 +187,7 @@ function GrowthDrivers({ symbol, roic }) {
 function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
   const t = useT();
   if (netMargin == null && roe == null) return null;
-  const fmtM = v => v != null ? `${(v * 100).toFixed(1)}%` : '—';
+  const fmtM = v => v != null ? `${formatNumber((v * 100), 1)}%` : '—';
   const fmtX = v => v != null ? `${v.toFixed(1)}x` : '—';
   const boxes = [
     {
@@ -231,7 +232,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
         }}>
           <div style={{ fontSize: 8, color: 'var(--text-faint)', marginBottom: 3 }}>ROE</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#008751', fontFamily: 'var(--font-mono)' }}>
-            {roe != null ? `${roe.toFixed(1)}%` : '—'}
+            {roe != null ? `${formatNumber(roe, 1)}%` : '—'}
           </div>
         </div>
       </div>
@@ -300,8 +301,8 @@ function ValuationGauge({ currentPrice, dcfValue, analystTarget }) {
         {dcfPremium != null && (
           <span style={{ color: isUndervalued ? '#008751' : '#f43f5e', fontWeight: 600 }}>
             {dcfPremium < 0
-              ? `Dyskonto: ${dcfPremium.toFixed(1)}%`
-              : `Premia rynkowa: +${dcfPremium.toFixed(1)}%`}
+              ? `Dyskonto: ${formatNumber(dcfPremium, 1, locale)}%`
+              : `Premia rynkowa: +${formatNumber(dcfPremium, 1, locale)}%`}
           </span>
         )}
       </div>
@@ -497,7 +498,7 @@ function PeerComparison({ symbol, pe, netMargin }) {
                 <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${maxMarginPct > 0 ? (currentMarginPct / maxMarginPct) * 100 : 0}%`, background: '#008751', borderRadius: 2 }} />
                 </div>
-                {netMargin != null ? `${currentMarginPct.toFixed(1)}%` : '—'}
+                {netMargin != null ? `${formatNumber(currentMarginPct, 1)}%` : '—'}
               </div>
             </td>
           </tr>
@@ -514,7 +515,7 @@ function PeerComparison({ symbol, pe, netMargin }) {
                   <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--panel-2)', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${maxMarginPct > 0 && p.netMargin != null ? (p.netMargin / maxMarginPct) * 100 : 0}%`, background: '#64748b', borderRadius: 2 }} />
                   </div>
-                  {p.netMargin != null ? `${p.netMargin.toFixed(1)}%` : '—'}
+                  {p.netMargin != null ? `${formatNumber(p.netMargin, 1)}%` : '—'}
                 </div>
               </td>
             </tr>
@@ -555,7 +556,7 @@ function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
     {
       label: 'ROIC > 20%',
       pass: roic != null ? roic > 20 : null,
-      value: roic != null ? `${roic.toFixed(1)}%` : null,
+      value: roic != null ? `${formatNumber(roic, 1)}%` : null,
       tooltip: t('ks_roic_tip'),
     },
     {
@@ -711,7 +712,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {raw?.ttmRevenue != null && (
             <Row
               label={raw?.revenueGrowthYoY != null
-                ? `Przychody TTM (${raw.revenueGrowthYoY >= 0 ? '+' : ''}${(raw.revenueGrowthYoY * 100).toFixed(1)}% r/r)`
+                ? `Przychody TTM (${raw.revenueGrowthYoY >= 0 ? '+' : ''}${formatNumber((raw.revenueGrowthYoY * 100), 1, locale)}% r/r)`
                 : 'Przychody TTM'}
               value={fmtLargeL(raw.ttmRevenue)}
               color={raw?.revenueGrowthYoY != null ? (raw.revenueGrowthYoY >= 0 ? '#10b981' : '#f43f5e') : undefined}
@@ -732,7 +733,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {yearChangePct   != null && (
             <Row
               label={t('ks_change_1y')}
-              value={`${yearChangePct >= 0 ? '+' : ''}${yearChangePct.toFixed(1)}%`}
+              value={`${yearChangePct >= 0 ? '+' : ''}${formatNumber(yearChangePct, 1, locale)}%`}
               color={yearChangePct >= 0 ? '#10b981' : '#f43f5e'}
             />
           )}
@@ -746,7 +747,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {raw?.payoutRatio != null && (
             <Row
               label="Payout Ratio"
-              value={`${(raw.payoutRatio * 100).toFixed(0)}%`}
+              value={`${formatNumber((raw.payoutRatio * 100), 0, locale)}%`}
               color={raw.payoutRatio > 1 ? '#f43f5e' : raw.payoutRatio > 0.7 ? '#f59e0b' : '#10b981'}
               tooltip={t('ks_payout_tip')}
             />
@@ -782,7 +783,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
                 <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, pct52))}%`, background: 'var(--accent)', borderRadius: 2 }} />
               </div>
               <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
-                Kurs: {pct52.toFixed(0)}% zakresu
+                Kurs: {formatNumber(pct52, 0, locale)}% zakresu
               </div>
             </div>
           )}
@@ -811,7 +812,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
           {analystUpside != null && (
             <Row
               label={t('ks_analyst_target')}
-              value={`${fmtL(raw.targetMeanPrice, { decimals: 2 })}  ${analystUpside >= 0 ? '+' : ''}${analystUpside.toFixed(1)}% ${analystUpside >= 0 ? '▲' : '▼'}`}
+              value={`${fmtL(raw.targetMeanPrice, { decimals: 2 })}  ${analystUpside >= 0 ? '+' : ''}${formatNumber(analystUpside, 1, locale)}% ${analystUpside >= 0 ? '▲' : '▼'}`}
               color={analystUpside >= 0 ? '#10b981' : '#f43f5e'}
             />
           )}

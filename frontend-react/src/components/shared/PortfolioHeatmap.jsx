@@ -1,3 +1,4 @@
+import { formatNumber } from '../../utils/format.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { squarify, heatTone } from '../../utils/treemap.js';
@@ -59,7 +60,7 @@ export default function PortfolioHeatmap({ positions, onOpen, height = 300 }) {
                 <>
                   <span className="max-w-full truncate px-1 font-bold" style={{ fontSize: Math.min(18, Math.max(12, Math.sqrt(w * h) / 7)) }}>{p.symbol.replace(/\.WA$/, '')}</span>
                   <span className="text-[12px] font-semibold tabular-nums">{p.dailyChg != null ? pct(p.dailyChg, 2) : '—'}</span>
-                  {h >= 70 && <span className="text-[10px] tabular-nums opacity-75">{share.toFixed(1)}%</span>}
+                  {h >= 70 && <span className="text-[10px] tabular-nums opacity-75">{formatNumber(share, 1, locale)}%</span>}
                 </>
               )}
               {small && <span className="max-w-full truncate px-0.5 text-[10px] font-semibold">{p.symbol.replace(/\.WA$/, '')}</span>}

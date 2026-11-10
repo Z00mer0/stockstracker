@@ -1,3 +1,4 @@
+import { formatNumber } from '../../utils/format.js';
 import TickerLogo from './TickerLogo';
 import { useT } from '../../context/LanguageContext';
 import { pickWinnersLosers } from './winnersLosers.js';
@@ -39,7 +40,7 @@ export default function WinnersLosers({
         const up = p._plPct >= 0;
         const w = max > 0 ? (magnitude(p) / max) * 50 : 0;
         const valueStr = isPct
-          ? (p._plPct >= 0 ? '+' : '') + p._plPct.toFixed(1) + '%'
+          ? (p._plPct >= 0 ? '+' : '') + formatNumber(p._plPct, 1, locale) + '%'
           : `${absFmt.format(p._plDisp ?? 0)} ${currLabel}`;
         return (
           <div

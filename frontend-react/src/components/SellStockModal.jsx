@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/format.js';
 import { useState, useEffect } from 'react';
 import { BookOpen, Pencil, RotateCcw } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -129,7 +130,7 @@ export default function SellStockModal({ holding, onSave, onClose }) {
                 <span>
                   <span className="text-faint">{t('est_result')}: </span>
                   <span className={cx('font-semibold tabular-nums', effectivePL >= 0 ? 'text-up' : 'text-down')}>
-                    {effectivePL >= 0 ? '+' : ''}{fmt(effectivePL)} {currency} ({((effectivePL / (avg * q)) * 100).toFixed(2)}%)
+                    {effectivePL >= 0 ? '+' : ''}{fmt(effectivePL)} {currency} ({formatNumber(((effectivePL / (avg * q)) * 100), 2, locale)}%)
                   </span>
                 </span>
                 <Button size="sm" variant="ghost" icon={Pencil} onClick={startEditPL}>{t('edit_pl')}</Button>
