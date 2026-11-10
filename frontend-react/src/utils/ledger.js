@@ -11,6 +11,7 @@
 import { weightedAvg } from './weightedAvg.js';
 import { normalizeType, txAmount, txFee, buyUnitCost, divNet } from './transactions.js';
 import { holdingsAt } from './investedAtDate.js';
+import { tStatic } from './i18n.js';
 
 const EPS = 1e-9;
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -45,7 +46,7 @@ export function applyTransaction({ holdings = [], cash = {} }, tx, { positions =
   if (positions && (type === 'BUY' || type === 'SELL' || type === 'SPLIT')) {
     const h = holdings.find(x => x.symbol === tx.symbol);
     if (h && type !== 'SPLIT' && h.currency && h.currency !== cur) {
-      throw new Error(`Pozycja ${tx.symbol} jest w ${h.currency}, a transakcja w ${cur}`);
+      throw new Error(tStatic('err_tx_currency').replace('{symbol}', tx.symbol).replace('{have}', h.currency).replace('{got}', cur));
     }
     if (type === 'BUY') {
       nextHoldings = h
@@ -53,13 +54,13 @@ export function applyTransaction({ holdings = [], cash = {} }, tx, { positions =
         : [...holdings, { id: newId(), symbol: tx.symbol, qty: tx.qty, avgPrice: buyUnitCost(tx), currency: cur, date: tx.date, name: '' }];
       effect.qty = tx.qty;
     } else if (type === 'SELL') {
-      if (!h || tx.qty > h.qty + EPS) throw new Error(`Za mało akcji ${tx.symbol} w portfelu (jest ${h?.qty ?? 0})`);
+      if (!h || tx.qty > h.qty + EPS) throw new Error(tStatic('err_not_enough_shares').replace('{symbol}', tx.symbol).replace('{qty}', h?.qty ?? 0));
       const left = h.qty - tx.qty;
       nextHoldings = left <= EPS ? holdings.filter(x => x !== h) : holdings.map(x => x === h ? { ...x, qty: left } : x);
       effect.qty = -tx.qty;
       if (out.costBasis == null) out = { ...out, costBasis: h.avgPrice };
     } else {
-      if (!h) throw new Error(`Nie znaleziono pozycji ${tx.symbol}`);
+      if (!h) throw new Error(`${tStatic('err_position_missing')} ${tx.symbol}`);
       nextHoldings = holdings.map(x => x === h ? { ...x, qty: x.qty * tx.ratio, avgPrice: x.avgPrice / tx.ratio } : x);
       effect.ratio = tx.ratio;
     }
