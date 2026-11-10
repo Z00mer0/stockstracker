@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/format.js';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -224,7 +225,7 @@ export default function RollingReturnsChart({ data }) {
             left: tooltip.screenX > svgWidth / 2 ? tooltip.screenX - 175 : tooltip.screenX + 14,
             top:  Math.max(4, tooltip.y - 52),
           }}>
-            <p style={{ fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>{tooltip.date}</p>
+            <p style={{ fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>{formatDate(tooltip.date, locale)}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 16px', color: 'var(--text-faint)' }}>
               {tooltip.v3m != null && (
                 <>

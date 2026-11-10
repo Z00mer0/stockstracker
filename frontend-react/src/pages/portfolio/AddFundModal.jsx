@@ -1,3 +1,4 @@
+import { formatDate } from '../../utils/format.js';
 import { useState } from 'react';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { Button, Field, Input, Modal, Select } from '../../components/ui';
@@ -72,7 +73,7 @@ export default function AddFundModal({ onSave, onClose }) {
           <p className={`-mt-2 text-small ${check === 'missing' ? 'text-warn' : 'text-up'}`}>
             {check === 'missing'
               ? t('fund_missing')
-              : t('fund_found').replace('{price}', check.price.toLocaleString(locale, { maximumFractionDigits: 4 })).replace('{date}', check.date ?? '—')}
+              : t('fund_found').replace('{price}', check.price.toLocaleString(locale, { maximumFractionDigits: 4 })).replace('{date}', formatDate(check.date, locale))}
           </p>
         )}
         <Field label={t('fund_name_label')}>

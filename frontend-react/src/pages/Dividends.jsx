@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/format.js';
 import { dividendTrack } from '../utils/dividendTrack.js';
 import { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -387,8 +388,8 @@ export default function Dividends() {
   // ── Tabele ──
   const upcomingColumns = [
     { key: 'symbol', header: t('col_company'), mobile: 'title', render: ev => <span className="font-bold text-fg">{ev.symbol}</span> },
-    { key: 'date', header: t('ex_date_label'), render: ev => <span className="text-fg">{ev.date}</span> },
-    { key: 'payDate', header: t('pay_date_label'), render: ev => <span className="text-dim">{ev.payDate ?? '—'}</span> },
+    { key: 'date', header: t('ex_date_label'), render: ev => <span className="text-fg">{formatDate(ev.date, locale)}</span> },
+    { key: 'payDate', header: t('pay_date_label'), render: ev => <span className="text-dim">{formatDate(ev.payDate, locale)}</span> },
     {
       key: 'amount', header: t('div_per_share').replace('{mode}', modeLabel), align: 'right', mobile: 'aside',
       render: ev => {
@@ -442,7 +443,7 @@ export default function Dividends() {
   ];
 
   const historyColumns = [
-    { key: 'date', header: t('col_date'), sortable: true, firstDir: 'desc', render: d => <span className="text-dim">{d.date}</span> },
+    { key: 'date', header: t('col_date'), sortable: true, firstDir: 'desc', render: d => <span className="text-dim">{formatDate(d.date, locale)}</span> },
     {
       key: 'symbol', header: t('col_company'), sortable: true, mobile: 'title',
       render: d => <span className="font-bold text-fg">{d.symbol}{d.name && d.name !== d.symbol && <span className="ml-2 text-[11px] font-normal text-faint">{d.name}</span>}</span>,
@@ -692,7 +693,7 @@ export default function Dividends() {
                           <div className="flex min-w-0 items-center gap-3">
                             <span className="shrink-0 text-[13px] font-bold text-fg">{d.symbol}</span>
                             {d.name && d.name !== d.symbol && <span className="truncate text-[11px] text-faint">{d.name}</span>}
-                            <span className="shrink-0 text-[11px] text-faint">{d.date}</span>
+                            <span className="shrink-0 text-[11px] text-faint">{formatDate(d.date, locale)}</span>
                           </div>
                           <span className={cx('shrink-0 text-[13px] font-semibold text-warn', blur)}>{fmt(d.dispPLN / dispFx, 2, locale)} {dCurr}</span>
                         </div>

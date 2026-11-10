@@ -1,5 +1,6 @@
+import { formatDate } from '../../utils/format.js';
 import { useState } from 'react';
-import { useT } from '../../context/LanguageContext';
+import { useLanguage, useT } from '../../context/LanguageContext';
 import { useApp } from '../../context/AppContext';
 import { Button, Field, Input, Modal, SegmentedControl, Select } from '../../components/ui';
 import SymbolInput from '../../components/shared/SymbolInput.jsx';
@@ -14,6 +15,7 @@ const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 
 // initial: wstępne wypełnienie (uzupełnianie historii pozycji z portfela).
 export default function AddTransactionModal({ onSave, onClose, initial = null }) {
   const t = useT();
+  const { locale } = useLanguage();
   const { portfolio = [] } = useApp();
   const [form, setForm] = useState({
     type: 'BUY',
@@ -132,7 +134,7 @@ export default function AddTransactionModal({ onSave, onClose, initial = null })
               <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0" value={form.qty} onChange={e => set('qty', e.target.value)} />
             </Field>
           )}
-          <Field label={isCash ? t('col_value') : t('price_label')} hint={autoPrice ? t('price_close_on').replace('{date}', quote.date) : undefined}>
+          <Field label={isCash ? t('col_value') : t('price_label')} hint={autoPrice ? t('price_close_on').replace('{date}', formatDate(quote.date, locale)) : undefined}>
             <Input type="number" min="0" step="any" inputMode="decimal" placeholder="0.00" value={priceVal} onChange={e => { set('price', e.target.value); setPriceTouched(true); }} />
           </Field>
         </div>

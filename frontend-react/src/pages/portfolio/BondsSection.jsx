@@ -1,3 +1,4 @@
+import { formatDate } from '../../utils/format.js';
 import { useEffect, useMemo, useState } from 'react';
 import { Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -163,7 +164,7 @@ export default function BondsSection() {
       ),
     },
     { key: 'type', header: t('bond_type'), render: b => <span className="text-small text-dim">{b.type} · {BOND_TYPES[b.type]?.years ?? '—'}L</span> },
-    { key: 'purchaseDate', header: t('bond_purchase_date'), render: b => <span className="text-small text-dim">{b.purchaseDate}</span> },
+    { key: 'purchaseDate', header: t('bond_purchase_date'), render: b => <span className="text-small text-dim">{formatDate(b.purchaseDate, locale)}</span> },
     { key: 'count', header: t('bond_count'), align: 'right', render: b => <span className={blur}>{b.count}</span> },
     { key: 'nominal', header: t('col_nominal'), align: 'right', render: b => <span className={`text-dim ${blur ?? ''}`}>{fmt(b.v.totalNominal)} zł</span> },
     { key: 'rate', header: t('col_bond_rate'), align: 'right', render: b => <span className="text-up">{fmtPct(b.v.currentRate)}</span> },

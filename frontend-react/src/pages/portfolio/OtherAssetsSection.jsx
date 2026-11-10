@@ -1,3 +1,4 @@
+import { formatDate } from '../../utils/format.js';
 import { useState } from 'react';
 import { Home, Gem, Landmark, Car, Package, CandlestickChart, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -187,7 +188,7 @@ export default function OtherAssetsSection() {
     const rate = a.deposit.rate.toLocaleString(locale);
     return a.deposit.kind === 'savings'
       ? t('dep_info_savings').replace('{rate}', rate)
-      : t('dep_info_term').replace('{rate}', rate).replace('{date}', a.deposit.endDate);
+      : t('dep_info_term').replace('{rate}', rate).replace('{date}', formatDate(a.deposit.endDate, locale));
   };
 
   const openAdd = () => { setEditTarget(null); setShowModal(true); };
@@ -267,7 +268,7 @@ export default function OtherAssetsSection() {
       render: a => <span className={blur}>{fmtLocal(((a.value || 0) * (fxRates[a.currency] ?? 1)) / fx)} {currLabel}</span>,
     },
     { key: 'note', header: t('col_note'), render: a => <span className="text-[11px] text-faint">{a.note || '—'}</span> },
-    { key: 'updatedAt', header: t('col_last_updated'), render: a => <span className="text-[11px] text-faint">{a.updatedAt || '—'}</span> },
+    { key: 'updatedAt', header: t('col_last_updated'), render: a => <span className="text-[11px] text-faint">{formatDate(a.updatedAt, locale)}</span> },
   ];
   if (canWrite) {
     columns.push({
