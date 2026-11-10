@@ -41,6 +41,7 @@ const PAGE_HEADINGS = {
   '/market/gpw':   ['nav_market',       'page_sub_market'],
   '/market/us':    ['nav_market',       'page_sub_market'],
   '/watchlist':    ['nav_watchlist',    'page_sub_watchlist'],
+  '/public':       ['nav_public',       'page_sub_public'],
   '/alerts':       ['nav_alerts',       'page_sub_alerts'],
   '/analysis':     ['nav_analysis',     'page_sub_analysis'],
   '/settings':     ['nav_settings',     'page_sub_settings'],

@@ -1378,6 +1378,10 @@ if DATABASE_URL:
                     portfolio_id TEXT NOT NULL,
                     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )""")
+            # Katalog publicznych portfeli: właściciel sam włącza widoczność
+            # i podaje nazwę (login nigdy nie jest pokazywany).
+            cur.execute("ALTER TABLE share_links ADD COLUMN IF NOT EXISTS listed BOOLEAN NOT NULL DEFAULT FALSE")
+            cur.execute("ALTER TABLE share_links ADD COLUMN IF NOT EXISTS public_name TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS financial_analyses (
                     symbol     TEXT NOT NULL,
@@ -1879,6 +1883,23 @@ if DATABASE_URL:
             row = cur.fetchone()
         return (row[0], row[1]) if row else None
 
+    def get_share_listing(username, portfolio_id):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT listed, public_name FROM share_links WHERE username=%s AND portfolio_id=%s",
+                        (username, portfolio_id))
+            row = cur.fetchone()
+        return {'listed': bool(row[0]), 'publicName': row[1] or ''} if row else {'listed': False, 'publicName': ''}
+
+    def set_share_listing(username, portfolio_id, listed, name):
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("UPDATE share_links SET listed=%s, public_name=%s WHERE username=%s AND portfolio_id=%s",
+                        (listed, name, username, portfolio_id))
+
+    def list_public_shares():
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("SELECT token, username, portfolio_id, public_name FROM share_links WHERE listed ORDER BY created_at LIMIT 100")
+            return [{'token': r[0], 'username': r[1], 'portfolio_id': r[2], 'name': r[3] or ''} for r in cur.fetchall()]
+
     _init_db()
 
 else:
@@ -2052,6 +2073,23 @@ else:
     def resolve_share_token(token):
         v = _load_shares().get(token)
         return (v['username'], v['portfolio_id']) if v else None
+
+    def get_share_listing(username, portfolio_id):
+        for v in _load_shares().values():
+            if v.get('username') == username and v.get('portfolio_id') == portfolio_id:
+                return {'listed': bool(v.get('listed')), 'publicName': v.get('public_name') or ''}
+        return {'listed': False, 'publicName': ''}
+
+    def set_share_listing(username, portfolio_id, listed, name):
+        shares = _load_shares()
+        for v in shares.values():
+            if v.get('username') == username and v.get('portfolio_id') == portfolio_id:
+                v['listed'], v['public_name'] = listed, name
+        _save_shares(shares)
+
+    def list_public_shares():
+        return [{'token': t, 'username': v['username'], 'portfolio_id': v['portfolio_id'], 'name': v.get('public_name') or ''}
+                for t, v in list(_load_shares().items())[:100] if v.get('listed')]
 
     # Serwer jest wielowątkowy, a powyższe funkcje robią odczyt-modyfikacja-zapis
     # na wspólnych plikach JSON — bez blokady równoległe zapisy gubiłyby zmiany,
@@ -2927,6 +2965,38 @@ def _share_cashflows(transactions, fx):
             cfs.append((+amt, dt))
     return cfs
 
+
+_PUBLIC_DIR_TTL = 15 * 60
+_public_dir_cache = {'at': 0, 'rows': []}
+
+def _public_directory():
+    """Katalog publicznych portfeli: nazwa nadana przez właściciela i same
+    procenty (jak w publicznym linku). Wycena wymaga kursów, więc wynik
+    trzymamy 15 minut."""
+    now = time.time()
+    if now - _public_dir_cache['at'] < _PUBLIC_DIR_TTL:
+        return _public_dir_cache['rows']
+    rows = []
+    for s in list_public_shares():
+        try:
+            p = _build_shared_payload(s['username'], s['portfolio_id'])
+        except Exception as e:
+            log.warning(f'[public-dir] {s["portfolio_id"]}: {e}')
+            continue
+        m = (p or {}).get('metrics') or {}
+        if not p or not m.get('positionsCount'):
+            continue
+        rows.append({
+            'token': s['token'],
+            'name': s['name'] or 'Portfel',
+            'plPct': m.get('plPct'),
+            'irr': m.get('irrPct'),
+            'positionsCount': m.get('positionsCount'),
+            'top': [{'symbol': x['symbol'], 'pct': x['pct']} for x in (p.get('positions') or [])[:3]],
+        })
+    rows.sort(key=lambda r: -(r['plPct'] if r['plPct'] is not None else -1e9))
+    _public_dir_cache.update(at=now, rows=rows)
+    return rows
 
 def _build_shared_payload(username, portfolio_id):
     """Anonimowa struktura portfela: symbole, udziały %, wynik % — bez ilości i kwot.
@@ -4254,8 +4324,25 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 if not any(p['id'] == pid for p in list_portfolios(username)):
                     self.send_json(404, {'error': 'portfolio not found'}); return
-                self.send_json(200, {'token': get_share_token(username, pid)})
+                self.send_json(200, {'token': get_share_token(username, pid), **get_share_listing(username, pid)})
             except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/public-portfolios':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            qs = dict(urllib.parse.parse_qsl(self.path.split('?', 1)[1] if '?' in self.path else ''))
+            try:
+                out = {'portfolios': _public_directory()}
+                # Wynik własnego portfela liczony tą samą metodą — do porównania.
+                pid = qs.get('portfolio_id', '')
+                if pid and any(p['id'] == pid for p in list_portfolios(username)):
+                    mine = _build_shared_payload(username, pid)
+                    out['mine'] = {'plPct': ((mine or {}).get('metrics') or {}).get('plPct')}
+                self.send_json(200, out)
+            except Exception as e:
+                log.exception('[public-dir]')
                 self.send_json(500, {'error': str(e)})
 
         elif path == '/api/shared':
@@ -4271,6 +4358,11 @@ class Handler(SimpleHTTPRequestHandler):
                 payload = _build_shared_payload(*resolved)
                 if payload is None:
                     self.send_json(404, {'error': 'not found'}); return
+                # Portfel z katalogu: pod nazwą nadaną przez właściciela,
+                # nie pod jego prywatną nazwą portfela.
+                listing = get_share_listing(*resolved)
+                if listing['listed'] and listing['publicName']:
+                    payload = {**payload, 'name': listing['publicName']}
                 self.send_json(200, payload)
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
@@ -6024,6 +6116,30 @@ async function doRecover() {
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
+        elif path == '/api/share/list':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            try:
+                body = self.read_json(max_size=1024)
+                pid = _str(body.get('portfolio_id', ''), 64, 'portfolio_id')
+                name = _str(body.get('name', ''), 40, 'name').strip()
+                listed = bool(body.get('listed'))
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': str(e)}); return
+            try:
+                if not any(p['id'] == pid for p in list_portfolios(username)):
+                    self.send_json(404, {'error': 'portfolio not found'}); return
+                if listed and not name:
+                    self.send_json(400, {'error': 'name required'}); return
+                if not get_share_token(username, pid):
+                    self.send_json(409, {'error': 'share link required'}); return
+                set_share_listing(username, pid, listed, name)
+                _public_dir_cache['at'] = 0
+                self.send_json(200, {'ok': True, 'listed': listed, 'publicName': name})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+
         elif path in ('/api/share', '/api/share/revoke'):
             username = get_username(self)
             if not username:
@@ -6038,6 +6154,7 @@ async function doRecover() {
                     self.send_json(404, {'error': 'portfolio not found'}); return
                 if path == '/api/share/revoke':
                     revoke_share_token(username, pid)
+                    _public_dir_cache['at'] = 0
                     self.send_json(200, {'ok': True}); return
                 token = get_share_token(username, pid)
                 if not token:
