@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/format.js';
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useIsMobile } from '../hooks/useIsMobile.js';
@@ -11,7 +12,7 @@ function fmtM(val, locale = 'pl-PL') {
 
 function fmtPct(val) {
   if (val == null) return '—';
-  return (val * 100).toFixed(1) + '%';
+  return formatNumber((val * 100), 1) + '%';
 }
 
 function fmtX(val) {
@@ -772,11 +773,11 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
               <SubRow label={t('fin_growth_lfl')} values={displayPeriods.map(p => LFL_DATA[symbol][p.date] ?? null)} fmt={fmtPct} />
             )}
             <TableRow label={t('fin_gross_profit')} values={displayPeriods.map(p => p.grossProfit)} locale={locale} />
-            <SubRow label={t('fin_gross_margin')} values={displayPeriods.map(p => p.grossMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
+            <SubRow label={t('fin_gross_margin')} values={displayPeriods.map(p => p.grossMargin)} fmt={v => v != null ? formatNumber((v * 100), 1, locale) + '%' : '—'} />
             <TableRow label={t('fin_opex')} values={displayPeriods.map(p => p.operatingCost)} locale={locale} />
             <TableRow label={t('fin_op_income')} values={displayPeriods.map(p => p.operatingIncome)} locale={locale} />
             <TableRow label="EBITDA" values={displayPeriods.map(p => p.ebitda)} locale={locale} />
-            <SubRow label={t('fin_ebitda_margin')} values={displayPeriods.map(p => p.ebitdaMargin)} fmt={v => v != null ? (v * 100).toFixed(1) + '%' : '—'} />
+            <SubRow label={t('fin_ebitda_margin')} values={displayPeriods.map(p => p.ebitdaMargin)} fmt={v => v != null ? formatNumber((v * 100), 1, locale) + '%' : '—'} />
             <TableRow label={t('fin_net_income')} values={displayPeriods.map(p => p.netIncome)} locale={locale} />
             <TableRow label={t('fin_net_debt')} values={displayPeriods.map(p => p.netDebt)} locale={locale} />
           </Accordion>
@@ -802,7 +803,7 @@ export default function FinancialsTab({ symbol, livePrice, companyName }) {
               p.capex != null && p.operatingCashFlow != null && Math.abs(p.operatingCashFlow) > 0
                 ? Math.abs(p.capex) / Math.abs(p.operatingCashFlow)
                 : null
-            )} fmt={v => v == null ? '—' : (v * 100).toFixed(0) + '%'} />
+            )} fmt={v => v == null ? '—' : formatNumber((v * 100), 0, locale) + '%'} />
             <TableRow label={t('fin_financing')} values={displayPeriods.map(p => p.cashFromFinancing)} locale={locale} />
             <TableRow label="FCF" values={displayPeriods.map(p => p.fcf)} locale={locale} />
             <TableRow label={t('fin_buyback')} values={displayPeriods.map(p => p.shareRepurchases)} locale={locale} />

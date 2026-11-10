@@ -25,3 +25,14 @@ export function formatDate(iso, locale = 'pl-PL') {
   if (!m) return String(iso);
   return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12)).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 }
+
+// Liczba ze stałą liczbą miejsc po przecinku w formacie lokalnym — zamiast
+// toFixed, które zawsze daje kropkę („3.90%” obok „3,12%”).
+// Bez `locale` (funkcje poza komponentami) — język zapisany przez LanguageProvider.
+function storedLocale() {
+  try { return localStorage.getItem('myfund_language') === 'en' ? 'en-US' : 'pl-PL'; } catch { return 'pl-PL'; }
+}
+
+export function formatNumber(value, decimals = 2, locale = storedLocale()) {
+  return Number(value).toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}

@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/format.js';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ChartCandlestick, Maximize2, Minimize2, StickyNote, X } from 'lucide-react';
 import FinancialsTab from './FinancialsTab';
@@ -140,7 +141,7 @@ function MiniChart({ data, symbol, period, benchData = [], benchLabel = '', curr
     setHoverIdx(Math.max(0, Math.min(filtered.length - 1, Math.round((relX / chartW) * (filtered.length - 1)))));
   };
   const fmtDay = d => d.slice(5).split('-').reverse().join('.');
-  const signedPct = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+  const signedPct = v => `${v >= 0 ? '+' : ''}${formatNumber(v, 2, locale)}%`;
 
   return (
     <div ref={containerRef} className="relative w-full min-w-0 overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
@@ -426,7 +427,7 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
           <span className="block font-mono text-[18px] font-bold tracking-tight text-fg">{fmt2(currentPrice)} {currency}</span>
           {dayChangePct != null && (
             <span className={cx('block text-[13px] font-semibold', pastSession ? 'text-faint' : dayChangePct >= 0 ? 'text-up' : 'text-down')}>
-              {dayChangePct >= 0 ? '▲' : '▼'} {Math.abs(dayChangePct).toFixed(2)}%
+              {dayChangePct >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(dayChangePct), 2, locale)}%
               {pastSession && <span className="font-normal"> · {pastSession}</span>}
             </span>
           )}
@@ -459,7 +460,7 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
               {item.qty.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} {t('shares')}
               {item.avgPrice != null && <> · {t('avg_abbr')} {fmt2(item.avgPrice)} {currency}</>}
               {item.valuePLN != null && totalPortfolioValue > 0 && (
-                <> · {((item.valuePLN / totalPortfolioValue) * 100).toFixed(1)}% {t('of_portfolio')}</>
+                <> · {formatNumber(((item.valuePLN / totalPortfolioValue) * 100), 1, locale)}% {t('of_portfolio')}</>
               )}
               {item.qty > 0 && stats.since && (
                 <> · {t('held_since')
@@ -470,7 +471,7 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
             {item.plPLN != null && (
               <span className={cx('ml-auto font-semibold tabular-nums', item.plPLN >= 0 ? 'text-up' : 'text-down')}>
                 {item.plPLN >= 0 ? '+' : ''}{fmt2(item.plPLN / dispFx)} {dispCurrLabel}
-                {plPct != null && <span className="font-normal opacity-80"> ({plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%)</span>}
+                {plPct != null && <span className="font-normal opacity-80"> ({plPct >= 0 ? '+' : ''}{formatNumber(plPct, 1, locale)}%)</span>}
               </span>
             )}
             {/* Wynik z dywidendami — sam kurs nie mówi, ile pozycja zarobiła. */}
@@ -482,7 +483,7 @@ export default function StockDetailModal({ item, totalPortfolioValue = 0, onClos
                   {t('with_dividends')} ({fmt2(stats.dividendsPLN / dispFx)} {dispCurrLabel}):{' '}
                   <span className={cx('font-semibold tabular-nums', total >= 0 ? 'text-up' : 'text-down')}>
                     {total >= 0 ? '+' : ''}{fmt2(total / dispFx)} {dispCurrLabel}
-                    {pct != null && <span className="font-normal opacity-80"> ({pct >= 0 ? '+' : ''}{pct.toFixed(1)}%)</span>}
+                    {pct != null && <span className="font-normal opacity-80"> ({pct >= 0 ? '+' : ''}{formatNumber(pct, 1, locale)}%)</span>}
                   </span>
                 </span>
               );

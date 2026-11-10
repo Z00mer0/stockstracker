@@ -1,4 +1,4 @@
-import { formatDate } from '../utils/format.js';
+import { formatDate, formatNumber } from '../utils/format.js';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -169,7 +169,7 @@ export default function RollingReturnsChart({ data }) {
                 <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
                   stroke="var(--border)" strokeDasharray="3,3" strokeWidth={0.5} />
                 <text x={svgWidth - M.right + 4} y={y + 4} fill="var(--text-faint)" fontSize={10} textAnchor="start">
-                  {v >= 0 ? '+' : ''}{v.toFixed(1)}%
+                  {v >= 0 ? '+' : ''}{formatNumber(v, 1, locale)}%
                 </text>
               </g>
             );
@@ -231,7 +231,7 @@ export default function RollingReturnsChart({ data }) {
                 <>
                   <span>Rolling 3M</span>
                   <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v3m >= 0 ? 'var(--info)' : 'var(--down)' }}>
-                    {tooltip.v3m >= 0 ? '+' : ''}{tooltip.v3m.toFixed(2)}%
+                    {tooltip.v3m >= 0 ? '+' : ''}{formatNumber(tooltip.v3m, 2, locale)}%
                   </span>
                 </>
               )}
@@ -239,7 +239,7 @@ export default function RollingReturnsChart({ data }) {
                 <>
                   <span>Rolling 6M</span>
                   <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'var(--font-mono)', color: tooltip.v6m >= 0 ? 'var(--warn)' : 'var(--down)' }}>
-                    {tooltip.v6m >= 0 ? '+' : ''}{tooltip.v6m.toFixed(2)}%
+                    {tooltip.v6m >= 0 ? '+' : ''}{formatNumber(tooltip.v6m, 2, locale)}%
                   </span>
                 </>
               )}

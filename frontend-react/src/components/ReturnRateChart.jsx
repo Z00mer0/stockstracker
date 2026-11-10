@@ -1,4 +1,4 @@
-import { formatDate } from '../utils/format.js';
+import { formatDate, formatNumber } from '../utils/format.js';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -133,7 +133,7 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
               <line x1={M.left} x2={svgWidth - M.right} y1={y} y2={y}
                 stroke="var(--border)" strokeDasharray="3,3" strokeWidth={0.5} />
               <text x={svgWidth - M.right + 4} y={y + 4} fill="var(--text-faint)" fontSize={10} textAnchor="start">
-                {v >= 0 ? '+' : ''}{v.toFixed(1)}%
+                {v >= 0 ? '+' : ''}{formatNumber(v, 1, locale)}%
               </text>
             </g>
           );
@@ -182,13 +182,13 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
             <span>Portfel</span>
             <span className={`text-right font-semibold ${(tooltip.portfolioPct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {(tooltip.portfolioPct ?? 0) >= 0 ? '+' : ''}{(tooltip.portfolioPct ?? 0).toFixed(2)}%
+              {(tooltip.portfolioPct ?? 0) >= 0 ? '+' : ''}{formatNumber((tooltip.portfolioPct ?? 0), 2, locale)}%
             </span>
             {hasBench && tooltip.benchPct != null && (
               <>
                 <span>{benchLabel || 'Benchmark'}</span>
                 <span className={`text-right ${tooltip.benchPct >= 0 ? 'text-amber-400' : 'text-rose-300'}`}>
-                  {tooltip.benchPct >= 0 ? '+' : ''}{tooltip.benchPct.toFixed(2)}%
+                  {tooltip.benchPct >= 0 ? '+' : ''}{formatNumber(tooltip.benchPct, 2, locale)}%
                 </span>
               </>
             )}

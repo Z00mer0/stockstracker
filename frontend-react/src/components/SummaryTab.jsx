@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/format.js';
 import { useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 
@@ -29,7 +30,7 @@ function UpsideCard({ label, value, upside, note }) {
           {fmt(value, 2, locale)}
         </div>
         <div style={{ fontSize: 12, color, fontWeight: 500 }}>
-          {upside >= 0 ? '+' : ''}{upside.toFixed(1)}% {upside >= 0 ? '▲' : '▼'}
+          {upside >= 0 ? '+' : ''}{formatNumber(upside, 1, locale)}% {upside >= 0 ? '▲' : '▼'}
         </div>
       </div>
     </div>

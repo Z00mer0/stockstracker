@@ -1,3 +1,4 @@
+import { formatNumber } from '../../utils/format.js';
 import { useEffect, useId, useMemo, useState } from "react";
 import { useT } from "../../context/LanguageContext";
 import "./auth.css";
@@ -180,7 +181,7 @@ export default function AuthScreen({
               <span className="sym">WIG20</span>
               {wig20 ? (
                 <span style={{ color: wig20.changePct >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                  {wig20.changePct >= 0 ? '▲' : '▼'} {Math.abs(wig20.changePct).toFixed(2)}%
+                  {wig20.changePct >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(wig20.changePct), 2)}%
                 </span>
               ) : (
                 <span>—</span>

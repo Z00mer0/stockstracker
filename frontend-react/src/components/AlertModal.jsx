@@ -1,3 +1,4 @@
+import { formatNumber } from '../utils/format.js';
 import { useState } from 'react';
 import { useT } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
@@ -105,7 +106,7 @@ export default function AlertModal({ symbol, currency, livePrice, fallbackPrice 
             label={t('alert_kind_cost')}
             hint={t('alert_cost_hint')
               .replace('{avg}', `${Number(avgCost).toFixed(2)} ${currency ?? ''}`.trim())
-              .replace('{now}', pctNow != null ? `${pctNow >= 0 ? '+' : ''}${pctNow.toFixed(1)}%` : '—')}
+              .replace('{now}', pctNow != null ? `${pctNow >= 0 ? '+' : ''}${formatNumber(pctNow, 1)}%` : '—')}
           >
             <Input type="number" min="0" step="any" inputMode="decimal" placeholder={t('alert_pct_placeholder')} value={pct} onChange={e => setPct(e.target.value)} suffix="%" />
           </Field>
