@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/format.js';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CalendarCheck, Coins, Wallet } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -25,7 +26,7 @@ export default function DividendForecastCard({ forecast, isNet, dispFx, currency
           <Stat
             blur={isPrivate} icon={CalendarCheck} label={t('divfc_next')}
             value={forecast.next ? forecast.next.symbol.replace(/\.WA$/, '') : '—'}
-            hint={forecast.next ? `${forecast.next.date} · ${money(forecast.next[key], 2)}${forecast.next.announced ? '' : ` · ${t('divfc_estimated')}`}` : undefined}
+            hint={forecast.next ? `${formatDate(forecast.next.date, locale)} · ${money(forecast.next[key], 2)}${forecast.next.announced ? '' : ` · ${t('divfc_estimated')}`}` : undefined}
           />
         </div>
         {empty ? (

@@ -1,5 +1,6 @@
+import { formatDate } from '../utils/format.js';
 import { useState } from 'react';
-import { useT } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { Button, Field, Input, Modal, Select, SegmentedControl } from './ui';
 import SymbolInput from './shared/SymbolInput.jsx';
 import { usePriceOnDate } from '../hooks/usePriceOnDate.js';
@@ -9,6 +10,7 @@ const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP'];
 
 export default function AddStockModal({ existingPortfolio, onSave, onClose, initialSymbol = '' }) {
   const t = useT();
+  const { locale } = useLanguage();
   const [symbol, setSymbol]    = useState(initialSymbol);
   const [mode, setMode]        = useState('qty');
   const [qty, setQty]          = useState('');
@@ -100,7 +102,7 @@ export default function AddStockModal({ existingPortfolio, onSave, onClose, init
               suffix={mode === 'value' ? effCurrency : undefined}
             />
           </Field>
-          <Field label={t('buy_price_label')} hint={autoPrice ? t('price_close_on').replace('{date}', quote.date) : undefined}>
+          <Field label={t('buy_price_label')} hint={autoPrice ? t('price_close_on').replace('{date}', formatDate(quote.date, locale)) : undefined}>
             <Input type="number" min="0" step="any" inputMode="decimal" placeholder="150.00" value={priceVal} onChange={e => { setPrice(e.target.value); setPriceTouched(true); }} suffix={effCurrency} />
           </Field>
           <Field label={t('currency_label')} hint={existing ? t('currency_from_position') : undefined}>

@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/format.js';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -177,7 +178,7 @@ export default function ReturnRateChart({ data, benchData = [], benchLabel = '' 
             top:  Math.max(4, tooltip.y - 52),
           }}
         >
-          <p className="font-semibold text-slate-300 mb-1.5">{tooltip.date}</p>
+          <p className="font-semibold text-slate-300 mb-1.5">{formatDate(tooltip.date, locale)}</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
             <span>Portfel</span>
             <span className={`text-right font-semibold ${(tooltip.portfolioPct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>

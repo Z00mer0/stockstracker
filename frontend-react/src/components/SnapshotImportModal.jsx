@@ -1,6 +1,7 @@
+import { formatDate } from '../utils/format.js';
 import { useState } from 'react';
 import { CircleCheck, Upload } from 'lucide-react';
-import { useT } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { parsePdf, parseImage } from '../utils/snapshotImport.js';
 import { Button, Callout, FileDrop, Modal, Table } from './ui';
 
@@ -8,6 +9,7 @@ function genId() { return Math.random().toString(36).slice(2, 10); }
 
 export default function SnapshotImportModal({ onSave, onClose }) {
   const t = useT();
+  const { locale } = useLanguage();
   const [result, setResult]     = useState(null);
   const [parsing, setParsing]   = useState(false);
   const [ocrStatus, setOcrStatus] = useState('');
@@ -109,7 +111,7 @@ export default function SnapshotImportModal({ onSave, onClose }) {
           <div className="grid gap-2">
             <p className="flex items-center gap-1.5 text-small font-semibold text-dim">
               <CircleCheck size={15} aria-hidden className="text-up" />
-              {t('si_found').replace('{n}', result.positions.length)} · {result.currency} · {result.statementDate}
+              {t('si_found').replace('{n}', result.positions.length)} · {result.currency} · {formatDate(result.statementDate, locale)}
             </p>
             <div className="max-h-60 overflow-y-auto rounded-card-sm border border-line">
               <Table

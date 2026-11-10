@@ -1,8 +1,9 @@
+import { formatDate } from '../utils/format.js';
 import { useState, useEffect } from 'react';
 import { TriangleAlert, Upload, X } from 'lucide-react';
 import { parseCsv, parseXtbExcel, mergeBySymbol } from '../utils/holdingsImport.js';
 import { fetchQuoteCurrencies, withQuoteCurrency } from '../utils/quoteCurrency.js';
-import { useT } from '../context/LanguageContext';
+import { useLanguage, useT } from '../context/LanguageContext';
 import { Badge, Button, FileDrop, Modal, SegmentedControl, Spinner, Table } from './ui';
 import { cx } from './ui/cx.js';
 
@@ -16,6 +17,7 @@ CDR.WA,100,88.20,PLN,2024-03-01`;
 
 export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
   const t = useT();
+  const { locale } = useLanguage();
   const [text, setText]         = useState('');
   const [mode, setMode]         = useState('replace');
   const [saving, setSaving]     = useState(false);
@@ -171,7 +173,7 @@ export default function CsvImportModal({ existingHoldings, onSave, onClose }) {
                   },
                   { key: 'qty', header: t('col_qty'), align: 'right', render: p => fmtQty(p.qty) },
                   { key: 'avgPrice', header: t('col_price'), align: 'right', mobile: 'aside', render: p => `${p.avgPrice.toFixed(2)} ${p.currency}` },
-                  { key: 'date', header: t('col_date'), align: 'right', render: p => <span className="text-faint">{p.date}</span> },
+                  { key: 'date', header: t('col_date'), align: 'right', render: p => <span className="text-faint">{formatDate(p.date, locale)}</span> },
                 ]}
                 rows={preview}
                 rowKey={p => p.symbol}

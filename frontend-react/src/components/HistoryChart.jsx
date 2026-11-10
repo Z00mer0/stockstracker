@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/format.js';
 import { useRef, useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -204,7 +205,7 @@ export default function HistoryChart({ data, displayCurrency = 'PLN', fxRate = 1
             top:  Math.max(4, tooltip.y - 72),
           }}
         >
-          <p className="font-semibold text-slate-300 mb-1.5">{tooltip.date}</p>
+          <p className="font-semibold text-slate-300 mb-1.5">{formatDate(tooltip.date, locale)}</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
             <span>{t('hist_value')}</span>
             <span className={`text-slate-100 text-right font-semibold${isPrivate ? ' privacy-blur' : ''}`}>{fmtVal(tooltip.total)} {currLabel}</span>

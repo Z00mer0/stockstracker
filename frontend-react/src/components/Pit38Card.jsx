@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/format.js';
 import { useMemo, useState } from 'react';
 import { Download, Info, TriangleAlert } from 'lucide-react';
 import { useLanguage, useT } from '../context/LanguageContext';
@@ -145,7 +146,7 @@ export default function Pit38Card() {
       ) : (
         <Table
           columns={[
-            { key: 'date', header: t('col_date'), render: r => <span className="text-xs text-dim">{r.date}</span> },
+            { key: 'date', header: t('col_date'), render: r => <span className="text-xs text-dim">{formatDate(r.date, locale)}</span> },
             { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: r => <span className="font-semibold text-fg">{r.symbol}</span> },
             { key: 'qty', header: t('qty_short'), align: 'right', render: r => <span className={blur}>{fmt(r.qty, r.qty % 1 ? 4 : 0)}</span> },
             { key: 'rate', header: t('pit38_rate'), align: 'right', render: r => <span className="text-dim">{r.currency === 'PLN' ? '—' : `${fmt(r.rate, 4)}`}</span> },

@@ -5,6 +5,7 @@
 //   PositionsTable     — tabela pozycji (telefon: karty) z paskiem narzędzi
 //   OtherAssetsSection, BondsSection, AddCryptoModal (eksport: utils/exporters)
 // Wcześniej wszystko było w jednym pliku na ~2050 linii.
+import { formatDate } from '../utils/format.js';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Briefcase, Plus, Upload, TriangleAlert, WifiOff, RefreshCw } from 'lucide-react';
 import { isAuthed } from '../utils/auth.js';
@@ -410,7 +411,7 @@ export default function Portfolio() {
           )}
         >
           {t('split_alert_msg')
-            .replace('{ratio}', alert.label).replace('{date}', alert.date)
+            .replace('{ratio}', alert.label).replace('{date}', formatDate(alert.date, locale))
             .replace('{qty}', fmtNum(alert.qty)).replace('{avg}', fmtNum(alert.avgPrice))
             .replace('{newQty}', fmtNum(alert.qty * alert.ratio)).replace('{newAvg}', fmtNum(alert.avgPrice / alert.ratio))
             .replace(/\{cur\}/g, alert.currency ?? '')}

@@ -1,6 +1,7 @@
+import { formatDate } from '../../utils/format.js';
 import { useMemo, useRef, useState } from 'react';
 import { FileUp, RotateCcw } from 'lucide-react';
-import { useT } from '../../context/LanguageContext';
+import { useLanguage, useT } from '../../context/LanguageContext';
 import { CSV_FIELDS, readCsv, guessMapping, rowsToTransactions } from '../../utils/transactionsCsv.js';
 import { normalizeType } from '../../utils/transactions.js';
 import { Badge, Button, Field, Modal, Select, Table } from '../../components/ui';
@@ -18,6 +19,7 @@ const TYPE_LABEL = { BUY: 'type_buy', SELL: 'type_sell', DIV: 'type_div', CASH: 
 // onSave(transactions, { apply }) — apply: zmienić też pozycje i gotówkę.
 export default function ImportCsvModal({ onSave, onClose }) {
   const t = useT();
+  const { locale } = useLanguage();
   const fileInputRef = useRef(null);
   // Plik: nagłówki, surowe wiersze i dopasowanie kolumn (zgadnięte, do poprawienia).
   const [file, setFile] = useState(null);
@@ -69,7 +71,7 @@ export default function ImportCsvModal({ onSave, onClose }) {
   }
 
   const columns = [
-    { key: 'date', header: t('col_date'), render: r => <span className="text-xs text-dim">{r.date || '—'}</span> },
+    { key: 'date', header: t('col_date'), render: r => <span className="text-xs text-dim">{formatDate(r.date, locale)}</span> },
     { key: 'type', header: t('col_type'), render: r => { const k = normalizeType(r.type); return <Badge tone={TYPE_TONE[k] ?? 'neutral'}>{TYPE_LABEL[k] ? t(TYPE_LABEL[k]) : r.type}</Badge>; } },
     { key: 'symbol', header: t('col_symbol'), mobile: 'title', render: r => <span className="font-semibold">{r.symbol}</span> },
     { key: 'qty', header: t('qty_short'), align: 'right', render: r => r.qty ?? '—' },

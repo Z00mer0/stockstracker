@@ -1,4 +1,5 @@
 // src/pages/ClosedPositions.jsx
+import { formatDate } from '../utils/format.js';
 import { useEffect, useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Scale, Hash, Search, BookOpen, Archive } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -87,7 +88,7 @@ export default function ClosedPositions() {
     ]
     : [
       symbolCol,
-      { key: 'date', header: t('col_date'), sortable: true, firstDir: 'desc', render: r => <span className="text-xs text-dim">{r.date}</span> },
+      { key: 'date', header: t('col_date'), sortable: true, firstDir: 'desc', render: r => <span className="text-xs text-dim">{formatDate(r.date, locale)}</span> },
       { key: 'qty', header: t('qty_short'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{qty(r.qty)}</span> },
       { key: 'costBasis', header: t('avg_cost'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={cx('text-dim', blur)}>{fmt(r.costBasis)}{cur(r.currency)}</span> },
       { key: 'sellPrice', header: t('col_price'), align: 'right', sortable: true, firstDir: 'desc', render: r => <span className={blur}>{fmt(r.sellPrice)}{cur(r.currency)}</span> },
