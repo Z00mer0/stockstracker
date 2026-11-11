@@ -266,3 +266,10 @@
 /* Statystyki rozciągnięte na całą wysokość karty — bez pustych pasów nad i pod listą. */
 .rail-stats-fill { flex: 1; }
 .rail-stats-fill .rail-stat { flex: 1; }
+
+/* ---- Wskaźniki spółki: dwie kolumny sekcji na szerokim oknie ---- */
+@media (min-width: 640px) {
+  .ks-cols { column-count: 2; column-gap: 36px; }
+  .ks-section { break-inside: avoid; }
+  .ks-section-wide { column-span: all; }
+}
