@@ -34,7 +34,7 @@ import { driftAlerts, loadTargets, loadDriftThreshold } from '../utils/rebalance
 import { lsSet } from '../utils/safeStorage.js';
 import { PageSkeleton } from '../components/RouteFallback';
 import {
-  Button, Callout, Card, EmptyState, Field, Input, Modal, PageHeader, SegmentedControl, Stat,
+  Badge, Button, Callout, Card, EmptyState, Field, Input, Modal, PageHeader, SegmentedControl, Stat,
 } from '../components/ui';
 import { cx } from '../components/ui/cx.js';
 import { isAggregateView } from '../utils/portfolioView.js';
@@ -438,17 +438,6 @@ export default function Dashboard() {
         )}
       />
 
-      {allPositions.length > 0 && (
-        <InsightStrip
-          positions={allPositions}
-          dailyChangePLN={dailyChange.pln}
-          dailyChangePct={dailyChange.pct}
-          onSymbolClick={setSelectedStock}
-          displayCurrency={displayCurrency}
-          fxRate={dispFx}
-        />
-      )}
-
       {/* Bledne tickery — pokazujemy wprost. Bez tego jeden zly ticker
           (jak SMSN zamiast SMSN.IL) siedzial w portfelu 20 dni bez sygnalu:
           scheduler po cichu pomijal snapshoty calego portfela. */}
@@ -533,11 +522,13 @@ export default function Dashboard() {
           value={`${sign(currentGainPLN)}${fmtDisp(currentGainPLN)} ${currLabel}`}
           delta={currentGainPct != null ? `${sign(currentGainPct)}${fmtVal(currentGainPct, 2)}%` : null}
           deltaTone={gainUp ? 'up' : 'down'}
+          extra={irrChipVal && <Badge tone={portfolioIrr >= 0 ? 'up' : 'down'} className={blur ? 'privacy-blur' : undefined}>{irrChipVal}</Badge>}
           hint={
-            <span className={blur ? 'privacy-blur' : undefined}>
-              {t('realized_short')}: <span className={kpi.realizedPLN >= 0 ? 'text-up' : 'text-down'}>{sign(kpi.realizedPLN)}{fmtDisp(kpi.realizedPLN)}</span>
-              {' · '}
-              {t('paper_short')}: <span className={kpi.unrealPLN >= 0 ? 'text-up' : 'text-down'}>{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN)}</span>
+            <span className={cx('grid w-full grid-cols-[auto_1fr] gap-x-3', blur && 'privacy-blur')}>
+              <span>{t('realized_short')}</span>
+              <span className={cx('text-right', kpi.realizedPLN >= 0 ? 'text-up' : 'text-down')}>{sign(kpi.realizedPLN)}{fmtDisp(kpi.realizedPLN)}</span>
+              <span>{t('paper_short')}</span>
+              <span className={cx('text-right', kpi.unrealPLN >= 0 ? 'text-up' : 'text-down')}>{sign(kpi.unrealPLN)}{fmtDisp(kpi.unrealPLN)}</span>
             </span>
           }
           onClick={() => navigate('/closed')}
@@ -555,12 +546,22 @@ export default function Dashboard() {
           icon={Wallet}
           label={t('free_cash')}
           value={`${fmtDisp(kpi.cashValue)} ${currLabel}`}
-          delta={irrChipVal}
-          deltaTone={portfolioIrr != null && portfolioIrr >= 0 ? 'up' : 'down'}
           hint={`${t('account_label')} · ${displayCurrency}`}
           onClick={() => { setCashEdit({ ...cash }); setShowCashModal(true); }}
         />
       </div>
+
+      {/* Pasek dnia pod liczbami — najpierw ile mam, potem co się dziś działo. */}
+      {allPositions.length > 0 && (
+        <InsightStrip
+          positions={allPositions}
+          dailyChangePLN={dailyChange.pln}
+          dailyChangePct={dailyChange.pct}
+          onSymbolClick={setSelectedStock}
+          displayCurrency={displayCurrency}
+          fxRate={dispFx}
+        />
+      )}
 
       {/* Wykres + top ruchy */}
       <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

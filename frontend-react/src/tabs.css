@@ -262,3 +262,7 @@
   display: grid;
   gap: 16px;
 }
+
+/* Statystyki rozciągnięte na całą wysokość karty — bez pustych pasów nad i pod listą. */
+.rail-stats-fill { flex: 1; }
+.rail-stats-fill .rail-stat { flex: 1; }

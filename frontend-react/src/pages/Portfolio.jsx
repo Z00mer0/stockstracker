@@ -443,23 +443,8 @@ export default function Portfolio() {
         onOpen={setSelectedItem}
       />
 
-      <OtherAssetsSection />
-      <BondsSection />
-
-      {!isAggregateView(activePortfolioId) && (
-        <BrokerCheckCard
-          key={activePortfolioId}
-          portfolioId={activePortfolioId}
-          positions={enriched}
-          positionsValuePLN={totalValuePLN}
-          cashPLN={Object.entries(cash ?? {}).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0)}
-          portFx={portFx}
-          portCurrLabel={portCurrLabel}
-          partialPrices={partialPrices}
-          fxStale={fxStale}
-        />
-      )}
-
+      {/* Tabela pozycji od razu pod przeglądem — to po nią wchodzi się na tę
+          stronę; inne aktywa, obligacje i kontrola z biurem są niżej. */}
       <PositionsTable
         positions={enriched}
         positionsValuePLN={positionsValuePLN}
@@ -481,6 +466,23 @@ export default function Portfolio() {
         onAdd={kind => (kind === 'crypto' ? setShowAddCrypto(true) : kind === 'fund' ? setShowAddFund(true) : setShowAdd(true))}
         alertDisabled={watchlistMigrationPending}
       />
+
+      <OtherAssetsSection />
+      <BondsSection />
+
+      {!isAggregateView(activePortfolioId) && (
+        <BrokerCheckCard
+          key={activePortfolioId}
+          portfolioId={activePortfolioId}
+          positions={enriched}
+          positionsValuePLN={totalValuePLN}
+          cashPLN={Object.entries(cash ?? {}).reduce((s, [cur, amt]) => s + (amt || 0) * (fxRates[cur] ?? 1), 0)}
+          portFx={portFx}
+          portCurrLabel={portCurrLabel}
+          partialPrices={partialPrices}
+          fxStale={fxStale}
+        />
+      )}
 
       {modals}
     </div>
