@@ -69,9 +69,12 @@ Gdy Vercel przestaje odpowiadać, Route 53 w ciągu 1–2 minut zaczyna podawać
 adres Lightsail, a po powrocie Vercela wraca sam. Adres aplikacji się nie
 zmienia, więc logowanie i powiadomienia zostają.
 
-Caddy potrzebuje na chwilę ruchu z domeny, żeby wystawić certyfikat. Zanim
-włączysz rekordy failover, uruchom instalację z tymczasowym zwykłym rekordem
-A na Lightsail (krok 1.3) i sprawdź, że strona działa po HTTPS.
+Ograniczenie: certyfikat HTTPS na Lightsail da się wystawić i odnowić tylko
+wtedy, gdy domena wskazuje na Lightsail. Zanim włączysz rekordy failover,
+uruchom instalację ze zwykłym rekordem A (krok 1.3) i sprawdź, że strona
+działa po HTTPS. Certyfikat jest ważny 90 dni; żeby zapasowy serwer nie
+został z wygasłym, trzeba co ok. 2 miesiące przełączyć domenę na Lightsail
+na kilka minut (albo skonfigurować w Caddy odnawianie przez DNS).
 
 Prostsza alternatywa: domena wskazuje na Lightsail na stałe. Wtedy limity
 Vercela w ogóle nie dotyczą ruchu i nic nie trzeba przełączać, a wersja na
