@@ -4,9 +4,16 @@ Skrypt `deploy/aws/setup.sh` stawia na jednym serwerze pełną kopię aplikacji:
 stronę, funkcje z `/api` (kursy, wykresy, wyszukiwarka) i `server.py`.
 Baza zostaje na Neon — serwer łączy się z nią tak samo jak Render.
 
-Potrzebna jest własna domena. Bez niej nie ma HTTPS ani automatycznego
+Własna domena nie jest konieczna: serwer może działać pod darmowym adresem
+`sslip.io` zbudowanym z jego IP (np. dla `13.48.1.2` jest to
+`13-48-1-2.sslip.io`). Domena jest potrzebna dopiero do automatycznego
 przełączania (adres `*.vercel.app` należy do Vercela i nie da się go
 przekierować gdzie indziej).
+
+Darmowy plan AWS kończy się po 6 miesiącach albo po wyczerpaniu kredytów
+i konto jest wtedy zamykane. Dlatego baza zostaje na Neon, usługa na Render
+zostaje nieskasowana, a domeny nie kupuj w AWS — powrót to jedna zmiana
+adresu w `vercel.json`.
 
 ## 1. Serwer
 
@@ -15,7 +22,8 @@ przekierować gdzie indziej).
 2. Zakładka **Networking** instancji:
    - **Create static IP** i przypnij do instancji (darmowy, dopóki przypięty),
    - w **IPv4 Firewall** dodaj regułę **HTTPS (443)**; HTTP (80) i SSH (22) już są.
-3. U sprzedawcy domeny dodaj rekord **A**: `app.twojadomena.pl` → statyczny IP.
+3. Jeśli masz domenę: u jej sprzedawcy dodaj rekord **A**
+   `app.twojadomena.pl` → statyczny IP. Bez domeny pomiń ten krok.
 
 ## 2. Instalacja
 
@@ -23,7 +31,7 @@ Połącz się z serwerem (przycisk **Connect using SSH** w Lightsail) i wklej:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Z00mer0/stockstracker/main/deploy/aws/setup.sh -o setup.sh
-sudo bash setup.sh app.twojadomena.pl
+sudo bash setup.sh app.twojadomena.pl      # albo: 13-48-1-2.sslip.io
 ```
 
 Trwa kilka minut. Potem uzupełnij zmienne — te same, które są w Render →
