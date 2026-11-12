@@ -1,6 +1,8 @@
 // src/components/PushToggle.jsx
 import { useEffect, useState } from 'react';
+import { Bell, BellOff } from 'lucide-react';
 import { useT } from '../context/LanguageContext';
+import { Button } from './ui';
 import { authHeader } from '../utils/auth.js';
 import { pushSupported, getPushSubscription, subscribePush } from '../utils/pushSubscription.js';
 
@@ -70,13 +72,10 @@ export default function PushToggle() {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       {msg && <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{msg}</span>}
-      {subscribed && (
-        <button className="btn" onClick={sendTest} disabled={busy} style={{ fontSize: 11 }}>{t('push_test')}</button>
-      )}
-      <button className={`btn ${subscribed ? '' : 'btn-primary'}`} onClick={subscribed ? disable : enable}
-        disabled={busy} style={{ fontSize: 11 }}>
-        🔔 {subscribed ? t('push_disable') : t('push_enable')}
-      </button>
+      {subscribed && <Button size="sm" onClick={sendTest} disabled={busy}>{t('push_test')}</Button>}
+      <Button size="sm" variant={subscribed ? 'secondary' : 'primary'} icon={subscribed ? BellOff : Bell} onClick={subscribed ? disable : enable} disabled={busy}>
+        {subscribed ? t('push_disable') : t('push_enable')}
+      </Button>
     </span>
   );
 }

@@ -8,6 +8,7 @@ import { useT } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { Badge, Button, Card, EmptyState, Field, IconButton, Input, Select, Table } from '../components/ui';
 import { useApp } from '../context/AppContext';
+import { formatNumber } from '../utils/format.js';
 import { addAlertToItems, apiLoadWatchlist, apiSaveWatchlist, collectAllAlerts, genAlertId, removeAlertFromItems } from '../services/watchlistService';
 
 function condition(a, t) {
@@ -52,10 +53,12 @@ function FxAlertCard({ items, onSave }) {
             <option value="below">{t('alerts_below')}</option>
           </Select>
         </Field>
-        <Field label={t('fx_alert_level')} hint={now ? t('fx_alert_now').replace('{rate}', now.toFixed(4)) : undefined}>
+        <Field label={t('fx_alert_level')}>
           <Input type="text" inputMode="decimal" suffix="zł" value={level} onChange={e => setLevel(e.target.value)} placeholder={now ? now.toFixed(2) : '4.00'} />
         </Field>
         <Button type="submit" variant="primary" icon={Plus} disabled={!(target > 0)}>{t('add')}</Button>
+        {/* Bieżący kurs pod całym wierszem — jako podpis jednego pola podnosił je ponad sąsiednie. */}
+        {now && <p className="basis-full text-small text-faint">{t('fx_alert_now').replace('{rate}', formatNumber(now, 4))}</p>}
       </form>
     </Card>
   );
