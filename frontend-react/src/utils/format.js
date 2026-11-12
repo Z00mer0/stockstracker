@@ -36,3 +36,15 @@ function storedLocale() {
 export function formatNumber(value, decimals = 2, locale = storedLocale()) {
   return Number(value).toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
+
+// Duże kwoty w skrócie: 78,00 mld / 31,00 mln (pl), 78.00B / 31.00M (en).
+export function formatLarge(val, decimals = 2, locale = storedLocale()) {
+  if (val == null || isNaN(val)) return '—';
+  const pl = !String(locale).startsWith('en');
+  const abs = Math.abs(val);
+  const unit = (n, plSuffix, enSuffix) => formatNumber(n, decimals, locale) + (pl ? ` ${plSuffix}` : enSuffix);
+  if (abs >= 1e12) return unit(val / 1e12, 'bln', 'T');
+  if (abs >= 1e9)  return unit(val / 1e9, 'mld', 'B');
+  if (abs >= 1e6)  return unit(val / 1e6, 'mln', 'M');
+  return Number(val).toLocaleString(locale, { maximumFractionDigits: 0 });
+}

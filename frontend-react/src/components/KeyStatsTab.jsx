@@ -1,4 +1,4 @@
-import { formatNumber } from '../utils/format.js';
+import { formatNumber, formatLarge } from '../utils/format.js';
 import React, { useState, useEffect } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useIsMobile } from '../hooks/useIsMobile.js';
@@ -12,14 +12,7 @@ function fmt(val, opts = {}) {
   return v.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
 }
 
-function fmtLarge(val, locale = 'pl-PL') {
-  if (val == null) return '—';
-  const abs = Math.abs(val);
-  if (abs >= 1e12) return (val / 1e12).toFixed(2) + ' T';
-  if (abs >= 1e9)  return (val / 1e9).toFixed(2)  + ' B';
-  if (abs >= 1e6)  return (val / 1e6).toFixed(2)  + ' M';
-  return val.toLocaleString(locale, { maximumFractionDigits: 0 });
-}
+const fmtLarge = (val, locale = 'pl-PL') => formatLarge(val, 2, locale);
 
 function fmtDate(ts, locale = 'pl-PL') {
   if (!ts) return '—';
@@ -95,9 +88,10 @@ function Row({ label, value, color, tooltip }) {
 }
 
 // ─── Section ─────────────────────────────────────────────────────────────────
-function Section({ title, children }) {
+// wide — sekcja z własną siatką albo wykresem: zajmuje obie kolumny.
+function Section({ title, children, wide = false }) {
   return (
-    <div style={{ marginBottom: 18 }}>
+    <div className={wide ? 'ks-section ks-section-wide' : 'ks-section'} style={{ marginBottom: 18 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
         {title}
       </div>
@@ -170,7 +164,7 @@ function GrowthDrivers({ symbol, roic }) {
     { label: 'ROIC',               value: roic != null ? `${formatNumber(roic, 1)}%` : '—', highlight: true },
   ];
   return (
-    <Section title={t('ks_growth_dynamics')}>
+    <Section wide title={t('ks_growth_dynamics')}>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 6 }}>
         {items.map(({ label, value, highlight }) => (
           <div key={label} style={{ background: 'var(--panel-2)', borderRadius: 8, padding: '8px 10px' }}>
@@ -210,7 +204,7 @@ function DuPontAnalysis({ netMargin, assetTurnover, leverage, roe }) {
     },
   ];
   return (
-    <Section title={t('ks_dupont')}>
+    <Section wide title={t('ks_dupont')}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
         {boxes.map((box, i) => (
           <React.Fragment key={i}>
@@ -455,7 +449,7 @@ function PeerComparison({ symbol, pe, netMargin }) {
   );
 
   return (
-    <Section title={
+    <Section wide title={
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         {t('ks_peer_title')}
         <span
@@ -571,7 +565,7 @@ function InvestmentChecklist({ psRatio, roic, netDebtEbitda }) {
   const total     = checks.filter(c => c.pass !== null).length;
 
   return (
-    <Section title={`${t('ks_signals')} ${total > 0 ? `(${passCount}/${total})` : ''}`}>
+    <Section wide title={`${t('ks_signals')} ${total > 0 ? `(${passCount}/${total})` : ''}`}>
       {checks.map((c, i) => <CheckItem key={i} {...c} />)}
     </Section>
   );
@@ -679,7 +673,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
   }
 
   return (
-    <div style={{ padding: '12px 20px 20px' }}>
+    <div className="ks-cols" style={{ padding: '12px 20px 20px' }}>
 
       {hasValuation && (
         <Section title={t('ks_valuation')}>
@@ -797,13 +791,13 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
             <Row label={t('ks_target_range')} value={`${fmtL(raw.targetLowPrice, { decimals: 2 })} – ${fmtL(raw.targetHighPrice, { decimals: 2 })}`} />
           )}
           {raw.numberOfAnalystOpinions != null && <Row label={t('ks_analysts')} value={String(raw.numberOfAnalystOpinions)} />}
-          {rec && <Row label={t('ks_recommendation')} value={rec[0]} color={rec[1]} />}
+          {rec && <Row label={t('ks_recommendation')} value={t(rec[0])} color={rec[1]} />}
           {raw.nextEarningsDate != null && <Row label={t('ks_next_earnings')} value={fmtDateL(raw.nextEarningsDate)} />}
         </Section>
       )}
 
       {hasFundamentalValuation && (
-        <Section title={t('ks_fair_value')}>
+        <Section wide title={t('ks_fair_value')}>
           <ValuationGauge
             currentPrice={livePrice}
             dcfValue={raw?.dcfFairValue}
@@ -842,7 +836,7 @@ export default function KeyStatsTab({ symbol, livePrice, yearChangePct }) {
       )}
 
       {hasHealth && (
-        <Section title={t('ks_fin_health')}>
+        <Section wide title={t('ks_fin_health')}>
           {gScore  != null && <HealthBar label={t('ks_growth')}        score={gScore} />}
           {pScore  != null && <HealthBar label={t('ks_profitability')}    score={pScore}  tooltip={isCompounder ? t(COMPOUNDER_TOOLTIP_KEY) : undefined} />}
           {cfScore != null && <HealthBar label={t('ks_fcf_flows')} score={cfScore} tooltip={isCompounder ? t(COMPOUNDER_TOOLTIP_KEY) : undefined} />}

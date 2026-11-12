@@ -1,4 +1,4 @@
-import { formatNumber } from '../utils/format.js';
+import { formatNumber, formatLarge } from '../utils/format.js';
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage, useT } from '../context/LanguageContext';
 import { useIsMobile } from '../hooks/useIsMobile.js';
@@ -20,14 +20,7 @@ function fmtX(val) {
   return val.toFixed(1) + 'x';
 }
 
-function fmtLarge(val, locale = 'pl-PL') {
-  if (val == null) return '—';
-  const abs = Math.abs(val);
-  if (abs >= 1e12) return (val / 1e12).toFixed(1) + 'T';
-  if (abs >= 1e9)  return (val / 1e9).toFixed(1) + 'B';
-  if (abs >= 1e6)  return (val / 1e6).toFixed(0) + 'M';
-  return val.toLocaleString(locale);
-}
+const fmtLarge = (val, locale = 'pl-PL') => formatLarge(val, 1, locale);
 
 function growthColor(v) {
   if (v == null) return 'var(--text-dim)';
@@ -155,6 +148,7 @@ function TableRow({ label, values, fmt, locale = 'pl-PL' }) {
           fontWeight: i === cols.length - 1 ? 700 : 400,
           fontFamily: 'var(--font-mono)',
           fontSize: 11,
+          textAlign: 'right',
         }}>{fmtFn(v)}</span>
       ))}
       {Array.from({ length: NUM_COLS - cols.length }).map((_, i) => <span key={`e${i}`} />)}
@@ -180,6 +174,7 @@ function SubRow({ label, values, fmt = fmtPct }) {
         <span key={i} style={{
           color: fmt === fmtPct ? growthColor(v) : 'var(--text-dim)',
           fontFamily: 'var(--font-mono)',
+          textAlign: 'right',
         }}>
           {fmt === fmtPct && v != null && v >= 0 ? '+' : ''}{fmt(v)}
         </span>
@@ -204,7 +199,7 @@ function ColumnHeaders({ periods }) {
     }}>
       <span />
       {cols.map((p, i) => (
-        <span key={i} style={{ fontWeight: i === cols.length - 1 ? 700 : 400, color: i === cols.length - 1 ? 'var(--text-dim)' : 'var(--text-faint)' }}>
+        <span key={i} style={{ textAlign: 'right', fontWeight: i === cols.length - 1 ? 700 : 400, color: i === cols.length - 1 ? 'var(--text-dim)' : 'var(--text-faint)' }}>
           {p.label}
         </span>
       ))}
