@@ -6,6 +6,10 @@ W chmurze: przechowuje dane w PostgreSQL (zmienna DATABASE_URL).
 """
 import json
 import hashlib
+import base64
+import hmac
+import struct
+import threading
 import bcrypt
 import datetime
 import functools
@@ -861,6 +865,11 @@ def _fetch_biznesradar_valuation(symbol):
     }.items() if v is not None}
 
 
+# SEC wymaga w User-Agent nazwy i kontaktu (najlepiej e-mail), inaczej potrafi
+# odpowiadać 403. Adres tylko w zmiennej środowiskowej — repozytorium jest
+# publiczne. Bez niej podajemy adres aplikacji.
+_SEC_UA = 'StocksTracker ' + (os.environ.get('SEC_CONTACT', '').strip() or 'https://myfund-app.vercel.app')
+
 _SEC_TICKERS_CACHE = {'data': None, 'ts': 0}
 _SEC_TICKERS_TTL   = 86400  # 1 day
 
@@ -870,7 +879,7 @@ def _sec_get_cik(symbol):
     if not _SEC_TICKERS_CACHE['data'] or now - _SEC_TICKERS_CACHE['ts'] > _SEC_TICKERS_TTL:
         req = urllib.request.Request(
             'https://www.sec.gov/files/company_tickers.json',
-            headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
+            headers={'User-Agent': _SEC_UA, 'Accept': 'application/json'})
         try:
             raw = urllib.request.urlopen(req, timeout=12).read()
             _SEC_TICKERS_CACHE['data'] = json.loads(raw)
@@ -892,7 +901,7 @@ def _fetch_sec_edgar_financials(symbol, period):
     try:
         req = urllib.request.Request(
             f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json',
-            headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
+            headers={'User-Agent': _SEC_UA, 'Accept': 'application/json'})
         facts = json.loads(urllib.request.urlopen(req, timeout=20).read())
     except Exception as e:
         log.warning(f'[sec/facts] {symbol}: {e}')
@@ -1225,7 +1234,9 @@ PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
 VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
-VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:gorski.a.r@gmail.com')
+# Kontakt dla usług push (mailto: albo https:). Prawdziwy adres tylko w zmiennej
+# środowiskowej — repozytorium jest publiczne. Zapas: adres aplikacji.
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', '').strip() or 'https://myfund-app.vercel.app'
 PUSH_CRON_SECRET  = os.environ.get('PUSH_CRON_SECRET', '').strip()
 
 
@@ -1250,6 +1261,7 @@ if DATABASE_URL:
                     password_hash TEXT NOT NULL
                 )""")
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_codes TEXT")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS portfolios (
                     username TEXT PRIMARY KEY,
@@ -1490,10 +1502,11 @@ if DATABASE_URL:
 
     def load_users():
         with _conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT username, display_name, password_hash, recovery_codes FROM users")
+            cur.execute("SELECT username, display_name, password_hash, recovery_codes, totp_secret FROM users")
             return {r['username']: {'display_name': r['display_name'],
                                      'password_hash': r['password_hash'],
-                                     'recovery_codes': json.loads(r['recovery_codes']) if r['recovery_codes'] else []}
+                                     'recovery_codes': json.loads(r['recovery_codes']) if r['recovery_codes'] else [],
+                                     'totp_secret': r['totp_secret']}
                     for r in cur.fetchall()}
 
     def save_user(username, display_name, password_hash):
@@ -1509,6 +1522,11 @@ if DATABASE_URL:
         with _conn() as c, c.cursor() as cur:
             cur.execute("UPDATE users SET recovery_codes = %s WHERE username = %s",
                         (json.dumps(code_hashes), username))
+
+    def save_totp_secret(username, secret):
+        """Sekret logowania dwuetapowego; None wyłącza."""
+        with _conn() as c, c.cursor() as cur:
+            cur.execute("UPDATE users SET totp_secret = %s WHERE username = %s", (secret, username))
 
     def load_data(username):
         with _conn() as c, c.cursor() as cur:
@@ -1924,6 +1942,12 @@ else:
             users[username]['recovery_codes'] = code_hashes
             USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding='utf-8')
 
+    def save_totp_secret(username, secret):
+        users = load_users()
+        if username in users:
+            users[username]['totp_secret'] = secret
+            USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding='utf-8')
+
     def load_data(username):
         f = BASE / f'portfolio_{username}.json'
         if not f.exists():
@@ -2105,7 +2129,7 @@ else:
         return _wrapped
 
     for _fname in (
-        'load_users', 'save_user', 'save_recovery_codes',
+        'load_users', 'save_user', 'save_recovery_codes', 'save_totp_secret',
         'load_data', 'save_data', '_read_pfile', '_write_pfile',
         'list_portfolios', 'create_portfolio', 'update_portfolio', 'delete_portfolio',
         'load_portfolio_data', 'save_portfolio_data',
@@ -2231,6 +2255,49 @@ def new_recovery_codes(n=8):
 
 def recovery_code_hash(code: str) -> str:
     return hashlib.sha256(code.replace('-', '').replace(' ', '').upper().encode()).hexdigest()
+
+# ── Logowanie dwuetapowe (TOTP, RFC 6238) ─────────────────────────────────────
+# Kody z aplikacji typu Google Authenticator: HMAC-SHA1, 6 cyfr, krok 30 s.
+# Akceptujemy krok bieżący i sąsiednie (rozjazd zegara telefonu), ale każdy
+# krok tylko raz — przechwycony kod nie zadziała drugi raz.
+_TOTP_STEP     = 30
+_TOTP_SETUP_TTL = 600                # włączanie czeka 10 min na pierwszy kod
+_TOTP_PENDING  = {}                  # username → (sekret, czas rozpoczęcia)
+_TOTP_LAST     = {}                  # username → ostatni użyty krok
+_TOTP_LOCK     = threading.Lock()
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode().rstrip('=')
+
+def totp_code(secret: str, step: int) -> str:
+    key = base64.b32decode(secret + '=' * (-len(secret) % 8), casefold=True)
+    mac = hmac.new(key, struct.pack('>Q', step), hashlib.sha1).digest()
+    off = mac[-1] & 0x0F
+    return '%06d' % ((struct.unpack('>I', mac[off:off + 4])[0] & 0x7FFFFFFF) % 1000000)
+
+def totp_verify(username: str, secret: str, code, now=None) -> bool:
+    code = re.sub(r'\s', '', str(code or ''))
+    if not secret or not re.fullmatch(r'\d{6}', code):
+        return False
+    cur = int((now if now is not None else time.time()) // _TOTP_STEP)
+    with _TOTP_LOCK:
+        for step in (cur - 1, cur, cur + 1):
+            if step > _TOTP_LAST.get(username, -1) and hmac.compare_digest(totp_code(secret, step), code):
+                _TOTP_LAST[username] = step
+                return True
+    return False
+
+def second_factor_ok(username: str, entry: dict, code) -> bool:
+    """Kod z aplikacji albo — po zgubieniu telefonu — jednorazowy kod odzyskiwania."""
+    if totp_verify(username, entry.get('totp_secret'), code):
+        return True
+    hashes = list(entry.get('recovery_codes') or [])
+    ch = recovery_code_hash(str(code or ''))
+    if str(code or '').strip() and ch in hashes:
+        hashes.remove(ch)
+        save_recovery_codes(username, hashes)
+        return True
+    return False
 
 def check_password(password: str, stored_hash: str) -> bool:
     try:
@@ -4284,6 +4351,13 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
 
+        elif path == '/api/2fa':
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'error': 'unauthorized'}); return
+            entry = load_users().get(username) or {}
+            self.send_json(200, {'enabled': bool(entry.get('totp_secret'))})
+
         elif path == '/api/portfolio-groups':
             username = get_username(self)
             if not username:
@@ -5883,7 +5957,8 @@ async function doRecover() {
     def do_POST(self):
         path = self.path.split('?')[0]
 
-        if path in ('/api/login', '/api/register', '/api/reset-password', '/api/demo'):
+        if path in ('/api/login', '/api/register', '/api/reset-password', '/api/demo',
+                    '/api/2fa/enable', '/api/2fa/disable'):
             if _rate_limited(_client_ip(self)):
                 self.send_json(429, {'ok': False, 'error': 'Za dużo prób. Spróbuj ponownie za 15 minut.'}); return
 
@@ -5909,6 +5984,14 @@ async function doRecover() {
                     if secrets.compare_digest(legacy, stored):
                         save_user(username, entry['display_name'], hash_password(password))
                         authenticated = True
+                if authenticated and entry.get('totp_secret'):
+                    # Hasło poprawne, ale konto ma logowanie dwuetapowe.
+                    code = _str(body.get('code', ''), 32, 'code')
+                    if not code:
+                        self.send_json(401, {'ok': False, 'need_2fa': True,
+                                             'error': 'Podaj kod z aplikacji uwierzytelniającej'}); return
+                    if not second_factor_ok(username, entry, code):
+                        self.send_json(401, {'ok': False, 'need_2fa': True, 'error': 'Nieprawidłowy kod'}); return
                 if authenticated:
                     token = secrets.token_hex(24)
                     _session_put(token, username)
@@ -5987,7 +6070,8 @@ async function doRecover() {
                     self.send_json(400, {'ok': False, 'error': 'Nowe hasło musi mieć co najmniej 6 znaków'}); return
                 users = load_users()
                 if not check_password(current_pw, users.get(username, {}).get('password_hash', '')):
-                    self.send_json(401, {'ok': False, 'error': 'Aktualne hasło jest nieprawidłowe'}); return
+                    # 403, nie 401: frontend traktuje 401 jako wygasłą sesję i wylogowuje.
+                    self.send_json(403, {'ok': False, 'error': 'Aktualne hasło jest nieprawidłowe'}); return
                 save_user(username, users[username]['display_name'], hash_password(new_pw))
                 self.send_json(200, {'ok': True})
             except ValueError as e:
@@ -6002,6 +6086,48 @@ async function doRecover() {
             codes = new_recovery_codes()
             save_recovery_codes(username, [recovery_code_hash(c) for c in codes])
             self.send_json(200, {'ok': True, 'codes': codes})
+
+        elif path in ('/api/2fa/setup', '/api/2fa/enable', '/api/2fa/disable'):
+            username = get_username(self)
+            if not username:
+                self.send_json(401, {'ok': False, 'error': 'unauthorized'}); return
+            try:
+                body  = self.read_json(_MAX_BODY_AUTH)
+                entry = load_users().get(username) or {}
+                if path == '/api/2fa/setup':
+                    if entry.get('totp_secret'):
+                        self.send_json(409, {'ok': False, 'error': 'Logowanie dwuetapowe jest już włączone'}); return
+                    secret = new_totp_secret()
+                    with _TOTP_LOCK:
+                        _TOTP_PENDING[username] = (secret, time.time())
+                    uri = ('otpauth://totp/' + urllib.parse.quote(f'myfund:{username}')
+                           + f'?secret={secret}&issuer=myfund&digits=6&period={_TOTP_STEP}')
+                    self.send_json(200, {'ok': True, 'secret': secret, 'uri': uri})
+                elif path == '/api/2fa/enable':
+                    with _TOTP_LOCK:
+                        secret, started = _TOTP_PENDING.get(username, (None, 0))
+                    if not secret or time.time() - started > _TOTP_SETUP_TTL:
+                        self.send_json(400, {'ok': False, 'error': 'Zacznij włączanie od nowa'}); return
+                    if not totp_verify(username, secret, _str(body.get('code', ''), 32, 'code')):
+                        self.send_json(400, {'ok': False, 'error': 'Nieprawidłowy kod — sprawdź godzinę w telefonie'}); return
+                    save_totp_secret(username, secret)
+                    with _TOTP_LOCK:
+                        _TOTP_PENDING.pop(username, None)
+                    self.send_json(200, {'ok': True})
+                else:
+                    password = _str(body.get('password', ''), 1024, 'password')
+                    code     = _str(body.get('code', ''), 32, 'code')
+                    if not check_password(password, entry.get('password_hash', '')):
+                        self.send_json(403, {'ok': False, 'error': 'Hasło jest nieprawidłowe'}); return
+                    if entry.get('totp_secret') and not second_factor_ok(username, entry, code):
+                        self.send_json(403, {'ok': False, 'error': 'Nieprawidłowy kod'}); return
+                    save_totp_secret(username, None)
+                    self.send_json(200, {'ok': True})
+            except ValueError as e:
+                self.send_json(400, {'ok': False, 'error': str(e)})
+            except Exception as e:
+                log.warning(f'[2fa] {path}: {e}')
+                self.send_json(400, {'ok': False, 'error': 'Bad request'})
 
         elif path == '/api/reset-password':
             try:

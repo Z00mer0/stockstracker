@@ -13,7 +13,7 @@
 - Spec: `docs/superpowers/specs/2026-07-17-extended-alerts-design.md` — przeczytaj przed swoim taskiem.
 - Repo jest PUBLICZNE — żadnych sekretów w plikach.
 - Baza lokalna = PRODUKCYJNA (Neon) — żadnego destrukcyjnego SQL; `CREATE TABLE IF NOT EXISTS` jest OK.
-- Commity: `git -c user.name="Z00mer0" -c user.email="gorski.a.r@gmail.com" commit …`; ZERO wzmianek o Claude (patrz CLAUDE.md §5).
+- Commity: `git -c user.name="Z00mer0" -c user.email="279140984+Z00mer0@users.noreply.github.com" commit …`; ZERO wzmianek o Claude (patrz CLAUDE.md §5).
 - NIE pushuj do origin — push robi sesja główna po review całości.
 - Stare alerty (bez pola `kind`) muszą działać bez migracji jako `kind='price'`.
 - Serwer jest jednowątkowy — każde wyjście w sieć z timeoutem.
@@ -79,7 +79,7 @@ Expected: dwie liczby (np. `148.68 76.54`)
 
 ```bash
 git add api/quotes.js frontend-react/api/quotes.js
-git -c user.name="Z00mer0" -c user.email="gorski.a.r@gmail.com" commit -m "feat(quotes): zwracaj 52-tygodniowe max/min z Yahoo meta"
+git -c user.name="Z00mer0" -c user.email="279140984+Z00mer0@users.noreply.github.com" commit -m "feat(quotes): zwracaj 52-tygodniowe max/min z Yahoo meta"
 ```
 
 ---
@@ -242,7 +242,7 @@ Expected: dwa dicty + `OK`. UWAGA: import server.py łączy się z produkcyjną 
 
 ```bash
 git add server.py
-git -c user.name="Z00mer0" -c user.email="gorski.a.r@gmail.com" commit -m "feat(push): typy alertów dailyChange i week52 w pętli push"
+git -c user.name="Z00mer0" -c user.email="279140984+Z00mer0@users.noreply.github.com" commit -m "feat(push): typy alertów dailyChange i week52 w pętli push"
 ```
 
 ---
@@ -413,7 +413,7 @@ Expected: `COMPILE-OK`, wycena rzędu kilkudziesięciu tys. zł (Dashboard pokaz
 
 ```bash
 git add server.py
-git -c user.name="Z00mer0" -c user.email="gorski.a.r@gmail.com" commit -m "feat(push): alert spadku portfela od ATH + API /api/portfolio-alert"
+git -c user.name="Z00mer0" -c user.email="279140984+Z00mer0@users.noreply.github.com" commit -m "feat(push): alert spadku portfela od ATH + API /api/portfolio-alert"
 ```
 
 ---
@@ -568,7 +568,7 @@ Expected: `✓ built` bez błędów.
 
 ```bash
 git add frontend-react/src/pages/Watchlist.jsx frontend-react/src/translations/pl.js frontend-react/src/translations/en.js
-git -c user.name="Z00mer0" -c user.email="gorski.a.r@gmail.com" commit -m "feat(watchlist): alerty zmiany dziennej i 52 tygodni w modalu"
+git -c user.name="Z00mer0" -c user.email="279140984+Z00mer0@users.noreply.github.com" commit -m "feat(watchlist): alerty zmiany dziennej i 52 tygodni w modalu"
 ```
 
 ---
@@ -678,7 +678,7 @@ Expected: `✓ built` bez błędów.
 
 ```bash
 git add frontend-react/src/pages/Settings.jsx frontend-react/src/translations/pl.js frontend-react/src/translations/en.js
-git -c user.name="Z00mer0" -c user.email="gorski.a.r@gmail.com" commit -m "feat(settings): konfiguracja alertu spadku portfela"
+git -c user.name="Z00mer0" -c user.email="279140984+Z00mer0@users.noreply.github.com" commit -m "feat(settings): konfiguracja alertu spadku portfela"
 ```
 
 ---

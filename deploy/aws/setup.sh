@@ -61,6 +61,9 @@ if [ ! -f "$ENV_FILE" ]; then
 DATABASE_URL=
 VAPID_PRIVATE_KEY=
 VAPID_PUBLIC_KEY=
+VAPID_CLAIM_EMAIL=
+# Kontakt dla SEC (sprawozdania spółek z USA), np. twoj-adres@example.com
+SEC_CONTACT=
 PUSH_CRON_SECRET=
 FINNHUB_TOKEN=
 GROQ_API_KEY=

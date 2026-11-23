@@ -13,12 +13,16 @@ export default function AuthGate({ onLogin }) {
   // { token, displayName, codes } — set after registration, before entering the app
   const [pendingCodes, setPendingCodes] = useState(null);
 
-  async function handleLogin({ username, password }) {
+  // Konto z logowaniem dwuetapowym: pierwsza odpowiedź (samo hasło) ma
+  // need_2fa — AuthScreen pokazuje wtedy pole na kod i wysyła oba.
+  async function handleLogin({ username, password, code }) {
     try {
-      const res = await api.post('/api/login', { username, password });
+      const res = await api.post('/api/login', { username, password, ...(code ? { code } : {}) });
       onLogin(res.data.display_name);
     } catch (err) {
-      throw new Error(err.response?.data?.error ?? 'Błąd logowania — spróbuj ponownie', { cause: err });
+      const e = new Error(err.response?.data?.error ?? 'Błąd logowania — spróbuj ponownie', { cause: err });
+      e.need2fa = !!err.response?.data?.need_2fa;
+      throw e;
     }
   }
 
