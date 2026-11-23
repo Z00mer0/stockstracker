@@ -861,6 +861,11 @@ def _fetch_biznesradar_valuation(symbol):
     }.items() if v is not None}
 
 
+# SEC wymaga w User-Agent nazwy i kontaktu (najlepiej e-mail), inaczej potrafi
+# odpowiadać 403. Adres tylko w zmiennej środowiskowej — repozytorium jest
+# publiczne. Bez niej podajemy adres aplikacji.
+_SEC_UA = 'StocksTracker ' + (os.environ.get('SEC_CONTACT', '').strip() or 'https://myfund-app.vercel.app')
+
 _SEC_TICKERS_CACHE = {'data': None, 'ts': 0}
 _SEC_TICKERS_TTL   = 86400  # 1 day
 
@@ -870,7 +875,7 @@ def _sec_get_cik(symbol):
     if not _SEC_TICKERS_CACHE['data'] or now - _SEC_TICKERS_CACHE['ts'] > _SEC_TICKERS_TTL:
         req = urllib.request.Request(
             'https://www.sec.gov/files/company_tickers.json',
-            headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
+            headers={'User-Agent': _SEC_UA, 'Accept': 'application/json'})
         try:
             raw = urllib.request.urlopen(req, timeout=12).read()
             _SEC_TICKERS_CACHE['data'] = json.loads(raw)
@@ -892,7 +897,7 @@ def _fetch_sec_edgar_financials(symbol, period):
     try:
         req = urllib.request.Request(
             f'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json',
-            headers={'User-Agent': 'StocksTracker gorski.a.r@gmail.com', 'Accept': 'application/json'})
+            headers={'User-Agent': _SEC_UA, 'Accept': 'application/json'})
         facts = json.loads(urllib.request.urlopen(req, timeout=20).read())
     except Exception as e:
         log.warning(f'[sec/facts] {symbol}: {e}')
@@ -1225,7 +1230,9 @@ PORT         = int(os.environ.get('PORT', 8765))
 DATABASE_URL = os.environ.get('DATABASE_URL')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '').strip()
 VAPID_PUBLIC_KEY  = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
-VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:gorski.a.r@gmail.com')
+# Kontakt dla usług push (mailto: albo https:). Prawdziwy adres tylko w zmiennej
+# środowiskowej — repozytorium jest publiczne. Zapas: adres aplikacji.
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', '').strip() or 'https://myfund-app.vercel.app'
 PUSH_CRON_SECRET  = os.environ.get('PUSH_CRON_SECRET', '').strip()
 
 
