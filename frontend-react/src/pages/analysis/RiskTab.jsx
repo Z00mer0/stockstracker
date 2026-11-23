@@ -6,15 +6,30 @@ import { usePrivacy } from '../../context/PrivacyContext';
 import { useFxBreakdown } from '../../hooks/useFxBreakdown';
 import { Card, EmptyState, Stat, Table } from '../../components/ui';
 import { cx } from '../../components/ui/cx.js';
-import { formatPercent } from '../../utils/format.js';
+import { formatNumber, formatPercent } from '../../utils/format.js';
 import { snapshotRows } from '../../utils/capital.js';
 import { twrSeries, maxDrawdown } from '../../utils/historyStats.js';
 import { dailyReturns, volatility, sharpe, sortino, beta } from '../../utils/riskMetrics.js';
+import { benchInPLN } from '../../utils/benchmarkCompare.js';
+import { correlationMatrix, weightedAvgCorrelation } from '../../utils/correlation.js';
 
 const MIN_SESSIONS = 60;
 
+// Odpowiedź Yahoo /chart → [{ date, price }] rosnąco; cena skorygowana
+// o dywidendy i splity, gdy Yahoo ją podaje.
+function chartPoints(data) {
+  const result = data?.chart?.result?.[0];
+  const ts = result?.timestamp ?? [];
+  const prices = result?.indicators?.adjclose?.[0]?.adjclose ?? result?.indicators?.quote?.[0]?.close ?? [];
+  return ts
+    .map((s, i) => ({ date: new Date(s * 1000).toISOString().slice(0, 10), price: prices[i] }))
+    .filter(p => p.price > 0);
+}
+
 // Miary ryzyka na dziennych stopach ważonych czasem (bez wpłat i wypłat) —
-// patrz utils/riskMetrics.js. Beta względem S&P 500.
+// patrz utils/riskMetrics.js. Beta względem WIG i względem S&P 500
+// przeliczonego na złote kursem z dnia: portfel liczony jest w złotych, a beta
+// do indeksu w dolarach mieszała w wynik ruch kursu USD/PLN.
 function RiskCard() {
   const t = useT();
   const { locale } = useLanguage();
@@ -32,27 +47,37 @@ function RiskCard() {
   const sessions = series.length;
   const enough = sessions >= MIN_SESSIONS;
 
-  const [betaVal, setBetaVal] = useState(null);
+  // Kurs USD z dnia snapshotu; przed pierwszym zapisanym — bieżący.
+  const usdRate = fxRates.USD;
+  const fxSeries = useMemo(() => {
+    const pts = snapshots.filter(s => s.fx?.USD > 0).map(s => ({ date: s.date, rate: s.fx.USD }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return pts.length ? pts : [{ date: '1970-01-01', rate: usdRate ?? 1 }];
+  }, [snapshots, usdRate]);
+
+  const [betas, setBetas] = useState({ wig: null, spx: null });
   const [betaLoading, setBetaLoading] = useState(false);
   useEffect(() => {
     if (!enough) return;
     const ctrl = new AbortController();
+    const get = url => fetch(url, { signal: ctrl.signal }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+    const byDate = pts => Object.fromEntries(pts.map(p => [p.date, p.price]));
+    const spxUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5y';
     setBetaLoading(true);
-    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5y';
-    fetch(`/api/proxy?url=${encodeURIComponent(url)}`, { signal: ctrl.signal })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(data => {
-        const result = data.chart?.result?.[0];
-        const ts = result?.timestamp, prices = result?.indicators?.adjclose?.[0]?.adjclose;
-        if (!ts || !prices) return;
-        const byDate = {};
-        ts.forEach((s, i) => { if (prices[i] != null) byDate[new Date(s * 1000).toISOString().slice(0, 10)] = prices[i]; });
-        setBetaVal(beta(returns, byDate));
-      })
-      .catch(e => { if (e.name !== 'AbortError') console.warn('[risk/beta]', e.message); })
-      .finally(() => setBetaLoading(false));
+    Promise.allSettled([
+      get('/api/bench-pl?s=WIG').then(pts => (Array.isArray(pts) ? beta(returns, byDate(pts)) : null)),
+      get(`/api/proxy?url=${encodeURIComponent(spxUrl)}`).then(data => {
+        const pts = chartPoints(data);
+        return pts.length ? beta(returns, byDate(benchInPLN(pts, fxSeries))) : null;
+      }),
+    ]).then(([wig, spx]) => {
+      if (ctrl.signal.aborted) return;
+      for (const r of [wig, spx]) if (r.status === 'rejected') console.warn('[risk/beta]', r.reason?.message);
+      setBetas({ wig: wig.value ?? null, spx: spx.value ?? null });
+      setBetaLoading(false);
+    });
     return () => ctrl.abort();
-  }, [enough, returns]);
+  }, [enough, returns, fxSeries]);
 
   if (sessions < 10 || daySpan < 30) {
     return (
@@ -80,7 +105,7 @@ function RiskCard() {
   );
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <Stat
         icon={Activity} label={t('volatility_label')} hint={!enough ? waiting : t('volatility_sub')}
         value={enough && vol != null ? formatPercent(vol, { locale, decimals: 1, showSign: false }) : '—'}
@@ -91,15 +116,125 @@ function RiskCard() {
         value={mdd ? formatPercent(-mdd.pct, { locale, decimals: 1, showSign: false }) : '—'}
         tone={!mdd ? undefined : mdd.pct < 10 ? 'up' : mdd.pct > 25 ? 'down' : 'warn'}
       />
-      <Stat icon={Gauge} label={t('sharpe_label')} hint={t('sharpe_sub')} value={sh != null ? sh.toFixed(2) : '—'} tone={ratioTone(sh)} />
-      <Stat icon={ShieldCheck} label={t('sortino_label')} hint={t('sortino_sub')} value={so != null ? so.toFixed(2) : '—'} tone={ratioTone(so)} />
+      <Stat icon={Gauge} label={t('sharpe_label')} hint={t('sharpe_sub')} value={sh != null ? formatNumber(sh, 2, locale) : '—'} tone={ratioTone(sh)} />
+      <Stat icon={ShieldCheck} label={t('sortino_label')} hint={t('sortino_sub')} value={so != null ? formatNumber(so, 2, locale) : '—'} tone={ratioTone(so)} />
       <Stat
-        className="col-span-2 sm:col-span-1"
+        icon={Sigma} label={t('beta_wig_label')} hint={!enough ? waiting : betaLoading ? t('loading') : t('beta_wig_sub')}
+        value={enough && !betaLoading && betas.wig != null ? formatNumber(betas.wig, 2, locale) : '—'}
+      />
+      <Stat
         icon={Sigma} label={t('beta_label')} hint={!enough ? waiting : betaLoading ? t('loading') : t('beta_sub')}
-        value={enough && !betaLoading && betaVal != null ? betaVal.toFixed(2) : '—'}
+        value={enough && !betaLoading && betas.spx != null ? formatNumber(betas.spx, 2, locale) : '—'}
       />
       <p className="col-span-full text-small text-faint">{t('risk_twr_note')}</p>
     </div>
+  );
+}
+
+// Korelacja dziennych stóp między największymi pozycjami (rok notowań z
+// Yahoo). Fundusze TFI i kontrakty mają kurs tylko ze stooq — pomijane.
+const CORR_MAX = 12;
+const STOOQ_ONLY = /^\d+\.N$|^STOOQ:/i;
+
+function CorrelationCard({ enriched }) {
+  const t = useT();
+  const { locale } = useLanguage();
+  const top = useMemo(
+    () => enriched
+      .filter(p => p.valuePLN > 0 && p.symbol && !STOOQ_ONLY.test(p.symbol))
+      .sort((a, b) => b.valuePLN - a.valuePLN)
+      .slice(0, CORR_MAX),
+    [enriched]
+  );
+  const key = top.map(p => p.symbol).join(',');
+  const [series, setSeries] = useState(null);   // null = ładowanie
+
+  useEffect(() => {
+    if (top.length < 2) return;
+    const ctrl = new AbortController();
+    setSeries(null);
+    Promise.allSettled(top.map(p =>
+      fetch(`/api/chart?symbol=${encodeURIComponent(p.symbol)}&interval=1d&range=1y`, { signal: ctrl.signal })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(chartPoints)
+    )).then(res => {
+      if (ctrl.signal.aborted) return;
+      const out = {};
+      res.forEach((r, i) => { if (r.status === 'fulfilled' && r.value.length) out[top[i].symbol] = r.value; });
+      setSeries(out);
+    });
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const corr = useMemo(() => (series ? correlationMatrix(series) : null), [series]);
+  if (top.length < 2) return null;
+
+  const weights = Object.fromEntries(top.map(p => [p.symbol, p.valuePLN]));
+  const avg = corr ? weightedAvgCorrelation(corr.pairs, weights) : null;
+  const skipped = series ? top.map(p => p.symbol).filter(s => !series[s]) : [];
+  const fmt = v => (v == null ? '—' : formatNumber(v, 2, locale));
+  const verdict = avg == null ? null : avg < 0.3 ? 'corr_low' : avg < 0.6 ? 'corr_mid' : 'corr_high';
+  // Kolor komórki: akcent dla dodatniej, niebieski dla ujemnej; nasycenie = siła.
+  const cellBg = r => (r == null ? undefined
+    : `color-mix(in srgb, var(${r >= 0 ? '--accent' : '--info'}) ${Math.round(Math.abs(r) * 70)}%, transparent)`);
+
+  return (
+    <Card title={t('corr_title')}>
+      <div className="space-y-3 px-4 py-3">
+        <p className="text-small text-faint">{t('corr_desc')}</p>
+        {!corr ? (
+          <p className="text-small text-faint">{t('loading')}</p>
+        ) : corr.pairs.length === 0 ? (
+          <p className="text-small text-faint">{t('corr_no_data')}</p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Stat
+                label={t('corr_avg_label')} hint={verdict ? t(verdict) : t('corr_avg_sub')}
+                value={fmt(avg)} tone={avg == null ? undefined : avg < 0.3 ? 'up' : avg >= 0.6 ? 'warn' : undefined}
+              />
+              <div className="rounded-[var(--radius-sm)] border border-line px-3 py-2.5">
+                <p className="text-label uppercase text-faint">{t('corr_top_pairs')}</p>
+                <ul className="mt-1.5 space-y-1 text-small">
+                  {corr.pairs.slice(0, 3).map(p => (
+                    <li key={`${p.a}-${p.b}`} className="flex justify-between gap-3">
+                      <span className="text-dim">{p.a} – {p.b}</span>
+                      <span className="font-semibold tabular-nums text-fg">{fmt(p.r)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="border-separate border-spacing-0.5 text-[11px] tabular-nums">
+                <thead>
+                  <tr>
+                    <th />
+                    {corr.symbols.map(s => <th key={s} className="px-1.5 py-1 font-semibold text-faint">{s}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {corr.symbols.map((s, i) => (
+                    <tr key={s}>
+                      <th className="whitespace-nowrap pr-2 text-left font-semibold text-faint">{s}</th>
+                      {corr.matrix[i].map((r, j) => (
+                        <td key={j} className={cx('min-w-[44px] rounded px-1.5 py-1 text-center', i === j ? 'text-faint' : 'text-fg')}
+                          style={{ background: i === j ? undefined : cellBg(r) }}>
+                          {i === j ? '·' : fmt(r)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+        {skipped.length > 0 && <p className="text-small text-faint">{t('corr_skipped')}: {skipped.join(', ')}</p>}
+        <p className="text-[11px] leading-relaxed text-faint">{t('corr_note')}</p>
+      </div>
+    </Card>
   );
 }
 
@@ -162,6 +297,7 @@ export default function RiskTab({ enriched }) {
   return (
     <div className="space-y-4">
       <RiskCard />
+      <CorrelationCard enriched={enriched} />
       <FxBreakdownCard enriched={enriched} />
     </div>
   );
