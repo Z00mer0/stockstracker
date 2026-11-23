@@ -64,6 +64,7 @@ export default function AuthScreen({
   const [pw2, setPw2]             = useState("");
   const [code, setCode]           = useState("");
   const [remember, setRemember]   = useState(true);
+  const [need2fa, setNeed2fa]     = useState(false);
   const [loading, setLoading]     = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [serverError, setServerError] = useState(null);
@@ -110,9 +111,15 @@ export default function AuthScreen({
         setInfo(t('auth_reset_success'));
         setPw(""); setPw2(""); setCode("");
       } else {
-        await onLogin?.({ username, password: pw, remember });
+        await onLogin?.({ username, password: pw, remember, code: need2fa ? code.trim() : undefined });
       }
     } catch (err) {
+      // Hasło przyjęte, serwer czeka na kod — to nie błąd, tylko drugi krok.
+      if (err.need2fa && !need2fa) {
+        setNeed2fa(true);
+        setInfo(t('auth_2fa_info'));
+        return;
+      }
       setServerError(err.message ||
         (isReg ? t('auth_err_register') : isReset ? t('auth_err_reset') : t('auth_err_login')));
     } finally {
@@ -144,6 +151,7 @@ export default function AuthScreen({
 
   function switchTo(next) {
     setMode(next);
+    setNeed2fa(false);
     setPw("");
     setPw2("");
     setCode("");
@@ -239,6 +247,19 @@ export default function AuthScreen({
               value={pw} onChange={(e) => setPw(e.target.value)} required
             />
           </Field>
+
+          {need2fa && mode === "login" && (
+            <Field label={t('auth_2fa_label')} lead={<KeyIcon />}>
+              <input
+                className="auth-input" type="text" placeholder="123 456" autoFocus
+                inputMode="text" autoComplete="one-time-code" value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())} required
+              />
+            </Field>
+          )}
+          {need2fa && mode === "login" && (
+            <div className="field-hint" style={{ marginTop: -6 }}>{t('auth_2fa_hint')}</div>
+          )}
 
           {(isReg || isReset) && pw.length > 0 && (
             <div className="pw-strength">

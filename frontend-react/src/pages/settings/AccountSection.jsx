@@ -1,6 +1,7 @@
 import { parseLabels } from '../../utils/labels.js';
-import { useRef, useState } from 'react';
-import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck, Trash2, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
+import { RefreshCw, LogOut, KeyRound, Download, Upload, Copy, Check, ShieldCheck, ShieldOff, Smartphone, Trash2, Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage, useT } from '../../context/LanguageContext';
 import { api } from '../../hooks/useApi';
@@ -71,6 +72,126 @@ function ChangePasswordCard() {
           {t('change_password_btn')}
         </Button>
       </form>
+    </Card>
+  );
+}
+
+// Logowanie dwuetapowe (TOTP). Włączanie: serwer daje sekret, użytkownik
+// dodaje go w aplikacji (kod QR albo link na telefonie) i potwierdza pierwszym
+// kodem. Wyłączanie wymaga hasła i kodu (albo kodu odzyskiwania).
+function TwoFactorCard() {
+  const t = useT();
+  const [enabled, setEnabled] = useState(null);      // null = ładowanie
+  const [setup, setSetup] = useState(null);           // { secret, uri, qr }
+  const [disabling, setDisabling] = useState(false);
+  const [form, setForm] = useState({ code: '', password: '' });
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.get('/api/2fa').then(r => setEnabled(!!r.data.enabled)).catch(() => setEnabled(false));
+  }, []);
+
+  const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }));
+  const fail = err => setError(err.response?.data?.error ?? t('tfa_error'));
+  const reset = () => { setForm({ code: '', password: '' }); setError(null); };
+
+  async function start() {
+    reset(); setDone(null); setLoading(true);
+    try {
+      const { data } = await api.post('/api/2fa/setup', {});
+      const qr = await QRCode.toDataURL(data.uri, { margin: 1, width: 192 });
+      setSetup({ ...data, qr });
+    } catch (err) { fail(err); } finally { setLoading(false); }
+  }
+  async function confirm(e) {
+    e.preventDefault(); setError(null); setLoading(true);
+    try {
+      await api.post('/api/2fa/enable', { code: form.code.trim() });
+      setSetup(null); setEnabled(true); reset(); setDone(t('tfa_enabled_ok'));
+    } catch (err) { fail(err); } finally { setLoading(false); }
+  }
+  async function disable(e) {
+    e.preventDefault(); setError(null); setLoading(true);
+    try {
+      await api.post('/api/2fa/disable', { password: form.password, code: form.code.trim() });
+      setDisabling(false); setEnabled(false); reset(); setDone(t('tfa_disabled_ok'));
+    } catch (err) { fail(err); } finally { setLoading(false); }
+  }
+  async function copySecret() {
+    try {
+      await navigator.clipboard.writeText(setup.secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* schowek niedostępny */ }
+  }
+
+  const codeField = (
+    <Field label={t('tfa_code_label')}>
+      <Input inputMode="numeric" autoComplete="one-time-code" placeholder="123 456" value={form.code} onChange={set('code')} />
+    </Field>
+  );
+
+  return (
+    <Card title={t('tfa_title')}>
+      <div className="grid gap-3 p-4">
+        <p className="text-small text-dim">{t('tfa_sub')}</p>
+        {enabled != null && (
+          <p className={`text-small font-semibold ${enabled ? 'text-up' : 'text-faint'}`}>
+            {enabled ? t('tfa_status_on') : t('tfa_status_off')}
+          </p>
+        )}
+
+        {setup && (
+          <form onSubmit={confirm} className="grid gap-3 sm:max-w-sm">
+            <p className="text-small text-dim">{t('tfa_step_scan')}</p>
+            <img src={setup.qr} alt={t('tfa_qr_alt')} width={192} height={192} className="rounded-card-sm bg-white p-1" />
+            <a href={setup.uri} className="text-small font-semibold text-accent-text sm:hidden">{t('tfa_open_app')}</a>
+            <div>
+              <p className="text-small text-faint">{t('tfa_manual')}</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="select-all break-all font-mono text-[13px] text-fg">{setup.secret.match(/.{1,4}/g).join(' ')}</span>
+                <Button size="sm" variant="ghost" icon={copied ? Check : Copy} onClick={copySecret}>{copied ? t('rc_copied') : t('rc_copy')}</Button>
+              </div>
+            </div>
+            <p className="text-small text-dim">{t('tfa_step_code')}</p>
+            {codeField}
+            <Note tone="err">{error}</Note>
+            <div className="flex gap-2">
+              <Button type="submit" variant="primary" icon={ShieldCheck} loading={loading} disabled={!form.code.trim()}>{t('tfa_confirm')}</Button>
+              <Button variant="ghost" onClick={() => { setSetup(null); reset(); }}>{t('cancel')}</Button>
+            </div>
+          </form>
+        )}
+
+        {disabling && (
+          <form onSubmit={disable} className="grid gap-3 sm:max-w-sm">
+            <Field label={t('current_password')}>
+              <Input type="password" autoComplete="current-password" value={form.password} onChange={set('password')} />
+            </Field>
+            {codeField}
+            <p className="text-small text-faint">{t('tfa_disable_hint')}</p>
+            <Note tone="err">{error}</Note>
+            <div className="flex gap-2">
+              <Button type="submit" variant="danger" icon={ShieldOff} loading={loading} disabled={!form.password || !form.code.trim()}>{t('tfa_disable')}</Button>
+              <Button variant="ghost" onClick={() => { setDisabling(false); reset(); }}>{t('cancel')}</Button>
+            </div>
+          </form>
+        )}
+
+        <Note tone="ok">{done}</Note>
+        {enabled === true && <p className="text-small text-warn">{t('tfa_keep_codes')}</p>}
+        {!setup && !disabling && enabled != null && (
+          <>
+            {!enabled && <Note tone="err">{error}</Note>}
+            {enabled
+              ? <Button icon={ShieldOff} onClick={() => { reset(); setDone(null); setDisabling(true); }} className="justify-self-start">{t('tfa_disable')}</Button>
+              : <Button variant="primary" icon={Smartphone} loading={loading} onClick={start} className="justify-self-start">{t('tfa_enable')}</Button>}
+          </>
+        )}
+      </div>
     </Card>
   );
 }
@@ -328,6 +449,7 @@ export default function AccountSection() {
     <div className="space-y-4">
       <AccountCard />
       <ChangePasswordCard />
+      <TwoFactorCard />
       <RecoveryCodesCard />
       <ExportDataCard />
       <PortfoliosCard />
