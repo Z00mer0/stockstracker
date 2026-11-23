@@ -1,5 +1,6 @@
 import { rateLimited } from './_rateLimit.js';
 import { fetchStooq, isFundSymbol, isStooqDirect } from './_stooq.js';
+import { cachedQuote } from './_quoteCache.js';
 // Vercel serverless function — fetches stock quotes server-side (different IP than Render)
 // No auth required — stock prices are public data
 //
@@ -10,6 +11,9 @@ import { fetchStooq, isFundSymbol, isStooqDirect } from './_stooq.js';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const MAX_SYMBOLS = 60;
+// CDN Vercela: identyczne zapytanie przez minutę bez uruchamiania funkcji.
+// Tylko gdy każdy symbol się rozwiązał — błąd przejściowy nie może utknąć w cache.
+const CDN_CACHE = 's-maxage=60';
 
 // Zwraca { quote } | { stooq } | { notFound: true } | null (błąd przejściowy)
 async function fetchOne(sym) {
@@ -92,7 +96,8 @@ export default async function handler(req, res) {
   if (format !== 'map') {
     // Ścieżka zgodności: jeden symbol, odpowiedź dokładnie jak wcześniej.
     const sym = list[0];
-    const out = await fetchOne(sym);
+    const out = await cachedQuote(sym, fetchOne);
+    if (out?.quote || out?.stooq) res.setHeader('Cache-Control', CDN_CACHE);
     if (out?.quote)  return res.status(200).json({ quoteResponse: { result: [out.quote] } });
     if (out?.stooq)  return res.status(200).json({ stooq: true, symbol: sym, price: out.price });
     if (out?.notFound) return res.status(404).json({ error: out.error });
@@ -100,11 +105,12 @@ export default async function handler(req, res) {
   }
 
   // Wszystkie symbole równolegle — to jest cały sens tego endpointu.
-  const settled = await Promise.allSettled(list.map(fetchOne));
+  const settled = await Promise.allSettled(list.map(sym => cachedQuote(sym, fetchOne)));
   const quotes = {};
   list.forEach((sym, i) => {
     const r = settled[i];
     quotes[sym] = r.status === 'fulfilled' ? r.value : null;
   });
+  if (Object.values(quotes).every(q => q != null)) res.setHeader('Cache-Control', CDN_CACHE);
   return res.status(200).json({ quotes });
 }
