@@ -70,7 +70,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, onNewPortfolio, col
   const closeOnMobile = isMobile ? onClose : undefined;
 
   const content = (
-    <aside className={cx('flex h-[100dvh] flex-col overflow-hidden border-r border-line bg-bg-2', isMobile ? 'w-[272px]' : 'w-full')}>
+    <aside className={cx('flex h-[100dvh] flex-col overflow-hidden border-r border-line bg-bg-2', isMobile ? 'w-[272px] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]' : 'w-full')}>
       {/* Marka */}
       <div className={cx('flex items-center gap-2.5 pb-3 pt-5', rail ? 'justify-center px-0' : 'px-4')}>
         <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-card-sm bg-gradient-to-br from-[var(--accent)] to-[#8b5cf6] text-accent-fg">

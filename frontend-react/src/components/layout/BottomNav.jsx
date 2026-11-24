@@ -13,7 +13,8 @@ export const PRIMARY_ROUTES = ['/', '/portfolio', '/transactions', '/dividends']
 
 const isActiveRoute = (route, pathname) => (route === '/' ? pathname === '/' : pathname.startsWith(route));
 
-const itemClass = 'flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium leading-tight transition-colors';
+// leading-[1.45]: przy ciaśniejszej linii `truncate` ucinał ogonki liter (y, j).
+const itemClass = 'flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium leading-[1.45] transition-colors';
 const pillClass = active => cx(
   'grid h-7 w-12 place-items-center rounded-full transition-colors',
   active ? 'bg-panel-hover text-accent-text' : '',
