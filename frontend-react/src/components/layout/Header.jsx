@@ -531,6 +531,8 @@ export default function Header({ theme, onThemeToggle, isMobile, compact = false
       background: 'var(--bg-2)',
       borderBottom: '1px solid var(--border)',
       position: 'sticky', top: 0, zIndex: 10,
+      // iPhone (viewport-fit=cover): tło nagłówka pod paskiem statusu, treść niżej.
+      paddingTop: 'env(safe-area-inset-top)',
     }}>
       <div style={{
         height: 56, display: 'flex', alignItems: 'center',

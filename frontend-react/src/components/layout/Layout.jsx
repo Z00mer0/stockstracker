@@ -155,6 +155,9 @@ export default function Layout() {
       gridTemplateColumns: isMobile ? '1fr' : `${collapsed ? 68 : 232}px 1fr`,
       transition: 'grid-template-columns 0.2s ease',
       height: '100dvh',
+      // Telefon w poziomie: treść nie wchodzi pod wycięcie aparatu.
+      paddingLeft: 'env(safe-area-inset-left)',
+      paddingRight: 'env(safe-area-inset-right)',
       background: 'var(--bg)',
       color: 'var(--text)',
       overflow: 'hidden',
